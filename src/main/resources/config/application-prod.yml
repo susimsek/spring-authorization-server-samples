@@ -1,0 +1,35 @@
+spring:
+  devtools:
+    restart:
+      enabled: false
+  docker:
+    compose:
+      profiles:
+        active: prod
+  datasource:
+    url: jdbc:postgresql://localhost:5432/authserversamples
+    username: ${SPRING_DATASOURCE_USERNAME}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  jpa:
+    show-sql: false
+    properties:
+      hibernate.format_sql: false
+  liquibase:
+    contexts: prod
+
+app:
+  cache:
+    caffeine:
+      ttl: PT1H
+      initial-capacity: 500
+      maximum-size: 1000
+  authorization-server:
+    issuer: ${APP_AUTHORIZATION_SERVER_ISSUER:https://spring-authorization-server-samples.local}
+
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: INFO
+    io.github.susimsek.springauthserversamples: INFO

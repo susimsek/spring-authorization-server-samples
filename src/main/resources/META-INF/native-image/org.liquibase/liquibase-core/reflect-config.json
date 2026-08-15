@@ -1,0 +1,31 @@
+[
+  {
+    "name": "liquibase.change.core.LoadDataChange",
+    "allPublicMethods": true
+  },
+  {
+    "name": "liquibase.change.core.LoadDataColumnConfig",
+    "allPublicConstructors": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "liquibase.change.core.CreateSequenceChange",
+    "allPublicMethods": true
+  },
+  {
+    "name": "liquibase.change.core.CreateTableChange",
+    "allPublicMethods": true
+  },
+  {
+    "name": "liquibase.change.core.AddPrimaryKeyChange",
+    "allPublicMethods": true
+  },
+  {
+    "name": "liquibase.change.core.AddForeignKeyConstraintChange",
+    "allPublicMethods": true
+  },
+  {
+    "name": "liquibase.change.core.CreateIndexChange",
+    "allPublicMethods": true
+  }
+]

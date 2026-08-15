@@ -1,0 +1,10 @@
+# Dev purpose only. DO NOT use in production.
+name: spring-authorization-server-samples
+
+services:
+  postgresql:
+    extends:
+      file: ./postgresql.yml
+      service: postgresql
+    profiles:
+      - prod

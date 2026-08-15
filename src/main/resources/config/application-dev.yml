@@ -1,0 +1,32 @@
+spring:
+  devtools:
+    restart:
+      enabled: true
+  docker:
+    compose:
+      enabled: false
+  datasource:
+    url: jdbc:h2:mem:authserversamples;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+  jpa:
+    show-sql: true
+    properties:
+      hibernate.format_sql: true
+  liquibase:
+    contexts: dev
+
+app:
+  cache:
+    caffeine:
+      ttl: PT1H
+      initial-capacity: 50
+      maximum-size: 100
+  authorization-server:
+    issuer: http://127.0.0.1:9090
+
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: DEBUG
+    io.github.susimsek.springauthserversamples: DEBUG

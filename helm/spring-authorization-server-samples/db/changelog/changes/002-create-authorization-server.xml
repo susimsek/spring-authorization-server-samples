@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+	<changeSet id="001-create-oauth2-registered-client-table" author="susimsek">
+		<createTable tableName="oauth2_registered_client">
+			<column name="id" type="varchar(100)">
+				<constraints nullable="false" primaryKey="true" primaryKeyName="pk_oauth2_registered_client"/>
+			</column>
+			<column name="client_id" type="varchar(100)">
+				<constraints nullable="false" unique="true" uniqueConstraintName="uk_oauth2_registered_client_client_id"/>
+			</column>
+			<column name="client_id_issued_at" type="timestamp" defaultValueComputed="${now}">
+				<constraints nullable="false"/>
+			</column>
+			<column name="client_secret" type="varchar(200)"/>
+			<column name="client_secret_expires_at" type="timestamp"/>
+			<column name="client_name" type="varchar(200)">
+				<constraints nullable="false"/>
+			</column>
+			<column name="client_authentication_methods" type="varchar(1000)">
+				<constraints nullable="false"/>
+			</column>
+			<column name="authorization_grant_types" type="varchar(1000)">
+				<constraints nullable="false"/>
+			</column>
+			<column name="redirect_uris" type="varchar(1000)"/>
+			<column name="post_logout_redirect_uris" type="varchar(1000)"/>
+			<column name="scopes" type="varchar(1000)">
+				<constraints nullable="false"/>
+			</column>
+			<column name="client_settings" type="varchar(2000)">
+				<constraints nullable="false"/>
+			</column>
+			<column name="token_settings" type="varchar(2000)">
+				<constraints nullable="false"/>
+			</column>
+		</createTable>
+	</changeSet>
+
+	<changeSet id="002-load-oauth2-registered-client-data" author="susimsek">
+		<loadData
+			file="classpath:db/data/oauth2-registered-clients.csv"
+			separator=";"
+			tableName="oauth2_registered_client"
+			usePreparedStatements="true"/>
+	</changeSet>
+
+	<changeSet id="003-create-oauth2-authorization-table" author="susimsek">
+		<createTable tableName="oauth2_authorization">
+			<column name="id" type="varchar(100)">
+				<constraints nullable="false" primaryKey="true" primaryKeyName="pk_oauth2_authorization"/>
+			</column>
+			<column name="registered_client_id" type="varchar(100)">
+				<constraints nullable="false"/>
+			</column>
+			<column name="principal_name" type="varchar(200)">
+				<constraints nullable="false"/>
+			</column>
+			<column name="authorization_grant_type" type="varchar(100)">
+				<constraints nullable="false"/>
+			</column>
+			<column name="authorized_scopes" type="varchar(1000)"/>
+			<column name="attributes" type="text"/>
+			<column name="state" type="varchar(500)"/>
+			<column name="authorization_code_value" type="text"/>
+			<column name="authorization_code_issued_at" type="timestamp"/>
+			<column name="authorization_code_expires_at" type="timestamp"/>
+			<column name="authorization_code_metadata" type="text"/>
+			<column name="access_token_value" type="text"/>
+			<column name="access_token_issued_at" type="timestamp"/>
+			<column name="access_token_expires_at" type="timestamp"/>
+			<column name="access_token_metadata" type="text"/>
+			<column name="access_token_type" type="varchar(100)"/>
+			<column name="access_token_scopes" type="varchar(1000)"/>
+			<column name="oidc_id_token_value" type="text"/>
+			<column name="oidc_id_token_issued_at" type="timestamp"/>
+			<column name="oidc_id_token_expires_at" type="timestamp"/>
+			<column name="oidc_id_token_metadata" type="text"/>
+			<column name="refresh_token_value" type="text"/>
+			<column name="refresh_token_issued_at" type="timestamp"/>
+			<column name="refresh_token_expires_at" type="timestamp"/>
+			<column name="refresh_token_metadata" type="text"/>
+			<column name="user_code_value" type="text"/>
+			<column name="user_code_issued_at" type="timestamp"/>
+			<column name="user_code_expires_at" type="timestamp"/>
+			<column name="user_code_metadata" type="text"/>
+			<column name="device_code_value" type="text"/>
+			<column name="device_code_issued_at" type="timestamp"/>
+			<column name="device_code_expires_at" type="timestamp"/>
+			<column name="device_code_metadata" type="text"/>
+		</createTable>
+	</changeSet>
+
+	<changeSet id="004-create-oauth2-authorization-consent-table" author="susimsek">
+		<createTable tableName="oauth2_authorization_consent">
+			<column name="registered_client_id" type="varchar(100)">
+				<constraints nullable="false"/>
+			</column>
+			<column name="principal_name" type="varchar(200)">
+				<constraints nullable="false"/>
+			</column>
+			<column name="authorities" type="varchar(1000)">
+				<constraints nullable="false"/>
+			</column>
+		</createTable>
+		<addPrimaryKey
+			tableName="oauth2_authorization_consent"
+			columnNames="registered_client_id, principal_name"
+			constraintName="pk_oauth2_authorization_consent"/>
+	</changeSet>
+</databaseChangeLog>

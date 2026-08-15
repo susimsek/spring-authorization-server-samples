@@ -1,0 +1,6 @@
+[
+  {
+    "name": "org.hibernate.cache.jcache.internal.JCacheRegionFactory",
+    "allPublicConstructors": true
+  }
+]

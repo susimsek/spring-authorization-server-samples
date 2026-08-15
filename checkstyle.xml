@@ -1,0 +1,202 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd">
+
+<module name="Checker">
+
+    <property name="charset" value="UTF-8"/>
+    <property name="severity" value="warning"/>
+    <property name="fileExtensions" value="java,properties,xml"/>
+
+    <module name="SuppressWarningsFilter"/>
+
+    <module name="SuppressionFilter">
+        <property name="file" value="checkstyle-suppressions.xml"/>
+        <property name="optional" value="true"/>
+    </module>
+
+    <module name="BeforeExecutionExclusionFileFilter">
+        <property name="fileNamePattern" value="module\\-info\\.java$"/>
+    </module>
+
+    <module name="NewlineAtEndOfFile">
+        <property name="lineSeparator" value="lf"/>
+    </module>
+
+    <module name="FileTabCharacter">
+        <property name="eachLine" value="true"/>
+    </module>
+
+    <module name="RegexpSingleline">
+        <property name="format" value="\s+$"/>
+        <property name="message" value="Trailing whitespace"/>
+        <property name="severity" value="error"/>
+    </module>
+
+    <module name="RegexpSingleline">
+        <property name="format" value="Throwables.propagate\("/>
+        <property name="message" value="Throwables.propagate is deprecated"/>
+        <property name="severity" value="error"/>
+    </module>
+
+    <module name="RegexpSingleline">
+        <property name="format" value="((//.*)|(\*.*))TODO\("/>
+        <property name="message" value="TODO comments must not include usernames."/>
+        <property name="severity" value="error"/>
+    </module>
+
+    <module name="FileLength">
+        <property name="max" value="3000"/>
+    </module>
+
+    <module name="TreeWalker">
+        <module name="SuppressWarningsHolder"/>
+        <module name="SuppressionCommentFilter">
+            <property name="offCommentFormat" value="CHECKSTYLE:OFF"/>
+            <property name="onCommentFormat" value="CHECKSTYLE:ON"/>
+            <property name="checkFormat" value=".*"/>
+        </module>
+
+        <module name="OuterTypeFilename"/>
+
+        <module name="RedundantImport">
+            <property name="severity" value="error"/>
+        </module>
+
+        <module name="UnusedImports">
+            <property name="severity" value="error"/>
+            <property name="processJavadoc" value="true"/>
+            <message key="import.unused"
+                     value="Unused import: {0}."/>
+        </module>
+
+        <module name="AvoidStarImport">
+            <property name="severity" value="error"/>
+        </module>
+
+        <module name="OneTopLevelClass"/>
+
+        <module name="RegexpSinglelineJava">
+            <property name="format" value="^import com.google.common.base.Preconditions;$"/>
+            <property name="message" value="Static import functions from Guava Preconditions"/>
+        </module>
+
+        <module name="IllegalTokenText">
+            <property name="tokens" value="STRING_LITERAL, CHAR_LITERAL, TEXT_BLOCK_CONTENT"/>
+            <property name="format"
+                      value="\\u00(09|0(a|A)|0(b|B)|(0|1)(c|C)|(0|1)(d|D)|1(d|D)|1(e|E)|1(f|F)|22|27|5(C|c))|\\u1680|\\u3000|\\u20(00|0(a|A)|28|29|(2|5)(f|F))|\\(0(10|11|12|14|15|40|42|47)|134)"/>
+            <property name="message"
+                      value="Consider using special escape sequence instead of octal value or Unicode escaped value."/>
+        </module>
+
+        <module name="AvoidEscapedUnicodeCharacters">
+            <property name="allowEscapesForControlCharacters" value="true"/>
+            <property name="allowByTailComment" value="true"/>
+            <property name="allowNonPrintableEscapes" value="true"/>
+        </module>
+
+        <module name="NeedBraces">
+            <property name="severity" value="error"/>
+            <property name="tokens"
+                      value="LITERAL_IF, LITERAL_ELSE, LITERAL_FOR,
+                       LITERAL_WHILE, LITERAL_DO"/>
+        </module>
+
+        <module name="EmptyStatement"/>
+        <module name="SimplifyBooleanExpression"/>
+        <module name="FallThrough"/>
+
+        <module name="EmptyCatchBlock">
+            <property name="commentFormat" value="\\w+"/>
+        </module>
+
+        <module name="MissingSwitchDefault"/>
+        <module name="OneStatementPerLine"/>
+        <module name="MultipleVariableDeclarations"/>
+        <module name="VariableDeclarationUsageDistance"/>
+
+        <module name="PackageName">
+            <property name="format" value="^[a-z]+(\.[a-z][a-z0-9]*)*$"/>
+            <message key="name.invalidPattern"
+                     value="Package name ''{0}'' must match pattern ''{1}''."/>
+        </module>
+
+        <module name="TypeName">
+            <property name="severity" value="error"/>
+            <property name="format" value="^[A-Z][a-zA-Z0-9]*$"/>
+            <message key="name.invalidPattern"
+                     value="Type name ''{0}'' must match pattern ''{1}''."/>
+        </module>
+
+        <module name="MethodName">
+            <property name="format"
+                      value="^(?![a-z]$)(?![a-z][A-Z])[a-z][a-z0-9]*(?:[A-Z][a-z0-9]*)*(?:_[0-9]+)*$"/>
+            <message key="name.invalidPattern"
+                     value="Method name ''{0}'' must match pattern ''{1}''."/>
+        </module>
+
+        <module name="MemberName">
+            <property name="format"
+                      value="^(?![a-z]$)(?![a-z][A-Z])[a-z][a-zA-Z0-9]*(?:_[0-9]+)*$"/>
+            <message key="name.invalidPattern"
+                     value="Member name ''{0}'' must match pattern ''{1}''."/>
+        </module>
+
+        <module name="ParameterName">
+            <property name="format" value="^[a-z]([a-z0-9][a-zA-Z0-9]*)?$"/>
+            <message key="name.invalidPattern"
+                     value="Parameter name ''{0}'' must match pattern ''{1}''."/>
+        </module>
+
+        <module name="CatchParameterName">
+            <property name="format" value="^(_|[a-z]([a-z0-9][a-zA-Z0-9]*)?)$"/>
+            <message key="name.invalidPattern"
+                     value="Catch parameter name ''{0}'' must match pattern ''{1}''."/>
+        </module>
+
+        <module name="LambdaParameterName">
+            <property name="format" value="^(_|[a-z]([a-z0-9][a-zA-Z0-9]*)?)$"/>
+            <message key="name.invalidPattern"
+                     value="Lambda parameter name ''{0}'' must match pattern ''{1}''."/>
+        </module>
+
+        <module name="InterfaceTypeParameterName">
+            <property name="format" value="(^[A-Z][0-9]?)$|(ID)|([A-Z][a-zA-Z0-9]*[T]$)"/>
+            <message key="name.invalidPattern"
+                     value="Interface type name ''{0}'' must match pattern ''{1}''."/>
+        </module>
+
+        <module name="MethodTypeParameterName">
+            <property name="format" value="(^[A-Z][0-9]?)$|([A-Z][a-zA-Z0-9]*[T]$)"/>
+            <message key="name.invalidPattern"
+                     value="Method type name ''{0}'' must match pattern ''{1}''."/>
+        </module>
+
+        <module name="ClassTypeParameterName">
+            <property name="format" value="(^[A-Z][0-9]?)$|([A-Z][a-zA-Z0-9]*[T]$)"/>
+            <message key="name.invalidPattern"
+                     value="Class type name ''{0}'' must match pattern ''{1}''."/>
+        </module>
+
+        <module name="LocalVariableName">
+            <property name="format" value="^(_|[a-z]([a-z0-9][a-zA-Z0-9]*)?)$"/>
+            <message key="name.invalidPattern"
+                     value="Local variable name ''{0}'' must match pattern ''{1}''."/>
+        </module>
+
+        <module name="UpperEll"/>
+        <module name="ModifierOrder"/>
+        <module name="ArrayTypeStyle"/>
+        <module name="NoFinalizer"/>
+
+        <module name="TodoComment">
+            <property name="format" value="^[ \t]*(?!TODO:)(?i:TODO)\b:?"/>
+            <message key="todo.match"
+                     value="''TODO:'' must be written in all caps and followed by a colon."/>
+        </module>
+
+        <module name="OverloadMethodsDeclarationOrder"/>
+        <module name="NonEmptyAtclauseDescription"/>
+    </module>
+</module>

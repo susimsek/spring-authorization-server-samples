@@ -1,0 +1,171 @@
+version: 2.1
+
+executors:
+  graalvm:
+    docker:
+      - image: ghcr.io/graalvm/native-image-community:25-muslib
+    resource_class: large
+
+jobs:
+  build:
+    executor: graalvm
+    steps:
+      - checkout
+
+      - restore_cache:
+          keys:
+            - v1-maven-{{ checksum "pom.xml" }}
+            - v1-maven-
+
+      - run:
+          name: Print Java Version
+          command: java -version
+
+      - run:
+          name: Give Executable Permission
+          command: chmod +x mvnw
+
+      - run:
+          name: Install Maven Dependencies
+          command: ./mvnw -B -ntp dependency:go-offline
+
+      - run:
+          name: Install Snyk CLI
+          command: |
+            curl -fsSL https://static.snyk.io/cli/latest/snyk-linux -o /usr/local/bin/snyk
+            chmod +x /usr/local/bin/snyk
+            snyk --version
+
+      - run:
+          name: Snyk Test
+          command: |
+            if [ -n "${SNYK_TOKEN}" ]; then
+              snyk test --all-projects || true
+            else
+              echo "SNYK_TOKEN not set; skipping Snyk test."
+            fi
+
+      - run:
+          name: Snyk Monitor
+          command: |
+            if [ "${CIRCLE_BRANCH}" != "main" ]; then
+              echo "Not on main (${CIRCLE_BRANCH}); skipping Snyk monitor."
+              exit 0
+            fi
+
+            if [ -n "${SNYK_TOKEN}" ]; then
+              snyk monitor --all-projects || true
+            else
+              echo "SNYK_TOKEN not set; skipping Snyk monitor."
+            fi
+
+      - run:
+          name: Build and Test
+          command: ./mvnw -B -ntp verify
+
+      - save_cache:
+          key: v1-maven-{{ checksum "pom.xml" }}
+          paths:
+            - ~/.m2/repository
+
+      - run:
+          name: Analyze Code with SonarQube
+          command: |
+            if [ -n "${SONAR_TOKEN}" ]; then
+              ./mvnw -B -ntp -Psonar initialize sonar:sonar \
+                -Dsonar.host.url=https://sonarcloud.io \
+                -Dsonar.organization=susimsek \
+                -Dsonar.token="${SONAR_TOKEN}"
+            else
+              echo "SONAR_TOKEN not set; skipping Sonar analysis."
+            fi
+
+      - run:
+          name: Install UPX
+          command: |
+            microdnf -y install curl tar xz
+
+            UPX_VERSION=5.1.0
+            UPX_ARCHIVE=upx-${UPX_VERSION}-amd64_linux.tar.xz
+
+            curl -fsSLO https://github.com/upx/upx/releases/download/v${UPX_VERSION}/${UPX_ARCHIVE}
+            tar -xJf ${UPX_ARCHIVE}
+            mv upx-${UPX_VERSION}-amd64_linux/upx /usr/local/bin/upx
+            chmod +x /usr/local/bin/upx
+            rm -rf ${UPX_ARCHIVE} upx-${UPX_VERSION}-amd64_linux
+
+            upx --version
+
+      - run:
+          name: Build GraalVM Native Executable
+          command: |
+            ./mvnw -B -ntp -Pprod,native -DskipTests \
+              -Dspotless.skip=true \
+              -Dcheckstyle.skip=true \
+              -DbuildArgs="--no-fallback,-Os,--static,--libc=musl,--verbose,-J-Xmx6g" \
+              native:compile
+          no_output_timeout: 40m
+
+      - run:
+          name: Compress Native Executable with UPX
+          command: upx --lzma --best target/native-executable
+
+      - run:
+          name: Publish Docker Image
+          command: |
+            if [ "${CIRCLE_BRANCH}" != "main" ]; then
+              echo "Not on main (${CIRCLE_BRANCH}); skipping Docker image push."
+              exit 0
+            fi
+
+            ./mvnw -ntp -Pprod,native -DskipTests \
+              jib:build \
+              -Djib.to.image=docker.io/${DOCKERHUB_USERNAME}/spring-authorization-server-samples:latest-native \
+              -Djib.to.auth.username="${DOCKERHUB_USERNAME}" \
+              -Djib.to.auth.password="${DOCKERHUB_TOKEN}"
+          no_output_timeout: 40m
+
+      - run:
+          name: Update Docker Hub Description
+          command: |
+            if [ "${CIRCLE_BRANCH}" != "main" ]; then
+              echo "Not on main (${CIRCLE_BRANCH}); skipping Docker Hub README update."
+              exit 0
+            fi
+
+            if [ -z "${DOCKERHUB_USERNAME}" ] || [ -z "${DOCKERHUB_TOKEN}" ]; then
+              echo "DOCKERHUB_USERNAME or DOCKERHUB_TOKEN not set; skipping Docker Hub README update."
+              exit 0
+            fi
+
+            README_PATH="docs/README-dockerhub.md"
+            if [ ! -f "${README_PATH}" ]; then
+              echo "${README_PATH} not found; skipping Docker Hub README update."
+              exit 0
+            fi
+
+            microdnf -y install jq
+
+            TOKEN="$(
+              curl -fsS -X POST \
+                -H "Content-Type: application/json" \
+                -d "{\"identifier\":\"${DOCKERHUB_USERNAME}\",\"secret\":\"${DOCKERHUB_TOKEN}\"}" \
+                https://hub.docker.com/v2/auth/token \
+              | jq -er '.access_token'
+            )"
+
+            PAYLOAD="$(
+              jq -n --rawfile readme "${README_PATH}" \
+                '{full_description: $readme}'
+            )"
+
+            curl -fsS -X PATCH \
+              -H "Authorization: Bearer ${TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data "${PAYLOAD}" \
+              "https://hub.docker.com/v2/repositories/${DOCKERHUB_USERNAME}/spring-authorization-server-samples"
+
+workflows:
+  build-and-publish:
+    jobs:
+      - build
