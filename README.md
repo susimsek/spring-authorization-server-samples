@@ -2,6 +2,7 @@
 
 [![Build Status](https://circleci.com/gh/susimsek/spring-authorization-server-samples/tree/main.svg?style=shield)](https://circleci.com/gh/susimsek/spring-authorization-server-samples/tree/main)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=spring-authorization-server-samples&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=spring-authorization-server-samples)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=spring-authorization-server-samples&metric=coverage)](https://sonarcloud.io/summary/new_code?id=spring-authorization-server-samples)
 [![Vulnerabilities](https://snyk.io/test/github/susimsek/spring-authorization-server-samples/badge.svg)](https://snyk.io/test/github/susimsek/spring-authorization-server-samples)
 [![Docker Image Size](https://img.shields.io/docker/image-size/suayb/spring-authorization-server-samples/latest-native?label=Image%20Size)](https://hub.docker.com/r/suayb/spring-authorization-server-samples)
 [![Java](https://img.shields.io/badge/Java-25-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
