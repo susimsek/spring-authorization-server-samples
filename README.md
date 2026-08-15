@@ -10,6 +10,7 @@
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?logo=spring-boot&logoColor=white)](https://spring.io/projects/spring-boot/)
 [![Spring Authorization Server](https://img.shields.io/badge/Spring%20Authorization%20Server-OAuth2-6DB33F?logo=springsecurity&logoColor=white)](https://spring.io/projects/spring-authorization-server/)
 [![Spring Data JPA](https://img.shields.io/badge/Spring%20Data%20JPA-Persistence-6DB33F?logo=spring&logoColor=white)](https://spring.io/projects/spring-data-jpa/)
+[![Liquibase](https://img.shields.io/badge/Liquibase-Migrations-2A62FF?logo=liquibase&logoColor=white)](https://www.liquibase.com/)
 [![GraalVM](https://img.shields.io/badge/GraalVM-25%2B-FF6600?logo=graalvm)](https://www.graalvm.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
