@@ -13,6 +13,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 
 @ExtendWith(MockitoExtension.class)
@@ -24,8 +26,7 @@ class DomainRegisteredClientServiceTest {
 
     @Test
     void savesMappedRegisteredClient() {
-        RegisteredClient registeredClient =
-                RegisteredClient.withId("id-1").clientId("client").build();
+        RegisteredClient registeredClient = registeredClient();
         RegisteredClientEntity entity = new RegisteredClientEntity();
         when(registeredClientMapper.toEntity(registeredClient, mapperSupport)).thenReturn(entity);
 
@@ -38,8 +39,7 @@ class DomainRegisteredClientServiceTest {
     @Test
     void findsByIdAndClientId() {
         RegisteredClientEntity entity = new RegisteredClientEntity();
-        RegisteredClient registeredClient =
-                RegisteredClient.withId("id-1").clientId("client").build();
+        RegisteredClient registeredClient = registeredClient();
         when(clientRepository.findById("id-1")).thenReturn(Optional.of(entity));
         when(clientRepository.findByClientId("client")).thenReturn(Optional.of(entity));
         when(registeredClientMapper.toObject(entity, mapperSupport)).thenReturn(registeredClient);
@@ -52,5 +52,15 @@ class DomainRegisteredClientServiceTest {
         assertThat(service.findByClientId("client")).isSameAs(registeredClient);
         assertThat(service.findById("missing")).isNull();
         assertThat(service.findByClientId("missing")).isNull();
+    }
+
+    private static RegisteredClient registeredClient() {
+        return RegisteredClient.withId("id-1")
+                .clientId("client")
+                .clientSecret("secret")
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                .scope("openid")
+                .build();
     }
 }

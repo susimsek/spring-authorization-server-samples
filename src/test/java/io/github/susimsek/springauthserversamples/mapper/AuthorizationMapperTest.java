@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.core.oidc.StandardClaimNames;
 import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
+import org.springframework.security.oauth2.server.authorization.OAuth2Authorization.Token;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationCode;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
@@ -31,6 +33,9 @@ class AuthorizationMapperTest {
         RegisteredClient registeredClient = registeredClient();
         Instant issuedAt = Instant.EPOCH;
         Instant expiresAt = issuedAt.plusSeconds(300);
+        Map<String, Object> idTokenClaims = new LinkedHashMap<>();
+        idTokenClaims.put(StandardClaimNames.SUB, "admin");
+        idTokenClaims.put("claim", "value");
         OAuth2Authorization authorization =
                 OAuth2Authorization.withRegisteredClient(registeredClient)
                         .id("auth-1")
@@ -51,12 +56,11 @@ class AuthorizationMapperTest {
                                         Set.of("openid")),
                                 metadata -> metadata.put("access-meta", "yes"))
                         .token(
-                                new OidcIdToken(
-                                        "id-1",
-                                        issuedAt,
-                                        expiresAt,
-                                        Map.of(StandardClaimNames.SUB, "admin", "claim", "value")),
-                                metadata -> metadata.put("id-meta", "yes"))
+                                new OidcIdToken("id-1", issuedAt, expiresAt, idTokenClaims),
+                                metadata -> {
+                                    metadata.put("id-meta", "yes");
+                                    metadata.put(Token.CLAIMS_METADATA_NAME, idTokenClaims);
+                                })
                         .token(
                                 new OAuth2RefreshToken(
                                         "refresh-1", issuedAt, expiresAt.plusSeconds(300)),

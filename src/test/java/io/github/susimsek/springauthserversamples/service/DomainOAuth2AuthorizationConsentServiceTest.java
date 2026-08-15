@@ -44,7 +44,9 @@ class DomainOAuth2AuthorizationConsentServiceTest {
     @Test
     void findsConsentOrReturnsNull() {
         OAuth2AuthorizationConsent consent =
-                OAuth2AuthorizationConsent.withId("client", "admin").build();
+                OAuth2AuthorizationConsent.withId("client", "admin")
+                        .authority(new SimpleGrantedAuthority("ROLE_ADMIN"))
+                        .build();
         AuthorizationConsentEntity entity = new AuthorizationConsentEntity();
         when(repository.findByIdRegisteredClientIdAndIdPrincipalName("client", "admin"))
                 .thenReturn(Optional.of(entity));
