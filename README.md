@@ -685,50 +685,151 @@ The sample simulation focuses on discovery, JWK lookup, client credentials token
 
 ## Code Quality
 
-Formatting:
+### Checkstyle
 
-```bash
-./mvnw spotless:check
-./mvnw spotless:apply
-```
-
-Static analysis:
+Checkstyle runs automatically in the `validate` phase.
 
 ```bash
 ./mvnw checkstyle:check
-./mvnw -Psonar sonar:sonar
 ```
 
-Coverage and verification:
+Config files:
+
+- `checkstyle.xml`
+- `checkstyle-suppressions.xml`
+
+### Spotless
+
+Spotless runs `spotless:check` in the `compile` phase.
+
+Check formatting:
 
 ```bash
-./mvnw test
-./mvnw verify
+./mvnw spotless:check
+```
+
+Apply formatting:
+
+```bash
+./mvnw spotless:apply
+```
+
+### Sonar
+
+If you use SonarCloud or SonarQube in your pipeline, you can run analysis locally as well.
+
+Sonar properties live in:
+
+```text
+sonar-project.properties
+```
+
+Run analysis:
+
+```bash
+export SONAR_TOKEN=...
+./mvnw -B -ntp -Psonar verify sonar:sonar \
+  -Dsonar.token="$SONAR_TOKEN"
 ```
 
 ## GraalVM Native Image
 
-Build the native executable:
+Native executable:
 
 ```bash
 ./mvnw -Pprod,native -DskipTests native:compile
 ```
 
-Build the native container image with Jib:
+Output: `target/native-executable`
+
+Native-image build arguments:
 
 ```bash
-./mvnw -Pprod,native -DskipTests jib:dockerBuild
+./mvnw -ntp -Pprod,native -DskipTests \
+  -DbuildArgs="--no-fallback,-Os,--static,--libc=musl,--verbose,-J-Xmx6g" \
+  native:compile
+```
+
+`buildArgs` meaning:
+
+- `--no-fallback`: fail the build instead of producing a fallback JVM image
+- `-Os`: optimize for size
+- `--static`: build a statically linked binary
+- `--libc=musl`: link against musl (Linux/musl environments)
+- `--verbose`: print detailed native-image output, useful for debugging
+- `-J-Xmx6g`: give the native-image process up to about 6 GB heap
+
+UPX compression (optional):
+
+```bash
+upx --lzma --best target/native-executable
+```
+
+- `--best`: maximum compression
+- `--lzma`: use LZMA for better compression, slower but smaller
+
+Run it:
+
+```bash
+SPRING_PROFILES_ACTIVE=prod \
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/authserversamples \
+SPRING_DATASOURCE_USERNAME=appuser \
+SPRING_DATASOURCE_PASSWORD=appuser \
+APP_AUTHORIZATION_SERVER_ISSUER=http://127.0.0.1:9090 \
+./target/native-executable
+```
+
+Then test health:
+
+```bash
+curl http://127.0.0.1:9090/actuator/health
+```
+
+Test OpenID Connect discovery:
+
+```bash
+curl http://127.0.0.1:9090/.well-known/openid-configuration
+```
+
+Fetch the JWK Set:
+
+```bash
+curl http://127.0.0.1:9090/oauth2/jwks
 ```
 
 ## Docker Image
 
-Build locally:
+Build a JVM container image without a Dockerfile:
 
 ```bash
-./mvnw -Pprod,native -DskipTests jib:dockerBuild
+./mvnw -DskipTests jib:dockerBuild
 ```
 
-Run the native image against PostgreSQL:
+Push to a registry:
+
+```bash
+./mvnw -DskipTests jib:build -Djib.to.image=YOUR_IMAGE
+```
+
+Defaults from `pom.xml`:
+
+- Base image: `eclipse-temurin:25-jre-alpine`
+- Platform: `linux/arm64`, override with `-Djib-maven-plugin.architecture=amd64` if needed
+
+Native Docker image (GraalVM Native Image + Jib):
+
+```bash
+./mvnw -Pprod,native -DskipTests jib:dockerBuild \
+  -Djib.to.image=spring-authorization-server-samples:latest-native
+```
+
+Defaults from `pom.xml`, `native` profile:
+
+- Base image: `scratch`, contains only the native binary and no JVM
+- Working directory: `/tmp`
+- Platform: `linux/arm64`, override with `-Djib-maven-plugin.architecture=amd64` if needed
+
+Run the native image with PostgreSQL:
 
 ```bash
 docker run --rm -p 9090:9090 \
@@ -737,7 +838,19 @@ docker run --rm -p 9090:9090 \
   -e SPRING_DATASOURCE_USERNAME=appuser \
   -e SPRING_DATASOURCE_PASSWORD=appuser \
   -e APP_AUTHORIZATION_SERVER_ISSUER=http://127.0.0.1:9090 \
-  docker.io/suayb/spring-authorization-server-samples:latest-native
+  spring-authorization-server-samples:latest-native
+```
+
+Check health:
+
+```bash
+curl http://127.0.0.1:9090/actuator/health
+```
+
+Check OpenID Connect discovery:
+
+```bash
+curl http://127.0.0.1:9090/.well-known/openid-configuration
 ```
 
 ## Kubernetes Health Probe
@@ -763,97 +876,189 @@ readinessProbe:
 
 ## Docker Compose Support
 
-PostgreSQL only:
+Files under `src/main/docker/*.yml` are marked as "dev purpose only".
 
-```bash
-docker compose -f src/main/docker/postgresql.yml up -d
-```
+- PostgreSQL: `docker compose -f src/main/docker/postgresql.yml up -d`
+- App with prebuilt native image: `docker compose -f src/main/docker/app.yml up -d`
 
-Spring Boot Docker Compose integration:
+Spring Boot Docker Compose integration (optional, starts PostgreSQL automatically):
 
 ```bash
 ./mvnw -Pprod,docker-compose spring-boot:run
 ```
 
-Standalone compose application:
-
-```bash
-docker compose -f src/main/docker/app.yml up
-```
-
 ## Helm
 
-Chart location:
+- Chart: `helm/spring-authorization-server-samples`
 
-```text
-helm/spring-authorization-server-samples
-```
+Common commands:
 
-Lint:
+Lint the chart:
 
 ```bash
 helm lint helm/spring-authorization-server-samples
 ```
 
-Template:
+Render manifests locally:
 
 ```bash
 helm template spring-authorization-server-samples helm/spring-authorization-server-samples
 ```
 
-The chart keeps the same operational structure as the original repo, but uses:
+Create namespace (idempotent):
 
-- HTTP port `9090`
-- HTTP health probes
-- Authorization Server issuer configuration
-- Liquibase-seeded registered clients
+```bash
+kubectl create namespace apps --dry-run=client -o yaml | kubectl apply -f -
+```
+
+Install/upgrade release:
+
+```bash
+helm upgrade --install spring-authorization-server-samples helm/spring-authorization-server-samples -n apps
+```
+
+Install/upgrade with values override:
+
+```bash
+helm upgrade --install spring-authorization-server-samples helm/spring-authorization-server-samples -n apps -f helm/spring-authorization-server-samples/values.yaml
+```
+
+Check release:
+
+```bash
+helm list -n apps
+kubectl get pods -n apps
+kubectl get svc -n apps
+kubectl get ingress -n apps
+```
+
+Uninstall release:
+
+```bash
+helm uninstall spring-authorization-server-samples -n apps
+```
 
 ## Terraform
 
-Terraform for local Kind + ingress-nginx lives under:
+- Directory: `terraform`
 
-```text
-terraform
-```
+Terraform provisions:
 
-Initialize:
+- a local `kind` cluster
+- namespace `apps`
+- namespace `ingress-nginx`
+- an `ingress-nginx` controller reachable on host ports `8080` and `8443`
+- the local Helm chart
+- PostgreSQL from the chart dependency
+- an active HTTP ingress for the Authorization Server
+
+Common commands:
+
+Initialize the Terraform working directory:
 
 ```bash
 terraform -chdir=terraform init
 ```
 
-Apply:
+Validate the Terraform configuration:
+
+```bash
+terraform -chdir=terraform validate
+```
+
+Preview the planned infrastructure changes:
+
+```bash
+terraform -chdir=terraform plan
+```
+
+Create or update the local infrastructure:
 
 ```bash
 terraform -chdir=terraform apply
 ```
 
-Useful output:
+Create or update the local infrastructure with Podman:
 
 ```bash
+export KIND_EXPERIMENTAL_PROVIDER=podman
+terraform -chdir=terraform apply
+```
+
+Create or update the local infrastructure without an approval prompt:
+
+```bash
+terraform -chdir=terraform apply -auto-approve
+```
+
+Read the generated kubeconfig and OpenID Connect discovery URL:
+
+```bash
+export KUBECONFIG="$(terraform -chdir=terraform output -raw kubeconfig_path)"
 terraform -chdir=terraform output -raw openid_configuration_url
 ```
 
-Default ingress host port is:
+Default ingress hostname:
 
 ```text
-9090
+spring-authorization-server.127.0.0.1.nip.io
+```
+
+Example:
+
+```bash
+curl http://spring-authorization-server.127.0.0.1.nip.io:8080/.well-known/openid-configuration
+```
+
+Fetch the JWK Set through ingress:
+
+```bash
+curl http://spring-authorization-server.127.0.0.1.nip.io:8080/oauth2/jwks
+```
+
+Fallback access with `kubectl port-forward`:
+
+```bash
+kubectl --kubeconfig="$(terraform -chdir=terraform output -raw kubeconfig_path)" \
+  -n apps \
+  port-forward svc/spring-authorization-server-samples 9090:9090
+```
+
+Then test locally:
+
+```bash
+curl http://127.0.0.1:9090/.well-known/openid-configuration
+```
+
+Destroy only the application Helm release:
+
+```bash
+terraform -chdir=terraform destroy -target=helm_release.spring_authorization_server_samples
+```
+
+Destroy the full local infrastructure:
+
+```bash
+terraform -chdir=terraform destroy
+```
+
+Destroy the full local infrastructure without an approval prompt:
+
+```bash
+terraform -chdir=terraform destroy -auto-approve
 ```
 
 ## Continuous Integration
 
-CircleCI configuration lives in:
+Pipeline: `.circleci/config.yml`
 
-```text
-.circleci/config.yml
-```
+- `./mvnw verify` for backend tests + quality gates
+- `./mvnw -Pprod,native -DskipTests native:compile` for a musl static native build
+- Compress `target/native-executable` with UPX
+- Push the native Docker image to Docker Hub on the `main` branch (via Jib)
 
-The pipeline keeps the same structure as the original sample:
+Environment variables:
 
-- build
-- unit test / verify
-- native build
-- Docker image publish
-- Docker Hub README update
-
-The project-specific names and image repository targets are switched to `spring-authorization-server-samples`.
+- SonarCloud: `SONAR_TOKEN` (optional)
+- Snyk: `SNYK_TOKEN` (optional)
+- Docker Hub push: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN` (only on `main`)
