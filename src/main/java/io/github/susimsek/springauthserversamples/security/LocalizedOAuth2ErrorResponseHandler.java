@@ -58,9 +58,13 @@ public class LocalizedOAuth2ErrorResponseHandler implements AuthenticationFailur
     }
 
     private static HttpStatus resolveStatus(OAuth2Error error) {
-        return OAuth2ErrorCodes.INVALID_CLIENT.equals(error.getErrorCode())
-                ? HttpStatus.UNAUTHORIZED
-                : HttpStatus.BAD_REQUEST;
+        if (OAuth2ErrorCodes.INVALID_CLIENT.equals(error.getErrorCode())) {
+            return HttpStatus.UNAUTHORIZED;
+        }
+        if (OAuth2ErrorCodes.SERVER_ERROR.equals(error.getErrorCode())) {
+            return HttpStatus.INTERNAL_SERVER_ERROR;
+        }
+        return HttpStatus.BAD_REQUEST;
     }
 
     private static String escape(String value) {

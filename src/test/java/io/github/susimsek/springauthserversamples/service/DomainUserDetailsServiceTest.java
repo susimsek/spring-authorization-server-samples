@@ -1,4 +1,4 @@
-package io.github.susimsek.springauthserversamples.security;
+package io.github.susimsek.springauthserversamples.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
+import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -57,7 +58,7 @@ class DomainUserDetailsServiceTest {
                                 new DomainUserDetailsService(userRepository)
                                         .loadUserByUsername("missing"))
                 .isInstanceOf(UsernameNotFoundException.class)
-                .hasMessage("user not found");
+                .hasMessage("User not found: missing");
     }
 
     private static UserEntity user(boolean enabled, String... authorities) {

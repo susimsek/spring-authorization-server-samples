@@ -69,7 +69,7 @@ class LocalizedOAuth2ErrorResponseHandlerTest {
         new LocalizedOAuth2ErrorResponseHandler(errorLocalizer)
                 .onAuthenticationFailure(request, response, new BadCredentialsException("boom"));
 
-        assertThat(response.getStatus()).isEqualTo(400);
+        assertThat(response.getStatus()).isEqualTo(500);
         assertThat(response.getHeader("WWW-Authenticate")).isNull();
         assertThat(response.getContentAsString())
                 .contains("\"error\":\"server_error\"")

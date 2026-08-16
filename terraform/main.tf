@@ -140,8 +140,10 @@ resource "helm_release" "spring_authorization_server_samples" {
           }
         ]
       }
-      authorizationServer = {
-        issuer = "http://${var.ingress_host}:${var.ingress_http_host_port}"
+      app = {
+        authorizationServer = {
+          issuer = "http://${var.ingress_host}:${var.ingress_http_host_port}"
+        }
       }
     })
   ]
