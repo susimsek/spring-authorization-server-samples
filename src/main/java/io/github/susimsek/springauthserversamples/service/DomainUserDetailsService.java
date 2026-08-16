@@ -1,5 +1,6 @@
-package io.github.susimsek.springauthserversamples.security;
+package io.github.susimsek.springauthserversamples.service;
 
+import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,12 +29,10 @@ public class DomainUserDetailsService implements UserDetailsService {
                                         .authorities(authorities(user))
                                         .disabled(!user.isEnabled())
                                         .build())
-                .orElseThrow(() -> new UsernameNotFoundException("user not found"));
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }
 
     private static String[] authorities(UserEntity user) {
-        return user.getAuthorities().stream()
-                .map(authority -> authority.getName())
-                .toArray(String[]::new);
+        return user.getAuthorities().stream().map(AuthorityEntity::getName).toArray(String[]::new);
     }
 }

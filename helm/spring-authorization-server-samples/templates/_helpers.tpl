@@ -60,3 +60,15 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+
+{{/*
+Create the name of the database secret to use.
+*/}}
+{{- define "spring-authorization-server-samples.databaseSecretName" -}}
+{{- if .Values.existingSecret.enabled }}
+{{- required "existingSecret.name is required when existingSecret.enabled=true" .Values.existingSecret.name }}
+{{- else }}
+{{- printf "%s-secret-database" (include "spring-authorization-server-samples.fullname" .) }}
+{{- end }}
+{{- end }}

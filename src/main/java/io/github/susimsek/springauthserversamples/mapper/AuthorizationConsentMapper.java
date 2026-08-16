@@ -6,13 +6,16 @@ import java.util.Set;
 import org.mapstruct.Context;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingConstants;
 import org.mapstruct.Named;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsent;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface AuthorizationConsentMapper {
 
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "id", source = "consent", qualifiedByName = "toAuthorizationConsentId")
     @Mapping(
             target = "authorities",

@@ -5,7 +5,6 @@ import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import java.util.Objects;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -16,16 +15,20 @@ import org.hibernate.proxy.HibernateProxy;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
 @Entity
 @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 @Table(name = "oauth2_authorization_consent")
-public class AuthorizationConsentEntity {
+public class AuthorizationConsentEntity extends DateAuditingEntity {
 
     @EmbeddedId private AuthorizationConsentId id;
 
     @Column(name = "authorities", nullable = false, length = 1000)
     private String authorities;
+
+    public AuthorizationConsentEntity(AuthorizationConsentId id, String authorities) {
+        this.id = id;
+        this.authorities = authorities;
+    }
 
     @Override
     public boolean equals(Object o) {
