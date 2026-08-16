@@ -164,7 +164,7 @@ curl http://localhost:9090/oauth2/jwks
 
 ```bash
 curl -u demo-client:demo-secret \
-  -H 'Accept-Language: tr' \
+  -H 'Accept-Language: en' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d scope=openid \
   -d grant_type=client_credentials \
@@ -175,14 +175,14 @@ curl -u demo-client:demo-secret \
 
 ```bash
 TOKEN=$(curl -s -u demo-client:demo-secret \
-  -H 'Accept-Language: tr' \
+  -H 'Accept-Language: en' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d grant_type=client_credentials \
   -d scope=openid \
   http://localhost:9090/oauth2/token | jq -r '.access_token')
 
 curl -u demo-client:demo-secret \
-  -H 'Accept-Language: tr' \
+  -H 'Accept-Language: en' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d token="${TOKEN}" \
   http://localhost:9090/oauth2/introspect

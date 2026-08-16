@@ -88,7 +88,7 @@ Request a client credentials token:
 
 ```bash
 curl -u demo-client:demo-secret \
-  -H 'Accept-Language: tr' \
+  -H 'Accept-Language: en' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d grant_type=client_credentials \
   -d scope=openid \
@@ -105,7 +105,7 @@ Capture the access token:
 
 ```bash
 TOKEN=$(curl -s -u demo-client:demo-secret \
-  -H 'Accept-Language: tr' \
+  -H 'Accept-Language: en' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d grant_type=client_credentials \
   -d scope=openid \
@@ -116,7 +116,7 @@ Introspect the access token:
 
 ```bash
 curl -u demo-client:demo-secret \
-  -H 'Accept-Language: tr' \
+  -H 'Accept-Language: en' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d token="${TOKEN}" \
   http://localhost:9090/oauth2/introspect
@@ -126,7 +126,7 @@ Revoke the access token:
 
 ```bash
 curl -u demo-client:demo-secret \
-  -H 'Accept-Language: tr' \
+  -H 'Accept-Language: en' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d token="${TOKEN}" \
   -d token_type_hint=access_token \
@@ -194,5 +194,5 @@ readinessProbe:
 - Liquibase migrations and CSV seed data run on startup by default.
 - Hibernate second-level cache is enabled in the application configuration.
 - Registered OAuth2 clients are seeded from Liquibase CSV, not created dynamically at startup.
-- OAuth2 error responses honor `Accept-Language`; use headers such as `Accept-Language: tr` on token-oriented requests when you want localized error messages.
+- OAuth2 error responses honor `Accept-Language`; use headers such as `Accept-Language: en` on token-oriented requests when you want localized error messages.
 - `authorization_code` flow requires a browser login and redirect handling, so it is not shown as a curl-only example here.

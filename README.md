@@ -265,7 +265,7 @@ Request:
 
 ```bash
 curl -u demo-client:demo-secret \
-  -H 'Accept-Language: tr' \
+  -H 'Accept-Language: en' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d grant_type=client_credentials \
   -d scope=openid \
@@ -298,7 +298,7 @@ Then:
 
 ```bash
 curl -u demo-client:demo-secret \
-  -H 'Accept-Language: tr' \
+  -H 'Accept-Language: en' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d grant_type=authorization_code \
   -d code='<AUTHORIZATION_CODE>' \
@@ -382,7 +382,7 @@ Then:
 
 ```bash
 curl -u pkce-client:demo-secret \
-  -H 'Accept-Language: tr' \
+  -H 'Accept-Language: en' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d grant_type=authorization_code \
   -d code='<AUTHORIZATION_CODE>' \
@@ -406,7 +406,7 @@ Use this flow after an earlier grant returns a refresh token.
 
 ```bash
 curl -u demo-client:demo-secret \
-  -H 'Accept-Language: tr' \
+  -H 'Accept-Language: en' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d grant_type=refresh_token \
   -d refresh_token='<REFRESH_TOKEN>' \
@@ -425,7 +425,7 @@ Use introspection when a caller needs token state from the authorization server.
 
 ```bash
 curl -u demo-client:demo-secret \
-  -H 'Accept-Language: tr' \
+  -H 'Accept-Language: en' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d token="${TOKEN}" \
   http://127.0.0.1:9090/oauth2/introspect
@@ -443,7 +443,7 @@ Use revocation to invalidate a previously issued token.
 
 ```bash
 curl -u demo-client:demo-secret \
-  -H 'Accept-Language: tr' \
+  -H 'Accept-Language: en' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d token="${TOKEN}" \
   -d token_type_hint=access_token \
@@ -506,13 +506,13 @@ Seeded client scopes:
 - `user.read`
 - `user.write`
 
-Localized OAuth2 error and authentication responses support `Accept-Language`. Use a header such as `Accept-Language: tr` when you want Turkish error messages in token, refresh, introspection, and revocation requests.
+Localized OAuth2 error and authentication responses support `Accept-Language`. Use a header such as `Accept-Language: en` when you want Turkish error messages in token, refresh, introspection, and revocation requests.
 
 Get a client credentials token:
 
 ```bash
 curl -u demo-client:demo-secret \
-  -H 'Accept-Language: tr' \
+  -H 'Accept-Language: en' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d grant_type=client_credentials \
   -d scope=openid \
@@ -523,7 +523,7 @@ Capture the access token:
 
 ```bash
 TOKEN=$(curl -s -u demo-client:demo-secret \
-  -H 'Accept-Language: tr' \
+  -H 'Accept-Language: en' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d grant_type=client_credentials \
   -d scope=openid \
@@ -534,7 +534,7 @@ Introspect the access token:
 
 ```bash
 curl -u demo-client:demo-secret \
-  -H 'Accept-Language: tr' \
+  -H 'Accept-Language: en' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d token="${TOKEN}" \
   http://127.0.0.1:9090/oauth2/introspect
@@ -544,7 +544,7 @@ Revoke the access token:
 
 ```bash
 curl -u demo-client:demo-secret \
-  -H 'Accept-Language: tr' \
+  -H 'Accept-Language: en' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d token="${TOKEN}" \
   -d token_type_hint=access_token \
