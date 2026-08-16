@@ -1,54 +1,19 @@
 package io.github.susimsek.springauthserversamples.config;
 
 import java.time.Duration;
-import lombok.Getter;
-import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.DefaultValue;
 
-@Getter
-@Setter
 @ConfigurationProperties(prefix = "app")
-public class ApplicationProperties {
+public record ApplicationProperties(
+        @DefaultValue Cache cache, @DefaultValue AuthorizationServer authorizationServer) {
 
-    private Cache cache = new Cache();
+    public record Cache(@DefaultValue Caffeine caffeine) {}
 
-    private AuthorizationServer authorizationServer = new AuthorizationServer();
+    public record Caffeine(
+            @DefaultValue("PT1H") Duration ttl,
+            @DefaultValue("500") int initialCapacity,
+            @DefaultValue("1000") long maximumSize) {}
 
-    @Getter
-    @Setter
-    public static class Cache {
-
-        private Caffeine caffeine = new Caffeine();
-    }
-
-    @Getter
-    @Setter
-    public static class Caffeine {
-
-        private Duration ttl = Duration.ofHours(1);
-
-        private int initialCapacity = 500;
-
-        private long maximumSize = 1000L;
-    }
-
-    @Getter
-    @Setter
-    public static class AuthorizationServer {
-
-        private String issuer = "http://127.0.0.1:9090";
-
-        private Jwk jwk = new Jwk();
-    }
-
-    @Getter
-    @Setter
-    public static class Jwk {
-
-        private String publicKey;
-
-        private String privateKey;
-
-        private String keyId;
-    }
+    public record AuthorizationServer(@DefaultValue("http://127.0.0.1:9090") String issuer) {}
 }

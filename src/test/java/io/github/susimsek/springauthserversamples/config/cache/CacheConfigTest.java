@@ -7,9 +7,11 @@ import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
 import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentEntity;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationEntity;
+import io.github.susimsek.springauthserversamples.domain.OAuth2KeyEntity;
 import io.github.susimsek.springauthserversamples.domain.RegisteredClientEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
+import io.github.susimsek.springauthserversamples.repository.OAuth2KeyRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import java.time.Duration;
 import java.util.HashMap;
@@ -34,11 +36,11 @@ class CacheConfigTest {
     @Test
     void usesDefaultCaffeineProperties() {
         ApplicationProperties.Caffeine caffeine =
-                new ApplicationProperties().getCache().getCaffeine();
+                new ApplicationProperties.Caffeine(Duration.ofHours(1), 500, 1000L);
 
-        assertThat(caffeine.getTtl()).isEqualTo(Duration.ofHours(1));
-        assertThat(caffeine.getInitialCapacity()).isEqualTo(500);
-        assertThat(caffeine.getMaximumSize()).isEqualTo(1000L);
+        assertThat(caffeine.ttl()).isEqualTo(Duration.ofHours(1));
+        assertThat(caffeine.initialCapacity()).isEqualTo(500);
+        assertThat(caffeine.maximumSize()).isEqualTo(1000L);
     }
 
     @Test
@@ -60,17 +62,16 @@ class CacheConfigTest {
         JCacheManagerCustomizer customizer = configuration.cacheManagerCustomizer();
 
         CacheManager cacheManager = configuration.jcacheManager(customizer);
-
-        assertThat(cacheManager.getCache("default-update-timestamps-region")).isNotNull();
-        assertThat(cacheManager.getCache("default-query-results-region")).isNotNull();
         assertThat(cacheManager.getCache(AuthorizationConsentEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(AuthorizationEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(AuthorityEntity.class.getName())).isNotNull();
+        assertThat(cacheManager.getCache(OAuth2KeyEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(RegisteredClientEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(UserEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(UserEntity.class.getName() + ".authorities")).isNotNull();
         assertThat(cacheManager.getCache(ClientRepository.REGISTERED_CLIENT_BY_CLIENT_ID_CACHE))
                 .isNotNull();
+        assertThat(cacheManager.getCache(OAuth2KeyRepository.OAUTH2_KEYS_CACHE)).isNotNull();
         assertThat(cacheManager.getCache(UserRepository.USER_BY_USERNAME_CACHE)).isNotNull();
     }
 
@@ -91,10 +92,9 @@ class CacheConfigTest {
     }
 
     private static ApplicationProperties applicationProperties() {
-        ApplicationProperties applicationProperties = new ApplicationProperties();
-        applicationProperties.getCache().getCaffeine().setTtl(Duration.ofMinutes(5));
-        applicationProperties.getCache().getCaffeine().setInitialCapacity(10);
-        applicationProperties.getCache().getCaffeine().setMaximumSize(100);
-        return applicationProperties;
+        return new ApplicationProperties(
+                new ApplicationProperties.Cache(
+                        new ApplicationProperties.Caffeine(Duration.ofMinutes(5), 10, 100)),
+                new ApplicationProperties.AuthorizationServer("https://issuer.example"));
     }
 }

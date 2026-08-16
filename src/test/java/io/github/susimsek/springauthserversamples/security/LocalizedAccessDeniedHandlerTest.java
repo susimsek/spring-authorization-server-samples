@@ -27,14 +27,15 @@ class LocalizedAccessDeniedHandlerTest {
                         "app.auth.accessDenied",
                         "You do not have permission to access this resource.",
                         Locale.forLanguageTag("tr")))
-                .thenReturn("Bu kaynaga erisim izniniz yok.");
+                .thenReturn("Bu kaynağa erişim izniniz yok.");
 
-        new LocalizedAccessDeniedHandler(errorLocalizer)
+        new LocalizedAccessDeniedHandler(errorLocalizer, new OAuth2ErrorResponseWriter())
                 .handle(request, response, new AccessDeniedException("boom"));
 
         assertThat(response.getStatus()).isEqualTo(403);
+        assertThat(response.getHeader("Content-Language")).isEqualTo("tr");
         assertThat(response.getContentAsString())
                 .contains("\"error\":\"" + OAuth2ErrorCodes.ACCESS_DENIED + "\"")
-                .contains("Bu kaynaga erisim izniniz yok.");
+                .contains("Bu kaynağa erişim izniniz yok.");
     }
 }

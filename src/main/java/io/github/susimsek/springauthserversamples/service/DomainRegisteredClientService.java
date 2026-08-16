@@ -4,6 +4,7 @@ import io.github.susimsek.springauthserversamples.mapper.AuthorizationServerMapp
 import io.github.susimsek.springauthserversamples.mapper.RegisteredClientMapper;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,9 @@ public class DomainRegisteredClientService implements RegisteredClientRepository
 
     @Override
     @Transactional
+    @CacheEvict(
+            cacheNames = ClientRepository.REGISTERED_CLIENT_BY_CLIENT_ID_CACHE,
+            allEntries = true)
     public void save(RegisteredClient registeredClient) {
         clientRepository.save(registeredClientMapper.toEntity(registeredClient, mapperSupport));
     }

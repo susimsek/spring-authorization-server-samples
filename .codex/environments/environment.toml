@@ -23,4 +23,4 @@ command = "./mvnw -B -ntp test"
 [[actions]]
 name = "Build"
 icon = "tool"
-command = "./mvnw -B -ntp package"
+command = "./mvnw -B -ntp verify"

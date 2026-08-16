@@ -83,6 +83,16 @@ class AuthorizationServerEndpointsIT {
     }
 
     @Test
+    void userInfoWithoutBearerTokenUsesRfc6750Challenge() throws IOException, InterruptedException {
+        HttpResponse<String> response =
+                send(HttpRequest.newBuilder().uri(URI.create(url("/userinfo"))).GET().build());
+
+        assertThat(response.statusCode()).isEqualTo(401);
+        assertThat(response.headers().firstValue("WWW-Authenticate"))
+                .hasValueSatisfying(value -> assertThat(value).startsWith("Bearer"));
+    }
+
+    @Test
     void readinessProbeIsExposed() throws IOException, InterruptedException {
         HttpResponse<String> response =
                 send(
