@@ -45,29 +45,29 @@ public class AuthorizationServerConfig {
     @Order(Ordered.HIGHEST_PRECEDENCE)
     SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) {
 
-        http.securityMatcher(
-                "/oauth2/**", "/.well-known/**", "/connect/**", "/userinfo", "/userinfo/**");
-
         http.oauth2AuthorizationServer(
-                authorizationServer ->
-                        authorizationServer
-                                .oidc(Customizer.withDefaults())
-                                .clientAuthentication(
-                                        clientAuthentication ->
-                                                clientAuthentication.errorResponseHandler(
-                                                        localizedOAuth2ErrorResponseHandler))
-                                .tokenEndpoint(
-                                        tokenEndpoint ->
-                                                tokenEndpoint.errorResponseHandler(
-                                                        localizedOAuth2ErrorResponseHandler))
-                                .tokenIntrospectionEndpoint(
-                                        tokenIntrospectionEndpoint ->
-                                                tokenIntrospectionEndpoint.errorResponseHandler(
-                                                        localizedOAuth2ErrorResponseHandler))
-                                .tokenRevocationEndpoint(
-                                        tokenRevocationEndpoint ->
-                                                tokenRevocationEndpoint.errorResponseHandler(
-                                                        localizedOAuth2ErrorResponseHandler)));
+                authorizationServer -> {
+                    http.securityMatcher(authorizationServer.getEndpointsMatcher());
+
+                    authorizationServer
+                            .oidc(Customizer.withDefaults())
+                            .clientAuthentication(
+                                    clientAuthentication ->
+                                            clientAuthentication.errorResponseHandler(
+                                                    localizedOAuth2ErrorResponseHandler))
+                            .tokenEndpoint(
+                                    tokenEndpoint ->
+                                            tokenEndpoint.errorResponseHandler(
+                                                    localizedOAuth2ErrorResponseHandler))
+                            .tokenIntrospectionEndpoint(
+                                    tokenIntrospectionEndpoint ->
+                                            tokenIntrospectionEndpoint.errorResponseHandler(
+                                                    localizedOAuth2ErrorResponseHandler))
+                            .tokenRevocationEndpoint(
+                                    tokenRevocationEndpoint ->
+                                            tokenRevocationEndpoint.errorResponseHandler(
+                                                    localizedOAuth2ErrorResponseHandler));
+                });
 
         http.authorizeHttpRequests(authorize -> authorize.anyRequest().authenticated());
 
@@ -96,11 +96,13 @@ public class AuthorizationServerConfig {
     @Bean
     JWKSource<SecurityContext> jwkSource() {
         var jwkProperties = applicationProperties.getAuthorizationServer().getJwk();
+
         RSAKey rsaKey =
                 Jwks.loadRsa(
                         jwkProperties.getPublicKey(),
                         jwkProperties.getPrivateKey(),
                         jwkProperties.getKeyId());
+
         return new ImmutableJWKSet<>(new JWKSet(rsaKey));
     }
 
