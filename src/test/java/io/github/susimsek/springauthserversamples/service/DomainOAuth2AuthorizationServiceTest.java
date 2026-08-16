@@ -1,6 +1,7 @@
 package io.github.susimsek.springauthserversamples.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -9,13 +10,13 @@ import io.github.susimsek.springauthserversamples.domain.AuthorizationEntity;
 import io.github.susimsek.springauthserversamples.mapper.AuthorizationMapper;
 import io.github.susimsek.springauthserversamples.mapper.AuthorizationServerMapperSupport;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
-import java.lang.reflect.Method;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.jpa.domain.Specification;
+import org.springframework.dao.DataRetrievalFailureException;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
@@ -31,18 +32,24 @@ class DomainOAuth2AuthorizationServiceTest {
     @Mock private AuthorizationMapper authorizationMapper;
     @Mock private AuthorizationServerMapperSupport mapperSupport;
 
+    private DomainOAuth2AuthorizationService service;
+
+    @BeforeEach
+    void setUp() {
+        service =
+                new DomainOAuth2AuthorizationService(
+                        authorizationRepository,
+                        registeredClientRepository,
+                        authorizationMapper,
+                        mapperSupport);
+    }
+
     @Test
     void savesAndRemovesAuthorization() {
         OAuth2Authorization authorization = authorization();
         AuthorizationEntity entity = new AuthorizationEntity();
         when(authorizationMapper.toEntity(authorization, mapperSupport)).thenReturn(entity);
 
-        DomainOAuth2AuthorizationService service =
-                new DomainOAuth2AuthorizationService(
-                        authorizationRepository,
-                        registeredClientRepository,
-                        authorizationMapper,
-                        mapperSupport);
         service.save(authorization);
         service.remove(authorization);
 
@@ -51,109 +58,71 @@ class DomainOAuth2AuthorizationServiceTest {
     }
 
     @Test
-    void findsByIdAndToken() {
-        AuthorizationEntity entity = new AuthorizationEntity();
-        entity.setId("auth-1");
-        entity.setRegisteredClientId("client-1");
+    void findsByIdAndTokenTypes() {
+        AuthorizationEntity entity = entity();
         RegisteredClient client = registeredClient();
         OAuth2Authorization authorization = authorization();
-        when(authorizationRepository.findById("auth-1")).thenReturn(Optional.of(entity));
-        when(authorizationRepository.findOne(
-                        org.mockito.ArgumentMatchers.<Specification<AuthorizationEntity>>any()))
-                .thenReturn(
-                        Optional.of(entity),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty());
+
         when(registeredClientRepository.findById("client-1")).thenReturn(client);
         when(authorizationMapper.toObject(entity, client, mapperSupport)).thenReturn(authorization);
-
-        DomainOAuth2AuthorizationService service =
-                new DomainOAuth2AuthorizationService(
-                        authorizationRepository,
-                        registeredClientRepository,
-                        authorizationMapper,
-                        mapperSupport);
+        when(authorizationRepository.findById("auth-1")).thenReturn(Optional.of(entity));
+        when(authorizationRepository.findByToken("token")).thenReturn(Optional.of(entity));
+        when(authorizationRepository.findByState("token")).thenReturn(Optional.of(entity));
+        when(authorizationRepository.findByAuthorizationCodeValue("token"))
+                .thenReturn(Optional.of(entity));
+        when(authorizationRepository.findByAccessTokenValue("token"))
+                .thenReturn(Optional.of(entity));
+        when(authorizationRepository.findByRefreshTokenValue("token"))
+                .thenReturn(Optional.of(entity));
+        when(authorizationRepository.findByOidcIdTokenValue("token"))
+                .thenReturn(Optional.of(entity));
+        when(authorizationRepository.findByUserCodeValue("token")).thenReturn(Optional.of(entity));
+        when(authorizationRepository.findByDeviceCodeValue("token"))
+                .thenReturn(Optional.of(entity));
 
         assertThat(service.findById("auth-1")).isSameAs(authorization);
         assertThat(service.findByToken("token", null)).isSameAs(authorization);
-        assertThat(service.findByToken("token", new OAuth2TokenType("state"))).isNull();
-        assertThat(service.findByToken("token", new OAuth2TokenType("code"))).isNull();
-        assertThat(service.findByToken("token", OAuth2TokenType.ACCESS_TOKEN)).isNull();
-        assertThat(service.findByToken("token", OAuth2TokenType.REFRESH_TOKEN)).isNull();
-        assertThat(service.findByToken("token", new OAuth2TokenType("id_token"))).isNull();
-        assertThat(service.findByToken("token", new OAuth2TokenType("user_code"))).isNull();
-        assertThat(service.findByToken("token", new OAuth2TokenType("device_code"))).isNull();
+        assertThat(service.findByToken("token", new OAuth2TokenType("state")))
+                .isSameAs(authorization);
+        assertThat(service.findByToken("token", new OAuth2TokenType("code")))
+                .isSameAs(authorization);
+        assertThat(service.findByToken("token", OAuth2TokenType.ACCESS_TOKEN))
+                .isSameAs(authorization);
+        assertThat(service.findByToken("token", OAuth2TokenType.REFRESH_TOKEN))
+                .isSameAs(authorization);
+        assertThat(service.findByToken("token", new OAuth2TokenType("id_token")))
+                .isSameAs(authorization);
+        assertThat(service.findByToken("token", new OAuth2TokenType("user_code")))
+                .isSameAs(authorization);
+        assertThat(service.findByToken("token", new OAuth2TokenType("device_code")))
+                .isSameAs(authorization);
         assertThat(service.findByToken("token", new OAuth2TokenType("unknown"))).isNull();
         assertThat(service.findById("missing")).isNull();
     }
 
     @Test
-    void throwsWhenRegisteredClientIsMissing() {
-        AuthorizationEntity entity = new AuthorizationEntity();
-        entity.setRegisteredClientId("missing-client");
-        when(authorizationRepository.findById("auth-1")).thenReturn(Optional.of(entity));
-        when(registeredClientRepository.findById("missing-client")).thenReturn(null);
-
-        DomainOAuth2AuthorizationService service =
-                new DomainOAuth2AuthorizationService(
-                        authorizationRepository,
-                        registeredClientRepository,
-                        authorizationMapper,
-                        mapperSupport);
-
-        assertThatThrownBy(() -> service.findById("auth-1"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Registered client not found: missing-client");
+    void rejectsBlankToken() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> service.findByToken(" ", OAuth2TokenType.ACCESS_TOKEN))
+                .withMessage("token cannot be empty");
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    void byTokenSpecificationFactoryHandlesAllBranches() throws Exception {
-        Method method =
-                DomainOAuth2AuthorizationService.class.getDeclaredMethod(
-                        "byToken", String.class, OAuth2TokenType.class);
-        method.setAccessible(true);
+    void throwsWhenRegisteredClientIsMissing() {
+        AuthorizationEntity entity = entity();
+        when(authorizationRepository.findById("auth-1")).thenReturn(Optional.of(entity));
+        when(registeredClientRepository.findById("client-1")).thenReturn(null);
 
-        assertThat((Specification<AuthorizationEntity>) method.invoke(null, "token", null))
-                .isNotNull();
-        assertThat(
-                        (Specification<AuthorizationEntity>)
-                                method.invoke(null, "token", new OAuth2TokenType("state")))
-                .isNotNull();
-        assertThat(
-                        (Specification<AuthorizationEntity>)
-                                method.invoke(null, "token", new OAuth2TokenType("code")))
-                .isNotNull();
-        assertThat(
-                        (Specification<AuthorizationEntity>)
-                                method.invoke(null, "token", OAuth2TokenType.ACCESS_TOKEN))
-                .isNotNull();
-        assertThat(
-                        (Specification<AuthorizationEntity>)
-                                method.invoke(null, "token", OAuth2TokenType.REFRESH_TOKEN))
-                .isNotNull();
-        assertThat(
-                        (Specification<AuthorizationEntity>)
-                                method.invoke(null, "token", new OAuth2TokenType("id_token")))
-                .isNotNull();
-        assertThat(
-                        (Specification<AuthorizationEntity>)
-                                method.invoke(null, "token", new OAuth2TokenType("user_code")))
-                .isNotNull();
-        assertThat(
-                        (Specification<AuthorizationEntity>)
-                                method.invoke(null, "token", new OAuth2TokenType("device_code")))
-                .isNotNull();
-        assertThat(
-                        (Specification<AuthorizationEntity>)
-                                method.invoke(null, "token", new OAuth2TokenType("unknown")))
-                .isNotNull();
+        assertThatThrownBy(() -> service.findById("auth-1"))
+                .isInstanceOf(DataRetrievalFailureException.class)
+                .hasMessage("Registered client not found: client-1");
+    }
+
+    private static AuthorizationEntity entity() {
+        AuthorizationEntity entity = new AuthorizationEntity();
+        entity.setId("auth-1");
+        entity.setRegisteredClientId("client-1");
+        return entity;
     }
 
     private static OAuth2Authorization authorization() {

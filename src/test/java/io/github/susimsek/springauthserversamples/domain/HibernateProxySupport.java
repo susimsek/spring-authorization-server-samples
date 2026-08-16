@@ -113,4 +113,23 @@ final class HibernateProxySupport {
             return lazyInitializer;
         }
     }
+
+    static final class ProxyOAuth2KeyEntity extends OAuth2KeyEntity implements HibernateProxy {
+
+        private final LazyInitializer lazyInitializer;
+
+        ProxyOAuth2KeyEntity(Class<?> persistentClass) {
+            this.lazyInitializer = lazyInitializer(persistentClass);
+        }
+
+        @Override
+        public Object writeReplace() {
+            return this;
+        }
+
+        @Override
+        public LazyInitializer getHibernateLazyInitializer() {
+            return lazyInitializer;
+        }
+    }
 }

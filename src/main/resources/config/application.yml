@@ -9,16 +9,10 @@ spring:
     compose:
       lifecycle-management: start-only
       file: src/main/docker/services.yml
-  main:
-    allow-bean-definition-overriding: true
-  data:
-    jpa:
-      repositories:
-        bootstrap-mode: deferred
   jpa:
     open-in-view: false
     properties:
-      hibernate.jdbc.time_zone: Europe/Istanbul
+      hibernate.jdbc.time_zone: UTC
       hibernate.cache.region.factory_class: jcache
       hibernate.javax.cache.provider: com.github.benmanes.caffeine.jcache.spi.CaffeineCachingProvider
       hibernate.cache.use_second_level_cache: true
