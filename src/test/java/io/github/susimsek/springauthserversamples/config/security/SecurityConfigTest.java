@@ -6,7 +6,7 @@ import static org.mockito.Mockito.mock;
 import io.github.susimsek.springauthserversamples.security.LocalizedAccessDeniedHandler;
 import io.github.susimsek.springauthserversamples.security.LocalizedAuthenticationEntryPoint;
 import org.junit.jupiter.api.Test;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
 
 class SecurityConfigTest {
 
@@ -17,6 +17,6 @@ class SecurityConfigTest {
 
     @Test
     void createsPasswordEncoder() {
-        assertThat(config.passwordEncoder()).isInstanceOf(BCryptPasswordEncoder.class);
+        assertThat(config.passwordEncoder()).isInstanceOf(DelegatingPasswordEncoder.class);
     }
 }

@@ -26,14 +26,15 @@ class LocalizedAuthenticationEntryPointTest {
                         "app.auth.unauthorized",
                         "Authentication is required.",
                         Locale.forLanguageTag("tr")))
-                .thenReturn("Kimlik dogrulamasi gerekli.");
+                .thenReturn("Kimlik doğrulaması gerekli.");
 
-        new LocalizedAuthenticationEntryPoint(errorLocalizer)
+        new LocalizedAuthenticationEntryPoint(errorLocalizer, new OAuth2ErrorResponseWriter())
                 .commence(request, response, new BadCredentialsException("boom"));
 
         assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(response.getHeader("Content-Language")).isEqualTo("tr");
         assertThat(response.getContentAsString())
                 .contains("\"error\":\"unauthorized\"")
-                .contains("Kimlik dogrulamasi gerekli.");
+                .contains("Kimlik doğrulaması gerekli.");
     }
 }

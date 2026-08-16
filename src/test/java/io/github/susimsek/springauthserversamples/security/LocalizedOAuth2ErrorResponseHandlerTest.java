@@ -39,7 +39,7 @@ class LocalizedOAuth2ErrorResponseHandlerTest {
                         eq(Locale.forLanguageTag("tr"))))
                 .thenReturn(localized);
 
-        new LocalizedOAuth2ErrorResponseHandler(errorLocalizer)
+        new LocalizedOAuth2ErrorResponseHandler(errorLocalizer, new OAuth2ErrorResponseWriter())
                 .onAuthenticationFailure(
                         request,
                         response,
@@ -48,8 +48,9 @@ class LocalizedOAuth2ErrorResponseHandlerTest {
                                         OAuth2ErrorCodes.INVALID_CLIENT, "bad client", null)));
 
         assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(response.getHeader("Content-Language")).isEqualTo("tr");
         assertThat(response.getHeader("WWW-Authenticate"))
-                .isEqualTo("Basic error=\"invalid_client\", error_description=\"Hatali client\"");
+                .isEqualTo("Basic error=\"invalid_client\"");
         assertThat(response.getContentAsString())
                 .contains("\"error\":\"invalid_client\"")
                 .contains("Hatali \\\"client\\\"");
@@ -66,10 +67,11 @@ class LocalizedOAuth2ErrorResponseHandlerTest {
                         Locale.ENGLISH))
                 .thenReturn("Localized server error");
 
-        new LocalizedOAuth2ErrorResponseHandler(errorLocalizer)
+        new LocalizedOAuth2ErrorResponseHandler(errorLocalizer, new OAuth2ErrorResponseWriter())
                 .onAuthenticationFailure(request, response, new BadCredentialsException("boom"));
 
-        assertThat(response.getStatus()).isEqualTo(400);
+        assertThat(response.getStatus()).isEqualTo(500);
+        assertThat(response.getHeader("Content-Language")).isEqualTo("en");
         assertThat(response.getHeader("WWW-Authenticate")).isNull();
         assertThat(response.getContentAsString())
                 .contains("\"error\":\"server_error\"")

@@ -37,15 +37,29 @@
 			<column name="token_settings" type="varchar(2000)">
 				<constraints nullable="false"/>
 			</column>
+			<column name="created_by" type="varchar(100)">
+				<constraints nullable="false"/>
+			</column>
+			<column name="created_at" type="timestamp" defaultValueComputed="${now}">
+				<constraints nullable="false"/>
+			</column>
+			<column name="last_modified_by" type="varchar(100)"/>
+			<column name="updated_at" type="timestamp" defaultValueComputed="${now}">
+				<constraints nullable="false"/>
+			</column>
 		</createTable>
 	</changeSet>
 
 	<changeSet id="002-load-oauth2-registered-client-data" author="susimsek">
 		<loadData
-			file="classpath:db/data/oauth2-registered-clients.csv"
+			encoding="UTF-8"
+			file="db/data/oauth2-registered-clients.csv"
 			separator=";"
 			tableName="oauth2_registered_client"
-			usePreparedStatements="true"/>
+			usePreparedStatements="true">
+			<column header="created_by" type="string"/>
+			<column header="last_modified_by" type="string"/>
+		</loadData>
 	</changeSet>
 
 	<changeSet id="003-create-oauth2-authorization-table" author="susimsek">
@@ -63,35 +77,64 @@
 				<constraints nullable="false"/>
 			</column>
 			<column name="authorized_scopes" type="varchar(1000)"/>
-			<column name="attributes" type="text"/>
+			<column name="attributes" type="varchar(4000)"/>
 			<column name="state" type="varchar(500)"/>
-			<column name="authorization_code_value" type="text"/>
+			<column name="authorization_code_value" type="varchar(4000)"/>
 			<column name="authorization_code_issued_at" type="timestamp"/>
 			<column name="authorization_code_expires_at" type="timestamp"/>
-			<column name="authorization_code_metadata" type="text"/>
-			<column name="access_token_value" type="text"/>
+			<column name="authorization_code_metadata" type="varchar(4000)"/>
+			<column name="access_token_value" type="varchar(4000)"/>
 			<column name="access_token_issued_at" type="timestamp"/>
 			<column name="access_token_expires_at" type="timestamp"/>
-			<column name="access_token_metadata" type="text"/>
+			<column name="access_token_metadata" type="varchar(4000)"/>
 			<column name="access_token_type" type="varchar(100)"/>
 			<column name="access_token_scopes" type="varchar(1000)"/>
-			<column name="oidc_id_token_value" type="text"/>
+			<column name="oidc_id_token_value" type="varchar(4000)"/>
 			<column name="oidc_id_token_issued_at" type="timestamp"/>
 			<column name="oidc_id_token_expires_at" type="timestamp"/>
-			<column name="oidc_id_token_metadata" type="text"/>
-			<column name="refresh_token_value" type="text"/>
+			<column name="oidc_id_token_metadata" type="varchar(4000)"/>
+			<column name="oidc_id_token_claims" type="varchar(4000)"/>
+			<column name="refresh_token_value" type="varchar(4000)"/>
 			<column name="refresh_token_issued_at" type="timestamp"/>
 			<column name="refresh_token_expires_at" type="timestamp"/>
-			<column name="refresh_token_metadata" type="text"/>
-			<column name="user_code_value" type="text"/>
+			<column name="refresh_token_metadata" type="varchar(4000)"/>
+			<column name="user_code_value" type="varchar(4000)"/>
 			<column name="user_code_issued_at" type="timestamp"/>
 			<column name="user_code_expires_at" type="timestamp"/>
-			<column name="user_code_metadata" type="text"/>
-			<column name="device_code_value" type="text"/>
+			<column name="user_code_metadata" type="varchar(4000)"/>
+			<column name="device_code_value" type="varchar(4000)"/>
 			<column name="device_code_issued_at" type="timestamp"/>
 			<column name="device_code_expires_at" type="timestamp"/>
-			<column name="device_code_metadata" type="text"/>
+			<column name="device_code_metadata" type="varchar(4000)"/>
+
 		</createTable>
+		<createIndex indexName="idx_oauth2_authorization_registered_client" tableName="oauth2_authorization">
+			<column name="registered_client_id"/>
+		</createIndex>
+		<createIndex indexName="idx_oauth2_authorization_principal" tableName="oauth2_authorization">
+			<column name="principal_name"/>
+		</createIndex>
+		<createIndex indexName="idx_oauth2_authorization_state" tableName="oauth2_authorization">
+			<column name="state"/>
+		</createIndex>
+		<createIndex indexName="idx_oauth2_authorization_code" tableName="oauth2_authorization">
+			<column name="authorization_code_value"/>
+		</createIndex>
+		<createIndex indexName="idx_oauth2_authorization_access_token" tableName="oauth2_authorization">
+			<column name="access_token_value"/>
+		</createIndex>
+		<createIndex indexName="idx_oauth2_authorization_refresh_token" tableName="oauth2_authorization">
+			<column name="refresh_token_value"/>
+		</createIndex>
+		<createIndex indexName="idx_oauth2_authorization_id_token" tableName="oauth2_authorization">
+			<column name="oidc_id_token_value"/>
+		</createIndex>
+		<createIndex indexName="idx_oauth2_authorization_user_code" tableName="oauth2_authorization">
+			<column name="user_code_value"/>
+		</createIndex>
+		<createIndex indexName="idx_oauth2_authorization_device_code" tableName="oauth2_authorization">
+			<column name="device_code_value"/>
+		</createIndex>
 	</changeSet>
 
 	<changeSet id="004-create-oauth2-authorization-consent-table" author="susimsek">
@@ -105,10 +148,80 @@
 			<column name="authorities" type="varchar(1000)">
 				<constraints nullable="false"/>
 			</column>
+			<column name="created_at" type="timestamp" defaultValueComputed="${now}">
+				<constraints nullable="false"/>
+			</column>
+			<column name="updated_at" type="timestamp" defaultValueComputed="${now}">
+				<constraints nullable="false"/>
+			</column>
 		</createTable>
 		<addPrimaryKey
 			tableName="oauth2_authorization_consent"
 			columnNames="registered_client_id, principal_name"
 			constraintName="pk_oauth2_authorization_consent"/>
 	</changeSet>
+
+	<changeSet id="005-create-oauth2-key-table" author="susimsek">
+		<createTable tableName="oauth2_key">
+			<column name="id" type="varchar(36)">
+				<constraints nullable="false" primaryKey="true" primaryKeyName="pk_oauth2_key"/>
+			</column>
+			<column name="type" type="varchar(50)">
+				<constraints nullable="false"/>
+			</column>
+			<column name="algorithm" type="varchar(50)">
+				<constraints nullable="false"/>
+			</column>
+			<column name="public_key" type="varchar(4000)">
+				<constraints nullable="false"/>
+			</column>
+			<column name="private_key" type="varchar(4000)"/>
+			<column name="active" type="boolean" defaultValueBoolean="false">
+				<constraints nullable="false"/>
+			</column>
+			<column name="kid" type="varchar(255)">
+				<constraints nullable="false" unique="true" uniqueConstraintName="uk_oauth2_key_kid"/>
+			</column>
+			<column name="use" type="varchar(20)" defaultValue="sig">
+				<constraints nullable="false"/>
+			</column>
+			<column name="created_by" type="varchar(100)">
+				<constraints nullable="false"/>
+			</column>
+			<column name="created_at" type="timestamp" defaultValueComputed="${now}">
+				<constraints nullable="false"/>
+			</column>
+			<column name="last_modified_by" type="varchar(100)"/>
+			<column name="updated_at" type="timestamp" defaultValueComputed="${now}">
+				<constraints nullable="false"/>
+			</column>
+		</createTable>
+	</changeSet>
+
+	<changeSet id="006-create-oauth2-key-indexes" author="susimsek">
+		<createIndex indexName="idx_oauth2_key_created_at" tableName="oauth2_key">
+			<column name="created_at" descending="true"/>
+		</createIndex>
+	</changeSet>
+
+	<changeSet id="007-load-oauth2-key-data" author="susimsek">
+		<loadData
+			encoding="UTF-8"
+			file="db/data/oauth2-keys.csv"
+			separator=";"
+			tableName="oauth2_key"
+			usePreparedStatements="true">
+			<column header="id" type="string"/>
+			<column header="type" type="string"/>
+			<column header="algorithm" type="string"/>
+			<column header="public_key" type="string"/>
+			<column header="private_key" type="string"/>
+			<column header="active" type="boolean"/>
+			<column header="kid" type="string"/>
+			<column header="use" type="string"/>
+			<column header="created_by" type="string"/>
+			<column header="last_modified_by" type="string"/>
+		</loadData>
+	</changeSet>
+
 </databaseChangeLog>

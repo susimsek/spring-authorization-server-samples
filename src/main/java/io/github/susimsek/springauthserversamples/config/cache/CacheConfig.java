@@ -7,9 +7,11 @@ import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
 import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentEntity;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationEntity;
+import io.github.susimsek.springauthserversamples.domain.OAuth2KeyEntity;
 import io.github.susimsek.springauthserversamples.domain.RegisteredClientEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
+import io.github.susimsek.springauthserversamples.repository.OAuth2KeyRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import java.util.OptionalLong;
 import javax.cache.Cache;
@@ -40,14 +42,14 @@ public class CacheConfig {
     }
 
     private ApplicationProperties.Caffeine cacheProperties() {
-        return applicationProperties.getCache().getCaffeine();
+        return applicationProperties.cache().caffeine();
     }
 
     private Caffeine<Object, Object> buildCaffeineConfig(ApplicationProperties.Caffeine config) {
         return Caffeine.newBuilder()
-                .expireAfterWrite(config.getTtl())
-                .initialCapacity(config.getInitialCapacity())
-                .maximumSize(config.getMaximumSize())
+                .expireAfterWrite(config.ttl())
+                .initialCapacity(config.initialCapacity())
+                .maximumSize(config.maximumSize())
                 .recordStats();
     }
 
@@ -77,15 +79,15 @@ public class CacheConfig {
         @Bean
         JCacheManagerCustomizer cacheManagerCustomizer() {
             return cacheManager -> {
-                createCache(cacheManager, "default-update-timestamps-region");
-                createCache(cacheManager, "default-query-results-region");
                 createCache(cacheManager, AuthorizationConsentEntity.class.getName());
                 createCache(cacheManager, AuthorizationEntity.class.getName());
                 createCache(cacheManager, AuthorityEntity.class.getName());
+                createCache(cacheManager, OAuth2KeyEntity.class.getName());
                 createCache(cacheManager, RegisteredClientEntity.class.getName());
                 createCache(cacheManager, UserEntity.class.getName());
                 createCache(cacheManager, UserEntity.class.getName() + ".authorities");
                 createCache(cacheManager, ClientRepository.REGISTERED_CLIENT_BY_CLIENT_ID_CACHE);
+                createCache(cacheManager, OAuth2KeyRepository.OAUTH2_KEYS_CACHE);
                 createCache(cacheManager, UserRepository.USER_BY_USERNAME_CACHE);
             };
         }
@@ -96,10 +98,10 @@ public class CacheConfig {
                 cache.clear();
                 return;
             }
-            ApplicationProperties.Caffeine config = applicationProperties.getCache().getCaffeine();
+            ApplicationProperties.Caffeine config = applicationProperties.cache().caffeine();
             CaffeineConfiguration<Object, Object> caffeineConfig = new CaffeineConfiguration<>();
-            caffeineConfig.setMaximumSize(OptionalLong.of(config.getMaximumSize()));
-            caffeineConfig.setExpireAfterWrite(OptionalLong.of(config.getTtl().toNanos()));
+            caffeineConfig.setMaximumSize(OptionalLong.of(config.maximumSize()));
+            caffeineConfig.setExpireAfterWrite(OptionalLong.of(config.ttl().toNanos()));
             caffeineConfig.setStatisticsEnabled(true);
             cacheManager.createCache(cacheName, caffeineConfig);
         }

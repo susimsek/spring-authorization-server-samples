@@ -7,12 +7,10 @@ import java.io.IOException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.server.ServletServerHttpResponse;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
-import org.springframework.security.oauth2.core.http.converter.OAuth2ErrorHttpMessageConverter;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.stereotype.Component;
 
@@ -21,9 +19,7 @@ import org.springframework.stereotype.Component;
 public class LocalizedOAuth2ErrorResponseHandler implements AuthenticationFailureHandler {
 
     private final OAuth2ErrorLocalizer errorLocalizer;
-
-    private final OAuth2ErrorHttpMessageConverter errorHttpMessageConverter =
-            new OAuth2ErrorHttpMessageConverter();
+    private final OAuth2ErrorResponseWriter errorResponseWriter;
 
     @Override
     public void onAuthenticationFailure(
@@ -32,15 +28,10 @@ public class LocalizedOAuth2ErrorResponseHandler implements AuthenticationFailur
             AuthenticationException exception)
             throws IOException, ServletException {
         OAuth2Error error = resolveError(exception, request);
-        response.setStatus(resolveStatus(error).value());
         if (OAuth2ErrorCodes.INVALID_CLIENT.equals(error.getErrorCode())) {
-            response.addHeader(
-                    HttpHeaders.WWW_AUTHENTICATE,
-                    "Basic error=\"invalid_client\", error_description=\""
-                            + escape(error.getDescription())
-                            + "\"");
+            response.addHeader(HttpHeaders.WWW_AUTHENTICATE, "Basic error=\"invalid_client\"");
         }
-        errorHttpMessageConverter.write(error, null, new ServletServerHttpResponse(response));
+        errorResponseWriter.write(response, resolveStatus(error), error, request.getLocale());
     }
 
     private OAuth2Error resolveError(
@@ -58,12 +49,12 @@ public class LocalizedOAuth2ErrorResponseHandler implements AuthenticationFailur
     }
 
     private static HttpStatus resolveStatus(OAuth2Error error) {
-        return OAuth2ErrorCodes.INVALID_CLIENT.equals(error.getErrorCode())
-                ? HttpStatus.UNAUTHORIZED
-                : HttpStatus.BAD_REQUEST;
-    }
-
-    private static String escape(String value) {
-        return value == null ? "" : value.replace("\"", "");
+        if (OAuth2ErrorCodes.INVALID_CLIENT.equals(error.getErrorCode())) {
+            return HttpStatus.UNAUTHORIZED;
+        }
+        if (OAuth2ErrorCodes.SERVER_ERROR.equals(error.getErrorCode())) {
+            return HttpStatus.INTERNAL_SERVER_ERROR;
+        }
+        return HttpStatus.BAD_REQUEST;
     }
 }
