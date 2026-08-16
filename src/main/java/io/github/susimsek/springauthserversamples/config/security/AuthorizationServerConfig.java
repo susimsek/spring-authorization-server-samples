@@ -2,6 +2,7 @@ package io.github.susimsek.springauthserversamples.config.security;
 
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
@@ -94,10 +95,13 @@ public class AuthorizationServerConfig {
 
     @Bean
     JWKSource<SecurityContext> jwkSource() {
-        RSAKey rsaKey = Jwks.generateRsa();
-        JWKSet jwkSet = new JWKSet(rsaKey);
-
-        return (jwkSelector, securityContext) -> jwkSelector.select(jwkSet);
+        var jwkProperties = applicationProperties.getAuthorizationServer().getJwk();
+        RSAKey rsaKey =
+                Jwks.loadRsa(
+                        jwkProperties.getPublicKey(),
+                        jwkProperties.getPrivateKey(),
+                        jwkProperties.getKeyId());
+        return new ImmutableJWKSet<>(new JWKSet(rsaKey));
     }
 
     @Bean

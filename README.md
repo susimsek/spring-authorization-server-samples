@@ -21,7 +21,7 @@
 [![Terraform](https://img.shields.io/badge/Terraform-Infrastructure-623CE4?logo=terraform&logoColor=white)](https://www.terraform.io/)
 [![Codex](https://custom-icon-badges.demolab.com/badge/Codex-AI%20Agent-74aa9c?&logo=openai&logoColor=white)](https://openai.com/codex/)
 
-This repository is a Spring Boot 4.1 + Java 25 sample application built around **Spring Authorization Server**. It acts as an OAuth2 Authorization Server and OpenID Connect Provider, stores users and clients in a relational database with Liquibase-managed schema, uses Spring Data JPA and Hibernate second-level cache with Caffeine/JCache, supports H2 for local development and PostgreSQL for production-style runs, and can be compiled as a GraalVM native executable.
+This repository is a Spring Boot 4.1 + Java 25 sample application built around **Spring Authorization Server**. It acts as an OAuth2 Authorization Server and OpenID Connect Provider, stores users and clients in a relational database with Liquibase-managed schema, uses Spring Data JPA and Hibernate second-level cache with Caffeine/JCache, supports H2 for local development and PostgreSQL for production-style runs, uses externally configured RSA JWK signing keys, and can be compiled as a GraalVM native executable.
 
 ## Table of Contents
 
@@ -30,29 +30,32 @@ This repository is a Spring Boot 4.1 + Java 25 sample application built around *
 3. [Project Layout](#project-layout)
 4. [Configuration](#configuration)
 5. [Configuration and Profiles](#configuration-and-profiles)
-6. [Run Locally](#run-locally)
-7. [API Quick Overview](#api-quick-overview)
-8. [OAuth2 and OIDC Endpoints](#oauth2-and-oidc-endpoints)
-9. [Authorization Server Flows](#authorization-server-flows)
-10. [Try with curl](#try-with-curl)
-11. [Client Registration and Seed Data](#client-registration-and-seed-data)
-12. [Database](#database)
-13. [Internationalization](#internationalization)
-14. [Build](#build)
-15. [Performance Tests](#performance-tests)
-16. [Code Quality](#code-quality)
-17. [GraalVM Native Image](#graalvm-native-image)
-18. [Docker Image](#docker-image)
-19. [Kubernetes Health Probe](#kubernetes-health-probe)
-20. [Docker Compose Support](#docker-compose-support)
-21. [Helm](#helm)
-22. [Terraform](#terraform)
-23. [Continuous Integration](#continuous-integration)
+6. [RSA Signing Keys](#rsa-signing-keys)
+7. [Run Locally](#run-locally)
+8. [API Quick Overview](#api-quick-overview)
+9. [OAuth2 and OIDC Endpoints](#oauth2-and-oidc-endpoints)
+10. [Authorization Server Flows](#authorization-server-flows)
+11. [Try with curl](#try-with-curl)
+12. [Client Registration and Seed Data](#client-registration-and-seed-data)
+13. [Database](#database)
+14. [Internationalization](#internationalization)
+15. [Build](#build)
+16. [Performance Tests](#performance-tests)
+17. [Code Quality](#code-quality)
+18. [GraalVM Native Image](#graalvm-native-image)
+19. [Docker Image](#docker-image)
+20. [Kubernetes Health Probe](#kubernetes-health-probe)
+21. [Docker Compose Support](#docker-compose-support)
+22. [Helm](#helm)
+23. [Terraform](#terraform)
+24. [Continuous Integration](#continuous-integration)
 
 ## Features
 
 - OAuth2 Authorization Server with OpenID Connect 1.0 enabled
 - Authorization Code, Refresh Token, and Client Credentials grants
+- RSA-signed JWT access and ID tokens
+- Externally configured RSA JWK signing key
 - JPA-backed registered client storage
 - JPA-backed authorization and consent storage
 - Form login backed by Spring Security and JPA user storage
@@ -76,20 +79,21 @@ This repository is a Spring Boot 4.1 + Java 25 sample application built around *
 - Helm `3.8.0+`
 - Docker or Podman *(optional, for Jib, Docker Compose, and Helm deployments)*
 - GraalVM Native Image `25+` *(optional, for native builds)*
+- OpenSSL *(for RSA signing key generation)*
 - `curl` *(optional, for OAuth2 endpoint testing)*
 - `jq` *(optional, for parsing token responses)*
 
 ## Project Layout
 
 - Application code: `src/main/java/io/github/susimsek/springauthserversamples`
-  - `config`: Spring configuration
-    - `aot`: GraalVM Native Image runtime hints
-    - `cache`: Spring Cache and Hibernate second-level cache configuration
-    - `security`: Spring Security and Authorization Server configuration
-  - `domain`: JPA entities and auditing base class
-  - `repository`: Spring Data JPA repositories
-  - `security`: authority constants, user details service, and security utilities
-  - `web`: lightweight MVC endpoints for sample landing output
+    - `config`: Spring configuration
+        - `aot`: GraalVM Native Image runtime hints
+        - `cache`: Spring Cache and Hibernate second-level cache configuration
+        - `security`: Spring Security and Authorization Server configuration
+    - `domain`: JPA entities and auditing base class
+    - `repository`: Spring Data JPA repositories
+    - `security`: authority constants, user details service, JWK utilities, and security helpers
+    - `web`: lightweight MVC endpoints for sample landing output
 - Configuration: `src/main/resources/config`
 - Liquibase changelogs: `src/main/resources/db/changelog`
 - Liquibase seed data: `src/main/resources/db/data`
@@ -98,8 +102,8 @@ This repository is a Spring Boot 4.1 + Java 25 sample application built around *
 - Docker compose files: `src/main/docker`
 - Helm chart: `helm/spring-authorization-server-samples`
 - Tests: `src/test/java`
-  - Application unit/integration tests: `src/test/java/io/github/susimsek/springauthserversamples`
-  - Gatling performance tests: `src/test/java/gatling/simulations`
+    - Application unit/integration tests: `src/test/java/io/github/susimsek/springauthserversamples`
+    - Gatling performance tests: `src/test/java/gatling/simulations`
 
 ## Configuration
 
@@ -115,6 +119,18 @@ Important defaults:
 - Default issuer: `https://spring-authorization-server-samples.local`
 - Hibernate second-level cache: enabled
 - Cache provider: JCache backed by Caffeine
+
+JWK configuration:
+
+```yaml
+app:
+  authorization-server:
+    issuer: ${APP_AUTHORIZATION_SERVER_ISSUER:https://spring-authorization-server-samples.local}
+    jwk:
+      public-key: ${APP_AUTHORIZATION_SERVER_JWK_PUBLIC_KEY}
+      private-key: ${APP_AUTHORIZATION_SERVER_JWK_PRIVATE_KEY}
+      key-id: ${APP_AUTHORIZATION_SERVER_JWK_KEY_ID}
+```
 
 ## Configuration and Profiles
 
@@ -138,9 +154,71 @@ Cache defaults by profile:
 - `dev`: `ttl=PT1H`, `initial-capacity=50`, `maximum-size=100`
 - `prod`: `ttl=PT1H`, `initial-capacity=500`, `maximum-size=1000`
 
+## RSA Signing Keys
+
+The Authorization Server requires an RSA public/private key pair and a stable JWK key ID.
+
+Generate a 2048-bit RSA private key:
+
+```bash
+openssl genpkey \
+  -algorithm RSA \
+  -pkeyopt rsa_keygen_bits:2048 \
+  -out private.pem
+```
+
+Generate the Base64-encoded X.509 public key:
+
+```bash
+openssl pkey \
+  -in private.pem \
+  -pubout \
+  -outform DER | base64 | tr -d '\n'
+```
+
+Generate the Base64-encoded PKCS#8 private key:
+
+```bash
+openssl pkcs8 \
+  -topk8 \
+  -inform PEM \
+  -outform DER \
+  -in private.pem \
+  -nocrypt | base64 | tr -d '\n'
+```
+
+Generate the JWK key ID:
+
+```bash
+uuidgen
+```
+
+Export the generated values:
+
+```bash
+export APP_AUTHORIZATION_SERVER_JWK_PUBLIC_KEY="<paste-public-key>"
+export APP_AUTHORIZATION_SERVER_JWK_PRIVATE_KEY="<paste-private-key>"
+export APP_AUTHORIZATION_SERVER_JWK_KEY_ID="<paste-key-id>"
+```
+
+Environment variables:
+
+| Name | Default | Description |
+| --- | --- | --- |
+| `APP_AUTHORIZATION_SERVER_ISSUER` | `https://spring-authorization-server-samples.local` | OAuth2/OIDC issuer |
+| `APP_AUTHORIZATION_SERVER_JWK_PUBLIC_KEY` | required | Base64-encoded X.509 RSA public key |
+| `APP_AUTHORIZATION_SERVER_JWK_PRIVATE_KEY` | required | Base64-encoded PKCS#8 RSA private key |
+| `APP_AUTHORIZATION_SERVER_JWK_KEY_ID` | required | JWK key identifier (`kid`) |
+
+The key values must not include PEM headers or footers.
+
+Use the same RSA key pair and `kid` across application restarts and replicas. For production deployments, keep the private key in Kubernetes Secrets, Vault, AWS Secrets Manager, or another external secret-management system.
+
 ## Run Locally
 
 ### Dev (H2)
+
+The development profile can use the checked-in sample JWK values.
 
 Start the authorization server:
 
@@ -162,12 +240,20 @@ Start PostgreSQL first:
 docker compose -f src/main/docker/postgresql.yml up -d
 ```
 
-Then run the app with the `prod` profile:
+Configure the signing key and datasource:
 
 ```bash
+export APP_AUTHORIZATION_SERVER_JWK_PUBLIC_KEY="<paste-public-key>"
+export APP_AUTHORIZATION_SERVER_JWK_PRIVATE_KEY="<paste-private-key>"
+export APP_AUTHORIZATION_SERVER_JWK_KEY_ID="<paste-key-id>"
 export SPRING_DATASOURCE_USERNAME=appuser
 export SPRING_DATASOURCE_PASSWORD=appuser
 export APP_AUTHORIZATION_SERVER_ISSUER=http://127.0.0.1:9090
+```
+
+Then run the app with the `prod` profile:
+
+```bash
 ./mvnw -Pprod spring-boot:run
 ```
 
@@ -355,9 +441,9 @@ Flow summary:
 3. The user signs in and approves consent.
 4. The authorization server redirects back with an authorization `code`.
 5. The client calls `/oauth2/token` with:
-   - client authentication
-   - the authorization code
-   - the original `code_verifier`
+    - client authentication
+    - the authorization code
+    - the original `code_verifier`
 6. The server validates both the client credentials and the PKCE proof before issuing tokens.
 
 Generate a PKCE verifier and challenge:
@@ -421,8 +507,6 @@ Behavior:
 
 ### Token Introspection
 
-Use introspection when a caller needs token state from the authorization server.
-
 ```bash
 curl -u demo-client:demo-secret \
   -H 'Accept-Language: en' \
@@ -431,15 +515,7 @@ curl -u demo-client:demo-secret \
   http://127.0.0.1:9090/oauth2/introspect
 ```
 
-Typical uses:
-
-- verify whether a token is active
-- inspect token metadata such as scopes or expiry
-- support resource servers that do not validate JWTs locally
-
 ### Token Revocation
-
-Use revocation to invalidate a previously issued token.
 
 ```bash
 curl -u demo-client:demo-secret \
@@ -450,19 +526,11 @@ curl -u demo-client:demo-secret \
   http://127.0.0.1:9090/oauth2/revoke
 ```
 
-Behavior:
-
-- revocation targets a previously issued token
-- `token_type_hint` is optional but useful
-- this is especially useful for testing the server's persisted authorization records
-
 ### Logout
 
 OIDC logout is exposed at:
 
 - `GET /connect/logout`
-
-This is primarily a browser-oriented endpoint and is typically exercised together with an authenticated user session.
 
 ## Try with curl
 
@@ -491,7 +559,7 @@ Seeded users:
 | `admin` | `admin` | `ROLE_ADMIN`, `ROLE_USER` |
 | `user` | `user` | `ROLE_USER` |
 
-Seeded OAuth2 client:
+Seeded OAuth2 clients:
 
 | Client ID | Client Secret | Grants |
 | --- | --- | --- |
@@ -501,12 +569,7 @@ Seeded OAuth2 client:
 Seeded client scopes:
 
 - `pkce-client`: `openid`, `profile`
-- `openid`
-- `profile`
-- `user.read`
-- `user.write`
-
-Localized OAuth2 error and authentication responses support `Accept-Language`. Use a header such as `Accept-Language: en` when you want Turkish error messages in token, refresh, introspection, and revocation requests.
+- `demo-client`: `openid`, `profile`, `user.read`, `user.write`
 
 Get a client credentials token:
 
@@ -557,11 +620,6 @@ Check readiness:
 curl http://127.0.0.1:9090/actuator/health/readiness
 ```
 
-Notes:
-
-- `client_credentials` is suitable for token, introspection, and revocation examples above.
-- `authorization_code` flow requires a browser login and redirect handling; see the flow section above for the browser-plus-curl test sequence.
-
 ## Client Registration and Seed Data
 
 Registered clients are loaded by Liquibase from:
@@ -588,7 +646,7 @@ That file seeds:
 - serialized `client_settings`
 - serialized `token_settings`
 
-Unlike the original gRPC sample, there is no runtime Java seeder for the client. The database seed is the source of truth.
+The database seed is the source of truth for registered clients.
 
 ## Database
 
@@ -623,7 +681,13 @@ The sample keeps i18n message bundles under:
 src/main/resources/i18n
 ```
 
-Current use is limited compared with the original gRPC sample, but the project structure remains aligned for localized messages and future extension.
+OAuth2 error responses support `Accept-Language`.
+
+Example:
+
+```bash
+-H 'Accept-Language: tr'
+```
 
 ## Build
 
@@ -659,14 +723,14 @@ Run all simulations:
 ./mvnw gatling:test
 ```
 
-The checked-in `OAuth2Simulation` exercises this project's HTTP authorization server endpoints:
+The checked-in `OAuth2Simulation` exercises:
 
 - `GET /.well-known/openid-configuration`
 - `GET /oauth2/jwks`
 - `POST /oauth2/token`
 - `POST /oauth2/introspect`
 
-You can override common runtime parameters:
+Override common runtime parameters:
 
 ```bash
 ./mvnw gatling:test \
@@ -681,13 +745,9 @@ You can override common runtime parameters:
   -Dlocale=tr
 ```
 
-The sample simulation focuses on discovery, JWK lookup, client credentials token issuance, and token introspection. Add more simulations under `gatling.simulations` if you want separate authorization code, PKCE, refresh token, revocation, or mixed workload scenarios.
-
 ## Code Quality
 
 ### Checkstyle
-
-Checkstyle runs automatically in the `validate` phase.
 
 ```bash
 ./mvnw checkstyle:check
@@ -700,10 +760,6 @@ Config files:
 
 ### Spotless
 
-Spotless runs `spotless:check` in the `compile` phase.
-
-Check formatting:
-
 ```bash
 ./mvnw spotless:check
 ```
@@ -715,16 +771,6 @@ Apply formatting:
 ```
 
 ### Sonar
-
-If you use SonarCloud or SonarQube in your pipeline, you can run analysis locally as well.
-
-Sonar properties live in:
-
-```text
-sonar-project.properties
-```
-
-Run analysis:
 
 ```bash
 export SONAR_TOKEN=...
@@ -740,7 +786,11 @@ Native executable:
 ./mvnw -Pprod,native -DskipTests native:compile
 ```
 
-Output: `target/native-executable`
+Output:
+
+```text
+target/native-executable
+```
 
 Native-image build arguments:
 
@@ -750,23 +800,11 @@ Native-image build arguments:
   native:compile
 ```
 
-`buildArgs` meaning:
-
-- `--no-fallback`: fail the build instead of producing a fallback JVM image
-- `-Os`: optimize for size
-- `--static`: build a statically linked binary
-- `--libc=musl`: link against musl (Linux/musl environments)
-- `--verbose`: print detailed native-image output, useful for debugging
-- `-J-Xmx6g`: give the native-image process up to about 6 GB heap
-
-UPX compression (optional):
+UPX compression:
 
 ```bash
 upx --lzma --best target/native-executable
 ```
-
-- `--best`: maximum compression
-- `--lzma`: use LZMA for better compression, slower but smaller
 
 Run it:
 
@@ -776,6 +814,9 @@ SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/authserversamples \
 SPRING_DATASOURCE_USERNAME=appuser \
 SPRING_DATASOURCE_PASSWORD=appuser \
 APP_AUTHORIZATION_SERVER_ISSUER=http://127.0.0.1:9090 \
+APP_AUTHORIZATION_SERVER_JWK_PUBLIC_KEY="<paste-public-key>" \
+APP_AUTHORIZATION_SERVER_JWK_PRIVATE_KEY="<paste-private-key>" \
+APP_AUTHORIZATION_SERVER_JWK_KEY_ID="<paste-key-id>" \
 ./target/native-executable
 ```
 
@@ -783,12 +824,6 @@ Then test health:
 
 ```bash
 curl http://127.0.0.1:9090/actuator/health
-```
-
-Test OpenID Connect discovery:
-
-```bash
-curl http://127.0.0.1:9090/.well-known/openid-configuration
 ```
 
 Fetch the JWK Set:
@@ -816,18 +851,12 @@ Defaults from `pom.xml`:
 - Base image: `eclipse-temurin:25-jre-alpine`
 - Platform: `linux/arm64`, override with `-Djib-maven-plugin.architecture=amd64` if needed
 
-Native Docker image (GraalVM Native Image + Jib):
+Native Docker image:
 
 ```bash
 ./mvnw -Pprod,native -DskipTests jib:dockerBuild \
   -Djib.to.image=spring-authorization-server-samples:latest-native
 ```
-
-Defaults from `pom.xml`, `native` profile:
-
-- Base image: `scratch`, contains only the native binary and no JVM
-- Working directory: `/tmp`
-- Platform: `linux/arm64`, override with `-Djib-maven-plugin.architecture=amd64` if needed
 
 Run the native image with PostgreSQL:
 
@@ -838,26 +867,13 @@ docker run --rm -p 9090:9090 \
   -e SPRING_DATASOURCE_USERNAME=appuser \
   -e SPRING_DATASOURCE_PASSWORD=appuser \
   -e APP_AUTHORIZATION_SERVER_ISSUER=http://127.0.0.1:9090 \
+  -e APP_AUTHORIZATION_SERVER_JWK_PUBLIC_KEY="<paste-public-key>" \
+  -e APP_AUTHORIZATION_SERVER_JWK_PRIVATE_KEY="<paste-private-key>" \
+  -e APP_AUTHORIZATION_SERVER_JWK_KEY_ID="<paste-key-id>" \
   spring-authorization-server-samples:latest-native
 ```
 
-Check health:
-
-```bash
-curl http://127.0.0.1:9090/actuator/health
-```
-
-Check OpenID Connect discovery:
-
-```bash
-curl http://127.0.0.1:9090/.well-known/openid-configuration
-```
-
 ## Kubernetes Health Probe
-
-The sample exposes standard HTTP actuator probes.
-
-Kubernetes example:
 
 ```yaml
 livenessProbe:
@@ -866,6 +882,7 @@ livenessProbe:
     port: 9090
   initialDelaySeconds: 10
   periodSeconds: 10
+
 readinessProbe:
   httpGet:
     path: /actuator/health/readiness
@@ -881,7 +898,7 @@ Files under `src/main/docker/*.yml` are marked as "dev purpose only".
 - PostgreSQL: `docker compose -f src/main/docker/postgresql.yml up -d`
 - App with prebuilt native image: `docker compose -f src/main/docker/app.yml up -d`
 
-Spring Boot Docker Compose integration (optional, starts PostgreSQL automatically):
+Spring Boot Docker Compose integration:
 
 ```bash
 ./mvnw -Pprod,docker-compose spring-boot:run
@@ -891,33 +908,33 @@ Spring Boot Docker Compose integration (optional, starts PostgreSQL automaticall
 
 - Chart: `helm/spring-authorization-server-samples`
 
-Common commands:
+The chart stores database credentials and RSA JWK signing material in Kubernetes Secrets. All replicas use the same active signing key and `kid`.
 
-Lint the chart:
+Lint:
 
 ```bash
 helm lint helm/spring-authorization-server-samples
 ```
 
-Render manifests locally:
+Render:
 
 ```bash
 helm template spring-authorization-server-samples helm/spring-authorization-server-samples
 ```
 
-Create namespace (idempotent):
+Create namespace:
 
 ```bash
 kubectl create namespace apps --dry-run=client -o yaml | kubectl apply -f -
 ```
 
-Install/upgrade release:
+Install/upgrade:
 
 ```bash
 helm upgrade --install spring-authorization-server-samples helm/spring-authorization-server-samples -n apps
 ```
 
-Install/upgrade with values override:
+Install/upgrade with values:
 
 ```bash
 helm upgrade --install spring-authorization-server-samples helm/spring-authorization-server-samples -n apps -f helm/spring-authorization-server-samples/values.yaml
@@ -932,7 +949,7 @@ kubectl get svc -n apps
 kubectl get ingress -n apps
 ```
 
-Uninstall release:
+Uninstall:
 
 ```bash
 helm uninstall spring-authorization-server-samples -n apps
@@ -952,46 +969,44 @@ Terraform provisions:
 - PostgreSQL from the chart dependency
 - an active HTTP ingress for the Authorization Server
 
-Common commands:
-
-Initialize the Terraform working directory:
+Initialize:
 
 ```bash
 terraform -chdir=terraform init
 ```
 
-Validate the Terraform configuration:
+Validate:
 
 ```bash
 terraform -chdir=terraform validate
 ```
 
-Preview the planned infrastructure changes:
+Plan:
 
 ```bash
 terraform -chdir=terraform plan
 ```
 
-Create or update the local infrastructure:
+Apply:
 
 ```bash
 terraform -chdir=terraform apply
 ```
 
-Create or update the local infrastructure with Podman:
+Apply with Podman:
 
 ```bash
 export KIND_EXPERIMENTAL_PROVIDER=podman
 terraform -chdir=terraform apply
 ```
 
-Create or update the local infrastructure without an approval prompt:
+Apply without confirmation:
 
 ```bash
 terraform -chdir=terraform apply -auto-approve
 ```
 
-Read the generated kubeconfig and OpenID Connect discovery URL:
+Read kubeconfig and discovery URL:
 
 ```bash
 export KUBECONFIG="$(terraform -chdir=terraform output -raw kubeconfig_path)"
@@ -1010,24 +1025,18 @@ Example:
 curl http://spring-authorization-server.127.0.0.1.nip.io:8080/.well-known/openid-configuration
 ```
 
-Fetch the JWK Set through ingress:
+Fetch the JWK Set:
 
 ```bash
 curl http://spring-authorization-server.127.0.0.1.nip.io:8080/oauth2/jwks
 ```
 
-Fallback access with `kubectl port-forward`:
+Fallback access:
 
 ```bash
 kubectl --kubeconfig="$(terraform -chdir=terraform output -raw kubeconfig_path)" \
   -n apps \
   port-forward svc/spring-authorization-server-samples 9090:9090
-```
-
-Then test locally:
-
-```bash
-curl http://127.0.0.1:9090/.well-known/openid-configuration
 ```
 
 Destroy only the application Helm release:
@@ -1036,13 +1045,13 @@ Destroy only the application Helm release:
 terraform -chdir=terraform destroy -target=helm_release.spring_authorization_server_samples
 ```
 
-Destroy the full local infrastructure:
+Destroy all:
 
 ```bash
 terraform -chdir=terraform destroy
 ```
 
-Destroy the full local infrastructure without an approval prompt:
+Destroy without confirmation:
 
 ```bash
 terraform -chdir=terraform destroy -auto-approve
@@ -1055,7 +1064,7 @@ Pipeline: `.circleci/config.yml`
 - `./mvnw verify` for backend tests + quality gates
 - `./mvnw -Pprod,native -DskipTests native:compile` for a musl static native build
 - Compress `target/native-executable` with UPX
-- Push the native Docker image to Docker Hub on the `main` branch (via Jib)
+- Push the native Docker image to Docker Hub on the `main` branch via Jib
 
 Environment variables:
 

@@ -9,6 +9,8 @@ This image exposes an HTTP-based authorization server on port `9090`. It serves 
 
 - OAuth2 Authorization Server with OIDC enabled
 - Authorization Code, Refresh Token, and Client Credentials grants
+- RSA-signed JWT access and ID tokens
+- Externally configured RSA JWK signing key
 - JDBC-backed registered client storage
 - JDBC-backed authorization and consent storage
 - H2 in-memory database for local use
@@ -22,7 +24,54 @@ This image exposes an HTTP-based authorization server on port `9090`. It serves 
 
 ## How to use this image
 
-### 1. Start a PostgreSQL server
+### 1. Generate an RSA signing key
+
+Generate a 2048-bit RSA private key:
+
+```bash
+openssl genpkey \
+  -algorithm RSA \
+  -pkeyopt rsa_keygen_bits:2048 \
+  -out private.pem
+```
+
+Generate the Base64-encoded X.509 public key:
+
+```bash
+PUBLIC_KEY=$(openssl pkey \
+  -in private.pem \
+  -pubout \
+  -outform DER | base64 | tr -d '\n')
+```
+
+Generate the Base64-encoded PKCS#8 private key:
+
+```bash
+PRIVATE_KEY=$(openssl pkcs8 \
+  -topk8 \
+  -inform PEM \
+  -outform DER \
+  -in private.pem \
+  -nocrypt | base64 | tr -d '\n')
+```
+
+Generate a JWK key ID:
+
+```bash
+KEY_ID=$(uuidgen)
+```
+
+Export the generated values:
+
+```bash
+export APP_AUTHORIZATION_SERVER_JWK_PUBLIC_KEY="<paste-public-key>"
+export APP_AUTHORIZATION_SERVER_JWK_PRIVATE_KEY="<paste-private-key>"
+export APP_AUTHORIZATION_SERVER_JWK_KEY_ID="<paste-key-id>"
+```
+
+The RSA key values must not include PEM headers or footers.
+
+### 2. Start a PostgreSQL server
 
 ```bash
 docker run --name postgresql --rm -d \
@@ -33,7 +82,7 @@ docker run --name postgresql --rm -d \
   postgres:18-alpine
 ```
 
-### 2. Start the application (prod mode with PostgreSQL)
+### 3. Start the application (prod mode with PostgreSQL)
 
 ```bash
 docker run --rm -p 9090:9090 \
@@ -42,6 +91,9 @@ docker run --rm -p 9090:9090 \
   -e SPRING_DATASOURCE_USERNAME=appuser \
   -e SPRING_DATASOURCE_PASSWORD=appuser \
   -e APP_AUTHORIZATION_SERVER_ISSUER=http://127.0.0.1:9090 \
+  -e APP_AUTHORIZATION_SERVER_JWK_PUBLIC_KEY="<paste-public-key>" \
+  -e APP_AUTHORIZATION_SERVER_JWK_PRIVATE_KEY="<paste-private-key>" \
+  -e APP_AUTHORIZATION_SERVER_JWK_KEY_ID="<paste-key-id>" \
   suayb/spring-authorization-server-samples:latest-native
 ```
 
@@ -49,6 +101,9 @@ Or with H2 in-memory:
 
 ```bash
 docker run --rm -p 9090:9090 \
+  -e APP_AUTHORIZATION_SERVER_JWK_PUBLIC_KEY="<paste-public-key>" \
+  -e APP_AUTHORIZATION_SERVER_JWK_PRIVATE_KEY="<paste-private-key>" \
+  -e APP_AUTHORIZATION_SERVER_JWK_KEY_ID="<paste-key-id>" \
   suayb/spring-authorization-server-samples:latest-native
 ```
 
@@ -58,7 +113,7 @@ The server is available at:
 localhost:9090
 ```
 
-### 3. Check health
+### 4. Check health
 
 ```bash
 curl http://localhost:9090/actuator/health/readiness
@@ -70,13 +125,13 @@ Expected response contains:
 {"status":"UP"}
 ```
 
-### 4. Fetch discovery metadata
+### 5. Fetch discovery metadata
 
 ```bash
 curl http://localhost:9090/.well-known/openid-configuration
 ```
 
-### 5. Request a token
+### 6. Request a token
 
 Seeded OAuth2 client:
 
@@ -98,7 +153,7 @@ curl -u demo-client:demo-secret \
 Fetch the JWK Set:
 
 ```bash
-curl http://localhost:9090/.well-known/jwks.json
+curl http://localhost:9090/oauth2/jwks
 ```
 
 Capture the access token:
@@ -143,14 +198,32 @@ curl -u demo-client:demo-secret \
 | `SPRING_DATASOURCE_USERNAME` | `sa` | Database username |
 | `SPRING_DATASOURCE_PASSWORD` | (empty) | Database password |
 | `SPRING_LIQUIBASE_ENABLED` | `true` | Enable or disable Liquibase migrations |
-| `APP_AUTHORIZATION_SERVER_ISSUER` | `https://spring-authorization-server-samples.local` | OIDC issuer |
+| `APP_AUTHORIZATION_SERVER_ISSUER` | `https://spring-authorization-server-samples.local` | OAuth2/OIDC issuer |
+| `APP_AUTHORIZATION_SERVER_JWK_PUBLIC_KEY` | required | Base64-encoded X.509 RSA public key |
+| `APP_AUTHORIZATION_SERVER_JWK_PRIVATE_KEY` | required | Base64-encoded PKCS#8 RSA private key |
+| `APP_AUTHORIZATION_SERVER_JWK_KEY_ID` | required | JWK key identifier (`kid`) |
+
+## RSA signing keys
+
+JWTs are signed using the RSA key configured through:
+
+```text
+APP_AUTHORIZATION_SERVER_JWK_PUBLIC_KEY
+APP_AUTHORIZATION_SERVER_JWK_PRIVATE_KEY
+APP_AUTHORIZATION_SERVER_JWK_KEY_ID
+```
+
+The same signing key and `kid` should be reused across application restarts and across all application replicas.
+
+For production deployments, store the private key in a secure secret store or Kubernetes Secret instead of committing it to source control.
 
 ## HTTP endpoints
 
 Authorization Server:
 
 - `GET /.well-known/openid-configuration`
-- `GET /.well-known/jwks.json`
+- `GET /.well-known/oauth-authorization-server`
+- `GET /oauth2/jwks`
 - `GET /oauth2/authorize`
 - `POST /oauth2/token`
 - `POST /oauth2/revoke`
@@ -194,5 +267,7 @@ readinessProbe:
 - Liquibase migrations and CSV seed data run on startup by default.
 - Hibernate second-level cache is enabled in the application configuration.
 - Registered OAuth2 clients are seeded from Liquibase CSV, not created dynamically at startup.
+- RSA signing keys should remain stable across restarts; changing the key invalidates signature verification for tokens signed with the previous key unless the previous public key remains available.
+- Never commit production private keys to source control or bake them into the container image.
 - OAuth2 error responses honor `Accept-Language`; use headers such as `Accept-Language: en` on token-oriented requests when you want localized error messages.
 - `authorization_code` flow requires a browser login and redirect handling, so it is not shown as a curl-only example here.
