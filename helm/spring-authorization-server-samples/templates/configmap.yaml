@@ -15,4 +15,4 @@ data:
         url: {{ .Values.spring.datasource.url | quote }}
     app:
       authorization-server:
-        issuer: {{ .Values.authorizationServer.issuer | quote }}
+        issuer: {{ .Values.app.authorizationServer.issuer | quote }}
