@@ -27,7 +27,7 @@ public class LocalizedAuthenticationEntryPoint implements AuthenticationEntryPoi
             HttpServletRequest request,
             HttpServletResponse response,
             AuthenticationException authenticationException)
-            throws IOException, ServletException {
+            throws IOException {
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
         OAuth2Error error =
                 new OAuth2Error(

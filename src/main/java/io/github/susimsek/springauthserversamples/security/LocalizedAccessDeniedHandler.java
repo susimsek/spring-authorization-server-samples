@@ -28,7 +28,7 @@ public class LocalizedAccessDeniedHandler implements AccessDeniedHandler {
             HttpServletRequest request,
             HttpServletResponse response,
             AccessDeniedException accessDeniedException)
-            throws IOException, ServletException {
+            throws IOException {
         response.setStatus(HttpStatus.FORBIDDEN.value());
         OAuth2Error error =
                 new OAuth2Error(
