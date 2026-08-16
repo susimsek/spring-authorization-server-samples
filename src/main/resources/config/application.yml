@@ -9,8 +9,6 @@ spring:
     compose:
       lifecycle-management: start-only
       file: src/main/docker/services.yml
-  main:
-    allow-bean-definition-overriding: true
   data:
     jpa:
       repositories:

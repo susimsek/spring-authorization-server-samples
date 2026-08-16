@@ -27,10 +27,6 @@ app:
       maximum-size: 1000
   authorization-server:
     issuer: ${APP_AUTHORIZATION_SERVER_ISSUER:https://spring-authorization-server-samples.local}
-    jwk:
-      public-key: ${APP_AUTHORIZATION_SERVER_JWK_PUBLIC_KEY}
-      private-key: ${APP_AUTHORIZATION_SERVER_JWK_PRIVATE_KEY}
-      key-id: ${APP_AUTHORIZATION_SERVER_JWK_KEY_ID}
 
 logging:
   level:

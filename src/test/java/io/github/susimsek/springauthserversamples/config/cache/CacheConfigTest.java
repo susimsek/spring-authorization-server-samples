@@ -7,9 +7,11 @@ import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
 import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentEntity;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationEntity;
+import io.github.susimsek.springauthserversamples.domain.OAuth2KeyEntity;
 import io.github.susimsek.springauthserversamples.domain.RegisteredClientEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
+import io.github.susimsek.springauthserversamples.repository.OAuth2KeyRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import java.time.Duration;
 import java.util.HashMap;
@@ -60,17 +62,16 @@ class CacheConfigTest {
         JCacheManagerCustomizer customizer = configuration.cacheManagerCustomizer();
 
         CacheManager cacheManager = configuration.jcacheManager(customizer);
-
-        assertThat(cacheManager.getCache("default-update-timestamps-region")).isNotNull();
-        assertThat(cacheManager.getCache("default-query-results-region")).isNotNull();
         assertThat(cacheManager.getCache(AuthorizationConsentEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(AuthorizationEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(AuthorityEntity.class.getName())).isNotNull();
+        assertThat(cacheManager.getCache(OAuth2KeyEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(RegisteredClientEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(UserEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(UserEntity.class.getName() + ".authorities")).isNotNull();
         assertThat(cacheManager.getCache(ClientRepository.REGISTERED_CLIENT_BY_CLIENT_ID_CACHE))
                 .isNotNull();
+        assertThat(cacheManager.getCache(OAuth2KeyRepository.OAUTH2_KEYS_CACHE)).isNotNull();
         assertThat(cacheManager.getCache(UserRepository.USER_BY_USERNAME_CACHE)).isNotNull();
     }
 

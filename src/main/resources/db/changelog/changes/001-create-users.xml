@@ -42,11 +42,6 @@
 		</createTable>
 	</changeSet>
 
-	<changeSet id="003-create-user-indexes" author="susimsek">
-		<createIndex indexName="idx_users_username" tableName="users" unique="true">
-			<column name="username"/>
-		</createIndex>
-	</changeSet>
 
 	<changeSet id="004-create-authority-sequence" author="susimsek">
 		<createSequence

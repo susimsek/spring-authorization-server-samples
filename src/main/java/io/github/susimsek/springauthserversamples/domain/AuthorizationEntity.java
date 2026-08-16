@@ -39,13 +39,13 @@ public class AuthorizationEntity {
     @Column(name = "authorized_scopes", length = 1000)
     private String authorizedScopes;
 
-    @Column(name = "attributes", columnDefinition = "text")
+    @Column(name = "attributes", length = 4000)
     private String attributes;
 
     @Column(name = "state", length = 500)
     private String state;
 
-    @Column(name = "authorization_code_value", columnDefinition = "text")
+    @Column(name = "authorization_code_value", length = 4000)
     private String authorizationCodeValue;
 
     @Column(name = "authorization_code_issued_at")
@@ -54,10 +54,10 @@ public class AuthorizationEntity {
     @Column(name = "authorization_code_expires_at")
     private Instant authorizationCodeExpiresAt;
 
-    @Column(name = "authorization_code_metadata", columnDefinition = "text")
+    @Column(name = "authorization_code_metadata", length = 4000)
     private String authorizationCodeMetadata;
 
-    @Column(name = "access_token_value", columnDefinition = "text")
+    @Column(name = "access_token_value", length = 4000)
     private String accessTokenValue;
 
     @Column(name = "access_token_issued_at")
@@ -66,7 +66,7 @@ public class AuthorizationEntity {
     @Column(name = "access_token_expires_at")
     private Instant accessTokenExpiresAt;
 
-    @Column(name = "access_token_metadata", columnDefinition = "text")
+    @Column(name = "access_token_metadata", length = 4000)
     private String accessTokenMetadata;
 
     @Column(name = "access_token_type", length = 100)
@@ -75,7 +75,7 @@ public class AuthorizationEntity {
     @Column(name = "access_token_scopes", length = 1000)
     private String accessTokenScopes;
 
-    @Column(name = "oidc_id_token_value", columnDefinition = "text")
+    @Column(name = "oidc_id_token_value", length = 4000)
     private String oidcIdTokenValue;
 
     @Column(name = "oidc_id_token_issued_at")
@@ -84,13 +84,13 @@ public class AuthorizationEntity {
     @Column(name = "oidc_id_token_expires_at")
     private Instant oidcIdTokenExpiresAt;
 
-    @Column(name = "oidc_id_token_metadata", columnDefinition = "text")
+    @Column(name = "oidc_id_token_metadata", length = 4000)
     private String oidcIdTokenMetadata;
 
-    @Column(name = "oidc_id_token_claims", columnDefinition = "text")
+    @Column(name = "oidc_id_token_claims", length = 4000)
     private String oidcIdTokenClaims;
 
-    @Column(name = "refresh_token_value", columnDefinition = "text")
+    @Column(name = "refresh_token_value", length = 4000)
     private String refreshTokenValue;
 
     @Column(name = "refresh_token_issued_at")
@@ -99,10 +99,10 @@ public class AuthorizationEntity {
     @Column(name = "refresh_token_expires_at")
     private Instant refreshTokenExpiresAt;
 
-    @Column(name = "refresh_token_metadata", columnDefinition = "text")
+    @Column(name = "refresh_token_metadata", length = 4000)
     private String refreshTokenMetadata;
 
-    @Column(name = "user_code_value", columnDefinition = "text")
+    @Column(name = "user_code_value", length = 4000)
     private String userCodeValue;
 
     @Column(name = "user_code_issued_at")
@@ -111,10 +111,10 @@ public class AuthorizationEntity {
     @Column(name = "user_code_expires_at")
     private Instant userCodeExpiresAt;
 
-    @Column(name = "user_code_metadata", columnDefinition = "text")
+    @Column(name = "user_code_metadata", length = 4000)
     private String userCodeMetadata;
 
-    @Column(name = "device_code_value", columnDefinition = "text")
+    @Column(name = "device_code_value", length = 4000)
     private String deviceCodeValue;
 
     @Column(name = "device_code_issued_at")
@@ -123,7 +123,7 @@ public class AuthorizationEntity {
     @Column(name = "device_code_expires_at")
     private Instant deviceCodeExpiresAt;
 
-    @Column(name = "device_code_metadata", columnDefinition = "text")
+    @Column(name = "device_code_metadata", length = 4000)
     private String deviceCodeMetadata;
 
     @Override

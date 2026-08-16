@@ -21,7 +21,7 @@
 [![Terraform](https://img.shields.io/badge/Terraform-Infrastructure-623CE4?logo=terraform&logoColor=white)](https://www.terraform.io/)
 [![Codex](https://custom-icon-badges.demolab.com/badge/Codex-AI%20Agent-74aa9c?&logo=openai&logoColor=white)](https://openai.com/codex/)
 
-This repository is a Spring Boot 4.1 + Java 25 sample application built around **Spring Authorization Server**. It acts as an OAuth2 Authorization Server and OpenID Connect Provider, stores users and clients in a relational database with Liquibase-managed schema, uses Spring Data JPA and Hibernate second-level cache with Caffeine/JCache, supports H2 for local development and PostgreSQL for production-style runs, uses externally configured RSA JWK signing keys, and can be compiled as a GraalVM native executable.
+This repository is a Spring Boot 4.1 + Java 25 sample application built around **Spring Authorization Server**. It acts as an OAuth2 Authorization Server and OpenID Connect Provider, stores users and clients in a relational database with Liquibase-managed schema, uses Spring Data JPA and Hibernate second-level cache with Caffeine/JCache, supports H2 for local development and PostgreSQL for production-style runs, loads RSA JWK signing keys from the database, and can be compiled as a GraalVM native executable.
 
 ## Table of Contents
 
@@ -55,7 +55,7 @@ This repository is a Spring Boot 4.1 + Java 25 sample application built around *
 - OAuth2 Authorization Server with OpenID Connect 1.0 enabled
 - Authorization Code, Refresh Token, and Client Credentials grants
 - RSA-signed JWT access and ID tokens
-- Externally configured RSA JWK signing key
+- Database-backed RSA JWK signing keys with active/passive key support
 - JPA-backed registered client storage
 - JPA-backed authorization and consent storage
 - Form login backed by Spring Security and JPA user storage
@@ -120,18 +120,6 @@ Important defaults:
 - Hibernate second-level cache: enabled
 - Cache provider: JCache backed by Caffeine
 
-JWK configuration:
-
-```yaml
-app:
-  authorization-server:
-    issuer: ${APP_AUTHORIZATION_SERVER_ISSUER:https://spring-authorization-server-samples.local}
-    jwk:
-      public-key: ${APP_AUTHORIZATION_SERVER_JWK_PUBLIC_KEY}
-      private-key: ${APP_AUTHORIZATION_SERVER_JWK_PRIVATE_KEY}
-      key-id: ${APP_AUTHORIZATION_SERVER_JWK_KEY_ID}
-```
-
 ## Configuration and Profiles
 
 Configuration lives under `src/main/resources/config`:
@@ -156,63 +144,23 @@ Cache defaults by profile:
 
 ## RSA Signing Keys
 
-The Authorization Server requires an RSA public/private key pair and a stable JWK key ID.
+RSA signing keys are stored in the `oauth2_key` table and loaded through a database-backed `JWKSource`.
 
-Generate a 2048-bit RSA private key:
+Initial key material is seeded by Liquibase from:
 
-```bash
-openssl genpkey \
-  -algorithm RSA \
-  -pkeyopt rsa_keygen_bits:2048 \
-  -out private.pem
+```text
+src/main/resources/db/data/oauth2-keys.csv
 ```
 
-Generate the Base64-encoded X.509 public key:
+The seed contains the key type, signing algorithm, public/private key material, active state, `kid`, and JWK use.
 
-```bash
-openssl pkey \
-  -in private.pem \
-  -pubout \
-  -outform DER | base64 | tr -d '\n'
-```
+Key selection rules:
 
-Generate the Base64-encoded PKCS#8 private key:
+- `active=true` keys are signing-key candidates.
+- if more than one active key exists, the most recently created key is selected.
+- the selected key is published through the JWK Set endpoint and used for token signing.
 
-```bash
-openssl pkcs8 \
-  -topk8 \
-  -inform PEM \
-  -outform DER \
-  -in private.pem \
-  -nocrypt | base64 | tr -d '\n'
-```
-
-Generate the JWK key ID:
-
-```bash
-uuidgen
-```
-
-Export the generated values:
-
-```bash
-export APP_AUTHORIZATION_SERVER_JWK_PUBLIC_KEY="<paste-public-key>"
-export APP_AUTHORIZATION_SERVER_JWK_PRIVATE_KEY="<paste-private-key>"
-export APP_AUTHORIZATION_SERVER_JWK_KEY_ID="<paste-key-id>"
-```
-
-Environment variables:
-
-| Name | Default | Description |
-| --- | --- | --- |
-| `APP_AUTHORIZATION_SERVER_ISSUER` | `https://spring-authorization-server-samples.local` | OAuth2/OIDC issuer |
-| `APP_AUTHORIZATION_SERVER_JWK_PUBLIC_KEY` | required | Base64-encoded X.509 RSA public key |
-| `APP_AUTHORIZATION_SERVER_JWK_PRIVATE_KEY` | required | Base64-encoded PKCS#8 RSA private key |
-| `APP_AUTHORIZATION_SERVER_JWK_KEY_ID` | required | JWK key identifier (`kid`) |
-
-The key values must not include PEM headers or footers.
-
-Use the same RSA key pair and `kid` across application restarts and replicas. For production deployments, keep the private key in Kubernetes Secrets, Vault, AWS Secrets Manager, or another external secret-management system.
+For this sample, keep a single active signing key. Passive-key rollover can be added later if old public keys need to remain published during rotation.
 
 ## Run Locally
 
@@ -243,9 +191,6 @@ docker compose -f src/main/docker/postgresql.yml up -d
 Configure the signing key and datasource:
 
 ```bash
-export APP_AUTHORIZATION_SERVER_JWK_PUBLIC_KEY="<paste-public-key>"
-export APP_AUTHORIZATION_SERVER_JWK_PRIVATE_KEY="<paste-private-key>"
-export APP_AUTHORIZATION_SERVER_JWK_KEY_ID="<paste-key-id>"
 export SPRING_DATASOURCE_USERNAME=appuser
 export SPRING_DATASOURCE_PASSWORD=appuser
 export APP_AUTHORIZATION_SERVER_ISSUER=http://127.0.0.1:9090
@@ -814,9 +759,6 @@ SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/authserversamples \
 SPRING_DATASOURCE_USERNAME=appuser \
 SPRING_DATASOURCE_PASSWORD=appuser \
 APP_AUTHORIZATION_SERVER_ISSUER=http://127.0.0.1:9090 \
-APP_AUTHORIZATION_SERVER_JWK_PUBLIC_KEY="<paste-public-key>" \
-APP_AUTHORIZATION_SERVER_JWK_PRIVATE_KEY="<paste-private-key>" \
-APP_AUTHORIZATION_SERVER_JWK_KEY_ID="<paste-key-id>" \
 ./target/native-executable
 ```
 
@@ -867,9 +809,6 @@ docker run --rm -p 9090:9090 \
   -e SPRING_DATASOURCE_USERNAME=appuser \
   -e SPRING_DATASOURCE_PASSWORD=appuser \
   -e APP_AUTHORIZATION_SERVER_ISSUER=http://127.0.0.1:9090 \
-  -e APP_AUTHORIZATION_SERVER_JWK_PUBLIC_KEY="<paste-public-key>" \
-  -e APP_AUTHORIZATION_SERVER_JWK_PRIVATE_KEY="<paste-private-key>" \
-  -e APP_AUTHORIZATION_SERVER_JWK_KEY_ID="<paste-key-id>" \
   spring-authorization-server-samples:latest-native
 ```
 
@@ -908,7 +847,7 @@ Spring Boot Docker Compose integration:
 
 - Chart: `helm/spring-authorization-server-samples`
 
-The chart stores database credentials and RSA JWK signing material in Kubernetes Secrets. All replicas use the same active signing key and `kid`.
+The chart stores database credentials in Kubernetes Secrets. RSA JWK signing keys are persisted in PostgreSQL and loaded from the `oauth2_key` table by all replicas.
 
 Lint:
 

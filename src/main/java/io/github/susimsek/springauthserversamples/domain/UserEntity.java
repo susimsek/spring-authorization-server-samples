@@ -40,7 +40,7 @@ public class UserEntity extends AuditableEntity {
     @SequenceGenerator(name = "user_seq", sequenceName = "user_seq", allocationSize = 1)
     private Long id;
 
-    @Column(name = "username", nullable = false, length = 100)
+    @Column(name = "username", nullable = false, unique = true, length = 100)
     private String username;
 
     @Column(name = "password", nullable = false)

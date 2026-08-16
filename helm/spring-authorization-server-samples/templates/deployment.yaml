@@ -19,7 +19,6 @@ spec:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         checksum/secret-database: {{ include (print $.Template.BasePath "/secret-database.yaml") . | sha256sum }}
-        checksum/secret-jwk: {{ include (print $.Template.BasePath "/secret-jwk.yaml") . | sha256sum }}
         {{- with .Values.podAnnotations }}
         {{ toYaml . | nindent 8 }}
         {{- end }}
@@ -109,21 +108,6 @@ spec:
                 secretKeyRef:
                   name: {{ include "spring-authorization-server-samples.fullname" . }}-secret-database
                   key: database-password
-            - name: APP_AUTHORIZATION_SERVER_JWK_PUBLIC_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "spring-authorization-server-samples.fullname" . }}-secret-jwk
-                  key: public-key
-            - name: APP_AUTHORIZATION_SERVER_JWK_PRIVATE_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "spring-authorization-server-samples.fullname" . }}-secret-jwk
-                  key: private-key
-            - name: APP_AUTHORIZATION_SERVER_JWK_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "spring-authorization-server-samples.fullname" . }}-secret-jwk
-                  key: key-id
           volumeMounts:
             - name: config
               mountPath: /tmp/config/application.yml

@@ -37,18 +37,5 @@ public class ApplicationProperties {
     public static class AuthorizationServer {
 
         private String issuer = "http://127.0.0.1:9090";
-
-        private Jwk jwk = new Jwk();
-    }
-
-    @Getter
-    @Setter
-    public static class Jwk {
-
-        private String publicKey;
-
-        private String privateKey;
-
-        private String keyId;
     }
 }
