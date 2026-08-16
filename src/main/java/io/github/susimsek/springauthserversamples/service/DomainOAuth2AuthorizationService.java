@@ -4,8 +4,11 @@ import io.github.susimsek.springauthserversamples.domain.AuthorizationEntity;
 import io.github.susimsek.springauthserversamples.mapper.AuthorizationMapper;
 import io.github.susimsek.springauthserversamples.mapper.AuthorizationServerMapperSupport;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.jpa.domain.Specification;
+import org.springframework.dao.DataRetrievalFailureException;
+import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
+import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames;
 import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
@@ -13,6 +16,7 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.Assert;
 
 @Service
 @RequiredArgsConstructor
@@ -44,72 +48,40 @@ public class DomainOAuth2AuthorizationService implements OAuth2AuthorizationServ
     @Override
     @Transactional(readOnly = true)
     public OAuth2Authorization findByToken(String token, OAuth2TokenType tokenType) {
-        return authorizationRepository
-                .findOne(byToken(token, tokenType))
-                .map(this::toObject)
-                .orElse(null);
+        Assert.hasText(token, "token cannot be empty");
+
+        Optional<AuthorizationEntity> authorization =
+                tokenType == null
+                        ? authorizationRepository.findByToken(token)
+                        : findByTokenType(token, tokenType);
+
+        return authorization.map(this::toObject).orElse(null);
     }
 
-    private static Specification<AuthorizationEntity> byToken(
-            String token, OAuth2TokenType tokenType) {
-        if (tokenType == null) {
-            return stateEquals(token)
-                    .or(authorizationCodeEquals(token))
-                    .or(accessTokenEquals(token))
-                    .or(refreshTokenEquals(token))
-                    .or(oidcIdTokenEquals(token))
-                    .or(userCodeEquals(token))
-                    .or(deviceCodeEquals(token));
-        }
+    private Optional<AuthorizationEntity> findByTokenType(String token, OAuth2TokenType tokenType) {
         return switch (tokenType.getValue()) {
-            case "state" -> stateEquals(token);
-            case "code" -> authorizationCodeEquals(token);
-            case "access_token" -> accessTokenEquals(token);
-            case "refresh_token" -> refreshTokenEquals(token);
-            case "id_token" -> oidcIdTokenEquals(token);
-            case "user_code" -> userCodeEquals(token);
-            case "device_code" -> deviceCodeEquals(token);
-            default -> (root, query, criteriaBuilder) -> criteriaBuilder.disjunction();
+            case OAuth2ParameterNames.STATE -> authorizationRepository.findByState(token);
+            case OAuth2ParameterNames.CODE ->
+                    authorizationRepository.findByAuthorizationCodeValue(token);
+            case OAuth2ParameterNames.ACCESS_TOKEN ->
+                    authorizationRepository.findByAccessTokenValue(token);
+            case OAuth2ParameterNames.REFRESH_TOKEN ->
+                    authorizationRepository.findByRefreshTokenValue(token);
+            case OidcParameterNames.ID_TOKEN ->
+                    authorizationRepository.findByOidcIdTokenValue(token);
+            case OAuth2ParameterNames.USER_CODE ->
+                    authorizationRepository.findByUserCodeValue(token);
+            case OAuth2ParameterNames.DEVICE_CODE ->
+                    authorizationRepository.findByDeviceCodeValue(token);
+            default -> Optional.empty();
         };
-    }
-
-    private static Specification<AuthorizationEntity> stateEquals(String token) {
-        return fieldEquals("state", token);
-    }
-
-    private static Specification<AuthorizationEntity> authorizationCodeEquals(String token) {
-        return fieldEquals("authorizationCodeValue", token);
-    }
-
-    private static Specification<AuthorizationEntity> accessTokenEquals(String token) {
-        return fieldEquals("accessTokenValue", token);
-    }
-
-    private static Specification<AuthorizationEntity> refreshTokenEquals(String token) {
-        return fieldEquals("refreshTokenValue", token);
-    }
-
-    private static Specification<AuthorizationEntity> oidcIdTokenEquals(String token) {
-        return fieldEquals("oidcIdTokenValue", token);
-    }
-
-    private static Specification<AuthorizationEntity> userCodeEquals(String token) {
-        return fieldEquals("userCodeValue", token);
-    }
-
-    private static Specification<AuthorizationEntity> deviceCodeEquals(String token) {
-        return fieldEquals("deviceCodeValue", token);
-    }
-
-    private static Specification<AuthorizationEntity> fieldEquals(String fieldName, String token) {
-        return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get(fieldName), token);
     }
 
     private OAuth2Authorization toObject(AuthorizationEntity entity) {
         RegisteredClient registeredClient =
                 registeredClientRepository.findById(entity.getRegisteredClientId());
         if (registeredClient == null) {
-            throw new IllegalStateException(
+            throw new DataRetrievalFailureException(
                     "Registered client not found: " + entity.getRegisteredClientId());
         }
         return authorizationMapper.toObject(entity, registeredClient, mapperSupport);

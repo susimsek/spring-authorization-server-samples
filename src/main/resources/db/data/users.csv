@@ -1,3 +1,3 @@
 username;password;enabled;created_by;last_modified_by
-admin;$2a$10$dsEILtFz.VyZL6vXnj1Kg.GFczEdAJ9XlBI234j4ExulU3xub4zTe;true;system;system
-user;$2a$10$X4IqH828fc4B.V4t7PtB7.n1eKxlSvCRB6BmntaXnxDCBtj23g6L6;true;system;system
+admin;{bcrypt}$2a$10$dsEILtFz.VyZL6vXnj1Kg.GFczEdAJ9XlBI234j4ExulU3xub4zTe;true;system;system
+user;{bcrypt}$2a$10$X4IqH828fc4B.V4t7PtB7.n1eKxlSvCRB6BmntaXnxDCBtj23g6L6;true;system;system

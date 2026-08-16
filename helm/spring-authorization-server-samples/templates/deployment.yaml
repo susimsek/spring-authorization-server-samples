@@ -19,7 +19,6 @@ spec:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         checksum/secret-database: {{ include (print $.Template.BasePath "/secret-database.yaml") . | sha256sum }}
-        checksum/secret-jwk: {{ include (print $.Template.BasePath "/secret-jwk.yaml") . | sha256sum }}
         {{- with .Values.podAnnotations }}
         {{ toYaml . | nindent 8 }}
         {{- end }}
@@ -72,12 +71,12 @@ spec:
             - name: LIQUIBASE_COMMAND_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "spring-authorization-server-samples.fullname" . }}-secret-database
+                  name: {{ include "spring-authorization-server-samples.databaseSecretName" . }}
                   key: database-username
             - name: LIQUIBASE_COMMAND_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "spring-authorization-server-samples.fullname" . }}-secret-database
+                  name: {{ include "spring-authorization-server-samples.databaseSecretName" . }}
                   key: database-password
             - name: LIQUIBASE_COMMAND_CHANGELOG_FILE
               value: {{ .Values.initContainers.liquibase.changeLogFile | quote }}
@@ -97,33 +96,20 @@ spec:
               containerPort: {{ .Values.containerPort }}
               protocol: TCP
           env:
+            - name: SPRING_CONFIG_ADDITIONAL_LOCATION
+              value: optional:file:/tmp/config/
             - name: SPRING_DATASOURCE_URL
               value: {{ .Values.spring.datasource.url | quote }}
             - name: SPRING_DATASOURCE_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "spring-authorization-server-samples.fullname" . }}-secret-database
+                  name: {{ include "spring-authorization-server-samples.databaseSecretName" . }}
                   key: database-username
             - name: SPRING_DATASOURCE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "spring-authorization-server-samples.fullname" . }}-secret-database
+                  name: {{ include "spring-authorization-server-samples.databaseSecretName" . }}
                   key: database-password
-            - name: APP_AUTHORIZATION_SERVER_JWK_PUBLIC_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "spring-authorization-server-samples.fullname" . }}-secret-jwk
-                  key: public-key
-            - name: APP_AUTHORIZATION_SERVER_JWK_PRIVATE_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "spring-authorization-server-samples.fullname" . }}-secret-jwk
-                  key: private-key
-            - name: APP_AUTHORIZATION_SERVER_JWK_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "spring-authorization-server-samples.fullname" . }}-secret-jwk
-                  key: key-id
           volumeMounts:
             - name: config
               mountPath: /tmp/config/application.yml
@@ -131,7 +117,7 @@ spec:
           {{- if .Values.probes.startup.enabled }}
           startupProbe:
             httpGet:
-              path: {{ .Values.probes.readiness.path }}
+              path: {{ .Values.probes.startup.path }}
               port: http
             initialDelaySeconds: {{ .Values.probes.startup.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.startup.periodSeconds }}

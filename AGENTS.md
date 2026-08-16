@@ -1,6 +1,6 @@
 # AI Agent Guidelines
 
-This repo is a Java 25 + Spring Boot 4.1 sample application for **Spring Authorization Server**. It uses Spring Security, Spring Authorization Server, Spring Data JPA, H2, PostgreSQL, Liquibase XML changelogs, Lombok, Caffeine/JCache, Spotless, Checkstyle, Sonar, JaCoCo, Helm, Terraform, Docker Compose, and GraalVM Native Image support.
+This repo is a Java 25 + Spring Boot 4.1 sample application for the Authorization Server support integrated into **Spring Security 7**. It uses Spring Security 7 Authorization Server, Spring Data JPA, H2, PostgreSQL, Liquibase XML changelogs, Lombok, Caffeine/JCache, Spotless, Checkstyle, Sonar, JaCoCo, Helm, Terraform, Docker Compose, and GraalVM Native Image support.
 
 ## Table of Contents
 
@@ -19,7 +19,7 @@ This repo is a Java 25 + Spring Boot 4.1 sample application for **Spring Authori
 
 ## Agent MCP Usage Guidelines
 
-- Use Context7 when library/API documentation is needed for Spring Boot, Spring Security, Spring Authorization Server, Spring Data JPA, Hibernate, Liquibase, Maven plugins, Helm, Terraform, or related setup/configuration details.
+- Use Context7 when library/API documentation is needed for Spring Boot, Spring Security 7 Authorization Server, Spring Data JPA, Hibernate, Liquibase, Maven plugins, Helm, Terraform, or related setup/configuration details.
 - Prefer official documentation or primary sources for framework behavior.
 
 ## Quick Reference
@@ -33,7 +33,6 @@ This repo is a Java 25 + Spring Boot 4.1 sample application for **Spring Authori
 | Integration tests | `./mvnw failsafe:integration-test failsafe:verify` |
 | Performance tests | `./mvnw gatling:test` |
 | Full verify | `./mvnw verify` |
-| Reliable full check | `./mvnw test && ./mvnw verify` |
 | Format check | `./mvnw spotless:check` |
 | Format apply | `./mvnw spotless:apply` |
 | Checkstyle | `./mvnw checkstyle:check` |
@@ -62,7 +61,7 @@ This repo is a Java 25 + Spring Boot 4.1 sample application for **Spring Authori
   - `config`: Spring configuration
     - `aot`: GraalVM Native Image runtime hints (`NativeRuntimeHints`)
     - `cache`: Spring Cache and Hibernate second-level cache configuration
-    - `security`: Authorization Server security chains, JWK source, registered client repository, and JDBC-backed services
+    - `security`: Authorization Server security chains, localized handlers, security utilities, and the database-backed JWK source
   - `domain`: JPA entities (`UserEntity`, `AuthorityEntity`) and auditing base class
   - `repository`: Spring Data JPA repositories
   - `security`: authority constants, user-details service, and security utilities
@@ -112,7 +111,7 @@ This repo is a Java 25 + Spring Boot 4.1 sample application for **Spring Authori
 - Keep integration tests focused on end-to-end wiring of Spring Boot, Spring Security, authorization server endpoints, persistence, and Liquibase-seeded client data.
 - Maintain strong JaCoCo coverage for handwritten application code.
 - The current verification command is:
-  - `./mvnw test && ./mvnw verify`
+  - `./mvnw verify`
 
 ### Integration Tests
 
@@ -204,7 +203,7 @@ curl http://localhost:9090/actuator/health/readiness
   - New i18n message bundles
   - New framework resources that native image must keep
 - If native runtime fails because resources are missing, add focused `RuntimeHints` instead of broad classpath inclusion.
-- Pay attention to Liquibase XML/CSV resources, i18n bundles, H2, Hibernate, Hibernate JCache, and Spring Authorization Server JDBC services when changing native-sensitive code.
+- Pay attention to Liquibase XML/CSV resources, i18n bundles, H2, Hibernate, Hibernate JCache, and the custom JPA-backed Authorization Server services when changing native-sensitive code.
 
 ## Authentication
 
@@ -215,13 +214,14 @@ curl http://localhost:9090/actuator/health/readiness
 - The issuer is configured via `app.authorization-server.issuer`.
 - Client secrets are stored as BCrypt hashes in Liquibase seed data.
 - The sample enables OpenID Connect 1.0.
+- Exactly one `oauth2_key` row must be active; inactive rows are published as public-only verification keys.
 
 ## Development Guidelines
 
 ### Architecture
 
 - Keep application-specific behavior in repository/config/security layers; do not try to reimplement Spring Authorization Server internals unnecessarily.
-- Prefer JDBC-backed Authorization Server services that align with the official schema.
+- Keep the custom JPA-backed Authorization Server services aligned with Spring Authorization Server's core model and JDBC schema semantics.
 - Do not add ad hoc runtime seeders when a value belongs in Liquibase-managed seed data.
 
 ### Validation
@@ -244,7 +244,7 @@ curl http://localhost:9090/actuator/health/readiness
 
 ### Security
 
-- Keep Authorization Server endpoint security in `SecurityConfig`.
+- Keep Authorization Server protocol endpoint security in `AuthorizationServerConfig` and application/login security in `SecurityConfig`.
 - Keep user loading in `DomainUserDetailsService`.
 - Keep authority constants in `AuthoritiesConstants`.
 - Do not store plain text passwords or client secrets in seed data.
@@ -256,7 +256,7 @@ curl http://localhost:9090/actuator/health/readiness
 - Use XML-based Liquibase changelogs.
 - Use lowercase database types in changelog XML (`bigint`, `varchar`, `boolean`, `timestamp`).
 - Shared Liquibase properties such as `${now}` belong in `db.changelog-master.xml`.
-- Registered client seed data lives in CSV and should stay aligned with the `JdbcRegisteredClientRepository` schema expectations.
+- Registered client seed data lives in CSV and must stay aligned with `RegisteredClientEntity`, `RegisteredClientMapper`, and Spring Authorization Server's registered-client model.
 - For DB changes: add a new Liquibase XML changelog and include it from `db/changelog/db.changelog-master.xml`.
 - Do not modify existing changelogs that have already been applied unless this is still local sample bootstrap work and no migration history needs preservation.
 - Hibernate second-level cache uses JCache backed by Caffeine. Cache regions are configured in `config/cache/CacheConfig`.
@@ -298,7 +298,7 @@ curl http://localhost:9090/actuator/health/readiness
 - Tests are added or updated when behavior changes.
 - Cross-cutting impacts are explicitly called out when relevant:
   - Liquibase migrations
-  - Security rules (`SecurityConfig`)
+  - Security rules (`AuthorizationServerConfig`, `SecurityConfig`)
   - Native Image / AOT hints (`NativeRuntimeHints`)
   - Helm / Terraform values
 
@@ -309,5 +309,5 @@ curl http://localhost:9090/actuator/health/readiness
 - Editing build output under `target/`.
 - Forgetting to run `./mvnw spotless:apply` before committing.
 - Forgetting that port `9090` is now the sample’s default HTTP port.
-- Changing `oauth2_registered_client` seed structure without checking JDBC repository compatibility.
+- Changing `oauth2_registered_client` seed structure without checking `RegisteredClientEntity`, mapper behavior, and Spring Security's `RegisteredClient` model.
 - Adding new Liquibase resources or native-sensitive framework usage without updating runtime hints where needed.

@@ -14,7 +14,7 @@
 	<name>spring-authorization-server-samples</name>
 	<description>Spring Authorization Server sample</description>
 
-		<properties>
+	<properties>
 			<java.version>25</java.version>
 			<lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
 			<org.mapstruct.version>1.6.3</org.mapstruct.version>

@@ -4,7 +4,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.Instant;
 import java.util.Objects;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -20,48 +19,33 @@ import org.hibernate.proxy.HibernateProxy;
 @AllArgsConstructor
 @Entity
 @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
-@Table(name = "oauth2_registered_client")
-public class RegisteredClientEntity extends AuditableEntity {
+@Table(name = "oauth2_key")
+public class OAuth2KeyEntity extends AuditableEntity {
 
     @Id
-    @Column(name = "id", nullable = false, length = 100)
+    @Column(name = "id", nullable = false, length = 36)
     private String id;
 
-    @Column(name = "client_id", nullable = false, unique = true, length = 100)
-    private String clientId;
+    @Column(name = "type", nullable = false, length = 50)
+    private String type;
 
-    @Column(name = "client_id_issued_at", nullable = false)
-    private Instant clientIdIssuedAt;
+    @Column(name = "algorithm", nullable = false, length = 50)
+    private String algorithm;
 
-    @Column(name = "client_secret", length = 200)
-    private String clientSecret;
+    @Column(name = "public_key", nullable = false, length = 4000)
+    private String publicKey;
 
-    @Column(name = "client_secret_expires_at")
-    private Instant clientSecretExpiresAt;
+    @Column(name = "private_key", length = 4000)
+    private String privateKey;
 
-    @Column(name = "client_name", nullable = false, length = 200)
-    private String clientName;
+    @Column(name = "active", nullable = false)
+    private boolean active;
 
-    @Column(name = "client_authentication_methods", nullable = false, length = 1000)
-    private String clientAuthenticationMethods;
+    @Column(name = "kid", nullable = false, unique = true, length = 255)
+    private String kid;
 
-    @Column(name = "authorization_grant_types", nullable = false, length = 1000)
-    private String authorizationGrantTypes;
-
-    @Column(name = "redirect_uris", length = 1000)
-    private String redirectUris;
-
-    @Column(name = "post_logout_redirect_uris", length = 1000)
-    private String postLogoutRedirectUris;
-
-    @Column(name = "scopes", nullable = false, length = 1000)
-    private String scopes;
-
-    @Column(name = "client_settings", nullable = false, length = 2000)
-    private String clientSettings;
-
-    @Column(name = "token_settings", nullable = false, length = 2000)
-    private String tokenSettings;
+    @Column(name = "use", nullable = false, length = 20)
+    private String use;
 
     @Override
     public boolean equals(Object o) {
@@ -82,7 +66,7 @@ public class RegisteredClientEntity extends AuditableEntity {
         if (thisEffectiveClass != otherEffectiveClass) {
             return false;
         }
-        RegisteredClientEntity that = (RegisteredClientEntity) o;
+        OAuth2KeyEntity that = (OAuth2KeyEntity) o;
         return getId() != null && Objects.equals(getId(), that.getId());
     }
 
