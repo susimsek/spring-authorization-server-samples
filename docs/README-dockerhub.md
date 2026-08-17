@@ -7,6 +7,8 @@ This image exposes an HTTP-based authorization server on port `9090`. It serves 
 
 ## Features
 
+- Custom Next.js/React-Bootstrap login UI bundled into the Spring Boot image
+
 - OAuth2 Authorization Server with OIDC enabled
 - Authorization Code, Refresh Token, and Client Credentials grants
 - RSA-signed JWT access and ID tokens

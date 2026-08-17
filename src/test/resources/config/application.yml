@@ -1,4 +1,6 @@
 spring:
+  web:
+    locale: en
   main:
     allow-bean-definition-overriding: true
   cache:

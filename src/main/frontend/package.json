@@ -1,0 +1,34 @@
+{
+  "name": "spring-authorization-server-samples-frontend",
+  "version": "0.0.1",
+  "private": true,
+  "packageManager": "pnpm@11.22.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "7.3.1",
+    "@fortawesome/free-solid-svg-icons": "7.3.1",
+    "@fortawesome/react-fontawesome": "3.5.0",
+    "bootstrap": "5.3.8",
+    "next": "16.3.1",
+    "react": "19.2.8",
+    "react-bootstrap": "2.10.10",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "typescript": "5.9.2",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "16.3.1",
+    "prettier": "3.9.6"
+  }
+}

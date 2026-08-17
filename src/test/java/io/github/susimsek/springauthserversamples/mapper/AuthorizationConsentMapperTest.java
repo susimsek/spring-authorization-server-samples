@@ -6,13 +6,20 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.jackson.SecurityJacksonModules;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsent;
+import tools.jackson.databind.json.JsonMapper;
 
 class AuthorizationConsentMapperTest {
 
     private final AuthorizationConsentMapper mapper =
             Mappers.getMapper(AuthorizationConsentMapper.class);
-    private final AuthorizationServerMapperSupport support = new AuthorizationServerMapperSupport();
+    private final AuthorizationServerMapperSupport support =
+            new AuthorizationServerMapperSupport(
+                    JsonMapper.builder()
+                            .addModules(
+                                    SecurityJacksonModules.getModules(getClass().getClassLoader()))
+                            .build());
 
     @Test
     void mapsAuthorizationConsentRoundTrip() {

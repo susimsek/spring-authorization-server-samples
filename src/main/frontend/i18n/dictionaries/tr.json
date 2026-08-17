@@ -1,0 +1,31 @@
+{
+  "brand": {
+    "product": "Yetkilendirme Sunucusu",
+    "framework": "Spring Security",
+    "description": "Güvenli OAuth 2.0 ve OpenID Connect yetkilendirmesi."
+  },
+  "navbar": {
+    "language": "Dil"
+  },
+  "login": {
+    "eyebrow": "Tekrar hoş geldiniz",
+    "title": "Hesabınıza giriş yapın",
+    "subtitle": "Devam etmek için bilgilerinizi girin.",
+    "username": "Kullanıcı adı",
+    "usernamePlaceholder": "Kullanıcı adınızı girin",
+    "password": "Şifre",
+    "passwordPlaceholder": "Şifrenizi girin",
+    "showPassword": "Şifreyi göster",
+    "hidePassword": "Şifreyi gizle",
+    "submit": "Giriş yap",
+    "invalidCredentials": "Kullanıcı adı veya şifre hatalı.",
+    "loggedOut": "Başarıyla çıkış yaptınız.",
+    "protectedBy": "Spring Security ile korunmaktadır"
+  },
+  "theme": {
+    "label": "Tema",
+    "system": "Sistem",
+    "light": "Açık",
+    "dark": "Koyu"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "brand": {
+    "product": "Authorization Server",
+    "framework": "Spring Security",
+    "description": "Secure OAuth 2.0 and OpenID Connect authorization."
+  },
+  "navbar": {
+    "language": "Language"
+  },
+  "login": {
+    "eyebrow": "Welcome back",
+    "title": "Sign in to your account",
+    "subtitle": "Enter your credentials to continue.",
+    "username": "Username",
+    "usernamePlaceholder": "Enter your username",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "submit": "Sign in",
+    "invalidCredentials": "The username or password is incorrect.",
+    "loggedOut": "You have signed out successfully.",
+    "protectedBy": "Protected by Spring Security"
+  },
+  "theme": {
+    "label": "Theme",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
+  }
+}

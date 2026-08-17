@@ -32,9 +32,13 @@
 			<jib-native-image-extension-maven.version>0.1.0</jib-native-image-extension-maven.version>
 			<jib-maven-plugin.image>eclipse-temurin:25-jre-alpine</jib-maven-plugin.image>
 		<jib-maven-plugin.architecture>arm64</jib-maven-plugin.architecture>
+
+		<frontend-maven-plugin.version>2.0.2</frontend-maven-plugin.version>
+		<node.version>v24.18.0</node.version>
+		<skip.frontend>false</skip.frontend>
 		<native-image-name>native-executable</native-image-name>
 		<start-class>io.github.susimsek.springauthserversamples.SpringAuthorizationServerSamplesApplication</start-class>
-	</properties>
+</properties>
 
 	<dependencies>
 		<dependency>
@@ -60,6 +64,10 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-session</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.hibernate.orm</groupId>
@@ -118,8 +126,86 @@
 					<exclude>config/**/*.yml</exclude>
 				</excludes>
 			</resource>
+
+			<resource>
+				<directory>${project.basedir}/src/main/frontend/out</directory>
+				<targetPath>static</targetPath>
+				<filtering>false</filtering>
+			</resource>
 		</resources>
 		<plugins>
+			<plugin>
+				<groupId>com.github.eirslett</groupId>
+				<artifactId>frontend-maven-plugin</artifactId>
+				<version>${frontend-maven-plugin.version}</version>
+				<configuration>
+					<workingDirectory>src/main/frontend</workingDirectory>
+					<installDirectory>${project.build.directory}</installDirectory>
+					<skip>${skip.frontend}</skip>
+				</configuration>
+				<executions>
+					<execution>
+						<id>install-node-and-corepack</id>
+						<phase>generate-resources</phase>
+						<goals>
+							<goal>install-node-and-corepack</goal>
+						</goals>
+						<configuration>
+							<nodeVersion>${node.version}</nodeVersion>
+						</configuration>
+					</execution>
+					<execution>
+						<id>pnpm-install</id>
+						<phase>generate-resources</phase>
+						<goals>
+							<goal>corepack</goal>
+						</goals>
+						<configuration>
+							<arguments>pnpm install --frozen-lockfile</arguments>
+						</configuration>
+					</execution>
+					<execution>
+						<id>pnpm-typecheck</id>
+						<phase>generate-resources</phase>
+						<goals>
+							<goal>corepack</goal>
+						</goals>
+						<configuration>
+							<arguments>pnpm typecheck</arguments>
+						</configuration>
+					</execution>
+					<execution>
+						<id>pnpm-lint</id>
+						<phase>generate-resources</phase>
+						<goals>
+							<goal>corepack</goal>
+						</goals>
+						<configuration>
+							<arguments>pnpm lint</arguments>
+						</configuration>
+					</execution>
+					<execution>
+						<id>pnpm-format-check</id>
+						<phase>generate-resources</phase>
+						<goals>
+							<goal>corepack</goal>
+						</goals>
+						<configuration>
+							<arguments>pnpm format:check</arguments>
+						</configuration>
+					</execution>
+					<execution>
+						<id>pnpm-build</id>
+						<phase>generate-resources</phase>
+						<goals>
+							<goal>corepack</goal>
+						</goals>
+						<configuration>
+							<arguments>pnpm build</arguments>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 			<plugin>
 				<groupId>com.diffplug.spotless</groupId>
 				<artifactId>spotless-maven-plugin</artifactId>
@@ -468,5 +554,6 @@
 				</plugins>
 			</build>
 		</profile>
+
 	</profiles>
 </project>

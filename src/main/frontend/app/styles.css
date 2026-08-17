@@ -1,0 +1,7 @@
+body {
+  margin: 0;
+}
+
+.auth-content-row {
+  min-height: calc(100vh - 57px);
+}

@@ -1,8 +1,16 @@
 spring:
   main:
     allow-bean-definition-overriding: true
+    keep-alive: true
+  threads:
+    virtual:
+      enabled: true
+  session:
+    timeout: 30m
   application:
     name: spring-authorization-server-samples
+  web:
+    locale: en
   messages:
     basename: i18n/messages
   profiles:
@@ -47,5 +55,7 @@ management:
       show-details: never
 
 app:
+  session:
+    cleanup-cron: "0 * * * * *"
   authorization-server:
     issuer: https://spring-authorization-server-samples.local

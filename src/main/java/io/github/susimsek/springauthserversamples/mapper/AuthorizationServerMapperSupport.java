@@ -4,13 +4,11 @@ import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentId;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.jackson.SecurityJacksonModules;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
@@ -18,7 +16,6 @@ import org.springframework.security.oauth2.server.authorization.settings.TokenSe
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.JacksonModule;
 import tools.jackson.databind.json.JsonMapper;
 
 @Component
@@ -29,8 +26,8 @@ public class AuthorizationServerMapperSupport {
 
     private final JsonMapper objectMapper;
 
-    public AuthorizationServerMapperSupport() {
-        this.objectMapper = createObjectMapper();
+    public AuthorizationServerMapperSupport(JsonMapper objectMapper) {
+        this.objectMapper = objectMapper;
     }
 
     public AuthorizationConsentId newAuthorizationConsentId(
@@ -131,12 +128,5 @@ public class AuthorizationServerMapperSupport {
         return readCollection(value).stream()
                 .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
-    }
-
-    private static JsonMapper createObjectMapper() {
-        List<JacksonModule> modules =
-                SecurityJacksonModules.getModules(
-                        AuthorizationServerMapperSupport.class.getClassLoader());
-        return JsonMapper.builder().addModules(modules).build();
     }
 }
