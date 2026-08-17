@@ -9,6 +9,8 @@ spring:
     timeout: 30m
   application:
     name: spring-authorization-server-samples
+  web:
+    locale: en
   messages:
     basename: i18n/messages
   profiles:
