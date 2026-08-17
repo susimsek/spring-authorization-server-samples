@@ -1,5 +1,6 @@
 package io.github.susimsek.springauthserversamples.web;
 
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -18,7 +19,7 @@ import org.springframework.core.io.ResourceLoader;
 class SpaFilterTest {
 
     private final AuthorizationUiLocaleResolver localeResolver =
-            mock(AuthorizationUiLocaleResolver.class);
+        mock(AuthorizationUiLocaleResolver.class);
     private final ResourceLoader resourceLoader = mock(ResourceLoader.class);
     private final HttpServletRequest request = mock(HttpServletRequest.class);
     private final HttpServletResponse response = mock(HttpServletResponse.class);
@@ -44,9 +45,9 @@ class SpaFilterTest {
         when(localeResolver.supportedLocales()).thenReturn(Set.of("en", "tr"));
 
         when(resourceLoader.getResource("classpath:/static/en/login/index.html"))
-                .thenReturn(english);
+            .thenReturn(english);
         when(resourceLoader.getResource("classpath:/static/tr/login/index.html"))
-                .thenReturn(turkish);
+            .thenReturn(turkish);
         when(english.exists()).thenReturn(true);
 
         when(localeResolver.resolve(request, response)).thenReturn("tr");
@@ -66,7 +67,7 @@ class SpaFilterTest {
         when(request.getRequestURI()).thenReturn("/en/login/");
         when(localeResolver.isSupportedLocale("en")).thenReturn(true);
         when(resourceLoader.getResource("classpath:/static/en/login/index.html"))
-                .thenReturn(resource);
+            .thenReturn(resource);
         when(resource.exists()).thenReturn(true);
         when(request.getRequestDispatcher("/en/login/index.html")).thenReturn(dispatcher);
 
@@ -84,10 +85,11 @@ class SpaFilterTest {
         when(request.getRequestURI()).thenReturn("/oauth2/authorize");
         when(localeResolver.isSupportedLocale("oauth2")).thenReturn(false);
         when(localeResolver.supportedLocales()).thenReturn(Set.of("en", "tr"));
+
         when(resourceLoader.getResource("classpath:/static/en/oauth2/authorize/index.html"))
-                .thenReturn(english);
+            .thenReturn(english);
         when(resourceLoader.getResource("classpath:/static/tr/oauth2/authorize/index.html"))
-                .thenReturn(turkish);
+            .thenReturn(turkish);
         when(english.exists()).thenReturn(false);
         when(turkish.exists()).thenReturn(false);
 
@@ -104,6 +106,8 @@ class SpaFilterTest {
         filter.doFilterInternal(request, response, filterChain);
 
         verify(filterChain).doFilter(request, response);
+
+        clearInvocations(filterChain);
 
         when(request.getMethod()).thenReturn("POST");
         when(request.getRequestURI()).thenReturn("/login");
