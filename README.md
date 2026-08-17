@@ -164,6 +164,60 @@ Key selection rules:
 
 The repository result is cached with Spring Cache, so database-side key changes become visible after cache expiry (or explicit cache eviction).
 
+## Persistent User Sessions
+
+Browser authentication sessions are persisted through a custom Spring Session repository backed by Spring Data JPA. The database model follows Spring Session JDBC semantics while using application-owned table names:
+
+```text
+USER_SESSION
+USER_SESSION_ATTRIBUTES
+```
+
+The schema keeps the JDBC model's session id, creation/last-access timestamps, max inactive interval, expiry time, principal index, and binary session attributes. Expired sessions are cleaned every minute. Spring Security continues to use a regular `HttpSession`; `@EnableSpringHttpSession` transparently replaces the servlet-container session store with the JPA repository.
+
+## Frontend
+### Authorization UI localization
+
+The exported Next.js authorization UI supports English and Turkish routes:
+
+```text
+/en/login
+/tr/login
+```
+
+`GET /login` remains the Spring Security login entry point. The server resolves the UI locale in this order:
+
+1. `AUTH_LOCALE` cookie set by the Navbar language selector
+2. OIDC `ui_locales` from the saved authorization request
+3. browser `Accept-Language`
+4. English fallback
+
+The login form always posts to Spring Security's standard `POST /login` endpoint, so OAuth/OIDC saved-request and callback behavior remains unchanged. UI translations live under:
+
+```text
+src/main/frontend/i18n/dictionaries/
+```
+
+
+The login screen is implemented with Next.js App Router + TypeScript and exported as static HTML/CSS/JS. The UI uses React-Bootstrap, Bootstrap, and Font Awesome while Spring Security remains responsible for authentication and session handling.
+
+Maven manages a project-local Node.js runtime through `frontend-maven-plugin` and Corepack. The normal lifecycle runs pnpm install, TypeScript checking, and `next build`; the generated `src/main/frontend/out` directory is copied to Spring Boot's `static/` classpath.
+
+```bash
+./mvnw verify
+```
+
+Frontend-only development:
+
+```bash
+cd src/main/frontend
+corepack enable
+pnpm install
+pnpm dev
+```
+
+The exported page is served at `/login` and submits credentials directly to Spring Security's `POST /login` endpoint. CSRF protection is intentionally disabled in this sample.
+
 ## Run Locally
 
 ### Dev (H2)

@@ -6,7 +6,10 @@
 
 	<property name="now" value="now()" dbms="h2"/>
 	<property name="now" value="current_timestamp" dbms="postgresql"/>
+	<property name="blobType" value="bytea" dbms="h2"/>
+	<property name="blobType" value="bytea" dbms="postgresql"/>
 
 	<include file="db/changelog/changes/001-create-users.xml"/>
 	<include file="db/changelog/changes/002-create-authorization-server.xml"/>
+	<include file="db/changelog/changes/003-create-user-session.xml"/>
 </databaseChangeLog>

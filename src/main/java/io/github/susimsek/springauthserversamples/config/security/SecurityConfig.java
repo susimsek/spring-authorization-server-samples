@@ -8,8 +8,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -43,11 +43,17 @@ public class SecurityConfig {
     @Bean
     @Order(2)
     SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) {
-        http.authorizeHttpRequests(
+        http.csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(
                         authorize ->
                                 authorize
                                         .requestMatchers(
                                                 "/",
+                                                "/login",
+                                                "/login/**",
+                                                "/en/**",
+                                                "/tr/**",
+                                                "/_next/**",
                                                 "/actuator/health",
                                                 "/actuator/health/**",
                                                 "/error")
@@ -64,7 +70,7 @@ public class SecurityConfig {
                                                 localizedAuthenticationEntryPoint,
                                                 NON_HTML_REQUEST_MATCHER)
                                         .accessDeniedHandler(localizedAccessDeniedHandler))
-                .formLogin(Customizer.withDefaults());
+                .formLogin(formLogin -> formLogin.loginPage("/login").permitAll());
 
         return http.build();
     }

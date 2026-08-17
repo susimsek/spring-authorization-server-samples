@@ -50,6 +50,7 @@ class AuthorizationServerConfigTest {
                 new ApplicationProperties.Cache(
                         new ApplicationProperties.Caffeine(
                                 java.time.Duration.ofHours(1), 500, 1000)),
+                new ApplicationProperties.Session("0 * * * * *"),
                 new ApplicationProperties.AuthorizationServer("https://issuer.example"));
     }
 }

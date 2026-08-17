@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.susimsek.springauthserversamples.domain.UserSessionEntity;
+import io.github.susimsek.springauthserversamples.repository.UserSessionRepository;
+import io.github.susimsek.springauthserversamples.session.JpaIndexedSessionRepository;
 import java.io.IOException;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
@@ -21,10 +24,12 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
 
 @IntegrationTest
@@ -38,6 +43,10 @@ class AuthorizationServerEndpointsIT {
             Pattern.compile("value=[\"']([^\"']*)[\"']", Pattern.CASE_INSENSITIVE);
 
     @LocalServerPort private int port;
+
+    @Autowired private UserSessionRepository userSessionRepository;
+
+    @Autowired private JpaIndexedSessionRepository sessionRepository;
 
     @Test
     void openIdConfigurationIsPublic() throws IOException, InterruptedException {
@@ -145,10 +154,21 @@ class AuthorizationServerEndpointsIT {
         HttpResponse<String> loginResponse = browser.postForm(URI.create(url("/login")), loginForm);
         assertThat(loginResponse.statusCode()).isEqualTo(302);
 
+        var persistedSessions =
+                userSessionRepository.findAllByPrincipalNameAndExpiryTimeAfter(
+                        "admin", System.currentTimeMillis());
+        assertThat(persistedSessions).isNotEmpty();
+        assertThat(persistedSessions)
+                .allSatisfy(session -> assertThat(session.getAttributes()).isNotEmpty());
+
         URI postLoginUri = resolveLocation(URI.create(url("/login")), loginResponse);
         HttpResponse<String> consentPage = browser.get(postLoginUri);
         assertThat(consentPage.statusCode()).isEqualTo(200);
         assertThat(consentPage.body()).contains("Consent");
+        assertThat(
+                        userSessionRepository.findAllByPrincipalNameAndExpiryTimeAfter(
+                                "admin", System.currentTimeMillis()))
+                .isNotEmpty();
 
         Map<String, List<String>> consentForm = parseForm(consentPage.body());
         consentForm.put("scope", List.of("openid", "profile"));
@@ -202,6 +222,23 @@ class AuthorizationServerEndpointsIT {
                                 .get("active")
                                 .asBoolean())
                 .isFalse();
+    }
+
+    @Test
+    void expiredJpaSessionIsRemovedByCleanup() {
+        UserSessionEntity entity = new UserSessionEntity();
+        entity.setPrimaryId(UUID.randomUUID().toString());
+        entity.setSessionId(UUID.randomUUID().toString());
+        entity.setCreationTime(System.currentTimeMillis() - 120_000);
+        entity.setLastAccessTime(System.currentTimeMillis() - 120_000);
+        entity.setMaxInactiveInterval(60);
+        entity.setExpiryTime(System.currentTimeMillis() - 60_000);
+        entity.setPrincipalName("expired-user");
+        userSessionRepository.saveAndFlush(entity);
+
+        sessionRepository.cleanUpExpiredSessions();
+
+        assertThat(userSessionRepository.findBySessionId(entity.getSessionId())).isEmpty();
     }
 
     @Test
@@ -369,11 +406,12 @@ class AuthorizationServerEndpointsIT {
 
     private static final class BrowserSession {
 
+        private final CookieManager cookieManager;
         private final HttpClient client;
 
         private BrowserSession() {
-            CookieManager cookieManager = new CookieManager();
-            cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+            this.cookieManager = new CookieManager();
+            this.cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
             this.client =
                     HttpClient.newBuilder()
                             .cookieHandler(cookieManager)

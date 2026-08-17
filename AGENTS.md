@@ -57,6 +57,8 @@ This repo is a Java 25 + Spring Boot 4.1 sample application for the Authorizatio
 
 ## Project Structure
 
+- `frontend`: Next.js App Router + TypeScript login UI built with pnpm, React-Bootstrap, Bootstrap, and Font Awesome. Maven exports it into Spring Boot static resources.
+
 - Application root: `src/main/java/io/github/susimsek/springauthserversamples`
   - `config`: Spring configuration
     - `aot`: GraalVM Native Image runtime hints (`NativeRuntimeHints`)
@@ -311,3 +313,17 @@ curl http://localhost:9090/actuator/health/readiness
 - Forgetting that port `9090` is now the sample’s default HTTP port.
 - Changing `oauth2_registered_client` seed structure without checking `RegisteredClientEntity`, mapper behavior, and Spring Security's `RegisteredClient` model.
 - Adding new Liquibase resources or native-sensitive framework usage without updating runtime hints where needed.
+
+## Frontend Build
+
+- Keep the login UI in `frontend/`; do not move authentication logic into Next.js.
+- Maven uses `frontend-maven-plugin` + Corepack to install Node/pnpm, run `pnpm typecheck`, and run `pnpm build`.
+- Next.js uses static export; Spring Boot serves the generated assets and Spring Security continues to process `POST /login`.
+- CSRF is intentionally disabled in this sample.
+
+## Session persistence
+
+- Browser authentication state uses Spring Session with the custom JPA-backed `JpaIndexedSessionRepository`.
+- Keep `USER_SESSION` and `USER_SESSION_ATTRIBUTES` aligned with Spring Session JDBC schema semantics.
+- OAuth authorization/token state remains in `oauth2_authorization`; do not duplicate it into session attributes.
+- Session attributes use Spring's Java serialization converters, so update native serialization hints when adding new custom serializable session attribute types.
