@@ -144,7 +144,7 @@ class AuthorizationServerEndpointsIT {
         assertThat(authorizationResponse.statusCode()).isEqualTo(302);
 
         URI loginUri = resolveLocation(authorizationUri, authorizationResponse);
-        HttpResponse<String> loginPage = browser.get(loginUri);
+        HttpResponse<String> loginPage = browser.getFollowingRedirects(loginUri);
         assertThat(loginPage.statusCode()).isEqualTo(200);
 
         Map<String, List<String>> loginForm = parseForm(loginPage.body());
@@ -162,7 +162,7 @@ class AuthorizationServerEndpointsIT {
                 .allSatisfy(session -> assertThat(session.getAttributes()).isNotEmpty());
 
         URI postLoginUri = resolveLocation(URI.create(url("/login")), loginResponse);
-        HttpResponse<String> consentPage = browser.get(postLoginUri);
+        HttpResponse<String> consentPage = browser.getFollowingRedirects(postLoginUri);
         assertThat(consentPage.statusCode()).isEqualTo(200);
         assertThat(consentPage.body()).contains("Consent");
         assertThat(
@@ -170,7 +170,13 @@ class AuthorizationServerEndpointsIT {
                                 "admin", System.currentTimeMillis()))
                 .isNotEmpty();
 
-        Map<String, List<String>> consentForm = parseForm(consentPage.body());
+        Map<String, String> consentParameters = queryParameters(consentPage.uri());
+        assertThat(consentParameters.get("client_id")).isEqualTo("pkce-client");
+        assertThat(consentParameters.get("state")).isNotBlank();
+
+        Map<String, List<String>> consentForm = new LinkedHashMap<>();
+        consentForm.put("client_id", List.of(consentParameters.get("client_id")));
+        consentForm.put("state", List.of(consentParameters.get("state")));
         consentForm.put("scope", List.of("openid", "profile"));
 
         HttpResponse<String> consentResponse =
@@ -423,6 +429,19 @@ class AuthorizationServerEndpointsIT {
             return client.send(
                     HttpRequest.newBuilder().uri(uri).header("Accept", "text/html").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
+        }
+
+        private HttpResponse<String> getFollowingRedirects(URI uri)
+                throws IOException, InterruptedException {
+            URI currentUri = uri;
+            for (int redirectCount = 0; redirectCount < 5; redirectCount++) {
+                HttpResponse<String> response = get(currentUri);
+                if (response.statusCode() < 300 || response.statusCode() >= 400) {
+                    return response;
+                }
+                currentUri = resolveLocation(currentUri, response);
+            }
+            throw new AssertionError("Too many redirects while loading " + uri);
         }
 
         private HttpResponse<String> postForm(URI uri, Map<String, List<String>> form)

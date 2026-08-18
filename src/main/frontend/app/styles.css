@@ -5,3 +5,13 @@ body {
 .auth-content-row {
   min-height: calc(100vh - 57px);
 }
+
+.consent-client-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 auto;
+}
+
+.min-w-0 {
+  min-width: 0;
+}

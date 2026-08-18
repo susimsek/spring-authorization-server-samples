@@ -19,13 +19,98 @@
     "hidePassword": "Şifreyi gizle",
     "submit": "Giriş yap",
     "invalidCredentials": "Kullanıcı adı veya şifre hatalı.",
-    "loggedOut": "Başarıyla çıkış yaptınız.",
-    "protectedBy": "Spring Security ile korunmaktadır"
+    "loggedOut": "Başarıyla çıkış yaptınız."
   },
   "theme": {
     "label": "Tema",
     "system": "Sistem",
     "light": "Açık",
     "dark": "Koyu"
+  },
+  "consent": {
+    "eyebrow": "Yetkilendirme isteği",
+    "title": "Yetkilendirme onayı",
+    "subtitle": "Bu uygulamaya vermek istediğiniz izinleri seçin.",
+    "clientLabel": "Uygulama",
+    "permissions": "İstenen izinler",
+    "permissionsHelp": "Devam etmeden önce izinleri inceleyebilir ve istemediklerinizi kaldırabilirsiniz.",
+    "submit": "Erişime izin ver",
+    "invalidRequest": "Yetkilendirme isteğinde gerekli bilgiler eksik.",
+    "scopeDefault": "Bu uygulamanın bu izni kullanmasına izin verin.",
+    "scopeDescriptions": {
+      "openid": "OpenID Connect ile kimliğinizi doğrular.",
+      "profile": "Temel profil bilgilerinize erişir.",
+      "user.read": "Kullanıcı bilgilerinizi okur.",
+      "user.write": "Kullanıcı bilgilerinizi günceller."
+    }
+  },
+  "error": {
+    "eyebrow": "Yetkilendirme hatası",
+    "types": {
+      "invalid_request": {
+        "title": "Geçersiz istek",
+        "description": "İstekte gerekli bilgiler eksik veya geçersiz bir parametre bulunuyor."
+      },
+      "invalid_client": {
+        "title": "Geçersiz istemci",
+        "description": "İstemci doğrulanamadı veya istemci bilgileri geçersiz."
+      },
+      "invalid_grant": {
+        "title": "Geçersiz yetkilendirme",
+        "description": "Yetkilendirme bilgisi geçersiz, süresi dolmuş, iptal edilmiş veya istekle eşleşmiyor."
+      },
+      "invalid_redirect_uri": {
+        "title": "Geçersiz yönlendirme adresi",
+        "description": "İstekteki bir veya daha fazla yönlendirme adresi (redirect_uri) geçersiz."
+      },
+      "unauthorized_client": {
+        "title": "Yetkisiz istemci",
+        "description": "Bu istemcinin istenen yetkilendirme yöntemini kullanmasına izin verilmiyor."
+      },
+      "access_denied": {
+        "title": "Erişim reddedildi",
+        "description": "Yetkilendirme isteği reddedildi."
+      },
+      "unsupported_response_type": {
+        "title": "Desteklenmeyen yanıt türü",
+        "description": "İstenen OAuth 2.0 yanıt türü desteklenmiyor."
+      },
+      "invalid_scope": {
+        "title": "Geçersiz kapsam",
+        "description": "İstenen kapsam (scope) geçersiz, bilinmiyor, hatalı veya bu istemci için izinli değil."
+      },
+      "invalid_token": {
+        "title": "Geçersiz belirteç",
+        "description": "Erişim belirteci geçersiz, süresi dolmuş veya iptal edilmiş."
+      },
+      "insufficient_scope": {
+        "title": "Yetersiz kapsam",
+        "description": "Erişim belirtecinin bu istek için yeterli yetkisi bulunmuyor."
+      },
+      "unsupported_grant_type": {
+        "title": "Desteklenmeyen yetkilendirme türü",
+        "description": "İstenen OAuth 2.0 grant türü desteklenmiyor."
+      },
+      "unsupported_token_type": {
+        "title": "Desteklenmeyen belirteç türü",
+        "description": "Belirtilen token türü bu işlem için desteklenmiyor."
+      },
+      "invalid_dpop_proof": {
+        "title": "Geçersiz DPoP kanıtı",
+        "description": "DPoP kanıtı geçersiz."
+      },
+      "temporarily_unavailable": {
+        "title": "Hizmet geçici olarak kullanılamıyor",
+        "description": "Yetkilendirme hizmeti şu anda isteği işleyemiyor. Lütfen daha sonra tekrar deneyin."
+      },
+      "server_error": {
+        "title": "İstek tamamlanamadı",
+        "description": "İstek işlenirken beklenmeyen bir hata oluştu."
+      },
+      "not_found": {
+        "title": "Sayfa bulunamadı",
+        "description": "İstenen sayfa bulunamadı."
+      }
+    }
   }
 }

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
+import io.github.susimsek.springauthserversamples.security.AuthorizationEndpointErrorResponseHandler;
 import io.github.susimsek.springauthserversamples.security.LocalizedOAuth2ErrorResponseHandler;
 import io.github.susimsek.springauthserversamples.security.OAuth2KeyJwkSource;
 import io.github.susimsek.springauthserversamples.service.OAuth2KeyService;
@@ -17,7 +18,9 @@ class AuthorizationServerConfigTest {
 
     private final AuthorizationServerConfig config =
             new AuthorizationServerConfig(
-                    applicationProperties, mock(LocalizedOAuth2ErrorResponseHandler.class));
+                    applicationProperties,
+                    mock(AuthorizationEndpointErrorResponseHandler.class),
+                    mock(LocalizedOAuth2ErrorResponseHandler.class));
 
     @Test
     void createsAuthorizationServerSettingsFromProperties() {
