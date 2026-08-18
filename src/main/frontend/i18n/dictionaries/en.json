@@ -27,5 +27,23 @@
     "system": "System",
     "light": "Light",
     "dark": "Dark"
+  },
+  "consent": {
+    "eyebrow": "Authorization request",
+    "title": "Authorization consent",
+    "subtitle": "Choose the permissions you want to grant to this application.",
+    "clientLabel": "Application",
+    "permissions": "Requested permissions",
+    "permissionsHelp": "You can review and deselect any permission before continuing.",
+    "submit": "Allow access",
+    "invalidRequest": "The authorization request is missing required information.",
+    "protectedBy": "Protected by Spring Security",
+    "scopeDefault": "Allow this application to use this permission.",
+    "scopeDescriptions": {
+      "openid": "Confirm your identity using OpenID Connect.",
+      "profile": "Access your basic profile information.",
+      "user.read": "Read your user information.",
+      "user.write": "Update your user information."
+    }
   }
 }

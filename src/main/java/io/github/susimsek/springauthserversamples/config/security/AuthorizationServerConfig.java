@@ -44,6 +44,9 @@ public class AuthorizationServerConfig {
                         authorizationServer ->
                                 authorizationServer
                                         .oidc(Customizer.withDefaults())
+                                        .authorizationEndpoint(
+                                                authorizationEndpoint ->
+                                                        authorizationEndpoint.consentPage("/consent"))
                                         .clientAuthentication(
                                                 clientAuthentication ->
                                                         clientAuthentication.errorResponseHandler(

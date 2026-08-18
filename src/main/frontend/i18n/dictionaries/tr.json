@@ -27,5 +27,23 @@
     "system": "Sistem",
     "light": "Açık",
     "dark": "Koyu"
+  },
+  "consent": {
+    "eyebrow": "Yetkilendirme isteği",
+    "title": "Yetkilendirme onayı",
+    "subtitle": "Bu uygulamaya vermek istediğiniz izinleri seçin.",
+    "clientLabel": "Uygulama",
+    "permissions": "İstenen izinler",
+    "permissionsHelp": "Devam etmeden önce izinleri inceleyebilir ve istemediklerinizi kaldırabilirsiniz.",
+    "submit": "Erişime izin ver",
+    "invalidRequest": "Yetkilendirme isteğinde gerekli bilgiler eksik.",
+    "protectedBy": "Spring Security ile korunmaktadır",
+    "scopeDefault": "Bu uygulamanın bu izni kullanmasına izin verin.",
+    "scopeDescriptions": {
+      "openid": "OpenID Connect ile kimliğinizi doğrular.",
+      "profile": "Temel profil bilgilerinize erişir.",
+      "user.read": "Kullanıcı bilgilerinizi okur.",
+      "user.write": "Kullanıcı bilgilerinizi günceller."
+    }
   }
 }
