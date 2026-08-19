@@ -60,10 +60,6 @@ export function LoginForm({ dictionary }: LoginFormProps) {
             <FontAwesomeIcon icon={faArrowRight} />
           </Button>
         </Form>
-
-        <div className="border-top mt-4 pt-3 text-center">
-          <small className="text-body-secondary">{dictionary.login.protectedBy}</small>
-        </div>
       </Card.Body>
     </Card>
   );

@@ -72,7 +72,6 @@
 		<dependency>
 			<groupId>org.hibernate.orm</groupId>
 			<artifactId>hibernate-jcache</artifactId>
-			<version>${hibernate.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.ben-manes.caffeine</groupId>
@@ -249,7 +248,10 @@
 					<failsOnError>true</failsOnError>
 					<linkXRef>false</linkXRef>
 					<excludes>.git/**/*,target/**/*</excludes>
-					<sourceDirectories>./</sourceDirectories>
+					<sourceDirectories>
+						<sourceDirectory>${project.build.sourceDirectory}</sourceDirectory>
+						<sourceDirectory>${project.build.testSourceDirectory}</sourceDirectory>
+					</sourceDirectories>
 				</configuration>
 				<executions>
 					<execution>

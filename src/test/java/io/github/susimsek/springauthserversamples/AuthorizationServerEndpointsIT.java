@@ -144,7 +144,18 @@ class AuthorizationServerEndpointsIT {
         assertThat(authorizationResponse.statusCode()).isEqualTo(302);
 
         URI loginUri = resolveLocation(authorizationUri, authorizationResponse);
-        HttpResponse<String> loginPage = browser.get(loginUri);
+        HttpResponse<String> loginResponsePage = browser.get(loginUri);
+
+        URI localizedLoginUri = loginUri;
+        if (isRedirect(loginResponsePage)) {
+            localizedLoginUri = resolveLocation(loginUri, loginResponsePage);
+            assertThat(localizedLoginUri.getPath()).matches("/(en|tr)/login");
+        }
+
+        HttpResponse<String> loginPage =
+                localizedLoginUri.equals(loginUri)
+                        ? loginResponsePage
+                        : browser.get(localizedLoginUri);
         assertThat(loginPage.statusCode()).isEqualTo(200);
 
         Map<String, List<String>> loginForm = parseForm(loginPage.body());
@@ -162,7 +173,13 @@ class AuthorizationServerEndpointsIT {
                 .allSatisfy(session -> assertThat(session.getAttributes()).isNotEmpty());
 
         URI postLoginUri = resolveLocation(URI.create(url("/login")), loginResponse);
-        HttpResponse<String> consentPage = browser.get(postLoginUri);
+        HttpResponse<String> postLoginResponse = browser.get(postLoginUri);
+        assertThat(postLoginResponse.statusCode()).isEqualTo(302);
+
+        URI consentUri = resolveLocation(postLoginUri, postLoginResponse);
+        assertThat(consentUri.getPath()).isEqualTo("/consent");
+
+        HttpResponse<String> consentPage = browser.get(consentUri);
         assertThat(consentPage.statusCode()).isEqualTo(200);
         assertThat(consentPage.body()).contains("Consent");
         assertThat(
@@ -170,7 +187,13 @@ class AuthorizationServerEndpointsIT {
                                 "admin", System.currentTimeMillis()))
                 .isNotEmpty();
 
-        Map<String, List<String>> consentForm = parseForm(consentPage.body());
+        Map<String, String> consentParameters = queryParameters(consentUri);
+        assertThat(consentParameters.get("client_id")).isEqualTo("pkce-client");
+        assertThat(consentParameters.get("state")).isNotBlank();
+
+        Map<String, List<String>> consentForm = new LinkedHashMap<>();
+        consentForm.put("client_id", List.of(consentParameters.get("client_id")));
+        consentForm.put("state", List.of(consentParameters.get("state")));
         consentForm.put("scope", List.of("openid", "profile"));
 
         HttpResponse<String> consentResponse =
@@ -377,6 +400,10 @@ class AuthorizationServerEndpointsIT {
 
     private static String urlEncode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
+    private static boolean isRedirect(HttpResponse<?> response) {
+        return response.statusCode() >= 300 && response.statusCode() < 400;
     }
 
     private static URI resolveLocation(URI requestUri, HttpResponse<?> response) {
