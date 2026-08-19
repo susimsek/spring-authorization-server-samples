@@ -2,13 +2,13 @@ package io.github.susimsek.springauthserversamples.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.susimsek.springauthserversamples.config.security.SecurityJsonMapper;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
-import org.springframework.security.jackson.SecurityJacksonModules;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2DeviceCode;
@@ -23,17 +23,13 @@ import org.springframework.security.oauth2.server.authorization.OAuth2Authorizat
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
-import tools.jackson.databind.json.JsonMapper;
 
 class AuthorizationMapperTest {
 
     private final AuthorizationMapper mapper = new AuthorizationMapper();
     private final AuthorizationServerMapperSupport support =
             new AuthorizationServerMapperSupport(
-                    JsonMapper.builder()
-                            .addModules(
-                                    SecurityJacksonModules.getModules(getClass().getClassLoader()))
-                            .build());
+                    new SecurityJsonMapper(getClass().getClassLoader()));
 
     @Test
     void mapsAuthorizationRoundTripWithAllTokenTypes() {

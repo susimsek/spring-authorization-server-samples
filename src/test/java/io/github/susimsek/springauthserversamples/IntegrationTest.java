@@ -14,5 +14,5 @@ import org.springframework.boot.test.context.SpringBootTest;
 @Inherited
 @SpringBootTest(
         classes = SpringAuthorizationServerSamplesApplication.class,
-        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+        webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 public @interface IntegrationTest {}

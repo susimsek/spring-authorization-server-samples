@@ -3,6 +3,7 @@ package io.github.susimsek.springauthserversamples.mapper;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.susimsek.springauthserversamples.config.security.SecurityJsonMapper;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentId;
 import java.time.Duration;
 import java.util.LinkedHashSet;
@@ -10,21 +11,16 @@ import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.jackson.SecurityJacksonModules;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
-import tools.jackson.databind.json.JsonMapper;
 
 class AuthorizationServerMapperSupportTest {
 
     private final AuthorizationServerMapperSupport support =
             new AuthorizationServerMapperSupport(
-                    JsonMapper.builder()
-                            .addModules(
-                                    SecurityJacksonModules.getModules(getClass().getClassLoader()))
-                            .build());
+                    new SecurityJsonMapper(getClass().getClassLoader()));
 
     @Test
     void readsAndWritesAuthorizationServerTypes() {
