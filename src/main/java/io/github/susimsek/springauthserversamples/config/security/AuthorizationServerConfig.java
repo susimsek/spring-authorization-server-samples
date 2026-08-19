@@ -3,6 +3,7 @@ package io.github.susimsek.springauthserversamples.config.security;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
+import io.github.susimsek.springauthserversamples.security.AuthorizationEndpointErrorResponseHandler;
 import io.github.susimsek.springauthserversamples.security.LocalizedOAuth2ErrorResponseHandler;
 import io.github.susimsek.springauthserversamples.security.OAuth2KeyJwkSource;
 import io.github.susimsek.springauthserversamples.service.OAuth2KeyService;
@@ -30,6 +31,8 @@ public class AuthorizationServerConfig {
     private static final MediaTypeRequestMatcher HTML_REQUEST_MATCHER = htmlRequestMatcher();
 
     private final ApplicationProperties applicationProperties;
+    private final AuthorizationEndpointErrorResponseHandler
+            authorizationEndpointErrorResponseHandler;
     private final LocalizedOAuth2ErrorResponseHandler localizedOAuth2ErrorResponseHandler;
 
     @Bean
@@ -44,6 +47,12 @@ public class AuthorizationServerConfig {
                         authorizationServer ->
                                 authorizationServer
                                         .oidc(Customizer.withDefaults())
+                                        .authorizationEndpoint(
+                                                authorizationEndpoint ->
+                                                        authorizationEndpoint
+                                                                .consentPage("/consent")
+                                                                .errorResponseHandler(
+                                                                        authorizationEndpointErrorResponseHandler))
                                         .clientAuthentication(
                                                 clientAuthentication ->
                                                         clientAuthentication.errorResponseHandler(

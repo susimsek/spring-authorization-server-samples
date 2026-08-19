@@ -19,13 +19,99 @@
     "hidePassword": "Hide password",
     "submit": "Sign in",
     "invalidCredentials": "The username or password is incorrect.",
-    "loggedOut": "You have signed out successfully.",
-    "protectedBy": "Protected by Spring Security"
+    "loggedOut": "You have signed out successfully."
   },
   "theme": {
     "label": "Theme",
     "system": "System",
     "light": "Light",
     "dark": "Dark"
+  },
+  "consent": {
+    "eyebrow": "Authorization request",
+    "title": "Authorization consent",
+    "subtitle": "Choose the permissions you want to grant to this application.",
+    "clientLabel": "Application",
+    "permissions": "Requested permissions",
+    "permissionsHelp": "You can review and deselect any permission before continuing.",
+    "submit": "Allow access",
+    "invalidRequest": "The authorization request is missing required information.",
+    "scopeDefault": "Allow this application to use this permission.",
+    "scopeDescriptions": {
+      "openid": "Confirm your identity using OpenID Connect.",
+      "profile": "Access your basic profile information.",
+      "user.read": "Read your user information.",
+      "user.write": "Update your user information."
+    },
+    "deny": "Deny"
+  },
+  "error": {
+    "eyebrow": "Authorization error",
+    "types": {
+      "invalid_request": {
+        "title": "Invalid request",
+        "description": "The request is missing required information or contains an invalid parameter."
+      },
+      "invalid_client": {
+        "title": "Invalid client",
+        "description": "The client could not be authenticated or the client information is invalid."
+      },
+      "invalid_grant": {
+        "title": "Invalid authorization grant",
+        "description": "The authorization grant is invalid, expired, revoked, or does not match the request."
+      },
+      "invalid_redirect_uri": {
+        "title": "Invalid redirect URI",
+        "description": "One or more redirect URIs in the request are invalid."
+      },
+      "unauthorized_client": {
+        "title": "Unauthorized client",
+        "description": "This client is not authorized to use the requested authorization method."
+      },
+      "access_denied": {
+        "title": "Access denied",
+        "description": "The authorization request was denied."
+      },
+      "unsupported_response_type": {
+        "title": "Unsupported response type",
+        "description": "The requested OAuth 2.0 response type is not supported."
+      },
+      "invalid_scope": {
+        "title": "Invalid scope",
+        "description": "The requested scope is invalid, unknown, malformed, or not allowed for this client."
+      },
+      "invalid_token": {
+        "title": "Invalid token",
+        "description": "The access token is invalid, expired, or revoked."
+      },
+      "insufficient_scope": {
+        "title": "Insufficient scope",
+        "description": "The access token does not have sufficient permissions for this request."
+      },
+      "unsupported_grant_type": {
+        "title": "Unsupported grant type",
+        "description": "The requested OAuth 2.0 grant type is not supported."
+      },
+      "unsupported_token_type": {
+        "title": "Unsupported token type",
+        "description": "The provided token type is not supported for this operation."
+      },
+      "invalid_dpop_proof": {
+        "title": "Invalid DPoP proof",
+        "description": "The DPoP proof is invalid."
+      },
+      "temporarily_unavailable": {
+        "title": "Service temporarily unavailable",
+        "description": "The authorization service cannot process the request right now. Please try again later."
+      },
+      "server_error": {
+        "title": "Request could not be completed",
+        "description": "An unexpected error occurred while processing the request."
+      },
+      "not_found": {
+        "title": "Page not found",
+        "description": "The requested page could not be found."
+      }
+    }
   }
 }

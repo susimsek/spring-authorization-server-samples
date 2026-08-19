@@ -1,5 +1,6 @@
 package io.github.susimsek.springauthserversamples.mapper;
 
+import io.github.susimsek.springauthserversamples.config.security.SecurityJsonMapper;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentId;
 import java.util.Arrays;
 import java.util.Collections;
@@ -16,7 +17,6 @@ import org.springframework.security.oauth2.server.authorization.settings.TokenSe
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.json.JsonMapper;
 
 @Component
 public class AuthorizationServerMapperSupport {
@@ -24,10 +24,10 @@ public class AuthorizationServerMapperSupport {
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE =
             new TypeReference<>() {};
 
-    private final JsonMapper objectMapper;
+    private final SecurityJsonMapper securityJsonMapper;
 
-    public AuthorizationServerMapperSupport(JsonMapper objectMapper) {
-        this.objectMapper = objectMapper;
+    public AuthorizationServerMapperSupport(SecurityJsonMapper securityJsonMapper) {
+        this.securityJsonMapper = securityJsonMapper;
     }
 
     public AuthorizationConsentId newAuthorizationConsentId(
@@ -84,7 +84,7 @@ public class AuthorizationServerMapperSupport {
             return null;
         }
         try {
-            return objectMapper.writeValueAsString(value);
+            return securityJsonMapper.delegate().writeValueAsString(value);
         } catch (Exception ex) {
             throw new IllegalStateException("Failed to serialize authorization server value", ex);
         }
@@ -95,7 +95,7 @@ public class AuthorizationServerMapperSupport {
             return Collections.emptyMap();
         }
         try {
-            return objectMapper.readValue(value, MAP_TYPE_REFERENCE);
+            return securityJsonMapper.delegate().readValue(value, MAP_TYPE_REFERENCE);
         } catch (Exception ex) {
             throw new IllegalStateException("Failed to deserialize authorization server value", ex);
         }

@@ -11,6 +11,10 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.core.convert.ConversionService;
+import org.springframework.core.convert.support.GenericConversionService;
+import org.springframework.core.serializer.support.DeserializingConverter;
+import org.springframework.core.serializer.support.SerializingConverter;
 import org.springframework.session.DelegatingIndexResolver;
 import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.session.FlushMode;
@@ -19,19 +23,17 @@ import org.springframework.session.MapSession;
 import org.springframework.session.PrincipalNameIndexResolver;
 import org.springframework.session.SaveMode;
 import org.springframework.session.Session;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 
-@Service
 public class JpaIndexedSessionRepository implements FindByIndexNameSessionRepository<JpaSession> {
 
     public static final String DEFAULT_CLEANUP_CRON = "0 * * * * *";
 
     private final UserSessionRepository sessionRepository;
-    private final SessionAttributeSerializer attributeSerializer;
+    private ConversionService conversionService = defaultConversionService();
     private final TransactionTemplate transactionTemplate;
     private IndexResolver<Session> indexResolver =
             new DelegatingIndexResolver<>(new PrincipalNameIndexResolver<>());
@@ -42,10 +44,8 @@ public class JpaIndexedSessionRepository implements FindByIndexNameSessionReposi
 
     public JpaIndexedSessionRepository(
             UserSessionRepository sessionRepository,
-            SessionAttributeSerializer attributeSerializer,
             PlatformTransactionManager transactionManager) {
         this.sessionRepository = sessionRepository;
-        this.attributeSerializer = attributeSerializer;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.transactionTemplate.setPropagationBehavior(
                 TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -138,6 +138,11 @@ public class JpaIndexedSessionRepository implements FindByIndexNameSessionReposi
         this.saveMode = saveMode;
     }
 
+    public void setConversionService(ConversionService conversionService) {
+        Assert.notNull(conversionService, "conversionService cannot be null");
+        this.conversionService = conversionService;
+    }
+
     void flushIfRequired(JpaSession session) {
         if (flushMode == FlushMode.IMMEDIATE) {
             save(session);
@@ -173,9 +178,7 @@ public class JpaIndexedSessionRepository implements FindByIndexNameSessionReposi
                                 Object attribute = delegate.getAttribute(attributeName);
                                 if (attribute != null) {
                                     entity.getAttributes()
-                                            .put(
-                                                    attributeName,
-                                                    attributeSerializer.serialize(attribute));
+                                            .put(attributeName, serializeAttribute(attribute));
                                 }
                             });
         } else {
@@ -186,9 +189,7 @@ public class JpaIndexedSessionRepository implements FindByIndexNameSessionReposi
                                     entity.getAttributes().remove(attributeName);
                                 } else {
                                     entity.getAttributes()
-                                            .put(
-                                                    attributeName,
-                                                    attributeSerializer.serialize(attribute));
+                                            .put(attributeName, serializeAttribute(attribute));
                                 }
                             });
         }
@@ -212,9 +213,25 @@ public class JpaIndexedSessionRepository implements FindByIndexNameSessionReposi
         entity.getAttributes()
                 .forEach(
                         (attributeName, bytes) ->
-                                delegate.setAttribute(
-                                        attributeName, attributeSerializer.deserialize(bytes)));
+                                delegate.setAttribute(attributeName, deserializeAttribute(bytes)));
         return new JpaSession(delegate, this, false);
+    }
+
+    private byte[] serializeAttribute(Object attribute) {
+        byte[] bytes = conversionService.convert(attribute, byte[].class);
+        Assert.state(bytes != null, "Session attribute serialization returned null");
+        return bytes;
+    }
+
+    private Object deserializeAttribute(byte[] bytes) {
+        return conversionService.convert(bytes, Object.class);
+    }
+
+    private static ConversionService defaultConversionService() {
+        GenericConversionService conversionService = new GenericConversionService();
+        conversionService.addConverter(Object.class, byte[].class, new SerializingConverter());
+        conversionService.addConverter(byte[].class, Object.class, new DeserializingConverter());
+        return conversionService;
     }
 
     private static long expiryTime(Session session) {
