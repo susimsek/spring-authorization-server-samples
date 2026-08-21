@@ -2,9 +2,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "@fortawesome/fontawesome-svg-core/styles.css";
 import "./styles.css";
 
-import { config } from "@fortawesome/fontawesome-svg-core";
-
-config.autoAddCss = false;
+import { AdminAuthProvider } from "@/components/admin/AdminAuthProvider";
 
 const themeScript = `
 (() => {
@@ -29,7 +27,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <meta name="color-scheme" content="light dark" />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body>{children}</body>
+      <body>
+        <AdminAuthProvider>{children}</AdminAuthProvider>
+      </body>
     </html>
   );
 }

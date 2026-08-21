@@ -17,6 +17,8 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Service
 @RequiredArgsConstructor
@@ -30,7 +32,17 @@ public class DomainOAuth2AuthorizationService implements OAuth2AuthorizationServ
     @Override
     @Transactional
     public void save(OAuth2Authorization authorization) {
-        authorizationRepository.save(authorizationMapper.toEntity(authorization, mapperSupport));
+        AuthorizationEntity entity = authorizationMapper.toEntity(authorization, mapperSupport);
+        String sessionId = currentSessionId();
+        if (sessionId != null) {
+            entity.setSessionId(sessionId);
+        } else {
+            authorizationRepository
+                    .findById(authorization.getId())
+                    .map(AuthorizationEntity::getSessionId)
+                    .ifPresent(entity::setSessionId);
+        }
+        authorizationRepository.save(entity);
     }
 
     @Override
@@ -85,5 +97,14 @@ public class DomainOAuth2AuthorizationService implements OAuth2AuthorizationServ
                     "Registered client not found: " + entity.getRegisteredClientId());
         }
         return authorizationMapper.toObject(entity, registeredClient, mapperSupport);
+    }
+
+    private static String currentSessionId() {
+        if (!(RequestContextHolder.getRequestAttributes()
+                instanceof ServletRequestAttributes attributes)) {
+            return null;
+        }
+        var session = attributes.getRequest().getSession(false);
+        return session != null ? session.getId() : null;
     }
 }

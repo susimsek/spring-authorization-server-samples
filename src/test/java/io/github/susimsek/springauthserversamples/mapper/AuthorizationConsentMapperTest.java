@@ -2,13 +2,12 @@ package io.github.susimsek.springauthserversamples.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.susimsek.springauthserversamples.config.security.SecurityJsonMapper;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.jackson.SecurityJacksonModules;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsent;
-import tools.jackson.databind.json.JsonMapper;
 
 class AuthorizationConsentMapperTest {
 
@@ -16,10 +15,7 @@ class AuthorizationConsentMapperTest {
             Mappers.getMapper(AuthorizationConsentMapper.class);
     private final AuthorizationServerMapperSupport support =
             new AuthorizationServerMapperSupport(
-                    JsonMapper.builder()
-                            .addModules(
-                                    SecurityJacksonModules.getModules(getClass().getClassLoader()))
-                            .build());
+                    new SecurityJsonMapper(getClass().getClassLoader()));
 
     @Test
     void mapsAuthorizationConsentRoundTrip() {

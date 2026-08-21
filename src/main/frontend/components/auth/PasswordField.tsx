@@ -2,7 +2,7 @@
 
 import { faEye, faEyeSlash, faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useState } from "react";
+import { type ComponentProps, useState } from "react";
 import { Button, Form, InputGroup } from "react-bootstrap";
 
 type PasswordFieldProps = {
@@ -10,9 +10,16 @@ type PasswordFieldProps = {
   placeholder: string;
   showLabel: string;
   hideLabel: string;
+  inputProps?: ComponentProps<typeof Form.Control>;
 };
 
-export function PasswordField({ label, placeholder, showLabel, hideLabel }: PasswordFieldProps) {
+export function PasswordField({
+  label,
+  placeholder,
+  showLabel,
+  hideLabel,
+  inputProps,
+}: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);
 
   return (
@@ -23,11 +30,10 @@ export function PasswordField({ label, placeholder, showLabel, hideLabel }: Pass
           <FontAwesomeIcon icon={faLock} />
         </InputGroup.Text>
         <Form.Control
-          name="password"
           type={visible ? "text" : "password"}
           autoComplete="current-password"
           placeholder={placeholder}
-          required
+          {...inputProps}
         />
         <Button
           variant="outline-secondary"

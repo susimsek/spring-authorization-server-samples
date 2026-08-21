@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
@@ -47,7 +48,17 @@ public class SecurityConfig {
                 .authorizeHttpRequests(
                         authorize ->
                                 authorize
+                                        .requestMatchers("/avatars/**")
+                                        .permitAll()
+                                        .requestMatchers("/account/avatar")
+                                        .authenticated()
+                                        .requestMatchers("/api/account/avatar")
+                                        .hasAuthority("SCOPE_profile")
                                         .requestMatchers(
+                                                "/admin",
+                                                "/admin/**",
+                                                "/en/admin/**",
+                                                "/tr/admin/**",
                                                 "/",
                                                 "/login",
                                                 "/login/**",
@@ -71,6 +82,8 @@ public class SecurityConfig {
                                                 NON_HTML_REQUEST_MATCHER)
                                         .accessDeniedHandler(localizedAccessDeniedHandler))
                 .formLogin(formLogin -> formLogin.loginPage("/login").permitAll());
+
+        http.oauth2ResourceServer(resourceServer -> resourceServer.jwt(Customizer.withDefaults()));
 
         return http.build();
     }

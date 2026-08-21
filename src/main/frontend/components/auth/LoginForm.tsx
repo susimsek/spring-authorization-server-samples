@@ -3,7 +3,10 @@
 import { faArrowRight, faUser } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, type FormEvent } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { Alert, Button, Card, Form, InputGroup, Stack } from "react-bootstrap";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
@@ -15,6 +18,25 @@ type LoginFormProps = {
 };
 
 export function LoginForm({ dictionary }: LoginFormProps) {
+  const schema = z.object({
+    username: z.string().trim().min(1, dictionary.admin.common.validation.required),
+    password: z.string().min(1, dictionary.admin.common.validation.required),
+  });
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<{ username: string; password: string }>({
+    resolver: zodResolver(schema),
+    mode: "onBlur",
+  });
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    void handleSubmit(() => form.submit())(event);
+  };
+
   return (
     <Card className="border-0 shadow-sm">
       <Card.Body className="p-4 p-md-5">
@@ -30,7 +52,7 @@ export function LoginForm({ dictionary }: LoginFormProps) {
           <LoginStatusAlerts dictionary={dictionary} />
         </Suspense>
 
-        <Form method="post" action="/login">
+        <Form method="post" action="/login" onSubmit={submit}>
           <Form.Group className="mb-3" controlId="username">
             <Form.Label>{dictionary.login.username}</Form.Label>
             <InputGroup>
@@ -38,14 +60,15 @@ export function LoginForm({ dictionary }: LoginFormProps) {
                 <FontAwesomeIcon icon={faUser} />
               </InputGroup.Text>
               <Form.Control
-                name="username"
                 type="text"
                 autoComplete="username"
                 placeholder={dictionary.login.usernamePlaceholder}
-                required
                 autoFocus
+                isInvalid={Boolean(errors.username)}
+                {...register("username")}
               />
             </InputGroup>
+            <Form.Control.Feedback type="invalid">{errors.username?.message}</Form.Control.Feedback>
           </Form.Group>
 
           <PasswordField
@@ -53,17 +76,17 @@ export function LoginForm({ dictionary }: LoginFormProps) {
             placeholder={dictionary.login.passwordPlaceholder}
             showLabel={dictionary.login.showPassword}
             hideLabel={dictionary.login.hidePassword}
+            inputProps={{ isInvalid: Boolean(errors.password), ...register("password") }}
           />
+          {errors.password && (
+            <div className="invalid-feedback d-block">{errors.password.message}</div>
+          )}
 
           <Button type="submit" size="lg" className="w-100">
             <span className="me-2">{dictionary.login.submit}</span>
             <FontAwesomeIcon icon={faArrowRight} />
           </Button>
         </Form>
-
-        <div className="border-top mt-4 pt-3 text-center">
-          <small className="text-body-secondary">{dictionary.login.protectedBy}</small>
-        </div>
       </Card.Body>
     </Card>
   );

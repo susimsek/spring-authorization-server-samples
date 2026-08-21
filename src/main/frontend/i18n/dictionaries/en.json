@@ -19,13 +19,249 @@
     "hidePassword": "Hide password",
     "submit": "Sign in",
     "invalidCredentials": "The username or password is incorrect.",
-    "loggedOut": "You have signed out successfully.",
-    "protectedBy": "Protected by Spring Security"
+    "loggedOut": "You have signed out successfully."
   },
   "theme": {
     "label": "Theme",
     "system": "System",
     "light": "Light",
     "dark": "Dark"
+  },
+  "consent": {
+    "eyebrow": "Authorization request",
+    "title": "Authorization consent",
+    "subtitle": "Choose the permissions you want to grant to this application.",
+    "clientLabel": "Application",
+    "permissions": "Requested permissions",
+    "permissionsHelp": "You can review and deselect any permission before continuing.",
+    "scopeRequired": "Select at least one permission to continue.",
+    "submit": "Allow access",
+    "invalidRequest": "The authorization request is missing required information.",
+    "scopeDefault": "Allow this application to use this permission.",
+    "scopeDescriptions": {
+      "openid": "Confirm your identity using OpenID Connect.",
+      "profile": "Access your basic profile information.",
+      "user.read": "Read your user information.",
+      "user.write": "Update your user information."
+    },
+    "deny": "Deny"
+  },
+  "error": {
+    "eyebrow": "Authorization error",
+    "types": {
+      "invalid_request": {
+        "title": "Invalid request",
+        "description": "The request is missing required information or contains an invalid parameter."
+      },
+      "invalid_client": {
+        "title": "Invalid client",
+        "description": "The client could not be authenticated or the client information is invalid."
+      },
+      "invalid_grant": {
+        "title": "Invalid authorization grant",
+        "description": "The authorization grant is invalid, expired, revoked, or does not match the request."
+      },
+      "invalid_redirect_uri": {
+        "title": "Invalid redirect URI",
+        "description": "One or more redirect URIs in the request are invalid."
+      },
+      "unauthorized_client": {
+        "title": "Unauthorized client",
+        "description": "This client is not authorized to use the requested authorization method."
+      },
+      "access_denied": {
+        "title": "Access denied",
+        "description": "The authorization request was denied."
+      },
+      "unsupported_response_type": {
+        "title": "Unsupported response type",
+        "description": "The requested OAuth 2.0 response type is not supported."
+      },
+      "invalid_scope": {
+        "title": "Invalid scope",
+        "description": "The requested scope is invalid, unknown, malformed, or not allowed for this client."
+      },
+      "invalid_token": {
+        "title": "Invalid token",
+        "description": "The access token is invalid, expired, or revoked."
+      },
+      "insufficient_scope": {
+        "title": "Insufficient scope",
+        "description": "The access token does not have sufficient permissions for this request."
+      },
+      "unsupported_grant_type": {
+        "title": "Unsupported grant type",
+        "description": "The requested OAuth 2.0 grant type is not supported."
+      },
+      "unsupported_token_type": {
+        "title": "Unsupported token type",
+        "description": "The provided token type is not supported for this operation."
+      },
+      "invalid_dpop_proof": {
+        "title": "Invalid DPoP proof",
+        "description": "The DPoP proof is invalid."
+      },
+      "temporarily_unavailable": {
+        "title": "Service temporarily unavailable",
+        "description": "The authorization service cannot process the request right now. Please try again later."
+      },
+      "server_error": {
+        "title": "Request could not be completed",
+        "description": "An unexpected error occurred while processing the request."
+      },
+      "not_found": {
+        "title": "Page not found",
+        "description": "The requested page could not be found."
+      }
+    }
+  },
+  "admin": {
+    "product": "Authorization Server Admin",
+    "manage": "Manage",
+    "nav": {
+      "dashboard": "Dashboard",
+      "clients": "Clients",
+      "users": "Users",
+      "roles": "Roles",
+      "sessions": "Sessions",
+      "consents": "Consents",
+      "keys": "Keys"
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "subtitle": "Manage authorization server configuration and security resources."
+    },
+    "clients": {
+      "title": "Clients",
+      "subtitle": "Applications registered with this authorization server.",
+      "search": "Search clients",
+      "client": "Client",
+      "grants": "Grant types",
+      "scopes": "Scopes",
+      "security": "Security",
+      "loadError": "Clients could not be loaded.",
+      "empty": "No clients found.",
+      "notFound": "Client could not be found.",
+      "redirectUris": "Redirect URIs",
+      "postLogoutUris": "Post logout redirect URIs",
+      "authMethods": "Authentication methods",
+      "create": "Create client",
+      "createTitle": "Create client",
+      "createSubtitle": "Register a new OAuth 2.0 or OpenID Connect client.",
+      "editTitle": "Edit client",
+      "editSubtitle": "Update client capabilities, redirect URIs, scopes and security settings.",
+      "general": "General",
+      "capabilities": "Capability configuration",
+      "clientId": "Client ID",
+      "clientName": "Client name",
+      "requirePkce": "Require PKCE",
+      "requireConsent": "Require authorization consent",
+      "saveError": "Client could not be saved.",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this client?",
+      "regenerateSecret": "Regenerate secret",
+      "secretTitle": "New client secret",
+      "secretHelp": "Copy this secret now. It will not be shown again.",
+      "secretError": "Client secret could not be regenerated."
+    },
+    "common": {
+      "yes": "Yes",
+      "no": "No",
+      "on": "On",
+      "off": "Off",
+      "save": "Save",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "close": "Close",
+      "logout": "Sign out",
+      "validation": {
+        "required": "This field is required.",
+        "scope": "Enter at least one scope.",
+        "uri": "Enter valid absolute URL values, one per line.",
+        "selection": "Select at least one option.",
+        "clientIdDuplicate": "This client ID is already registered.",
+        "usernameDuplicate": "This username is already registered.",
+        "roleDuplicate": "This role is already registered.",
+        "password": "Password must be at least 8 characters.",
+        "roles": "Select at least one role.",
+        "roleFormat": "Use uppercase ROLE_ names, for example ROLE_AUDITOR."
+      }
+    },
+    "roles": {
+      "title": "Roles",
+      "subtitle": "Manage the roles that can be assigned to users.",
+      "name": "Role name",
+      "create": "Create role",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this role?",
+      "help": "Use uppercase ROLE_ names, for example ROLE_AUDITOR.",
+      "operationError": "The role operation could not be completed."
+    },
+    "resources": {
+      "users": "Users",
+      "sessions": "Sessions",
+      "consents": "Consents",
+      "keys": "Keys",
+      "description": "Manage authorization server resources.",
+      "operationError": "The administration operation could not be completed.",
+      "empty": "No records found.",
+      "rotateKey": "Rotate signing key",
+      "keyRotatedTitle": "Signing key rotated",
+      "keyRotatedHelp": "The new active signing key ID is shown below.",
+      "enable": "Enable",
+      "disable": "Disable",
+      "signOut": "Sign out",
+      "signOutConfirm": "Sign out this session?",
+      "signOutAllConfirm": "Sign out all sessions for this user?",
+      "revoke": "Revoke",
+      "revokeConfirm": "Revoke this authorization consent?",
+      "username": "Username",
+      "avatar": "Avatar",
+      "avatarHelp": "JPEG or PNG up to 2 MiB and 4 megapixels. Stored in the authorization server database.",
+      "uploadAvatar": "Upload avatar",
+      "removeAvatar": "Remove avatar",
+      "removeAvatarConfirm": "Remove this user's avatar?",
+      "roles": "Roles",
+      "status": "Status",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "created": "Created",
+      "lastActive": "Last active",
+      "expires": "Expires",
+      "user": "User",
+      "client": "Client",
+      "grantedScopes": "Granted scopes",
+      "keyId": "Key ID",
+      "type": "Type",
+      "algorithm": "Algorithm",
+      "active": "Active",
+      "passive": "Passive",
+      "createUser": "Create user",
+      "createUserTitle": "Create user",
+      "createUserSubtitle": "Add a user and assign roles.",
+      "editUserTitle": "Edit user",
+      "editUserSubtitle": "Update user details, roles and credentials.",
+      "password": "Password",
+      "newPassword": "New password",
+      "rolesHelp": "Select one or more roles.",
+      "edit": "Edit",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "deleteUserConfirm": "Delete this user and all of their sessions?",
+      "saveError": "User could not be saved.",
+      "notFound": "User could not be found.",
+      "resetPassword": "Reset password",
+      "search": "Search",
+      "all": "All",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page",
+      "of": "of",
+      "records": "records",
+      "authorizations": "Authorizations",
+      "signOutAll": "Sign out all"
+    },
+    "placeholder": "This administration section is ready for the next implementation step."
   }
 }

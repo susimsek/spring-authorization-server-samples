@@ -1,6 +1,8 @@
 package io.github.susimsek.springauthserversamples.repository;
 
 import io.github.susimsek.springauthserversamples.domain.AuthorizationEntity;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -35,4 +37,28 @@ public interface AuthorizationRepository extends JpaRepository<AuthorizationEnti
     Optional<AuthorizationEntity> findByUserCodeValue(String userCodeValue);
 
     Optional<AuthorizationEntity> findByDeviceCodeValue(String deviceCodeValue);
+
+    long deleteByPrincipalName(String principalName);
+
+    long deleteByRegisteredClientId(String registeredClientId);
+
+    long deleteBySessionId(String sessionId);
+
+    long countByPrincipalName(String principalName);
+
+    @Query(
+            "select a.principalName as principalName, count(a) as authorizationCount "
+                    + "from AuthorizationEntity a where a.principalName in :principalNames "
+                    + "group by a.principalName")
+    List<AuthorizationCount> countByPrincipalNameIn(
+            @Param("principalNames") Collection<String> principalNames);
+
+    long deleteByPrincipalNameAndRegisteredClientId(
+            String principalName, String registeredClientId);
+
+    interface AuthorizationCount {
+        String getPrincipalName();
+
+        long getAuthorizationCount();
+    }
 }

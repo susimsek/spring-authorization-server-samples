@@ -35,7 +35,7 @@ class SpaFilterTest {
     }
 
     @Test
-    void forwardsLocaleLessRouteToResolvedLocalizedPage() throws Exception {
+    void redirectsLocaleLessRouteToResolvedLocalizedPage() throws Exception {
         Resource english = mock(Resource.class);
         Resource turkish = mock(Resource.class);
 
@@ -47,12 +47,52 @@ class SpaFilterTest {
         when(english.exists()).thenReturn(true);
 
         when(localeResolver.resolveLocale(request)).thenReturn(Locale.forLanguageTag("tr"));
-        when(request.getRequestDispatcher("/tr/login/index.html")).thenReturn(dispatcher);
         when(turkish.exists()).thenReturn(true);
 
         filter.doFilterInternal(request, response, filterChain);
 
-        verify(dispatcher).forward(request, response);
+        verify(response).sendRedirect("/tr/login");
+        verify(filterChain, never()).doFilter(request, response);
+    }
+
+    @Test
+    void redirectsLocaleLessAdminRouteToLocalizedAdminPage() throws Exception {
+        Resource english = mock(Resource.class);
+        Resource turkish = mock(Resource.class);
+
+        when(request.getRequestURI()).thenReturn("/admin");
+        when(resourceLoader.getResource("classpath:/static/en/admin/index.html"))
+                .thenReturn(english);
+        when(resourceLoader.getResource("classpath:/static/tr/admin/index.html"))
+                .thenReturn(turkish);
+        when(english.exists()).thenReturn(true);
+        when(turkish.exists()).thenReturn(true);
+        when(localeResolver.resolveLocale(request)).thenReturn(Locale.forLanguageTag("tr"));
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(response).sendRedirect("/tr/admin");
+        verify(filterChain, never()).doFilter(request, response);
+    }
+
+    @Test
+    void preservesQueryWhenRedirectingLocaleLessRoute() throws Exception {
+        Resource english = mock(Resource.class);
+        Resource turkish = mock(Resource.class);
+
+        when(request.getRequestURI()).thenReturn("/error");
+        when(request.getQueryString()).thenReturn("type=not_found");
+        when(resourceLoader.getResource("classpath:/static/en/error/index.html"))
+                .thenReturn(english);
+        when(resourceLoader.getResource("classpath:/static/tr/error/index.html"))
+                .thenReturn(turkish);
+        when(english.exists()).thenReturn(true);
+        when(localeResolver.resolveLocale(request)).thenReturn(Locale.forLanguageTag("tr"));
+        when(turkish.exists()).thenReturn(true);
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(response).sendRedirect("/tr/error?type=not_found");
         verify(filterChain, never()).doFilter(request, response);
     }
 
@@ -108,5 +148,60 @@ class SpaFilterTest {
         filter.doFilterInternal(request, response, filterChain);
 
         verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void ignoresUnsafeOrMalformedPaths() throws Exception {
+        when(request.getRequestURI()).thenReturn("/../admin");
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void continuesChainForMissingLocalizedRoute() throws Exception {
+        Resource resource = mock(Resource.class);
+        when(request.getRequestURI()).thenReturn("/tr/login");
+        when(resourceLoader.getResource("classpath:/static/tr/login/index.html"))
+                .thenReturn(resource);
+        when(resource.exists()).thenReturn(false);
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void continuesChainWhenResolvedLocalePageDisappearsBeforeRedirect() throws Exception {
+        Resource english = mock(Resource.class);
+        Resource turkish = mock(Resource.class);
+        when(request.getRequestURI()).thenReturn("/login");
+        when(resourceLoader.getResource("classpath:/static/en/login/index.html"))
+                .thenReturn(english);
+        when(resourceLoader.getResource("classpath:/static/tr/login/index.html"))
+                .thenReturn(turkish);
+        when(english.exists()).thenReturn(true);
+        when(localeResolver.resolveLocale(request)).thenReturn(Locale.forLanguageTag("tr"));
+        when(turkish.exists()).thenReturn(false);
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void removesContextPathAndNormalizesTrailingSlash() throws Exception {
+        Resource resource = mock(Resource.class);
+        when(request.getContextPath()).thenReturn("/server");
+        when(request.getRequestURI()).thenReturn("/server/en/login/");
+        when(resourceLoader.getResource("classpath:/static/en/login/index.html"))
+                .thenReturn(resource);
+        when(resource.exists()).thenReturn(true);
+        when(request.getRequestDispatcher("/en/login/index.html")).thenReturn(dispatcher);
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(dispatcher).forward(request, response);
     }
 }

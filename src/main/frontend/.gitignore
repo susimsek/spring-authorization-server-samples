@@ -1,3 +1,6 @@
 .next/
 out/
 node_modules/
+playwright-report/
+coverage/
+test-results/

@@ -12,4 +12,6 @@
 	<include file="db/changelog/changes/001-create-users.xml"/>
 	<include file="db/changelog/changes/002-create-authorization-server.xml"/>
 	<include file="db/changelog/changes/003-create-user-session.xml"/>
+	<include file="db/changelog/changes/007-create-user-avatars.xml"/>
+	<include file="db/changelog/changes/008-create-admin-events.xml"/>
 </databaseChangeLog>

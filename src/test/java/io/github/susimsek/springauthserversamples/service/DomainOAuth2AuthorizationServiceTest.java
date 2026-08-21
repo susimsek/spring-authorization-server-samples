@@ -49,6 +49,7 @@ class DomainOAuth2AuthorizationServiceTest {
         OAuth2Authorization authorization = authorization();
         AuthorizationEntity entity = new AuthorizationEntity();
         when(authorizationMapper.toEntity(authorization, mapperSupport)).thenReturn(entity);
+        when(authorizationRepository.findById("auth-1")).thenReturn(Optional.empty());
 
         service.save(authorization);
         service.remove(authorization);

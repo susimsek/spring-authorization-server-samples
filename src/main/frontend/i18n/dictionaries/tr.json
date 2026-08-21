@@ -19,13 +19,249 @@
     "hidePassword": "Şifreyi gizle",
     "submit": "Giriş yap",
     "invalidCredentials": "Kullanıcı adı veya şifre hatalı.",
-    "loggedOut": "Başarıyla çıkış yaptınız.",
-    "protectedBy": "Spring Security ile korunmaktadır"
+    "loggedOut": "Başarıyla çıkış yaptınız."
   },
   "theme": {
     "label": "Tema",
     "system": "Sistem",
     "light": "Açık",
     "dark": "Koyu"
+  },
+  "consent": {
+    "eyebrow": "Yetkilendirme isteği",
+    "title": "Yetkilendirme onayı",
+    "subtitle": "Bu uygulamaya vermek istediğiniz izinleri seçin.",
+    "clientLabel": "Uygulama",
+    "permissions": "İstenen izinler",
+    "permissionsHelp": "Devam etmeden önce izinleri inceleyebilir ve istemediklerinizi kaldırabilirsiniz.",
+    "scopeRequired": "Devam etmek için en az bir izin seçin.",
+    "submit": "Erişime izin ver",
+    "invalidRequest": "Yetkilendirme isteğinde gerekli bilgiler eksik.",
+    "scopeDefault": "Bu uygulamanın bu izni kullanmasına izin verin.",
+    "scopeDescriptions": {
+      "openid": "OpenID Connect ile kimliğinizi doğrular.",
+      "profile": "Temel profil bilgilerinize erişir.",
+      "user.read": "Kullanıcı bilgilerinizi okur.",
+      "user.write": "Kullanıcı bilgilerinizi günceller."
+    },
+    "deny": "Reddet"
+  },
+  "error": {
+    "eyebrow": "Yetkilendirme hatası",
+    "types": {
+      "invalid_request": {
+        "title": "Geçersiz istek",
+        "description": "İstekte gerekli bilgiler eksik veya geçersiz bir parametre bulunuyor."
+      },
+      "invalid_client": {
+        "title": "Geçersiz istemci",
+        "description": "İstemci doğrulanamadı veya istemci bilgileri geçersiz."
+      },
+      "invalid_grant": {
+        "title": "Geçersiz yetkilendirme",
+        "description": "Yetkilendirme bilgisi geçersiz, süresi dolmuş, iptal edilmiş veya istekle eşleşmiyor."
+      },
+      "invalid_redirect_uri": {
+        "title": "Geçersiz yönlendirme adresi",
+        "description": "İstekteki bir veya daha fazla yönlendirme adresi (redirect_uri) geçersiz."
+      },
+      "unauthorized_client": {
+        "title": "Yetkisiz istemci",
+        "description": "Bu istemcinin istenen yetkilendirme yöntemini kullanmasına izin verilmiyor."
+      },
+      "access_denied": {
+        "title": "Erişim reddedildi",
+        "description": "Yetkilendirme isteği reddedildi."
+      },
+      "unsupported_response_type": {
+        "title": "Desteklenmeyen yanıt türü",
+        "description": "İstenen OAuth 2.0 yanıt türü desteklenmiyor."
+      },
+      "invalid_scope": {
+        "title": "Geçersiz kapsam",
+        "description": "İstenen kapsam (scope) geçersiz, bilinmiyor, hatalı veya bu istemci için izinli değil."
+      },
+      "invalid_token": {
+        "title": "Geçersiz belirteç",
+        "description": "Erişim belirteci geçersiz, süresi dolmuş veya iptal edilmiş."
+      },
+      "insufficient_scope": {
+        "title": "Yetersiz kapsam",
+        "description": "Erişim belirtecinin bu istek için yeterli yetkisi bulunmuyor."
+      },
+      "unsupported_grant_type": {
+        "title": "Desteklenmeyen yetkilendirme türü",
+        "description": "İstenen OAuth 2.0 grant türü desteklenmiyor."
+      },
+      "unsupported_token_type": {
+        "title": "Desteklenmeyen belirteç türü",
+        "description": "Belirtilen token türü bu işlem için desteklenmiyor."
+      },
+      "invalid_dpop_proof": {
+        "title": "Geçersiz DPoP kanıtı",
+        "description": "DPoP kanıtı geçersiz."
+      },
+      "temporarily_unavailable": {
+        "title": "Hizmet geçici olarak kullanılamıyor",
+        "description": "Yetkilendirme hizmeti şu anda isteği işleyemiyor. Lütfen daha sonra tekrar deneyin."
+      },
+      "server_error": {
+        "title": "İstek tamamlanamadı",
+        "description": "İstek işlenirken beklenmeyen bir hata oluştu."
+      },
+      "not_found": {
+        "title": "Sayfa bulunamadı",
+        "description": "İstenen sayfa bulunamadı."
+      }
+    }
+  },
+  "admin": {
+    "product": "Authorization Server Yönetimi",
+    "manage": "Yönetim",
+    "nav": {
+      "dashboard": "Genel Bakış",
+      "clients": "İstemciler",
+      "users": "Kullanıcılar",
+      "roles": "Roller",
+      "sessions": "Oturumlar",
+      "consents": "İzinler",
+      "keys": "Anahtarlar"
+    },
+    "dashboard": {
+      "title": "Genel Bakış",
+      "subtitle": "Authorization Server yapılandırmasını ve güvenlik kaynaklarını yönetin."
+    },
+    "clients": {
+      "title": "İstemciler",
+      "subtitle": "Authorization Server üzerinde kayıtlı uygulamalar.",
+      "search": "İstemcilerde ara",
+      "client": "İstemci",
+      "grants": "Grant tipleri",
+      "scopes": "Scope’lar",
+      "security": "Güvenlik",
+      "loadError": "İstemciler yüklenemedi.",
+      "empty": "İstemci bulunamadı.",
+      "notFound": "İstemci bulunamadı.",
+      "redirectUris": "Redirect URI’leri",
+      "postLogoutUris": "Post logout redirect URI’leri",
+      "authMethods": "Kimlik doğrulama yöntemleri",
+      "create": "İstemci oluştur",
+      "createTitle": "İstemci oluştur",
+      "createSubtitle": "Yeni bir OAuth 2.0 veya OpenID Connect istemcisi kaydedin.",
+      "editTitle": "İstemciyi düzenle",
+      "editSubtitle": "İstemci yeteneklerini, redirect URI’lerini, scope’ları ve güvenlik ayarlarını güncelleyin.",
+      "general": "Genel",
+      "capabilities": "Yetenek yapılandırması",
+      "clientId": "Client ID",
+      "clientName": "İstemci adı",
+      "requirePkce": "PKCE zorunlu",
+      "requireConsent": "Kullanıcı izni zorunlu",
+      "saveError": "İstemci kaydedilemedi.",
+      "edit": "Düzenle",
+      "delete": "Sil",
+      "deleteConfirm": "Bu istemci silinsin mi?",
+      "regenerateSecret": "Secret yenile",
+      "secretTitle": "Yeni client secret",
+      "secretHelp": "Bu secret’ı şimdi kopyalayın. Tekrar gösterilmeyecek.",
+      "secretError": "Client secret yenilenemedi."
+    },
+    "common": {
+      "yes": "Evet",
+      "no": "Hayır",
+      "on": "Açık",
+      "off": "Kapalı",
+      "save": "Kaydet",
+      "saving": "Kaydediliyor…",
+      "cancel": "İptal",
+      "close": "Kapat",
+      "logout": "Çıkış yap",
+      "validation": {
+        "required": "Bu alan zorunludur.",
+        "scope": "En az bir scope girin.",
+        "uri": "Her satıra geçerli mutlak URL girin.",
+        "selection": "En az bir seçenek seçin.",
+        "clientIdDuplicate": "Bu client ID zaten kayıtlı.",
+        "usernameDuplicate": "Bu kullanıcı adı zaten kayıtlı.",
+        "roleDuplicate": "Bu rol zaten kayıtlı.",
+        "password": "Parola en az 8 karakter olmalıdır.",
+        "roles": "En az bir rol seçin.",
+        "roleFormat": "ROLE_AUDITOR gibi büyük harfli ROLE_ adları kullanın."
+      }
+    },
+    "roles": {
+      "title": "Roller",
+      "subtitle": "Kullanıcılara atanabilecek rolleri yönetin.",
+      "name": "Rol adı",
+      "create": "Rol oluştur",
+      "delete": "Sil",
+      "deleteConfirm": "Bu rol silinsin mi?",
+      "help": "ROLE_AUDITOR gibi büyük harfli ROLE_ adları kullanın.",
+      "operationError": "Rol işlemi tamamlanamadı."
+    },
+    "resources": {
+      "users": "Kullanıcılar",
+      "sessions": "Oturumlar",
+      "consents": "İzinler",
+      "keys": "Anahtarlar",
+      "description": "Authorization Server kaynaklarını yönetin.",
+      "operationError": "Yönetim işlemi tamamlanamadı.",
+      "empty": "Kayıt bulunamadı.",
+      "rotateKey": "İmza anahtarını döndür",
+      "keyRotatedTitle": "İmza anahtarı döndürüldü",
+      "keyRotatedHelp": "Yeni aktif imza anahtarı ID'si aşağıda gösterilir.",
+      "enable": "Etkinleştir",
+      "disable": "Devre dışı bırak",
+      "signOut": "Oturumu kapat",
+      "signOutConfirm": "Bu oturum kapatılsın mı?",
+      "signOutAllConfirm": "Bu kullanıcının tüm oturumları kapatılsın mı?",
+      "revoke": "İptal et",
+      "revokeConfirm": "Bu yetkilendirme izni iptal edilsin mi?",
+      "username": "Kullanıcı adı",
+      "avatar": "Avatar",
+      "avatarHelp": "En fazla 2 MiB ve 4 megapiksel JPEG veya PNG. Authorization Server veritabanında saklanır.",
+      "uploadAvatar": "Avatar yükle",
+      "removeAvatar": "Avatarı kaldır",
+      "removeAvatarConfirm": "Bu kullanıcının avatarı kaldırılsın mı?",
+      "roles": "Roller",
+      "status": "Durum",
+      "enabled": "Etkin",
+      "disabled": "Devre dışı",
+      "created": "Oluşturulma",
+      "lastActive": "Son etkinlik",
+      "expires": "Bitiş",
+      "user": "Kullanıcı",
+      "client": "İstemci",
+      "grantedScopes": "Verilen scope’lar",
+      "keyId": "Anahtar ID",
+      "type": "Tip",
+      "algorithm": "Algoritma",
+      "active": "Aktif",
+      "passive": "Pasif",
+      "createUser": "Kullanıcı oluştur",
+      "createUserTitle": "Kullanıcı oluştur",
+      "createUserSubtitle": "Bir kullanıcı ekleyin ve rollerini atayın.",
+      "editUserTitle": "Kullanıcıyı düzenle",
+      "editUserSubtitle": "Kullanıcı bilgilerini, rollerini ve parolasını güncelleyin.",
+      "password": "Parola",
+      "newPassword": "Yeni parola",
+      "rolesHelp": "Bir veya daha fazla rol seçin.",
+      "edit": "Düzenle",
+      "delete": "Sil",
+      "cancel": "İptal",
+      "deleteUserConfirm": "Bu kullanıcı ve tüm oturumları silinsin mi?",
+      "saveError": "Kullanıcı kaydedilemedi.",
+      "notFound": "Kullanıcı bulunamadı.",
+      "resetPassword": "Parolayı sıfırla",
+      "search": "Ara",
+      "all": "Tümü",
+      "previous": "Önceki",
+      "next": "Sonraki",
+      "page": "Sayfa",
+      "of": "/",
+      "records": "kayıt",
+      "authorizations": "Yetkilendirmeler",
+      "signOutAll": "Tüm oturumları kapat"
+    },
+    "placeholder": "Bu yönetim bölümü sonraki geliştirme adımı için hazır."
   }
 }

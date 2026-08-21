@@ -33,6 +33,9 @@ public class AuthorizationEntity {
     @Column(name = "principal_name", nullable = false, length = 200)
     private String principalName;
 
+    @Column(name = "session_id", length = 36)
+    private String sessionId;
+
     @Column(name = "authorization_grant_type", nullable = false, length = 100)
     private String authorizationGrantType;
 

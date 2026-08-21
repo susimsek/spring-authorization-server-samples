@@ -51,7 +51,8 @@ public class SpaFilter extends OncePerRequestFilter {
 
         String locale = localeResolver.resolveLocale(request).getLanguage();
         String localizedPath = "/".equals(path) ? "/" + locale : "/" + locale + path;
-        forwardIfExists(localizedPath, request, response, filterChain);
+
+        redirectToLocalizedPath(localizedPath, request, response, filterChain);
     }
 
     private boolean hasLocalizedPage(String path) {
@@ -76,6 +77,22 @@ public class SpaFilter extends OncePerRequestFilter {
 
         RequestDispatcher dispatcher = request.getRequestDispatcher(indexPath);
         dispatcher.forward(request, response);
+    }
+
+    private void redirectToLocalizedPath(
+            String localizedPath,
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain)
+            throws IOException, ServletException {
+        if (!resourceExists(toIndexPath(localizedPath))) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String query = request.getQueryString();
+        response.sendRedirect(
+                StringUtils.hasText(query) ? localizedPath + "?" + query : localizedPath);
     }
 
     private boolean resourceExists(String indexPath) {
