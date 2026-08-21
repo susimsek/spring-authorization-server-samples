@@ -108,7 +108,11 @@ describe("authentication components", () => {
     fireEvent.blur(username);
     fireEvent.blur(password);
 
-    expect(await screen.findAllByText(dictionary.admin.common.validation.required)).toHaveLength(2);
+    const requiredMessages = await screen.findAllByText(
+      dictionary.admin.common.validation.required,
+    );
+    expect(requiredMessages).toHaveLength(2);
+    requiredMessages.forEach((message) => expect(message).toBeVisible());
     expect(password).toHaveAttribute("type", "password");
     fireEvent.click(screen.getByRole("button", { name: dictionary.login.showPassword }));
     expect(password).toHaveAttribute("type", "text");

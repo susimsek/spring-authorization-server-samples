@@ -277,7 +277,9 @@ export function UserForm({
                   )}
                 </div>
                 <Form.Text>{copy.avatarHelp}</Form.Text>
-                <Form.Control.Feedback type="invalid">{avatarError}</Form.Control.Feedback>
+                <Form.Control.Feedback type="invalid" className="d-block">
+                  {avatarError}
+                </Form.Control.Feedback>
               </Form.Group>
             )}
             <Form.Group>

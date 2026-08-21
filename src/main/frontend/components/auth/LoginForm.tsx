@@ -68,7 +68,9 @@ export function LoginForm({ dictionary }: LoginFormProps) {
                 {...register("username")}
               />
             </InputGroup>
-            <Form.Control.Feedback type="invalid">{errors.username?.message}</Form.Control.Feedback>
+            <Form.Control.Feedback type="invalid" className="d-block">
+              {errors.username?.message}
+            </Form.Control.Feedback>
           </Form.Group>
 
           <PasswordField

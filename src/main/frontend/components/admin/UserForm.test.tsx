@@ -270,6 +270,12 @@ describe("UserForm", () => {
       target: { files: [new File(["image"], "avatar.png", { type: "image/png" })] },
     });
     expect(await screen.findByText(dictionary.admin.resources.avatarHelp)).toBeVisible();
+    await waitFor(() => {
+      const avatarFeedback = [...view.container.querySelectorAll(".invalid-feedback")].find(
+        (element) => element.textContent === dictionary.admin.resources.avatarHelp,
+      );
+      expect(avatarFeedback).toHaveClass("d-block");
+    });
 
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.resources.removeAvatar }));
     fireEvent.click(
