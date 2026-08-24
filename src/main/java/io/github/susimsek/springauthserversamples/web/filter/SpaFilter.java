@@ -7,7 +7,10 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -23,6 +26,31 @@ import org.springframework.web.servlet.LocaleResolver;
 public class SpaFilter extends OncePerRequestFilter {
 
     private static final String STATIC_CLASSPATH_PREFIX = "classpath:/static";
+
+    /**
+     * Static-export templates for entity detail routes. An empty section set means the entity has a
+     * detail page directly beneath its identifier.
+     */
+    private static final Map<String, Set<String>> DYNAMIC_ADMIN_ROUTE_SECTIONS =
+            Map.of(
+                    "roles", Set.of(),
+                    "consents", Set.of(),
+                    "clients",
+                            Set.of(
+                                    "settings",
+                                    "credentials",
+                                    "scopes",
+                                    "sessions",
+                                    "consents",
+                                    "events"),
+                    "users",
+                            Set.of(
+                                    "details",
+                                    "credentials",
+                                    "roles",
+                                    "sessions",
+                                    "consents",
+                                    "events"));
 
     private final LocaleResolver localeResolver;
     private final ResourceLoader resourceLoader;
@@ -109,58 +137,34 @@ public class SpaFilter extends OncePerRequestFilter {
         return null;
     }
 
-    private static java.util.List<String> toDynamicEntityResourcePaths(String localizedPath) {
+    private static List<String> toDynamicEntityResourcePaths(String localizedPath) {
         String[] segments = localizedPath.split("/");
         if (segments.length < 5 || !"admin".equals(segments[2])) {
-            return java.util.List.of();
+            return List.of();
         }
 
         String resource = segments[3];
         String entityId = segments[4];
         if (!StringUtils.hasText(entityId) || "_".equals(entityId)) {
-            return java.util.List.of();
+            return List.of();
         }
 
-        if ("roles".equals(resource) && segments.length == 5) {
-            return java.util.List.of("/" + segments[1] + "/admin/roles/_/index.html");
-        }
-        if ("consents".equals(resource) && segments.length == 5) {
-            return java.util.List.of("/" + segments[1] + "/admin/consents/_/index.html");
+        Set<String> sections = DYNAMIC_ADMIN_ROUTE_SECTIONS.get(resource);
+        if (sections == null) {
+            return List.of();
         }
 
-        if (segments.length < 6) {
-            return java.util.List.of();
+        if (sections.isEmpty()) {
+            return segments.length == 5
+                    ? List.of("/" + segments[1] + "/admin/" + resource + "/_/index.html")
+                    : List.of();
+        }
+
+        if (segments.length < 6 || !sections.contains(segments[5])) {
+            return List.of();
         }
 
         String section = segments[5];
-
-        boolean supportedSection =
-                switch (resource) {
-                    case "clients" ->
-                            java.util.Set.of(
-                                            "settings",
-                                            "credentials",
-                                            "scopes",
-                                            "sessions",
-                                            "consents",
-                                            "events")
-                                    .contains(section);
-                    case "users" ->
-                            java.util.Set.of(
-                                            "details",
-                                            "credentials",
-                                            "roles",
-                                            "sessions",
-                                            "consents",
-                                            "events")
-                                    .contains(section);
-                    default -> false;
-                };
-
-        if (!supportedSection) {
-            return java.util.List.of();
-        }
-
         StringBuilder template =
                 new StringBuilder()
                         .append('/')
@@ -171,13 +175,13 @@ public class SpaFilter extends OncePerRequestFilter {
                         .append(section);
 
         if (segments.length == 6) {
-            return java.util.List.of(template + "/index.html");
+            return List.of(template + "/index.html");
         }
 
         for (int i = 6; i < segments.length; i++) {
             template.append('/').append(segments[i]);
         }
-        return java.util.List.of(template.toString());
+        return List.of(template.toString());
     }
 
     private boolean resourceExists(String indexPath) {

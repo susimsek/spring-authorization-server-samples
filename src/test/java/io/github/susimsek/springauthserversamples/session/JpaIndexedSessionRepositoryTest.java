@@ -174,9 +174,6 @@ class JpaIndexedSessionRepositoryTest {
         assertThatThrownBy(() -> repository.setSaveMode(null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("saveMode");
-        assertThatThrownBy(() -> repository.setConversionService(null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("conversionService");
     }
 
     @Test

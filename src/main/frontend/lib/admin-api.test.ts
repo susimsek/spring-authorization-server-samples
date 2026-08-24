@@ -85,4 +85,25 @@ describe("admin API", () => {
     await expect(interceptor(ok)).resolves.toBe(ok);
     await expect(interceptor(unauthorized)).resolves.toBe(unauthorized);
   });
+
+  it("normalizes Spring Data's stable page DTO for existing console consumers", async () => {
+    const interceptor = mockAxios.responseUse.mock.calls[0][0];
+    const response = {
+      status: 200,
+      config: { headers: { set: jest.fn() } },
+      data: {
+        content: [{ id: "client-1" }],
+        page: { number: 0, size: 20, totalElements: 1, totalPages: 1 },
+      },
+    };
+
+    await expect(interceptor(response)).resolves.toBe(response);
+    expect(response.data).toEqual({
+      content: [{ id: "client-1" }],
+      number: 0,
+      size: 20,
+      totalElements: 1,
+      totalPages: 1,
+    });
+  });
 });

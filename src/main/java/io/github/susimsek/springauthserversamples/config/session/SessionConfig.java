@@ -4,6 +4,7 @@ import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
 import io.github.susimsek.springauthserversamples.config.security.SecurityJsonMapper;
 import io.github.susimsek.springauthserversamples.repository.UserSessionRepository;
 import io.github.susimsek.springauthserversamples.session.JpaIndexedSessionRepository;
+import io.github.susimsek.springauthserversamples.session.JpaSessionMapper;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -46,14 +47,18 @@ public class SessionConfig {
     }
 
     @Bean
+    JpaSessionMapper jpaSessionMapper(
+            @Qualifier("springSessionConversionService") ConversionService conversionService) {
+        return new JpaSessionMapper(conversionService);
+    }
+
+    @Bean
     JpaIndexedSessionRepository sessionRepository(
             UserSessionRepository userSessionRepository,
             PlatformTransactionManager transactionManager,
-            @Qualifier("springSessionConversionService") ConversionService conversionService) {
-        JpaIndexedSessionRepository repository =
-                new JpaIndexedSessionRepository(userSessionRepository, transactionManager);
-        repository.setConversionService(conversionService);
-        return repository;
+            JpaSessionMapper jpaSessionMapper) {
+        return new JpaIndexedSessionRepository(
+                userSessionRepository, transactionManager, jpaSessionMapper);
     }
 
     @Bean

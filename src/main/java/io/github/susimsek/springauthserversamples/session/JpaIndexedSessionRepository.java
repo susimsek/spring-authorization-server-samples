@@ -3,17 +3,12 @@ package io.github.susimsek.springauthserversamples.session;
 import io.github.susimsek.springauthserversamples.domain.UserSessionEntity;
 import io.github.susimsek.springauthserversamples.repository.UserSessionRepository;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.springframework.core.convert.ConversionService;
-import org.springframework.core.convert.support.GenericConversionService;
-import org.springframework.core.serializer.support.DeserializingConverter;
-import org.springframework.core.serializer.support.SerializingConverter;
 import org.springframework.session.DelegatingIndexResolver;
 import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.session.FlushMode;
@@ -32,7 +27,7 @@ public class JpaIndexedSessionRepository implements FindByIndexNameSessionReposi
     public static final String DEFAULT_CLEANUP_CRON = "0 * * * * *";
 
     private final UserSessionRepository sessionRepository;
-    private ConversionService conversionService = defaultConversionService();
+    private final JpaSessionMapper sessionMapper;
     private final TransactionTemplate transactionTemplate;
     private IndexResolver<Session> indexResolver =
             new DelegatingIndexResolver<>(new PrincipalNameIndexResolver<>());
@@ -44,7 +39,15 @@ public class JpaIndexedSessionRepository implements FindByIndexNameSessionReposi
     public JpaIndexedSessionRepository(
             UserSessionRepository sessionRepository,
             PlatformTransactionManager transactionManager) {
+        this(sessionRepository, transactionManager, new JpaSessionMapper());
+    }
+
+    public JpaIndexedSessionRepository(
+            UserSessionRepository sessionRepository,
+            PlatformTransactionManager transactionManager,
+            JpaSessionMapper sessionMapper) {
         this.sessionRepository = sessionRepository;
+        this.sessionMapper = sessionMapper;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.transactionTemplate.setPropagationBehavior(
                 TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -137,11 +140,6 @@ public class JpaIndexedSessionRepository implements FindByIndexNameSessionReposi
         this.saveMode = saveMode;
     }
 
-    public void setConversionService(ConversionService conversionService) {
-        Assert.notNull(conversionService, "conversionService cannot be null");
-        this.conversionService = conversionService;
-    }
-
     void flushIfRequired(JpaSession session) {
         if (flushMode == FlushMode.IMMEDIATE) {
             save(session);
@@ -156,42 +154,13 @@ public class JpaIndexedSessionRepository implements FindByIndexNameSessionReposi
 
     private void saveInTransaction(JpaSession session) {
         UserSessionEntity entity = findEntityForSave(session).orElseGet(UserSessionEntity::new);
-        if (entity.getPrimaryId() == null) {
-            entity.setPrimaryId(session.getId());
-        }
-
-        MapSession delegate = session.getDelegate();
-        entity.setSessionId(session.getId());
-        entity.setCreationTime(delegate.getCreationTime().toEpochMilli());
-        entity.setLastAccessTime(delegate.getLastAccessedTime().toEpochMilli());
-        entity.setMaxInactiveInterval((int) delegate.getMaxInactiveInterval().getSeconds());
-        entity.setExpiryTime(expiryTime(delegate));
-        entity.setPrincipalName(
-                indexResolver.resolveIndexesFor(delegate).get(PRINCIPAL_NAME_INDEX_NAME));
-
-        if (session.isNew() || saveMode == SaveMode.ALWAYS) {
-            entity.getAttributes().clear();
-            delegate.getAttributeNames()
-                    .forEach(
-                            attributeName -> {
-                                Object attribute = delegate.getAttribute(attributeName);
-                                if (attribute != null) {
-                                    entity.getAttributes()
-                                            .put(attributeName, serializeAttribute(attribute));
-                                }
-                            });
-        } else {
-            session.getDelta()
-                    .forEach(
-                            (attributeName, attribute) -> {
-                                if (attribute == null) {
-                                    entity.getAttributes().remove(attributeName);
-                                } else {
-                                    entity.getAttributes()
-                                            .put(attributeName, serializeAttribute(attribute));
-                                }
-                            });
-        }
+        sessionMapper.updateEntity(
+                entity,
+                session,
+                indexResolver
+                        .resolveIndexesFor(session.getDelegate())
+                        .get(PRINCIPAL_NAME_INDEX_NAME),
+                session.isNew() || saveMode == SaveMode.ALWAYS);
 
         sessionRepository.save(entity);
     }
@@ -205,38 +174,6 @@ public class JpaIndexedSessionRepository implements FindByIndexNameSessionReposi
     }
 
     private JpaSession toSession(UserSessionEntity entity) {
-        MapSession delegate = new MapSession(entity.getSessionId());
-        delegate.setCreationTime(Instant.ofEpochMilli(entity.getCreationTime()));
-        delegate.setLastAccessedTime(Instant.ofEpochMilli(entity.getLastAccessTime()));
-        delegate.setMaxInactiveInterval(Duration.ofSeconds(entity.getMaxInactiveInterval()));
-        entity.getAttributes()
-                .forEach(
-                        (attributeName, bytes) ->
-                                delegate.setAttribute(attributeName, deserializeAttribute(bytes)));
-        return new JpaSession(delegate, this, false);
-    }
-
-    private byte[] serializeAttribute(Object attribute) {
-        byte[] bytes = conversionService.convert(attribute, byte[].class);
-        Assert.state(bytes != null, "Session attribute serialization returned null");
-        return bytes;
-    }
-
-    private Object deserializeAttribute(byte[] bytes) {
-        return conversionService.convert(bytes, Object.class);
-    }
-
-    private static ConversionService defaultConversionService() {
-        GenericConversionService conversionService = new GenericConversionService();
-        conversionService.addConverter(Object.class, byte[].class, new SerializingConverter());
-        conversionService.addConverter(byte[].class, Object.class, new DeserializingConverter());
-        return conversionService;
-    }
-
-    private static long expiryTime(Session session) {
-        if (session.getMaxInactiveInterval().isNegative()) {
-            return Long.MAX_VALUE;
-        }
-        return session.getLastAccessedTime().plus(session.getMaxInactiveInterval()).toEpochMilli();
+        return sessionMapper.toSession(entity, this);
     }
 }

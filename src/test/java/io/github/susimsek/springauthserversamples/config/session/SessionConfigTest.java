@@ -132,7 +132,9 @@ class SessionConfigTest {
 
         JpaIndexedSessionRepository repository =
                 config.sessionRepository(
-                        userSessionRepository, new NoOpTransactionManager(), conversionService);
+                        userSessionRepository,
+                        new NoOpTransactionManager(),
+                        config.jpaSessionMapper(conversionService));
         JpaSession session = repository.createSession();
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("tenant", "internal");
