@@ -13,13 +13,18 @@
     "format:check": "prettier --check .",
     "test:unit": "jest",
     "test:unit:coverage": "jest --coverage",
-    "test:e2e": "playwright test"
+    "test:e2e": "cypress run",
+    "test:e2e:open": "cypress open",
+    "test:e2e:chrome": "cypress run --browser chrome",
+    "test:e2e:admin": "cypress run --spec cypress/e2e/admin-login.cy.ts",
+    "test:e2e:account": "cypress run --spec cypress/e2e/account-console.cy.ts"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "7.3.1",
     "@fortawesome/free-solid-svg-icons": "7.3.1",
     "@fortawesome/react-fontawesome": "3.5.0",
     "@hookform/resolvers": "^5.9.1",
+    "@reduxjs/toolkit": "2.12.0",
     "axios": "^1.19.0",
     "bootstrap": "5.3.8",
     "next": "16.3.1",
@@ -27,10 +32,10 @@
     "react-bootstrap": "2.10.10",
     "react-dom": "19.2.8",
     "react-hook-form": "^7.85.0",
+    "react-redux": "9.3.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.2",
     "@types/jest": "^30.0.0",
@@ -44,6 +49,7 @@
     "jsdom": "^30.0.1",
     "prettier": "3.9.6",
     "ts-node": "^10.9.2",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "cypress": "15.21.0"
   }
 }

@@ -14,12 +14,16 @@ public record AdminUserRequest(
         @NotBlank(
                         groups = {CreateValidation.class, UpdateValidation.class},
                         message = "{admin.validation.required}")
+                @Size(
+                        max = 100,
+                        groups = {CreateValidation.class, UpdateValidation.class})
                 String username,
         @NotBlank(
                         groups = {CreateValidation.class, PasswordChangeValidation.class},
                         message = "{admin.validation.required}")
                 @Size(
                         min = 8,
+                        max = 200,
                         groups = {CreateValidation.class, PasswordChangeValidation.class},
                         message = "{admin.validation.password}")
                 @OptionalPassword(groups = UpdateValidation.class)

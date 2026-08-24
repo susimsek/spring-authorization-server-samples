@@ -2,16 +2,23 @@ import { render } from "@testing-library/react";
 
 import { AdminPostLoginRedirect } from "./AdminPostLoginRedirect";
 
+const replace = jest.fn();
+
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ replace }),
+}));
+
 describe("AdminPostLoginRedirect", () => {
   beforeEach(() => {
     sessionStorage.clear();
-    jest.spyOn(console, "error").mockImplementation(() => {});
+    replace.mockReset();
   });
 
-  it("redirects to a stored internal location", () => {
+  it("redirects to a stored internal location without reloading the document", () => {
     sessionStorage.setItem("AUTH_ADMIN_RETURN_TO", "/en/admin/clients");
     render(<AdminPostLoginRedirect />);
 
+    expect(replace).toHaveBeenCalledWith("/en/admin/clients");
     expect(sessionStorage.getItem("AUTH_ADMIN_RETURN_TO")).toBeNull();
   });
 
@@ -21,6 +28,7 @@ describe("AdminPostLoginRedirect", () => {
       if (returnTo) sessionStorage.setItem("AUTH_ADMIN_RETURN_TO", returnTo);
       render(<AdminPostLoginRedirect />);
 
+      expect(replace).not.toHaveBeenCalled();
       expect(sessionStorage.getItem("AUTH_ADMIN_RETURN_TO")).toBe(returnTo);
     },
   );

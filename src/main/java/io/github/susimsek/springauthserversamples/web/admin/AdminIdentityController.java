@@ -1,9 +1,11 @@
 package io.github.susimsek.springauthserversamples.web.admin;
 
+import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAvatarService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminConsentService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminDashboardService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminRoleService;
+import io.github.susimsek.springauthserversamples.service.admin.AdminServerInfoService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminSessionService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminUserService;
 import io.github.susimsek.springauthserversamples.service.admin.KeyManagementService;
@@ -37,8 +39,10 @@ import org.springframework.web.multipart.MultipartFile;
 class AdminIdentityController {
 
     private final AdminUserService adminUserService;
+    private final AdminAuditEventService adminAuditEventService;
     private final AdminAvatarService adminAvatarService;
     private final AdminSessionService adminSessionService;
+    private final AdminServerInfoService adminServerInfoService;
     private final AdminConsentService adminConsentService;
     private final AdminDashboardService adminDashboardService;
     private final KeyManagementService keyManagementService;
@@ -49,9 +53,98 @@ class AdminIdentityController {
         return adminDashboardService.dashboard();
     }
 
+    @GetMapping("/server-info")
+    AdminServerInfoService.ServerInfoView serverInfo() {
+        return adminServerInfoService.serverInfo();
+    }
+
+    @GetMapping("/events")
+    Page<AdminAuditEventService.EventView> events(
+            @RequestParam(defaultValue = "") String q,
+            @RequestParam(defaultValue = "") String action,
+            @RequestParam(defaultValue = "") String targetType,
+            @RequestParam(defaultValue = "") String targetId,
+            @RequestParam(required = false) java.time.Instant from,
+            @RequestParam(required = false) java.time.Instant to,
+            @PageableDefault(
+                            size = 20,
+                            sort = "occurredAt",
+                            direction = org.springframework.data.domain.Sort.Direction.DESC)
+                    Pageable pageable) {
+        return adminAuditEventService.events(q, action, targetType, targetId, from, to, pageable);
+    }
+
+    @GetMapping("/users/{id}/events")
+    Page<AdminAuditEventService.EventView> userEvents(
+            @PathVariable Long id,
+            @PageableDefault(
+                            size = 20,
+                            sort = "occurredAt",
+                            direction = org.springframework.data.domain.Sort.Direction.DESC)
+                    Pageable pageable,
+            Authentication authentication) {
+        adminUserService.requireManageableUser(id, authentication.getName());
+        return adminAuditEventService.userEvents(id, pageable);
+    }
+
+    @GetMapping("/users/{id}/sessions")
+    Page<AdminSessionService.SessionView> userSessions(
+            @PathVariable Long id,
+            @PageableDefault(
+                            size = 20,
+                            sort = "lastAccessTime",
+                            direction = org.springframework.data.domain.Sort.Direction.DESC)
+                    Pageable pageable,
+            Authentication authentication) {
+        return adminSessionService.userSessions(id, authentication.getName(), pageable);
+    }
+
+    @GetMapping("/users/{id}/consents")
+    Page<AdminConsentService.ConsentView> userConsents(
+            @PathVariable Long id,
+            @PageableDefault(size = 20, sort = "id.registeredClientId") Pageable pageable,
+            Authentication authentication) {
+        return adminConsentService.userConsents(id, authentication.getName(), pageable);
+    }
+
     @GetMapping("/roles")
     List<AdminRoleService.RoleView> roles() {
         return adminRoleService.roles();
+    }
+
+    @GetMapping("/roles/{name}")
+    AdminRoleService.RoleDetailView role(
+            @PathVariable String name,
+            @RequestParam(defaultValue = "") String q,
+            @PageableDefault(size = 20, sort = "username") Pageable pageable) {
+        return adminRoleService.role(name, q, pageable);
+    }
+
+    @GetMapping("/roles/{name}/available-users")
+    Page<AdminRoleService.UserEntityView> availableRoleUsers(
+            @PathVariable String name,
+            @RequestParam(defaultValue = "") String q,
+            @PageableDefault(size = 10, sort = "username") Pageable pageable) {
+        return adminRoleService.availableUsers(name, q, pageable);
+    }
+
+    @PostMapping("/roles/{name}/users")
+    AdminRoleService.RoleDetailView assignRoleUser(
+            @PathVariable String name,
+            @Valid @RequestBody AdminRoleUserRequest request,
+            @PageableDefault(size = 20, sort = "username") Pageable pageable,
+            Authentication authentication) {
+        return adminRoleService.assignUser(
+                name, request.userId(), authentication.getName(), pageable);
+    }
+
+    @DeleteMapping("/roles/{name}/users/{userId}")
+    AdminRoleService.RoleDetailView removeRoleUser(
+            @PathVariable String name,
+            @PathVariable Long userId,
+            @PageableDefault(size = 20, sort = "username") Pageable pageable,
+            Authentication authentication) {
+        return adminRoleService.removeUser(name, userId, authentication.getName(), pageable);
     }
 
     @PostMapping("/roles")
@@ -145,12 +238,24 @@ class AdminIdentityController {
     @GetMapping("/sessions")
     Page<AdminSessionService.SessionView> sessions(
             @RequestParam(defaultValue = "") String q,
+            @RequestParam(defaultValue = "") String clientId,
+            @RequestParam(defaultValue = "active") String status,
             @PageableDefault(
                             size = 20,
                             sort = "lastAccessTime",
                             direction = org.springframework.data.domain.Sort.Direction.DESC)
                     Pageable pageable) {
+        return adminSessionService.sessions(q, clientId, status, pageable);
+    }
+
+    Page<AdminSessionService.SessionView> sessions(String q, Pageable pageable) {
         return adminSessionService.sessions(q, pageable);
+    }
+
+    @GetMapping("/sessions/{id}")
+    AdminSessionService.SessionDetailView session(
+            @PathVariable String id, Authentication authentication) {
+        return adminSessionService.session(id, authentication.getName());
     }
 
     @DeleteMapping("/sessions/{id}")
@@ -169,8 +274,17 @@ class AdminIdentityController {
     @GetMapping("/consents")
     Page<AdminConsentService.ConsentView> consents(
             @RequestParam(defaultValue = "") String q,
+            @RequestParam(defaultValue = "") String clientId,
+            @RequestParam(defaultValue = "") String username,
+            @RequestParam(defaultValue = "") String scope,
             @PageableDefault(size = 20, sort = "id.principalName") Pageable pageable) {
-        return adminConsentService.consents(q, pageable);
+        return adminConsentService.consents(q, clientId, username, scope, pageable);
+    }
+
+    @GetMapping("/consents/{clientId}/{username}")
+    AdminConsentService.ConsentView consent(
+            @PathVariable String clientId, @PathVariable String username) {
+        return adminConsentService.consent(clientId, username);
     }
 
     @DeleteMapping("/consents/{clientId}/{username}")

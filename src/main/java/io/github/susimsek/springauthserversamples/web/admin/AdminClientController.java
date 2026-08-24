@@ -1,6 +1,10 @@
 package io.github.susimsek.springauthserversamples.web.admin;
 
+import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
+import io.github.susimsek.springauthserversamples.service.admin.AdminClientScopeService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminClientService;
+import io.github.susimsek.springauthserversamples.service.admin.AdminConsentService;
+import io.github.susimsek.springauthserversamples.service.admin.AdminSessionService;
 import jakarta.validation.Valid;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +29,10 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminClientController {
 
     private final AdminClientService adminClientService;
+    private final AdminClientScopeService adminClientScopeService;
+    private final AdminSessionService adminSessionService;
+    private final AdminConsentService adminConsentService;
+    private final AdminAuditEventService adminAuditEventService;
 
     @GetMapping
     Page<AdminClientView> findAll(
@@ -61,5 +69,50 @@ public class AdminClientController {
     @PostMapping("/{id}/secret")
     AdminClientSecretView regenerateSecret(@PathVariable String id) {
         return new AdminClientSecretView(adminClientService.regenerateSecret(id));
+    }
+
+    @GetMapping("/{id}/scope-assignments")
+    AdminClientScopeService.ScopeAssignments scopeAssignments(@PathVariable String id) {
+        return adminClientScopeService.assignments(id);
+    }
+
+    @PutMapping("/{id}/scope-assignments")
+    AdminClientScopeService.ScopeAssignments updateScopeAssignments(
+            @PathVariable String id,
+            @Valid @RequestBody AdminClientScopeAssignmentRequest request) {
+        return adminClientScopeService.updateAssignments(id, request);
+    }
+
+    @GetMapping("/{id}/sessions")
+    Page<AdminSessionService.SessionView> sessions(
+            @PathVariable String id,
+            @PageableDefault(
+                            size = 20,
+                            sort = "lastAccessTime",
+                            direction = org.springframework.data.domain.Sort.Direction.DESC)
+                    Pageable pageable) {
+        return adminSessionService.clientSessions(id, pageable);
+    }
+
+    @GetMapping("/{id}/consents")
+    Page<AdminConsentService.ConsentView> consents(
+            @PathVariable String id,
+            @PageableDefault(size = 20, sort = "id.principalName") Pageable pageable) {
+        return adminConsentService.clientConsents(id, pageable);
+    }
+
+    @GetMapping("/{id}/events")
+    Page<AdminAuditEventService.EventView> events(
+            @PathVariable String id,
+            @PageableDefault(
+                            size = 20,
+                            sort = "occurredAt",
+                            direction = org.springframework.data.domain.Sort.Direction.DESC)
+                    Pageable pageable) {
+        if (adminClientService.findById(id) == null) {
+            throw io.github.susimsek.springauthserversamples.service.admin.AdminClientException
+                    .notFound("Client not found");
+        }
+        return adminAuditEventService.clientEvents(id, pageable);
     }
 }

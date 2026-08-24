@@ -53,7 +53,7 @@ export function ConsentForm({ dictionary }: ConsentFormProps) {
   }, []);
 
   return (
-    <Card className="border-0 shadow-sm">
+    <Card className="auth-card">
       <Card.Body className="p-4 p-md-5">
         <Stack gap={1} className="mb-4">
           <span className="text-primary text-uppercase fw-semibold small">

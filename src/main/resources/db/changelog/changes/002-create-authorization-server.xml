@@ -228,4 +228,28 @@
 		</loadData>
 	</changeSet>
 
+	<changeSet id="010-create-client-scopes" author="susimsek">
+		<createTable tableName="oauth2_client_scope">
+			<column name="id" type="varchar(100)"><constraints nullable="false" primaryKey="true" primaryKeyName="pk_oauth2_client_scope"/></column>
+			<column name="name" type="varchar(100)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_oauth2_client_scope_name"/></column>
+			<column name="display_name" type="varchar(200)"/>
+			<column name="description" type="varchar(500)"/>
+			<column name="created_by" type="varchar(100)"><constraints nullable="false"/></column>
+			<column name="created_at" type="timestamp" defaultValueComputed="${now}"><constraints nullable="false"/></column>
+			<column name="last_modified_by" type="varchar(100)"/>
+			<column name="updated_at" type="timestamp" defaultValueComputed="${now}"><constraints nullable="false"/></column>
+		</createTable>
+	</changeSet>
+
+	<changeSet id="011-seed-client-scopes" author="susimsek">
+		<loadData encoding="UTF-8" file="db/data/client-scopes.csv" separator=";" tableName="oauth2_client_scope" usePreparedStatements="true">
+			<column header="id" type="string"/>
+			<column header="name" type="string"/>
+			<column header="display_name" type="string"/>
+			<column header="description" type="string"/>
+			<column header="created_by" type="string"/>
+			<column header="last_modified_by" type="string"/>
+		</loadData>
+	</changeSet>
+
 </databaseChangeLog>

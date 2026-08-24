@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
-import { Card, Table } from "react-bootstrap";
-
+import { Table } from "react-bootstrap";
 import { EmptyState } from "./AsyncState";
 
 export function DataTable({
@@ -15,19 +14,17 @@ export function DataTable({
   footer?: ReactNode;
 }) {
   return (
-    <Card className="border-0 shadow-sm">
-      <Card.Body className="p-0">
-        {isEmpty ? (
-          <EmptyState message={emptyMessage} />
-        ) : (
-          <div className="table-responsive">
-            <Table hover className="admin-data-table mb-0 align-middle">
-              {children}
-            </Table>
-          </div>
-        )}
-      </Card.Body>
-      {footer && <Card.Footer>{footer}</Card.Footer>}
-    </Card>
+    <section className="console-table-surface">
+      {isEmpty ? (
+        <EmptyState message={emptyMessage} />
+      ) : (
+        <div className="table-responsive">
+          <Table hover className="admin-data-table mb-0 align-middle">
+            {children}
+          </Table>
+        </div>
+      )}
+      {footer && <div className="console-table-footer">{footer}</div>}
+    </section>
   );
 }

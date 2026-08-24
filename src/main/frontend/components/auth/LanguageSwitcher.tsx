@@ -6,6 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { Dropdown } from "react-bootstrap";
 
 import type { Locale } from "@/i18n/config";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { setLocale } from "@/store/i18n-slice";
 
 type LanguageSwitcherProps = {
   locale: Locale;
@@ -20,6 +22,9 @@ const languageNames: Record<Locale, string> = {
 export function LanguageSwitcher({ locale, label }: LanguageSwitcherProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const dispatch = useAppDispatch();
+  const storeLocale = useAppSelector((state) => state.i18n.locale) as Locale;
+  const activeLocale = storeLocale === locale ? storeLocale : locale;
 
   function changeLanguage(nextLocale: Locale) {
     // Cookie persistence is intentionally a browser-side side effect.
@@ -28,7 +33,8 @@ export function LanguageSwitcher({ locale, label }: LanguageSwitcherProps) {
 
     const params = new URLSearchParams(window.location.search);
     const query = params.size ? `?${params.toString()}` : "";
-    const localizedPath = replaceLocale(pathname, locale, nextLocale);
+    dispatch(setLocale(nextLocale));
+    const localizedPath = replaceLocale(pathname, activeLocale, nextLocale);
     router.push(`${localizedPath}${query}`);
   }
 
@@ -36,13 +42,13 @@ export function LanguageSwitcher({ locale, label }: LanguageSwitcherProps) {
     <Dropdown align="end">
       <Dropdown.Toggle variant="outline-secondary" size="sm" aria-label={label}>
         <FontAwesomeIcon icon={faGlobe} className="me-2" />
-        {languageNames[locale]}
+        {languageNames[activeLocale]}
       </Dropdown.Toggle>
       <Dropdown.Menu>
         {(Object.keys(languageNames) as Locale[]).map((language) => (
           <Dropdown.Item
             key={language}
-            active={language === locale}
+            active={language === activeLocale}
             onClick={() => changeLanguage(language)}
           >
             {languageNames[language]}

@@ -1,5 +1,9 @@
 [
   {
+    "name": "liquibase.change.core.AbstractModifyDataChange",
+    "allPublicMethods": true
+  },
+  {
     "name": "liquibase.change.core.LoadDataChange",
     "allPublicMethods": true
   },

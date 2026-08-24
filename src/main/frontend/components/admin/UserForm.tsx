@@ -16,6 +16,10 @@ import { problemErrorCode, problemViolations } from "@/lib/problem-detail";
 import { useAdminAuth } from "./AdminAuthProvider";
 import { ErrorState, LoadingState } from "./AsyncState";
 import { ConfirmModal } from "./ConfirmModal";
+import { DetailTabs } from "./DetailTabs";
+import { EntityRelatedData } from "./EntityRelatedData";
+import { AdminBreadcrumb } from "./AdminBreadcrumb";
+import { ReadOnlyMetadata } from "./ReadOnlyMetadata";
 
 type User = {
   id: number;
@@ -23,37 +27,58 @@ type User = {
   enabled: boolean;
   avatarUrl: string | null;
   authorities: string[];
+  createdAt: string;
+  updatedAt: string;
 };
 type Role = { name: string };
 type UserFormValues = { username: string; password: string; enabled: boolean; roles: string[] };
+
+const USER_DETAIL_TABS = [
+  "details",
+  "credentials",
+  "roles",
+  "sessions",
+  "consents",
+  "events",
+] as const;
 
 export function UserForm({
   locale,
   dictionary,
   id,
+  tab = "details",
 }: {
   locale: Locale;
   dictionary: Dictionary;
   id?: string | null;
+  tab?: string;
 }) {
   const router = useRouter();
-  const { accessToken } = useAdminAuth();
+  const { access, accessToken } = useAdminAuth();
   const copy = dictionary.admin.resources;
   const editing = Boolean(id);
   const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [createdAt, setCreatedAt] = useState<string | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [avatarSaving, setAvatarSaving] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [showAvatarDeleteConfirm, setShowAvatarDeleteConfirm] = useState(false);
   const [loading, setLoading] = useState(editing);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
+  const activeTab = USER_DETAIL_TABS.includes(tab as (typeof USER_DETAIL_TABS)[number])
+    ? tab
+    : "details";
   const validation = dictionary.admin.common.validation;
   const schema = z.object({
-    username: z.string().trim().min(1, validation.required),
+    username: z.string().trim().min(1, validation.required).max(100, validation.max100),
     password: editing
-      ? z.string().refine((value) => value === "" || value.length >= 8, validation.password)
-      : z.string().min(8, validation.password),
+      ? z
+          .string()
+          .max(200, validation.max200)
+          .refine((value) => value === "" || value.length >= 8, validation.password)
+      : z.string().min(8, validation.password).max(200, validation.max200),
     enabled: z.boolean(),
     roles: z.array(z.string()).min(1, validation.roles),
   });
@@ -86,6 +111,8 @@ export function UserForm({
           roles: response.data.authorities,
         });
         setAvatarUrl(response.data.avatarUrl);
+        setCreatedAt(response.data.createdAt);
+        setUpdatedAt(response.data.updatedAt);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -216,7 +243,11 @@ export function UserForm({
           throw new Error();
         }
       }
-      router.push(`/${locale}/admin/users`);
+      router.push(
+        editing && id
+          ? `/${locale}/admin/users/${encodeURIComponent(id)}/${tab}`
+          : `/${locale}/admin/users`,
+      );
       router.refresh();
     } catch {
       setError(true);
@@ -227,107 +258,214 @@ export function UserForm({
 
   if (loading) return <LoadingState />;
   if (editing && error) return <ErrorState message={copy.notFound} />;
+  const tr = locale === "tr";
+  const userBaseUrl = `/${locale}/admin/users/${encodeURIComponent(id ?? "")}`;
+  const userTabs = [
+    { key: "details", label: tr ? "Ayrıntılar" : "Details", href: `${userBaseUrl}/details` },
+    {
+      key: "credentials",
+      label: tr ? "Kimlik bilgileri" : "Credentials",
+      href: `${userBaseUrl}/credentials`,
+    },
+    { key: "roles", label: tr ? "Rol eşlemeleri" : "Role mapping", href: `${userBaseUrl}/roles` },
+    { key: "sessions", label: tr ? "Oturumlar" : "Sessions", href: `${userBaseUrl}/sessions` },
+    { key: "consents", label: tr ? "İzinler" : "Consents", href: `${userBaseUrl}/consents` },
+    { key: "events", label: tr ? "Olaylar" : "Events", href: `${userBaseUrl}/events` },
+  ];
   return (
     <>
+      {editing && (
+        <div className="admin-user-detail-header">
+          <AdminBreadcrumb
+            items={[
+              { label: copy.users, href: `/${locale}/admin/users` },
+              { label: getValues("username") },
+            ]}
+          />
+          <div className="admin-detail-heading">
+            <div>
+              <h1 className="h3 mb-1">{getValues("username")}</h1>
+              <div className="text-body-secondary">{tr ? "Kullanıcı" : "User"}</div>
+            </div>
+          </div>
+          <DetailTabs tabs={userTabs} active={activeTab} />
+        </div>
+      )}
       <Form onSubmit={handleSubmit(submit)}>
         {error && <Alert variant="danger">{copy.saveError}</Alert>}
-        <Card className="border-0 shadow-sm">
-          <Card.Body className="d-grid gap-3">
-            <Form.Group>
-              <Form.Label>{copy.username}</Form.Label>
-              <Form.Control isInvalid={Boolean(errors.username)} {...register("username")} />
-              <Form.Control.Feedback type="invalid">
-                {errors.username?.message}
-              </Form.Control.Feedback>
-            </Form.Group>
-            {editing && (
-              <Form.Group>
-                <Form.Label>{copy.avatar}</Form.Label>
-                <div className="d-flex align-items-center gap-2">
-                  {avatarUrl && (
+
+        {(!editing || activeTab === "details") && (
+          <Card className="admin-panel-card">
+            <Card.Body className="d-grid gap-4">
+              {editing && (
+                <div className="d-flex align-items-center gap-3 pb-3 border-bottom">
+                  {avatarUrl ? (
                     <Image
                       alt=""
-                      className="rounded-circle object-fit-cover"
-                      height={48}
+                      className="rounded-circle object-fit-cover admin-user-avatar"
+                      height={64}
                       src={avatarUrl}
                       unoptimized
-                      width={48}
+                      width={64}
                     />
+                  ) : (
+                    <span className="avatar-placeholder admin-user-avatar">
+                      {getValues("username").slice(0, 1).toUpperCase()}
+                    </span>
                   )}
-                  <Form.Control
-                    accept="image/jpeg,image/png"
-                    aria-label={copy.uploadAvatar}
-                    disabled={avatarSaving}
-                    isInvalid={Boolean(avatarError)}
-                    onChange={(event) =>
-                      uploadAvatar((event.target as HTMLInputElement).files?.[0])
-                    }
-                    type="file"
-                  />
+                  <div className="flex-grow-1 min-w-0">
+                    <div className="fw-semibold">{getValues("username")}</div>
+                    <div className="small text-body-secondary">{copy.avatarHelp}</div>
+                  </div>
+                  <label className="btn btn-sm btn-outline-primary mb-0">
+                    {copy.uploadAvatar}
+                    <input
+                      className="visually-hidden"
+                      accept="image/jpeg,image/png"
+                      disabled={avatarSaving}
+                      onChange={(e) => uploadAvatar(e.target.files?.[0])}
+                      type="file"
+                    />
+                  </label>
                   {avatarUrl && (
                     <Button
+                      size="sm"
+                      variant="outline-danger"
                       disabled={avatarSaving}
                       onClick={() => setShowAvatarDeleteConfirm(true)}
-                      size="sm"
                       type="button"
-                      variant="outline-danger"
                     >
                       {copy.removeAvatar}
                     </Button>
                   )}
                 </div>
-                <Form.Text>{copy.avatarHelp}</Form.Text>
-                <Form.Control.Feedback type="invalid" className="d-block">
+              )}
+              {avatarError && (
+                <Alert variant="danger" className="mb-0">
                   {avatarError}
+                </Alert>
+              )}
+              <Form.Group>
+                <Form.Label>{copy.username}</Form.Label>
+                <Form.Control isInvalid={Boolean(errors.username)} {...register("username")} />
+                <Form.Control.Feedback type="invalid">
+                  {errors.username?.message}
                 </Form.Control.Feedback>
               </Form.Group>
-            )}
-            <Form.Group>
-              <Form.Label>{editing ? copy.newPassword : copy.password}</Form.Label>
-              <Form.Control
-                type="password"
-                isInvalid={Boolean(errors.password)}
-                {...register("password")}
+              <Form.Check
+                type="switch"
+                label={copy.enabled}
+                checked={enabled}
+                onChange={(e) => setValue("enabled", e.target.checked, { shouldDirty: true })}
               />
-              <Form.Control.Feedback type="invalid">
-                {errors.password?.message}
-              </Form.Control.Feedback>
-            </Form.Group>
-            <Form.Check
-              type="switch"
-              label={copy.enabled}
-              checked={enabled}
-              onChange={(event) => setValue("enabled", event.target.checked, { shouldDirty: true })}
-            />
-            <Form.Group>
-              <Form.Label>{copy.roles}</Form.Label>
-              <div>
-                {availableRoles.map((role) => (
-                  <Form.Check
-                    inline
-                    key={role.name}
-                    type="checkbox"
-                    label={role.name}
-                    checked={roles.includes(role.name)}
-                    onChange={() => toggleRole(role.name)}
+              {editing && createdAt && updatedAt && (
+                <div className="account-metadata-panel">
+                  <ReadOnlyMetadata
+                    items={[
+                      { label: copy.createdAt, value: new Date(createdAt).toLocaleString(locale) },
+                      { label: copy.updatedAt, value: new Date(updatedAt).toLocaleString(locale) },
+                    ]}
                   />
+                </div>
+              )}
+            </Card.Body>
+          </Card>
+        )}
+
+        {(!editing || activeTab === "credentials") && (
+          <Card className="admin-panel-card">
+            <Card.Body>
+              <h2 className="h5 mb-1">{editing ? copy.resetPassword : copy.password}</h2>
+              <p className="small text-body-secondary mb-3">
+                {editing
+                  ? tr
+                    ? "Kullanıcı için yeni bir parola belirleyin."
+                    : "Set a new password for this user."
+                  : ""}
+              </p>
+              <Form.Group>
+                <Form.Label>{editing ? copy.newPassword : copy.password}</Form.Label>
+                <Form.Control
+                  type="password"
+                  isInvalid={Boolean(errors.password)}
+                  {...register("password")}
+                />
+                <Form.Control.Feedback type="invalid">
+                  {errors.password?.message}
+                </Form.Control.Feedback>
+              </Form.Group>
+            </Card.Body>
+          </Card>
+        )}
+
+        {(!editing || activeTab === "roles") && (
+          <Card className="admin-panel-card">
+            <Card.Body>
+              <h2 className="h5 mb-3">{copy.roles}</h2>
+              <div className="admin-role-grid">
+                {availableRoles.map((role) => (
+                  <label
+                    className={`admin-role-option ${roles.includes(role.name) ? "selected" : ""}`}
+                    key={role.name}
+                  >
+                    <Form.Check
+                      type="checkbox"
+                      checked={roles.includes(role.name)}
+                      onChange={() => toggleRole(role.name)}
+                    />
+                    <span className="font-monospace">{role.name}</span>
+                  </label>
                 ))}
               </div>
               <Form.Text>{copy.rolesHelp}</Form.Text>
               {errors.roles && (
                 <div className="invalid-feedback d-block">{errors.roles.message}</div>
               )}
-            </Form.Group>
-          </Card.Body>
-        </Card>
-        <div className="d-flex justify-content-end gap-2 mt-3">
-          <Button variant="outline-secondary" onClick={() => router.push(`/${locale}/admin/users`)}>
-            {dictionary.admin.common.cancel}
-          </Button>
-          <Button type="submit" disabled={saving}>
-            {saving ? dictionary.admin.common.saving : dictionary.admin.common.save}
-          </Button>
-        </div>
+            </Card.Body>
+          </Card>
+        )}
+
+        {editing && id && activeTab === "sessions" && (
+          <EntityRelatedData
+            resource="sessions"
+            url={`/api/admin/users/${encodeURIComponent(id)}/sessions`}
+            locale={locale}
+            dictionary={dictionary}
+            canManage={access?.manageSessions ?? false}
+          />
+        )}
+        {editing && id && activeTab === "consents" && (
+          <EntityRelatedData
+            resource="consents"
+            url={`/api/admin/users/${encodeURIComponent(id)}/consents`}
+            locale={locale}
+            dictionary={dictionary}
+            canManage={access?.manageConsents ?? false}
+          />
+        )}
+        {editing && id && activeTab === "events" && (
+          <EntityRelatedData
+            resource="events"
+            url={`/api/admin/users/${encodeURIComponent(id)}/events`}
+            locale={locale}
+            dictionary={dictionary}
+          />
+        )}
+
+        {(!editing || ["details", "credentials", "roles"].includes(activeTab)) && (
+          <div className="d-flex justify-content-end gap-2 mt-3">
+            <Button
+              type="button"
+              variant="outline-secondary"
+              onClick={() => router.push(`/${locale}/admin/users`)}
+            >
+              {dictionary.admin.common.cancel}
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? dictionary.admin.common.saving : dictionary.admin.common.save}
+            </Button>
+          </div>
+        )}
       </Form>
       <ConfirmModal
         busy={avatarSaving}

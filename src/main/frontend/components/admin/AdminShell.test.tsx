@@ -4,14 +4,14 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import dictionary from "@/i18n/dictionaries/en.json";
 
+import { StoreProvider } from "@/store/StoreProvider";
+
 import { AdminShell } from "./AdminShell";
 
-const mockPush = jest.fn();
 const mockLogout = jest.fn().mockResolvedValue(undefined);
 
 jest.mock("next/navigation", () => ({
   usePathname: () => "/en/admin/clients/detail",
-  useRouter: () => ({ push: mockPush }),
 }));
 jest.mock("next/link", () => ({ children, href, ...props }: React.ComponentProps<"a">) => (
   <a href={href} {...props}>
@@ -29,7 +29,24 @@ jest.mock("./AdminAuthProvider", () => ({
       viewKeys: true,
     },
     logout: mockLogout,
+    username: "admin",
   }),
+}));
+jest.mock("@/components/auth/ConsoleUserMenu", () => ({
+  ConsoleUserMenu: ({
+    username,
+    logoutLabel,
+    onLogout,
+  }: {
+    username: string;
+    logoutLabel: string;
+    onLogout: () => void;
+  }) => (
+    <div>
+      <span>{username}</span>
+      <button onClick={onLogout}>{logoutLabel}</button>
+    </div>
+  ),
 }));
 jest.mock("@/components/auth/LanguageSwitcher", () => ({
   LanguageSwitcher: ({ label }: { label: string }) => <button>{label}</button>,
@@ -100,16 +117,17 @@ describe("AdminShell", () => {
 
   it("renders permitted navigation and redirects after logout", async () => {
     render(
-      <AdminShell locale="en" dictionary={dictionary}>
-        <div>Content</div>
-      </AdminShell>,
+      <StoreProvider>
+        <AdminShell locale="en" dictionary={dictionary}>
+          <div>Content</div>
+        </AdminShell>
+      </StoreProvider>,
     );
     expect(screen.getByText(dictionary.admin.product)).toBeVisible();
     expect(screen.getByText(dictionary.admin.nav.clients)).toBeVisible();
     expect(screen.getByText(dictionary.admin.nav.users)).toBeVisible();
     expect(screen.queryByText(dictionary.admin.nav.dashboard)).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.logout }));
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/en/login"));
-    expect(mockLogout).toHaveBeenCalled();
+    await waitFor(() => expect(mockLogout).toHaveBeenCalled());
   });
 });

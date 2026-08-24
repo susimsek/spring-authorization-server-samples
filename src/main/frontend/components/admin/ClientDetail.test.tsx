@@ -1,6 +1,6 @@
 /* eslint-disable react/display-name */
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 import dictionary from "@/i18n/dictionaries/en.json";
 import { adminRequest } from "@/lib/admin-api";
@@ -13,7 +13,7 @@ const mockAdminRequest = adminRequest as jest.MockedFunction<typeof adminRequest
 
 jest.mock("@/lib/admin-api", () => ({ adminRequest: jest.fn() }));
 jest.mock("./AdminAuthProvider", () => ({
-  useAdminAuth: () => ({ accessToken: "token" }),
+  useAdminAuth: () => ({ accessToken: "token", access: { manageClients: true } }),
 }));
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
@@ -28,6 +28,7 @@ const client = {
   clientId: "web-client",
   clientName: "Web client",
   redirectUris: ["https://app.example/callback"],
+  id: "client-1",
   postLogoutRedirectUris: [],
   clientIdIssuedAt: null,
   clientSecretExpiresAt: null,
@@ -63,13 +64,18 @@ describe("ClientDetail", () => {
     render(<ClientDetail dictionary={dictionary} id="client-1" locale="en" />);
 
     expect(await screen.findByRole("heading", { name: "Web client" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Web client actions" }));
+    fireEvent.click(screen.getByText(dictionary.admin.clients.regenerateSecret));
     fireEvent.click(
-      screen.getByRole("button", { name: dictionary.admin.clients.regenerateSecret }),
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: dictionary.admin.clients.regenerateSecret,
+      }),
     );
     expect(await screen.findByText("new-secret")).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.common.close })[1]);
 
-    fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.clients.delete })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Web client actions" }));
+    fireEvent.click(screen.getByText(dictionary.admin.clients.delete));
     expect(screen.getByText(dictionary.admin.clients.deleteConfirm)).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.clients.delete })[1]);
 
@@ -91,15 +97,28 @@ describe("ClientDetail", () => {
     });
     render(<ClientDetail dictionary={dictionary} id="client-2" locale="en" />);
     expect(await screen.findByRole("heading", { name: "Web client" })).toBeVisible();
-    expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Web client actions" }));
+    fireEvent.click(screen.getByText(dictionary.admin.clients.regenerateSecret));
     fireEvent.click(
-      screen.getByRole("button", { name: dictionary.admin.clients.regenerateSecret }),
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: dictionary.admin.clients.regenerateSecret,
+      }),
     );
     expect(await screen.findByText(dictionary.admin.clients.secretError)).toBeVisible();
-    fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.clients.delete })[0]);
-    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.cancel }));
-    fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.clients.delete })[0]);
-    fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.clients.delete })[1]);
+    fireEvent.click(screen.getByRole("button", { name: "Web client actions" }));
+    fireEvent.click(screen.getByText(dictionary.admin.clients.delete));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: dictionary.admin.common.cancel,
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Web client actions" }));
+    fireEvent.click(screen.getAllByText(dictionary.admin.clients.delete)[0]);
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: dictionary.admin.clients.delete,
+      }),
+    );
     await waitFor(() =>
       expect(mockAdminRequest).toHaveBeenCalledWith("token", {
         url: "/api/admin/clients/client-2",

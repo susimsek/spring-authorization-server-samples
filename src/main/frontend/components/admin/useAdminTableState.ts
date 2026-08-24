@@ -8,6 +8,9 @@ type TableState = {
   page: number;
   size: number;
   status: string;
+  clientId: string;
+  username: string;
+  scope: string;
 };
 
 export function useAdminTableState(defaultSize = 20, includesStatus = false) {
@@ -29,6 +32,9 @@ export function useAdminTableState(defaultSize = 20, includesStatus = false) {
     setParam(params, "page", next.page === 0 ? "" : String(next.page));
     setParam(params, "size", next.size === defaultSize ? "" : String(next.size));
     if (includesStatus) setParam(params, "status", next.status);
+    setParam(params, "clientId", next.clientId);
+    setParam(params, "username", next.username);
+    setParam(params, "scope", next.scope);
     const search = params.toString();
     window.history.replaceState(
       null,
@@ -44,6 +50,9 @@ export function useAdminTableState(defaultSize = 20, includesStatus = false) {
     setPage: (page: number) => update({ page }),
     setSize: (size: number) => update({ size, page: 0 }),
     setStatus: (status: string) => update({ status, page: 0 }),
+    setClientId: (clientId: string) => update({ clientId, page: 0 }),
+    setUsername: (username: string) => update({ username, page: 0 }),
+    setScope: (scope: string) => update({ scope, page: 0 }),
   };
 }
 
@@ -65,6 +74,9 @@ function readState(location: string, defaultSize: number, includesStatus: boolea
     page: Number.isInteger(page) && page > 0 ? page : 0,
     size: Number.isInteger(size) && size > 0 ? size : defaultSize,
     status: includesStatus ? (params.get("status") ?? "") : "",
+    clientId: params.get("clientId") ?? "",
+    username: params.get("username") ?? "",
+    scope: params.get("scope") ?? "",
   };
 }
 

@@ -125,7 +125,10 @@
       "roles": "Roles",
       "sessions": "Sessions",
       "consents": "Consents",
-      "keys": "Keys"
+      "keys": "Keys",
+      "events": "Events",
+      "clientScopes": "Client scopes",
+      "serverInfo": "Server info"
     },
     "dashboard": {
       "title": "Dashboard",
@@ -185,7 +188,11 @@
         "roleDuplicate": "This role is already registered.",
         "password": "Password must be at least 8 characters.",
         "roles": "Select at least one role.",
-        "roleFormat": "Use uppercase ROLE_ names, for example ROLE_AUDITOR."
+        "roleFormat": "Use uppercase ROLE_ names, for example ROLE_AUDITOR.",
+        "max50": "Use at most 50 characters.",
+        "max100": "Use at most 100 characters.",
+        "max200": "Use at most 200 characters.",
+        "max500": "Use at most 500 characters."
       }
     },
     "roles": {
@@ -260,8 +267,131 @@
       "of": "of",
       "records": "records",
       "authorizations": "Authorizations",
-      "signOutAll": "Sign out all"
+      "signOutAll": "Sign out all",
+      "rowsPerPage": "Rows per page",
+      "first": "First page",
+      "last": "Last page",
+      "createdAt": "Created at",
+      "updatedAt": "Updated at"
     },
-    "placeholder": "This administration section is ready for the next implementation step."
+    "placeholder": "This administration section is ready for the next implementation step.",
+    "clientScopes": {
+      "title": "Client scopes",
+      "subtitle": "Create reusable OAuth 2.0 / OpenID Connect scopes and assign them to clients.",
+      "search": "Search client scopes",
+      "create": "Create client scope",
+      "edit": "Edit",
+      "delete": "Delete",
+      "name": "Name",
+      "displayName": "Display name",
+      "description": "Description",
+      "empty": "No client scopes found.",
+      "saved": "Client scope saved.",
+      "deleted": "Client scope deleted.",
+      "operationError": "The client scope operation could not be completed.",
+      "deleteConfirm": "Delete this client scope?",
+      "assignedDeleteError": "Assigned client scopes cannot be deleted.",
+      "defaultScopes": "Assigned default scopes",
+      "optionalScopes": "Assigned optional scopes",
+      "availableScopes": "Available scopes",
+      "defaultHelp": "Default scopes are automatically included for this client.",
+      "optionalHelp": "Optional scopes are available only when explicitly requested.",
+      "addDefault": "Add as default",
+      "addOptional": "Add as optional",
+      "remove": "Remove",
+      "assignmentSaved": "Client scope assignments updated."
+    }
+  },
+  "account": {
+    "product": "Account Console",
+    "manage": "Account",
+    "logout": "Sign out",
+    "nav": {
+      "personalInfo": "Personal info",
+      "security": "Security",
+      "sessions": "Device activity",
+      "applications": "Applications"
+    },
+    "common": {
+      "save": "Save",
+      "saving": "Saving…",
+      "loading": "Loading…",
+      "empty": "No records found.",
+      "operationError": "The account operation could not be completed.",
+      "retry": "Retry",
+      "cancel": "Cancel",
+      "required": "Required"
+    },
+    "validation": {
+      "required": "This field is required.",
+      "email": "Enter a valid email address.",
+      "max100": "Use at most 100 characters.",
+      "password": "Password must be at least 8 characters.",
+      "passwordMismatch": "Passwords do not match.",
+      "currentPassword": "Current password is incorrect.",
+      "invalid": "Please check this value.",
+      "max200": "Use at most 200 characters.",
+      "passwordSame": "New password must be different from your current password."
+    },
+    "profile": {
+      "title": "Personal info",
+      "subtitle": "Manage the basic information associated with your account.",
+      "username": "Username",
+      "usernameHelp": "Your username is managed by the authorization server and cannot be changed here.",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "email": "Email",
+      "saved": "Your profile has been updated.",
+      "createdAt": "Created at",
+      "updatedAt": "Updated at",
+      "sectionTitle": "Basic information",
+      "sectionHelp": "Review and update the personal information associated with your account.",
+      "metadata": "Account metadata",
+      "cancel": "Cancel changes"
+    },
+    "security": {
+      "title": "Security",
+      "subtitle": "Manage your password and account security.",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "saved": "Your password has been updated.",
+      "sectionTitle": "Password",
+      "sectionHelp": "Choose a strong password that you do not use for other accounts.",
+      "policyTitle": "Password requirements",
+      "policyMinLength": "At least 8 characters",
+      "policyMatch": "Passwords match",
+      "cancel": "Clear changes",
+      "policyMaxLength": "At most 200 characters",
+      "policyDifferent": "Different from current password"
+    },
+    "sessions": {
+      "title": "Device activity",
+      "subtitle": "Review and manage the sessions where your account is signed in.",
+      "help": "Sign out sessions you no longer recognize or use.",
+      "session": "Session",
+      "lastAccess": "Last activity",
+      "expires": "Expires",
+      "current": "Current session",
+      "signOut": "Sign out",
+      "signOutOthers": "Sign out other sessions",
+      "created": "Signed in",
+      "applications": "Applications",
+      "signOutAll": "Sign out all sessions",
+      "signOutConfirm": "Sign out this session?",
+      "signOutOthersConfirm": "Sign out all other sessions?",
+      "signOutAllConfirm": "Sign out all sessions, including this one?"
+    },
+    "applications": {
+      "title": "Applications",
+      "subtitle": "Review applications that have been granted access to your account.",
+      "help": "Revoking access removes the saved consent and related authorization for that application.",
+      "application": "Application",
+      "access": "Granted access",
+      "revoke": "Revoke access",
+      "grantedAt": "Granted at",
+      "updatedAt": "Last updated",
+      "revokeConfirm": "Revoke this application's access?"
+    }
   }
 }

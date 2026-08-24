@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -22,6 +24,8 @@ type Role = { name: string };
 
 export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
   const { accessToken } = useAdminAuth();
+  const params = useParams<{ lang: string }>();
+  const lang = params?.lang ?? "en";
   const copy = dictionary.admin.roles;
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +37,7 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
     name: z
       .string()
       .trim()
+      .max(50, dictionary.admin.common.validation.max50)
       .regex(/^ROLE_[A-Z0-9_]+$/, dictionary.admin.common.validation.roleFormat),
   });
   const {
@@ -141,28 +146,26 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
         onQueryChange={setQuery}
         query={query}
         searchLabel={dictionary.admin.resources.search}
-      >
-        <Form.Select
-          aria-label={dictionary.admin.resources.records}
-          onChange={(event) => setSize(Number(event.target.value))}
-          style={{ maxWidth: "6rem" }}
-          value={size}
-        >
-          <option value="10">10</option>
-          <option value="20">20</option>
-          <option value="50">50</option>
-        </Form.Select>
-      </ResourceFilters>
+      />
       <DataTable
         emptyMessage={dictionary.admin.resources.empty}
         footer={
-          <PaginationControls
-            next={dictionary.admin.resources.next}
-            onPageChange={setPage}
-            page={page}
-            previous={dictionary.admin.resources.previous}
-            totalPages={totalPages}
-          />
+          filteredRoles.length > 0 ? (
+            <PaginationControls
+              next={dictionary.admin.resources.next}
+              previous={dictionary.admin.resources.previous}
+              first={dictionary.admin.resources.first}
+              last={dictionary.admin.resources.last}
+              rowsPerPage={dictionary.admin.resources.rowsPerPage}
+              pageLabel={dictionary.admin.resources.page}
+              onPageChange={setPage}
+              onSizeChange={setSize}
+              page={page}
+              size={size}
+              totalElements={filteredRoles.length}
+              totalPages={totalPages}
+            />
+          ) : undefined
         }
         isEmpty={filteredRoles.length === 0}
       >
@@ -176,7 +179,12 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
           {visibleRoles.map((role) => (
             <tr key={role.name}>
               <td className="font-monospace" data-label={copy.name}>
-                {role.name}
+                <Link
+                  className="text-decoration-none"
+                  href={`/${lang}/admin/roles/${encodeURIComponent(role.name)}`}
+                >
+                  {role.name}
+                </Link>
               </td>
               <td className="text-end">
                 <Button

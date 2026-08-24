@@ -2,43 +2,27 @@
 
 import { faDesktop, faMoon, faSun } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useEffect, useSyncExternalStore } from "react";
 import { Dropdown } from "react-bootstrap";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { setTheme } from "@/store/theme-slice";
 
-import { isTheme, resolveTheme, THEME_STORAGE_KEY, type Theme } from "./theme";
+import { THEME_STORAGE_KEY, type Theme } from "./theme";
 
 type ThemeSwitcherProps = {
   dictionary: Dictionary;
 };
 
 const themeIcons = { system: faDesktop, light: faSun, dark: faMoon } as const;
-const THEME_CHANGE_EVENT = "auth-theme-change";
 
 export function ThemeSwitcher({ dictionary }: ThemeSwitcherProps) {
-  const theme = useSyncExternalStore(subscribeTheme, getThemeSnapshot, getServerThemeSnapshot);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const applyTheme = () => {
-      document.documentElement.setAttribute(
-        "data-bs-theme",
-        resolveTheme(theme, mediaQuery.matches),
-      );
-    };
-
-    applyTheme();
-    if (theme === "system") {
-      mediaQuery.addEventListener("change", applyTheme);
-      return () => mediaQuery.removeEventListener("change", applyTheme);
-    }
-    return undefined;
-  }, [theme]);
+  const dispatch = useAppDispatch();
+  const theme = useAppSelector((state) => state.theme.value) as Theme;
 
   function changeTheme(nextTheme: Theme) {
     localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
-    window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
+    dispatch(setTheme(nextTheme));
   }
 
   const labels: Record<Theme, string> = {
@@ -63,29 +47,4 @@ export function ThemeSwitcher({ dictionary }: ThemeSwitcherProps) {
       </Dropdown.Menu>
     </Dropdown>
   );
-}
-
-function subscribeTheme(callback: () => void) {
-  const handleStorage = (event: StorageEvent) => {
-    if (event.key === THEME_STORAGE_KEY) {
-      callback();
-    }
-  };
-  const handleThemeChange = () => callback();
-
-  window.addEventListener("storage", handleStorage);
-  window.addEventListener(THEME_CHANGE_EVENT, handleThemeChange);
-  return () => {
-    window.removeEventListener("storage", handleStorage);
-    window.removeEventListener(THEME_CHANGE_EVENT, handleThemeChange);
-  };
-}
-
-function getThemeSnapshot(): Theme {
-  const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
-  return isTheme(storedTheme) ? storedTheme : "system";
-}
-
-function getServerThemeSnapshot(): Theme {
-  return "system";
 }

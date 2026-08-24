@@ -1,0 +1,14 @@
+[
+  {
+    "name": "org.hibernate.cache.internal.BasicCacheKeyImplementation"
+  },
+  {
+    "name": "org.hibernate.cache.spi.support.AbstractReadWriteAccess$Item"
+  },
+  {
+    "name": "org.hibernate.cache.spi.entry.StandardCacheEntryImpl"
+  },
+  {
+    "name": "java.time.Instant"
+  }
+]

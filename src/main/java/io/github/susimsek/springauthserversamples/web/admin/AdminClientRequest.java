@@ -5,13 +5,14 @@ import io.github.susimsek.springauthserversamples.web.admin.validation.PositiveD
 import io.github.susimsek.springauthserversamples.web.admin.validation.ValidAdminClientConfiguration;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 import java.time.Duration;
 import java.util.Set;
 
 @ValidAdminClientConfiguration
 public record AdminClientRequest(
-        @NotBlank(message = "{admin.validation.required}") String clientId,
-        @NotBlank(message = "{admin.validation.required}") String clientName,
+        @NotBlank(message = "{admin.validation.required}") @Size(max = 100) String clientId,
+        @NotBlank(message = "{admin.validation.required}") @Size(max = 200) String clientName,
         @NotEmpty(message = "{admin.validation.selection}")
                 Set<@NotBlank(message = "{admin.validation.selection}") String>
                         clientAuthenticationMethods,

@@ -46,6 +46,15 @@ public class UserEntity extends AuditableEntity {
     @Column(name = "password", nullable = false)
     private String password;
 
+    @Column(name = "first_name", length = 100)
+    private String firstName;
+
+    @Column(name = "last_name", length = 100)
+    private String lastName;
+
+    @Column(name = "email", length = 200)
+    private String email;
+
     @Column(name = "enabled", nullable = false)
     private boolean enabled;
 
@@ -56,6 +65,19 @@ public class UserEntity extends AuditableEntity {
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "authority_id"))
     private Set<AuthorityEntity> authorities = new HashSet<>();
+
+    public UserEntity(
+            Long id,
+            String username,
+            String password,
+            boolean enabled,
+            Set<AuthorityEntity> authorities) {
+        this.id = id;
+        this.username = username;
+        this.password = password;
+        this.enabled = enabled;
+        this.authorities = authorities;
+    }
 
     @Override
     public boolean equals(Object o) {

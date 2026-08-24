@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import axios from "axios";
 
 import dictionary from "@/i18n/dictionaries/en.json";
+import { StoreProvider } from "@/store/StoreProvider";
 
 const navigation = {
   pathname: "/en/login",
@@ -29,6 +30,7 @@ import { ErrorView } from "./ErrorView";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { LoginForm } from "./LoginForm";
 import { THEME_STORAGE_KEY } from "./theme";
+import { ThemeManager } from "./ThemeManager";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 
 const mockedAxios = axios as unknown as { get: jest.Mock; isCancel: jest.Mock };
@@ -82,9 +84,11 @@ describe("authentication components", () => {
     navigation.searchParams = new URLSearchParams("error&logout");
 
     render(
-      <AuthLayout locale="en" dictionary={dictionary}>
-        <LoginForm dictionary={dictionary} />
-      </AuthLayout>,
+      <StoreProvider>
+        <AuthLayout locale="en" dictionary={dictionary}>
+          <LoginForm dictionary={dictionary} />
+        </AuthLayout>
+      </StoreProvider>,
     );
 
     expect(screen.getByRole("link", { name: dictionary.brand.product })).toHaveAttribute(
@@ -190,7 +194,11 @@ describe("authentication components", () => {
 
   it("switches language while preserving the query string and normalizing paths", () => {
     window.history.replaceState(null, "", "/en/login?continue=%2Fconsole");
-    render(<LanguageSwitcher locale="en" label={dictionary.navbar.language} />);
+    render(
+      <StoreProvider>
+        <LanguageSwitcher locale="en" label={dictionary.navbar.language} />
+      </StoreProvider>,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: dictionary.navbar.language }));
     fireEvent.click(screen.getByRole("button", { name: "Türkçe" }));
@@ -198,7 +206,11 @@ describe("authentication components", () => {
     expect(navigation.push).toHaveBeenCalledWith("/tr/login?continue=%2Fconsole");
 
     navigation.pathname = "profile";
-    render(<LanguageSwitcher locale="tr" label={dictionary.navbar.language} />);
+    render(
+      <StoreProvider>
+        <LanguageSwitcher locale="tr" label={dictionary.navbar.language} />
+      </StoreProvider>,
+    );
     fireEvent.click(screen.getAllByRole("button", { name: dictionary.navbar.language })[1]);
     fireEvent.click(screen.getAllByRole("button", { name: "English" })[1]);
     expect(navigation.push).toHaveBeenLastCalledWith("/en/profile?continue=%2Fconsole");
@@ -206,7 +218,12 @@ describe("authentication components", () => {
 
   it("persists themes, applies system preferences, and cleans up media subscriptions", () => {
     const mediaQuery = installMatchMedia(false);
-    const { unmount } = render(<ThemeSwitcher dictionary={dictionary} />);
+    const { unmount } = render(
+      <StoreProvider>
+        <ThemeManager />
+        <ThemeSwitcher dictionary={dictionary} />
+      </StoreProvider>,
+    );
     expect(document.documentElement).toHaveAttribute("data-bs-theme", "light");
 
     fireEvent.click(screen.getByRole("button", { name: dictionary.theme.label }));

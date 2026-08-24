@@ -6,6 +6,8 @@ import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,12 +18,70 @@ public class AdminRoleService {
     private final AuthorityRepository authorityRepository;
     private final UserRepository userRepository;
     private final AdminAuditEventService adminAuditEventService;
+    private final AdminUserService adminUserService;
 
     @Transactional(readOnly = true)
     public List<RoleView> roles() {
         return authorityRepository.findAllByOrderByNameAsc().stream()
                 .map(AdminRoleService::roleView)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<UserEntityView> availableUsers(String name, String query, Pageable pageable) {
+        if (!authorityRepository.existsByName(name)) {
+            throw AdminClientException.notFound("Role not found");
+        }
+        return userRepository
+                .findAvailableRoleUsers(name, AdminSearch.normalize(query), pageable)
+                .map(
+                        user ->
+                                new UserEntityView(
+                                        user.getId(), user.getUsername(), user.isEnabled()));
+    }
+
+    @Transactional(readOnly = true)
+    public RoleDetailView role(String name, String query, Pageable pageable) {
+        AuthorityEntity role =
+                authorityRepository
+                        .findByName(name)
+                        .orElseThrow(() -> AdminClientException.notFound("Role not found"));
+        Page<UserEntityView> users =
+                userRepository
+                        .findByAuthoritiesNameAndUsernameContainingIgnoreCase(
+                                name, AdminSearch.normalize(query), pageable)
+                        .map(
+                                user ->
+                                        new UserEntityView(
+                                                user.getId(),
+                                                user.getUsername(),
+                                                user.isEnabled()));
+        return new RoleDetailView(
+                role.getName(),
+                userRepository.countByAuthoritiesId(role.getId()),
+                AuthoritiesConstants.ADMIN.equals(name) || AuthoritiesConstants.USER.equals(name),
+                users);
+    }
+
+    @Transactional(readOnly = true)
+    public RoleDetailView role(String name, Pageable pageable) {
+        return role(name, "", pageable);
+    }
+
+    @Transactional
+    public RoleDetailView assignUser(
+            String name, Long userId, String currentUsername, Pageable pageable) {
+        adminUserService.assignRole(userId, name, currentUsername);
+        adminAuditEventService.record("role.user.assigned", "role", name);
+        return role(name, pageable);
+    }
+
+    @Transactional
+    public RoleDetailView removeUser(
+            String name, Long userId, String currentUsername, Pageable pageable) {
+        adminUserService.removeRole(userId, name, currentUsername);
+        adminAuditEventService.record("role.user.removed", "role", name);
+        return role(name, pageable);
     }
 
     @Transactional
@@ -69,4 +129,9 @@ public class AdminRoleService {
     }
 
     public record RoleView(String name) {}
+
+    public record UserEntityView(Long id, String username, boolean enabled) {}
+
+    public record RoleDetailView(
+            String name, long userCount, boolean protectedRole, Page<UserEntityView> users) {}
 }

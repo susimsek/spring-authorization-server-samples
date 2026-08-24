@@ -7,6 +7,7 @@ import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
 import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentEntity;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationEntity;
+import io.github.susimsek.springauthserversamples.domain.ClientScopeEntity;
 import io.github.susimsek.springauthserversamples.domain.OAuth2KeyEntity;
 import io.github.susimsek.springauthserversamples.domain.RegisteredClientEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
@@ -81,6 +82,7 @@ public class CacheConfig {
             return cacheManager -> {
                 createCache(cacheManager, AuthorizationConsentEntity.class.getName());
                 createCache(cacheManager, AuthorizationEntity.class.getName());
+                createCache(cacheManager, ClientScopeEntity.class.getName());
                 createCache(cacheManager, AuthorityEntity.class.getName());
                 createCache(cacheManager, OAuth2KeyEntity.class.getName());
                 createCache(cacheManager, RegisteredClientEntity.class.getName());

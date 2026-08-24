@@ -44,7 +44,22 @@ public interface AuthorizationRepository extends JpaRepository<AuthorizationEnti
 
     long deleteBySessionId(String sessionId);
 
+    List<AuthorizationEntity> findAllBySessionIdOrderByAccessTokenIssuedAtDesc(String sessionId);
+
     long countByPrincipalName(String principalName);
+
+    @Query(
+            "select distinct a.sessionId from AuthorizationEntity a where a.registeredClientId ="
+                    + " :registeredClientId and a.sessionId is not null")
+    List<String> findDistinctSessionIdsByRegisteredClientId(
+            @Param("registeredClientId") String registeredClientId);
+
+    @Query(
+            "select a.sessionId as sessionId, count(a) as authorizationCount "
+                    + "from AuthorizationEntity a where a.sessionId in :sessionIds "
+                    + "group by a.sessionId")
+    List<SessionAuthorizationCount> countBySessionIdIn(
+            @Param("sessionIds") Collection<String> sessionIds);
 
     @Query(
             "select a.principalName as principalName, count(a) as authorizationCount "
@@ -58,6 +73,12 @@ public interface AuthorizationRepository extends JpaRepository<AuthorizationEnti
 
     interface AuthorizationCount {
         String getPrincipalName();
+
+        long getAuthorizationCount();
+    }
+
+    interface SessionAuthorizationCount {
+        String getSessionId();
 
         long getAuthorizationCount();
     }

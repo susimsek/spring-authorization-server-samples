@@ -128,6 +128,43 @@ public class AdminUserService {
 
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
+    public UserView assignRole(Long id, String roleName, String currentUsername) {
+        UserEntity user = findUser(id);
+        assertCanManageUser(user, currentUsername);
+        AuthorityEntity role =
+                authorityRepository
+                        .findByName(roleName)
+                        .orElseThrow(() -> AdminClientException.notFound("Role not found"));
+        if (user.getAuthorities().add(role)) {
+            invalidateUserSessions(user.getUsername());
+            adminAuditEventService.record("user.role.assigned", "user", id.toString());
+        }
+        return userView(user, avatarUrl(user.getId()));
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
+    public UserView removeRole(Long id, String roleName, String currentUsername) {
+        UserEntity user = findUser(id);
+        assertCanManageUser(user, currentUsername);
+        Set<String> remaining =
+                user.getAuthorities().stream()
+                        .map(AuthorityEntity::getName)
+                        .filter(name -> !name.equals(roleName))
+                        .collect(java.util.stream.Collectors.toSet());
+        assertNotLastAdmin(user, remaining);
+        if (user.getAuthorities().removeIf(authority -> authority.getName().equals(roleName))) {
+            if (user.getAuthorities().isEmpty()) {
+                user.setAuthorities(resolveAuthorities(Set.of(AuthoritiesConstants.USER)));
+            }
+            invalidateUserSessions(user.getUsername());
+            adminAuditEventService.record("user.role.removed", "user", id.toString());
+        }
+        return userView(user, avatarUrl(user.getId()));
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public void setUserEnabled(Long id, boolean enabled, String currentUsername) {
         UserEntity user = findUser(id);
         assertCanManageUser(user, currentUsername);
@@ -241,7 +278,13 @@ public class AdminUserService {
 
     private static UserView userView(UserEntity user, String avatarUrl) {
         return new UserView(
-                user.getId(), user.getUsername(), user.isEnabled(), avatarUrl, authorities(user));
+                user.getId(),
+                user.getUsername(),
+                user.isEnabled(),
+                avatarUrl,
+                authorities(user),
+                user.getCreatedAt(),
+                user.getUpdatedAt());
     }
 
     private static Set<String> authorities(UserEntity user) {
@@ -268,5 +311,11 @@ public class AdminUserService {
     }
 
     public record UserView(
-            Long id, String username, boolean enabled, String avatarUrl, Set<String> authorities) {}
+            Long id,
+            String username,
+            boolean enabled,
+            String avatarUrl,
+            Set<String> authorities,
+            java.time.Instant createdAt,
+            java.time.Instant updatedAt) {}
 }

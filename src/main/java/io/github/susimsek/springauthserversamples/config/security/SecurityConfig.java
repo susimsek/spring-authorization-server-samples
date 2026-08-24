@@ -42,18 +42,16 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Order(2)
+    @Order(3)
     SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) {
         http.csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(
                         authorize ->
                                 authorize
-                                        .requestMatchers("/avatars/**")
+                                        .requestMatchers("/avatars/**", "/oidc/session-iframe.html")
                                         .permitAll()
                                         .requestMatchers("/account/avatar")
                                         .authenticated()
-                                        .requestMatchers("/api/account/avatar")
-                                        .hasAuthority("SCOPE_profile")
                                         .requestMatchers(
                                                 "/admin",
                                                 "/admin/**",

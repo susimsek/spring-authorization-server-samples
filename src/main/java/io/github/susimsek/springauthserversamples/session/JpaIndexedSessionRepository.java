@@ -8,7 +8,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.core.convert.ConversionService;
@@ -158,7 +157,7 @@ public class JpaIndexedSessionRepository implements FindByIndexNameSessionReposi
     private void saveInTransaction(JpaSession session) {
         UserSessionEntity entity = findEntityForSave(session).orElseGet(UserSessionEntity::new);
         if (entity.getPrimaryId() == null) {
-            entity.setPrimaryId(UUID.randomUUID().toString());
+            entity.setPrimaryId(session.getId());
         }
 
         MapSession delegate = session.getDelegate();

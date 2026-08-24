@@ -58,8 +58,8 @@ public class SpaFilter extends OncePerRequestFilter {
     private boolean hasLocalizedPage(String path) {
         return LocaleConfig.SUPPORTED_LANGUAGES.stream()
                 .map(locale -> "/".equals(path) ? "/" + locale : "/" + locale + path)
-                .map(SpaFilter::toIndexPath)
-                .anyMatch(this::resourceExists);
+                .map(this::resolveIndexPath)
+                .anyMatch(StringUtils::hasText);
     }
 
     private void forwardIfExists(
@@ -69,8 +69,8 @@ public class SpaFilter extends OncePerRequestFilter {
             FilterChain filterChain)
             throws ServletException, IOException {
 
-        String indexPath = toIndexPath(localizedPath);
-        if (!resourceExists(indexPath)) {
+        String indexPath = resolveIndexPath(localizedPath);
+        if (!StringUtils.hasText(indexPath)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -85,7 +85,7 @@ public class SpaFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain)
             throws IOException, ServletException {
-        if (!resourceExists(toIndexPath(localizedPath))) {
+        if (!StringUtils.hasText(resolveIndexPath(localizedPath))) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -93,6 +93,91 @@ public class SpaFilter extends OncePerRequestFilter {
         String query = request.getQueryString();
         response.sendRedirect(
                 StringUtils.hasText(query) ? localizedPath + "?" + query : localizedPath);
+    }
+
+    private String resolveIndexPath(String localizedPath) {
+        String exactResourcePath = toExactResourcePath(localizedPath);
+        if (resourceExists(exactResourcePath)) {
+            return exactResourcePath;
+        }
+
+        for (String dynamicResourcePath : toDynamicEntityResourcePaths(localizedPath)) {
+            if (resourceExists(dynamicResourcePath)) {
+                return dynamicResourcePath;
+            }
+        }
+        return null;
+    }
+
+    private static java.util.List<String> toDynamicEntityResourcePaths(String localizedPath) {
+        String[] segments = localizedPath.split("/");
+        if (segments.length < 5 || !"admin".equals(segments[2])) {
+            return java.util.List.of();
+        }
+
+        String resource = segments[3];
+        String entityId = segments[4];
+        if (!StringUtils.hasText(entityId) || "_".equals(entityId)) {
+            return java.util.List.of();
+        }
+
+        if ("roles".equals(resource) && segments.length == 5) {
+            return java.util.List.of("/" + segments[1] + "/admin/roles/_/index.html");
+        }
+        if ("consents".equals(resource) && segments.length == 5) {
+            return java.util.List.of("/" + segments[1] + "/admin/consents/_/index.html");
+        }
+
+        if (segments.length < 6) {
+            return java.util.List.of();
+        }
+
+        String section = segments[5];
+
+        boolean supportedSection =
+                switch (resource) {
+                    case "clients" ->
+                            java.util.Set.of(
+                                            "settings",
+                                            "credentials",
+                                            "scopes",
+                                            "sessions",
+                                            "consents",
+                                            "events")
+                                    .contains(section);
+                    case "users" ->
+                            java.util.Set.of(
+                                            "details",
+                                            "credentials",
+                                            "roles",
+                                            "sessions",
+                                            "consents",
+                                            "events")
+                                    .contains(section);
+                    default -> false;
+                };
+
+        if (!supportedSection) {
+            return java.util.List.of();
+        }
+
+        StringBuilder template =
+                new StringBuilder()
+                        .append('/')
+                        .append(segments[1])
+                        .append("/admin/")
+                        .append(resource)
+                        .append("/_/")
+                        .append(section);
+
+        if (segments.length == 6) {
+            return java.util.List.of(template + "/index.html");
+        }
+
+        for (int i = 6; i < segments.length; i++) {
+            template.append('/').append(segments[i]);
+        }
+        return java.util.List.of(template.toString());
     }
 
     private boolean resourceExists(String indexPath) {
@@ -108,7 +193,7 @@ public class SpaFilter extends OncePerRequestFilter {
         }
 
         String lastSegment = path.substring(path.lastIndexOf('/') + 1);
-        return !lastSegment.contains(".");
+        return !lastSegment.contains(".") || path.endsWith(".txt");
     }
 
     private static String requestPath(HttpServletRequest request) {
@@ -143,7 +228,10 @@ public class SpaFilter extends OncePerRequestFilter {
                 && LocaleConfig.SUPPORTED_LANGUAGES.contains(language.toLowerCase(Locale.ROOT));
     }
 
-    private static String toIndexPath(String localizedPath) {
+    private static String toExactResourcePath(String localizedPath) {
+        if (localizedPath.endsWith(".txt")) {
+            return localizedPath;
+        }
         return "/".equals(localizedPath) ? "/index.html" : localizedPath + "/index.html";
     }
 }

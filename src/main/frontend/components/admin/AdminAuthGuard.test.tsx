@@ -9,36 +9,50 @@ const mockRegisterAdminTokenHandlers = registerAdminTokenHandlers as jest.Mocked
   typeof registerAdminTokenHandlers
 >;
 const mockBeginAuthorization = jest.fn().mockResolvedValue(undefined);
+const mockReplace = jest.fn();
 const mockRefreshAccessToken = jest.fn().mockResolvedValue("new-token");
 const mockSetAccess = jest.fn();
+const mockSetUsername = jest.fn();
 let pathname = "/en/admin";
 let auth = {
   accessToken: "token" as string | null,
   beginAuthorization: mockBeginAuthorization,
   expiresAt: null as number | null,
   isLoggingOut: false,
+  initialized: true,
   refreshAccessToken: mockRefreshAccessToken,
   setAccess: mockSetAccess,
+  setUsername: mockSetUsername,
 };
 
 jest.mock("@/lib/admin-api", () => ({
   adminRequest: jest.fn(),
   registerAdminTokenHandlers: jest.fn(),
 }));
-jest.mock("next/navigation", () => ({ usePathname: () => pathname }));
+jest.mock("next/navigation", () => ({
+  usePathname: () => pathname,
+  useRouter: () => ({ replace: mockReplace }),
+}));
 jest.mock("./AdminAuthProvider", () => ({ useAdminAuth: () => auth }));
 
 describe("AdminAuthGuard", () => {
   beforeEach(() => {
+    mockReplace.mockReset();
     jest.clearAllMocks();
+    mockAdminRequest.mockResolvedValue({
+      status: 200,
+      data: { username: "admin", authorities: ["ROLE_ADMIN"], access: { viewClients: true } },
+    } as never);
     pathname = "/en/admin";
     auth = {
       accessToken: "token",
       beginAuthorization: mockBeginAuthorization,
       expiresAt: null,
       isLoggingOut: false,
+      initialized: true,
       refreshAccessToken: mockRefreshAccessToken,
       setAccess: mockSetAccess,
+      setUsername: mockSetUsername,
     };
   });
 
@@ -58,6 +72,7 @@ describe("AdminAuthGuard", () => {
     expect(screen.getByRole("status")).toBeVisible();
     expect(await screen.findByText("Dashboard")).toBeVisible();
     expect(mockSetAccess).toHaveBeenCalledWith({ viewClients: true });
+    expect(mockSetUsername).toHaveBeenCalledWith("admin");
     expect(registerAdminTokenHandlers).toHaveBeenCalledWith({
       refresh: mockRefreshAccessToken,
       unauthorized: expect.any(Function),
@@ -89,9 +104,13 @@ describe("AdminAuthGuard", () => {
     expect(screen.queryByText("Protected")).not.toBeInTheDocument();
   });
 
-  it("reauthorizes after a 401 response", async () => {
+  it("reauthorizes when the API token handler reports an unrecoverable 401", async () => {
     mockAdminRequest.mockResolvedValueOnce({ status: 401, data: null } as never);
     render(<AdminAuthGuard locale="en">Protected</AdminAuthGuard>);
+    const registration = await waitFor(() =>
+      mockRegisterAdminTokenHandlers.mock.calls.find(([value]) => value),
+    );
+    registration?.[0]?.unauthorized();
     await waitFor(() => expect(mockBeginAuthorization).toHaveBeenCalledWith("en", "/"));
   });
 

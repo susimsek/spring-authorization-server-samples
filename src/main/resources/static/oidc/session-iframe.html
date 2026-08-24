@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>OIDC Session Status</title>
+</head>
+<body>
+<script>
+  window.addEventListener("message", async (event) => {
+    if (event.origin !== window.location.origin || typeof event.data !== "string") return;
+    const separator = event.data.indexOf(" ");
+    const expectedSessionId = separator >= 0 ? event.data.slice(separator + 1) : "";
+    let result = "changed";
+    try {
+      const response = await fetch("/oidc/session-status", {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+        cache: "no-store"
+      });
+      if (response.ok) {
+        const status = await response.json();
+        result = status.authenticated === true && status.sessionId === expectedSessionId
+          ? "unchanged"
+          : "changed";
+      }
+    } catch (_) {
+      result = "changed";
+    }
+    if (event.source) event.source.postMessage(result, event.origin);
+  });
+</script>
+</body>
+</html>

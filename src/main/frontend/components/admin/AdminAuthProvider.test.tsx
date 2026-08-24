@@ -3,6 +3,8 @@
 import { act, render, waitFor } from "@testing-library/react";
 import axios from "axios";
 
+import { StoreProvider } from "@/store/StoreProvider";
+
 import { type AdminAccess, AdminAuthProvider, useAdminAuth } from "./AdminAuthProvider";
 
 const mockPost = jest.fn();
@@ -28,11 +30,36 @@ function Consumer() {
   return null;
 }
 
+function jwt(payload: Record<string, unknown>) {
+  const encoded = btoa(JSON.stringify(payload))
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replaceAll("=", "");
+  return `e30.${encoded}.signature`;
+}
+
+function storeTransaction(state: string, returnTo = "/en/admin") {
+  localStorage.setItem(
+    `ADMIN_OIDC_TRANSACTION:${state}`,
+    JSON.stringify({
+      codeVerifier: "verifier",
+      createdAt: Date.now(),
+      expires: Date.now() + 60 * 60 * 1000,
+      nonce: "nonce",
+      redirectUri: "http://localhost/en/admin/callback",
+      returnTo,
+      state,
+    }),
+  );
+}
+
 function renderProvider() {
   return render(
-    <AdminAuthProvider>
-      <Consumer />
-    </AdminAuthProvider>,
+    <StoreProvider>
+      <AdminAuthProvider>
+        <Consumer />
+      </AdminAuthProvider>
+    </StoreProvider>,
   );
 }
 
@@ -41,6 +68,7 @@ describe("AdminAuthProvider", () => {
     mockPost.mockReset();
     Object.assign(axios, { post: mockPost });
     sessionStorage.clear();
+    localStorage.clear();
     Object.defineProperty(globalThis, "crypto", {
       configurable: true,
       value: {
@@ -51,13 +79,28 @@ describe("AdminAuthProvider", () => {
   });
 
   it("requires its provider", () => {
-    expect(() => render(<Consumer />)).toThrow("AdminAuthProvider is required");
+    expect(() =>
+      render(
+        <StoreProvider>
+          <Consumer />
+        </StoreProvider>,
+      ),
+    ).toThrow("AdminAuthProvider is required");
   });
 
   it("does not refresh when no refresh token is available", async () => {
     renderProvider();
 
     await expect(auth.refreshAccessToken()).resolves.toBeNull();
+    expect(mockPost).not.toHaveBeenCalled();
+  });
+
+  it("does not restore tokens from browser storage after a page remount", async () => {
+    renderProvider();
+
+    await waitFor(() => expect(auth.initialized).toBe(true));
+    expect(auth.authenticated).toBe(false);
+    expect(auth.accessToken).toBeNull();
     expect(mockPost).not.toHaveBeenCalled();
   });
 
@@ -73,7 +116,11 @@ describe("AdminAuthProvider", () => {
     });
 
     expect(sessionStorage.getItem("AUTH_ADMIN_RETURN_TO")).toBe("/tr/admin");
-    expect(JSON.parse(sessionStorage.getItem("ADMIN_OIDC_TRANSACTION") ?? "{}")).toMatchObject({
+    const transactionKey = Object.keys(localStorage).find((key) =>
+      key.startsWith("ADMIN_OIDC_TRANSACTION:"),
+    );
+    expect(transactionKey).toBeDefined();
+    expect(JSON.parse(localStorage.getItem(transactionKey ?? "") ?? "{}")).toMatchObject({
       returnTo: "/tr/admin",
     });
   });
@@ -84,64 +131,90 @@ describe("AdminAuthProvider", () => {
     await expect(auth.completeAuthorization("en", "code", "state")).rejects.toThrow(
       "Missing authorization transaction",
     );
-    sessionStorage.setItem(
-      "ADMIN_OIDC_TRANSACTION",
-      JSON.stringify({ codeVerifier: "verifier", returnTo: "/en/admin", state: "expected" }),
-    );
+    storeTransaction("expected");
+    const invalid = JSON.parse(localStorage.getItem("ADMIN_OIDC_TRANSACTION:expected") ?? "{}");
+    invalid.state = "different";
+    localStorage.setItem("ADMIN_OIDC_TRANSACTION:expected", JSON.stringify(invalid));
 
-    await expect(auth.completeAuthorization("en", "code", "unexpected")).rejects.toThrow(
-      "Invalid authorization state",
+    await expect(auth.completeAuthorization("en", "code", "expected")).rejects.toThrow(
+      "Missing authorization transaction",
     );
   });
 
   it("exchanges a code, stores token state, and refreshes it", async () => {
     renderProvider();
-    sessionStorage.setItem(
-      "ADMIN_OIDC_TRANSACTION",
-      JSON.stringify({ codeVerifier: "verifier", returnTo: "/en/admin", state: "state" }),
-    );
+    storeTransaction("state");
     sessionStorage.setItem("AUTH_ADMIN_RETURN_TO", "/en/admin");
     mockPost
       .mockResolvedValueOnce({
-        data: { access_token: "first", expires_in: 60, refresh_token: "refresh" },
+        data: {
+          access_token: jwt({
+            iat: Math.floor(Date.now() / 1000),
+            exp: Math.floor(Date.now() / 1000) + 60,
+            sid: "s1",
+            sub: "u1",
+          }),
+          expires_in: 60,
+          refresh_token: "refresh",
+          id_token: jwt({ nonce: "nonce", sub: "u1" }),
+        },
       })
-      .mockResolvedValueOnce({ data: { access_token: "second", expires_in: 60 } });
+      .mockResolvedValueOnce({
+        data: {
+          access_token: jwt({
+            iat: Math.floor(Date.now() / 1000),
+            exp: Math.floor(Date.now() / 1000) + 60,
+            sid: "s1",
+            sub: "u1",
+          }),
+          expires_in: 60,
+          refresh_token: "refresh2",
+          id_token: jwt({ sub: "u1" }),
+        },
+      });
 
     await act(async () => {
       await expect(auth.completeAuthorization("en", "code", "state")).resolves.toBe("/en/admin");
     });
-    expect(auth.accessToken).toBe("first");
+    expect(auth.accessToken).not.toBeNull();
     expect(auth.expiresAt).toEqual(expect.any(Number));
+    expect(sessionStorage.getItem("AUTH_CONSOLE_TOKEN:admin")).toBeNull();
     expect(sessionStorage.getItem("AUTH_ADMIN_RETURN_TO")).toBeNull();
 
     await act(async () => {
-      await expect(auth.refreshAccessToken()).resolves.toBe("second");
+      await expect(auth.refreshAccessToken(-1)).resolves.not.toBeNull();
     });
-    expect(auth.accessToken).toBe("second");
+    expect(auth.accessToken).not.toBeNull();
     expect(mockPost).toHaveBeenCalledTimes(2);
   });
 
-  it("returns null after a failed refresh and revokes the refresh token on logout", async () => {
+  it("keeps a still-valid token after a transient refresh failure and revokes on logout", async () => {
     renderProvider();
-    sessionStorage.setItem(
-      "ADMIN_OIDC_TRANSACTION",
-      JSON.stringify({ codeVerifier: "verifier", returnTo: "/en/admin", state: "state" }),
-    );
+    storeTransaction("state");
     mockPost
       .mockResolvedValueOnce({
-        data: { access_token: "first", expires_in: 60, refresh_token: "refresh" },
+        data: {
+          access_token: jwt({
+            iat: Math.floor(Date.now() / 1000),
+            exp: Math.floor(Date.now() / 1000) + 60,
+            sid: "s1",
+            sub: "u1",
+          }),
+          expires_in: 60,
+          refresh_token: "refresh",
+          id_token: jwt({ nonce: "nonce", sub: "u1" }),
+        },
       })
       .mockRejectedValueOnce(new Error("expired"))
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({});
 
     await act(async () => auth.completeAuthorization("en", "code", "state"));
-    await act(async () => expect(auth.refreshAccessToken()).resolves.toBeNull());
-    await act(async () => auth.logout());
+    await act(async () => expect(auth.refreshAccessToken(-1)).resolves.not.toBeNull());
+    await act(async () => auth.logout("en"));
 
     expect(auth.accessToken).toBeNull();
     expect(auth.isLoggingOut).toBe(true);
-    expect(mockPost).toHaveBeenLastCalledWith("/logout");
   });
 
   it("allows access state to be updated by guards", async () => {

@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import io.github.susimsek.springauthserversamples.domain.UserSessionEntity;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
+import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.repository.UserSessionRepository;
 import java.time.Instant;
 import java.util.List;
@@ -26,6 +27,7 @@ class AdminSessionServiceTest {
     @Mock private AdminUserService adminUserService;
     @Mock private UserSessionRepository userSessionRepository;
     @Mock private AuthorizationRepository authorizationRepository;
+    @Mock private ClientRepository clientRepository;
     @Mock private AdminAuditEventService adminAuditEventService;
 
     @Test
@@ -35,8 +37,9 @@ class AdminSessionServiceTest {
         Pageable pageable = Pageable.unpaged();
         when(userSessionRepository.findActiveSessions(anyLong(), eq("alice"), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(aliceSession, anonymousSession)));
-        when(authorizationRepository.countByPrincipalNameIn(List.of("alice")))
-                .thenReturn(List.of(authorizationCount("alice", 3L)));
+        when(authorizationRepository.countBySessionIdIn(
+                        List.of("alice-session", "anonymous-session")))
+                .thenReturn(List.of(authorizationCount("alice-session", 3L)));
 
         List<AdminSessionService.SessionView> result =
                 service().sessions("  alice  ", pageable).getContent();
@@ -49,16 +52,19 @@ class AdminSessionServiceTest {
                                 Instant.ofEpochMilli(1_000L),
                                 Instant.ofEpochMilli(1_100L),
                                 Instant.ofEpochMilli(1_200L),
-                                3L),
+                                3L,
+                                false),
                         new AdminSessionService.SessionView(
                                 "anonymous-session",
                                 null,
                                 Instant.ofEpochMilli(2_000L),
                                 Instant.ofEpochMilli(2_100L),
                                 Instant.ofEpochMilli(2_200L),
-                                0L));
+                                0L,
+                                false));
         verify(userSessionRepository).findActiveSessions(anyLong(), eq("alice"), eq(pageable));
-        verify(authorizationRepository).countByPrincipalNameIn(List.of("alice"));
+        verify(authorizationRepository)
+                .countBySessionIdIn(List.of("alice-session", "anonymous-session"));
     }
 
     @Test
@@ -120,12 +126,12 @@ class AdminSessionServiceTest {
         return session;
     }
 
-    private static AuthorizationRepository.AuthorizationCount authorizationCount(
-            String principalName, long authorizationCount) {
-        return new AuthorizationRepository.AuthorizationCount() {
+    private static AuthorizationRepository.SessionAuthorizationCount authorizationCount(
+            String sessionId, long authorizationCount) {
+        return new AuthorizationRepository.SessionAuthorizationCount() {
             @Override
-            public String getPrincipalName() {
-                return principalName;
+            public String getSessionId() {
+                return sessionId;
             }
 
             @Override
@@ -140,6 +146,7 @@ class AdminSessionServiceTest {
                 adminUserService,
                 userSessionRepository,
                 authorizationRepository,
+                clientRepository,
                 adminAuditEventService);
     }
 }

@@ -5,10 +5,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAvatarService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminConsentService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminDashboardService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminRoleService;
+import io.github.susimsek.springauthserversamples.service.admin.AdminServerInfoService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminSessionService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminUserService;
 import io.github.susimsek.springauthserversamples.service.admin.KeyManagementService;
@@ -25,8 +27,12 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 class AdminIdentityControllerTest {
 
     private final AdminUserService adminUserService = mock(AdminUserService.class);
+    private final AdminAuditEventService adminAuditEventService =
+            mock(AdminAuditEventService.class);
     private final AdminAvatarService adminAvatarService = mock(AdminAvatarService.class);
     private final AdminSessionService adminSessionService = mock(AdminSessionService.class);
+    private final AdminServerInfoService adminServerInfoService =
+            mock(AdminServerInfoService.class);
     private final AdminConsentService adminConsentService = mock(AdminConsentService.class);
     private final AdminDashboardService adminDashboardService = mock(AdminDashboardService.class);
     private final KeyManagementService keyManagementService = mock(KeyManagementService.class);
@@ -34,8 +40,10 @@ class AdminIdentityControllerTest {
     private final AdminIdentityController controller =
             new AdminIdentityController(
                     adminUserService,
+                    adminAuditEventService,
                     adminAvatarService,
                     adminSessionService,
+                    adminServerInfoService,
                     adminConsentService,
                     adminDashboardService,
                     keyManagementService,
@@ -44,13 +52,28 @@ class AdminIdentityControllerTest {
     @Test
     void delegatesDashboardAndRoleEndpoints() {
         var dashboard = new AdminDashboardService.DashboardView(4, 5, 6, 7);
+        var serverInfo =
+                new AdminServerInfoService.ServerInfoView(
+                        "https://issuer.example",
+                        "https://issuer.example/.well-known/openid-configuration",
+                        "https://issuer.example/oauth2/authorize",
+                        "https://issuer.example/oauth2/token",
+                        "https://issuer.example/oauth2/introspect",
+                        "https://issuer.example/oauth2/revoke",
+                        "https://issuer.example/oauth2/jwks",
+                        "https://issuer.example/userinfo",
+                        "https://issuer.example/connect/logout",
+                        "PT30M",
+                        null);
         var roles = List.of(new AdminRoleService.RoleView("ROLE_ADMIN"));
         when(adminDashboardService.dashboard()).thenReturn(dashboard);
+        when(adminServerInfoService.serverInfo()).thenReturn(serverInfo);
         when(adminRoleService.roles()).thenReturn(roles);
         when(adminRoleService.createRole("ROLE_AUDITOR"))
                 .thenReturn(new AdminRoleService.RoleView("ROLE_AUDITOR"));
 
         assertThat(controller.dashboard()).isSameAs(dashboard);
+        assertThat(controller.serverInfo()).isSameAs(serverInfo);
         assertThat(controller.roles()).containsExactlyElementsOf(roles);
         assertThat(controller.createRole(new AdminRoleRequest("ROLE_AUDITOR")).getStatusCode())
                 .isEqualTo(HttpStatus.CREATED);
@@ -129,11 +152,11 @@ class AdminIdentityControllerTest {
         var consentPage = new PageImpl<>(List.of(consentView()));
         var keyPage = new PageImpl<>(List.of(keyView()));
         var pageable = PageRequest.of(0, 20);
-        when(adminConsentService.consents("ali", pageable)).thenReturn(consentPage);
+        when(adminConsentService.consents("ali", "", "", "", pageable)).thenReturn(consentPage);
         when(keyManagementService.keys("kid", true, pageable)).thenReturn(keyPage);
         when(keyManagementService.rotateKey()).thenReturn(keyView());
 
-        assertThat(controller.consents("ali", pageable)).isSameAs(consentPage);
+        assertThat(controller.consents("ali", "", "", "", pageable)).isSameAs(consentPage);
         assertThat(controller.revokeConsent("client-1", "alice", authentication).getStatusCode())
                 .isEqualTo(HttpStatus.NO_CONTENT);
         assertThat(controller.keys("kid", true, pageable)).isSameAs(keyPage);
@@ -146,8 +169,9 @@ class AdminIdentityControllerTest {
     }
 
     private static AdminUserService.UserView userView() {
+        Instant now = Instant.parse("2026-08-21T00:00:00Z");
         return new AdminUserService.UserView(
-                1L, "alice", true, "/avatars/a?v=1", Set.of("ROLE_USER"));
+                1L, "alice", true, "/avatars/a?v=1", Set.of("ROLE_USER"), now, now);
     }
 
     private static AdminSessionService.SessionView sessionView() {
@@ -156,8 +180,9 @@ class AdminIdentityControllerTest {
     }
 
     private static AdminConsentService.ConsentView consentView() {
+        Instant now = Instant.parse("2026-08-21T00:00:00Z");
         return new AdminConsentService.ConsentView(
-                "client-1", "Client One", "alice", Set.of("openid"));
+                "client-1", "Client One", "alice", 1L, Set.of("openid"), now, now);
     }
 
     private static KeyManagementService.KeyView keyView() {

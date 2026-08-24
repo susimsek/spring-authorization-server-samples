@@ -315,9 +315,17 @@ public class AdminClientService {
                         : ClientSettings.withSettings(
                                 new HashMap<>(existing.getClientSettings().getSettings()));
 
-        return builder.requireAuthorizationConsent(request.requireAuthorizationConsent())
-                .requireProofKey(request.requireProofKey())
-                .build();
+        ClientSettings settings =
+                builder.requireAuthorizationConsent(request.requireAuthorizationConsent())
+                        .requireProofKey(request.requireProofKey())
+                        .build();
+        if (existing == null
+                || existing.getClientSettings().getSetting(ClientScopeSettings.DEFAULT_SCOPES)
+                        == null) {
+            return ClientScopeSettings.withAssignments(
+                    settings, new java.util.LinkedHashSet<>(request.scopes()), java.util.Set.of());
+        }
+        return settings;
     }
 
     private static TokenSettings buildTokenSettings(

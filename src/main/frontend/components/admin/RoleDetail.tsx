@@ -1,0 +1,304 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { Badge, Button, Card, Form, ListGroup, Spinner } from "react-bootstrap";
+import { usePathname, useRouter } from "next/navigation";
+
+import type { Locale } from "@/i18n/config";
+import type { Dictionary } from "@/i18n/get-dictionary";
+import { adminRequest } from "@/lib/admin-api";
+import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
+
+import { useAdminAuth } from "./AdminAuthProvider";
+import { AdminBreadcrumb } from "./AdminBreadcrumb";
+import { DataTable } from "./DataTable";
+import { ErrorState, LoadingState } from "./AsyncState";
+import { PaginationControls } from "./PaginationControls";
+import { ResourceFilters } from "./ResourceFilters";
+import { useAdminTableState } from "./useAdminTableState";
+
+type RoleUser = { id: number; username: string; enabled: boolean };
+type PageData<T> = {
+  content: T[];
+  number: number;
+  totalPages: number;
+  totalElements: number;
+};
+type RoleDetailData = {
+  name: string;
+  userCount: number;
+  protectedRole: boolean;
+  users: PageData<RoleUser>;
+};
+
+export function RoleDetail({
+  locale,
+  dictionary,
+  name,
+}: {
+  locale: Locale;
+  dictionary: Dictionary;
+  name: string;
+}) {
+  const { accessToken } = useAdminAuth();
+  const alerts = useConsoleAlerts();
+  const router = useRouter();
+  const pathname = usePathname();
+  const actualName =
+    name === "_" ? decodeURIComponent(pathname.split("/").filter(Boolean).at(-1) ?? name) : name;
+  const [detail, setDetail] = useState<RoleDetailData | null>(null);
+  const [userQuery, setUserQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<RoleUser[]>([]);
+  const [selectedUser, setSelectedUser] = useState<RoleUser | null>(null);
+  const [searchingUsers, setSearchingUsers] = useState(false);
+  const { page, query, setPage, setQuery, setSize, size } = useAdminTableState();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const tr = locale === "tr";
+
+  const load = useCallback(async () => {
+    if (!accessToken) return;
+    setLoading(true);
+    try {
+      const roleResponse = await adminRequest<RoleDetailData>(accessToken, {
+        url: `/api/admin/roles/${encodeURIComponent(actualName)}?q=${encodeURIComponent(query)}&page=${page}&size=${size}`,
+      });
+      if (roleResponse.status >= 300) throw new Error();
+      setDetail(roleResponse.data);
+      setError(false);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken, actualName, page, query, size]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void load();
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [load]);
+
+  useEffect(() => {
+    if (!accessToken || userQuery.trim().length < 2 || selectedUser) {
+      return;
+    }
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+      setSearchingUsers(true);
+      adminRequest<PageData<RoleUser>>(accessToken, {
+        url: `/api/admin/roles/${encodeURIComponent(actualName)}/available-users?q=${encodeURIComponent(userQuery.trim())}&page=0&size=10`,
+        signal: controller.signal,
+      })
+        .then((response) => {
+          if (response.status < 300) setSuggestions(response.data.content);
+        })
+        .catch(() => setSuggestions([]))
+        .finally(() => setSearchingUsers(false));
+    }, 300);
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [accessToken, actualName, selectedUser, userQuery]);
+
+  const assign = async () => {
+    if (!accessToken || !selectedUser) return;
+    const response = await adminRequest(accessToken, {
+      url: `/api/admin/roles/${encodeURIComponent(actualName)}/users`,
+      method: "POST",
+      data: { userId: selectedUser.id },
+    });
+    if (response.status >= 300) {
+      alerts.addError(tr ? "Rol atanamadı." : "Role assignment failed.");
+      return;
+    }
+    alerts.addAlert(tr ? "Rol kullanıcıya atandı." : "Role assigned to user.");
+    setSelectedUser(null);
+    setUserQuery("");
+    setSuggestions([]);
+    await load();
+  };
+
+  const remove = async (user: RoleUser) => {
+    if (!accessToken) return;
+    const response = await adminRequest(accessToken, {
+      url: `/api/admin/roles/${encodeURIComponent(actualName)}/users/${user.id}?page=${page}&size=${size}`,
+      method: "DELETE",
+    });
+    if (response.status >= 300) {
+      alerts.addError(tr ? "Rol kaldırılamadı." : "Could not remove role.");
+      return;
+    }
+    alerts.addAlert(tr ? "Rol kullanıcıdan kaldırıldı." : "Role removed from user.");
+    await load();
+  };
+
+  if (loading && !detail) return <LoadingState />;
+  if (error || !detail)
+    return (
+      <ErrorState
+        message={dictionary.admin.roles.operationError}
+        retryLabel={tr ? "Tekrar dene" : "Retry"}
+        onRetry={() => void load()}
+      />
+    );
+
+  return (
+    <div className="d-grid gap-4">
+      <AdminBreadcrumb
+        items={[
+          { label: dictionary.admin.roles.title, href: `/${locale}/admin/roles` },
+          { label: detail.name },
+        ]}
+      />
+
+      <div className="admin-detail-heading">
+        <div>
+          <h1 className="h3 mb-1 font-monospace">{detail.name}</h1>
+          <div className="text-body-secondary">
+            {detail.userCount} {tr ? "atanmış kullanıcı" : "assigned users"}
+          </div>
+        </div>
+        {detail.protectedRole && <Badge bg="secondary">{tr ? "Korumalı" : "Protected"}</Badge>}
+      </div>
+
+      <Card className="admin-panel-card">
+        <Card.Body>
+          <h2 className="h5">{tr ? "Kullanıcı ata" : "Assign user"}</h2>
+          <div className="d-flex flex-wrap align-items-start gap-2">
+            <div className="position-relative flex-grow-1" style={{ maxWidth: "28rem" }}>
+              <Form.Control
+                autoComplete="off"
+                aria-autocomplete="list"
+                aria-controls="role-user-suggestions"
+                aria-expanded={suggestions.length > 0}
+                aria-label={tr ? "Kullanıcı ara" : "Search users"}
+                placeholder={tr ? "Kullanıcı adıyla ara…" : "Search by username…"}
+                role="combobox"
+                value={selectedUser?.username ?? userQuery}
+                onChange={(event) => {
+                  setSelectedUser(null);
+                  setSuggestions([]);
+                  setSearchingUsers(false);
+                  setUserQuery(event.target.value);
+                }}
+              />
+              {searchingUsers && (
+                <Spinner
+                  animation="border"
+                  size="sm"
+                  className="position-absolute end-0 top-0 mt-2 me-2"
+                  aria-label={tr ? "Kullanıcılar aranıyor" : "Searching users"}
+                />
+              )}
+              {!selectedUser && suggestions.length > 0 && (
+                <ListGroup
+                  id="role-user-suggestions"
+                  className="position-absolute start-0 end-0 mt-1 shadow-sm z-3"
+                >
+                  {suggestions.map((user) => (
+                    <ListGroup.Item
+                      action
+                      type="button"
+                      key={user.id}
+                      onClick={() => {
+                        setSelectedUser(user);
+                        setSuggestions([]);
+                      }}
+                    >
+                      <div className="d-flex justify-content-between align-items-center gap-2">
+                        <span>{user.username}</span>
+                        <Badge bg={user.enabled ? "success" : "secondary"}>
+                          {user.enabled
+                            ? dictionary.admin.resources.enabled
+                            : dictionary.admin.resources.disabled}
+                        </Badge>
+                      </div>
+                    </ListGroup.Item>
+                  ))}
+                </ListGroup>
+              )}
+            </div>
+            <Button disabled={!selectedUser} onClick={() => void assign()}>
+              {tr ? "Ata" : "Assign"}
+            </Button>
+          </div>
+          <Form.Text className="text-body-secondary">
+            {tr
+              ? "En az 2 karakter yazın. Sonuçlar sunucudan sayfalı olarak aranır."
+              : "Type at least 2 characters. Results are searched server-side and paged."}
+          </Form.Text>
+        </Card.Body>
+      </Card>
+
+      <ResourceFilters
+        query={query}
+        searchLabel={tr ? "Atanmış kullanıcıları ara" : "Search assigned users"}
+        onQueryChange={setQuery}
+      />
+
+      <DataTable
+        isEmpty={detail.users.content.length === 0}
+        emptyMessage={tr ? "Bu role atanmış kullanıcı yok." : "No users are assigned to this role."}
+        footer={
+          detail.users.totalElements > 0 ? (
+            <PaginationControls
+              page={page}
+              totalPages={detail.users.totalPages}
+              totalElements={detail.users.totalElements}
+              size={size}
+              rowsPerPage={dictionary.admin.resources.rowsPerPage}
+              pageLabel={dictionary.admin.resources.page}
+              previous={dictionary.admin.resources.previous}
+              next={dictionary.admin.resources.next}
+              first={dictionary.admin.resources.first}
+              last={dictionary.admin.resources.last}
+              onPageChange={setPage}
+              onSizeChange={(nextSize) => {
+                setPage(0);
+                setSize(nextSize);
+              }}
+            />
+          ) : undefined
+        }
+      >
+        <thead>
+          <tr>
+            <th>{dictionary.admin.resources.user}</th>
+            <th>{dictionary.admin.resources.status}</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {detail.users.content.map((user) => (
+            <tr key={user.id}>
+              <td>
+                <Button
+                  variant="link"
+                  className="p-0 text-decoration-none"
+                  onClick={() => router.push(`/${locale}/admin/users/${user.id}/details`)}
+                >
+                  {user.username}
+                </Button>
+              </td>
+              <td>
+                <Badge bg={user.enabled ? "success" : "secondary"}>
+                  {user.enabled
+                    ? dictionary.admin.resources.enabled
+                    : dictionary.admin.resources.disabled}
+                </Badge>
+              </td>
+              <td className="text-end">
+                <Button size="sm" variant="outline-danger" onClick={() => void remove(user)}>
+                  {tr ? "Rolü kaldır" : "Remove role"}
+                </Button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </DataTable>
+    </div>
+  );
+}

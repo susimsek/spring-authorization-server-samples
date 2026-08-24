@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Badge, Button, Form } from "react-bootstrap";
+import { Badge, Button, Dropdown, Form, Modal } from "react-bootstrap";
 
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
+import { encodeConsentRouteKey } from "@/lib/consent-route";
 
 import { useAdminAuth } from "./AdminAuthProvider";
 import { ConfirmModal } from "./ConfirmModal";
@@ -18,6 +19,7 @@ import { DataTable } from "./DataTable";
 import { ErrorState, LoadingState } from "./AsyncState";
 import { ResultModal } from "./ResultModal";
 import { useAdminTableState } from "./useAdminTableState";
+import { RowActions } from "./RowActions";
 
 type User = {
   id: number;
@@ -33,12 +35,27 @@ type Session = {
   lastAccessedAt: string;
   expiresAt: string;
   authorizationCount: number;
+  active: boolean;
 };
+type SessionAuthorization = {
+  id: string;
+  clientId: string;
+  clientName: string;
+  grantType: string;
+  scopes: string[];
+  accessTokenIssuedAt: string | null;
+  accessTokenExpiresAt: string | null;
+  refreshTokenExpiresAt: string | null;
+};
+type SessionDetail = { session: Session; authorizations: SessionAuthorization[] };
 type Consent = {
   clientId: string;
   clientName: string;
   principalName: string;
+  userId: number | null;
   authorities: string[];
+  createdAt: string;
+  updatedAt: string;
 };
 type Key = {
   id: string;
@@ -85,15 +102,30 @@ function AdminResourcesContent({
   const [result, setResult] = useState<{ title: string; message: string; value?: string } | null>(
     null,
   );
-  const { page, query, setPage, setQuery, setSize, setStatus, size, status } = useAdminTableState(
+  const {
+    clientId,
+    page,
+    query,
+    setClientId,
+    setPage,
+    setQuery,
+    setSize,
+    setStatus,
+    setUsername,
+    setScope,
+    size,
+    status,
+    username,
+    scope,
+  } = useAdminTableState(
     20,
-    resource === "users" || resource === "keys",
+    resource === "users" || resource === "keys" || resource === "sessions",
   );
 
   useEffect(() => {
     if (!accessToken) return;
     adminRequest<PageData<User | Session | Consent | Key>>(accessToken, {
-      url: `/api/admin/${resource}?q=${encodeURIComponent(query)}&page=${page}&size=${size}${resource === "users" ? `&enabled=${status}` : resource === "keys" ? `&active=${status}` : ""}`,
+      url: `/api/admin/${resource}?q=${encodeURIComponent(query)}&page=${page}&size=${size}${resource === "users" ? `&enabled=${status}` : resource === "keys" ? `&active=${status}` : resource === "sessions" ? `&status=${status || "active"}&clientId=${encodeURIComponent(clientId)}` : resource === "consents" ? `&clientId=${encodeURIComponent(clientId)}&username=${encodeURIComponent(username)}&scope=${encodeURIComponent(scope)}` : ""}`,
     })
       .then((response) => {
         if (response.status >= 300) throw new Error();
@@ -104,7 +136,7 @@ function AdminResourcesContent({
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [accessToken, page, query, reloadVersion, resource, size, status]);
+  }, [accessToken, clientId, scope, username, page, query, reloadVersion, resource, size, status]);
 
   const request = async <T,>(
     url: string,
@@ -138,7 +170,17 @@ function AdminResourcesContent({
   };
 
   if (loading) return <LoadingState />;
-  if (error) return <ErrorState message={copy.operationError} />;
+  if (error)
+    return (
+      <ErrorState
+        message={copy.operationError}
+        onRetry={() => {
+          setError(false);
+          setLoading(true);
+          setReloadVersion((current) => current + 1);
+        }}
+      />
+    );
 
   return (
     <>
@@ -169,6 +211,67 @@ function AdminResourcesContent({
           setQuery(value);
         }}
       >
+        {resource === "sessions" && (
+          <>
+            <Form.Control
+              aria-label="Client ID"
+              placeholder="Client ID"
+              value={clientId}
+              onChange={(event) => {
+                setLoading(true);
+                setClientId(event.target.value);
+              }}
+              style={{ maxWidth: "14rem" }}
+            />
+            <Form.Select
+              aria-label="Session status"
+              value={status || "active"}
+              onChange={(event) => {
+                setLoading(true);
+                setStatus(event.target.value);
+              }}
+              style={{ maxWidth: "10rem" }}
+            >
+              <option value="active">Active</option>
+              <option value="expired">Expired</option>
+              <option value="all">All</option>
+            </Form.Select>
+          </>
+        )}
+        {resource === "consents" && (
+          <>
+            <Form.Control
+              aria-label="Client ID"
+              placeholder="Client ID"
+              value={clientId}
+              onChange={(event) => {
+                setLoading(true);
+                setClientId(event.target.value);
+              }}
+              style={{ maxWidth: "13rem" }}
+            />
+            <Form.Control
+              aria-label="Username"
+              placeholder={copy.user}
+              value={username}
+              onChange={(event) => {
+                setLoading(true);
+                setUsername(event.target.value);
+              }}
+              style={{ maxWidth: "13rem" }}
+            />
+            <Form.Control
+              aria-label="Scope"
+              placeholder="Scope"
+              value={scope}
+              onChange={(event) => {
+                setLoading(true);
+                setScope(event.target.value);
+              }}
+              style={{ maxWidth: "12rem" }}
+            />
+          </>
+        )}
         {(resource === "users" || resource === "keys") && (
           <Form.Select
             value={status}
@@ -183,20 +286,35 @@ function AdminResourcesContent({
             <option value="false">{resource === "users" ? copy.disabled : copy.passive}</option>
           </Form.Select>
         )}
-        <Form.Select
-          value={size}
-          onChange={(event) => {
-            setLoading(true);
-            setSize(Number(event.target.value));
-          }}
-          style={{ maxWidth: "6rem" }}
-        >
-          <option value="10">10</option>
-          <option value="20">20</option>
-          <option value="50">50</option>
-        </Form.Select>
       </ResourceFilters>
-      <DataTable isEmpty={items.length === 0} emptyMessage={copy.empty}>
+      <DataTable
+        isEmpty={items.length === 0}
+        emptyMessage={copy.empty}
+        footer={
+          totalElements > 0 ? (
+            <PaginationControls
+              page={page}
+              totalPages={totalPages}
+              totalElements={totalElements}
+              size={size}
+              rowsPerPage={copy.rowsPerPage}
+              pageLabel={copy.page}
+              previous={copy.previous}
+              next={copy.next}
+              first={copy.first}
+              last={copy.last}
+              onPageChange={(nextPage) => {
+                setLoading(true);
+                setPage(nextPage);
+              }}
+              onSizeChange={(nextSize) => {
+                setLoading(true);
+                setSize(nextSize);
+              }}
+            />
+          ) : undefined
+        }
+      >
         {resource === "users" && (
           <UsersTable
             items={items as User[]}
@@ -212,6 +330,7 @@ function AdminResourcesContent({
             request={request}
             copy={copy}
             canManage={access?.manageSessions ?? false}
+            accessToken={accessToken}
           />
         )}
         {resource === "consents" && (
@@ -220,27 +339,11 @@ function AdminResourcesContent({
             request={request}
             copy={copy}
             canManage={access?.manageConsents ?? false}
+            locale={locale}
           />
         )}
         {resource === "keys" && <KeysTable items={items as Key[]} copy={copy} />}
       </DataTable>
-      {totalPages > 0 && (
-        <div className="d-flex justify-content-end align-items-center gap-2 mt-3">
-          <span className="small text-body-secondary">
-            {totalElements} {copy.records} · {copy.page} {page + 1} {copy.of} {totalPages}
-          </span>
-          <PaginationControls
-            page={page}
-            totalPages={totalPages}
-            previous={copy.previous}
-            next={copy.next}
-            onPageChange={(nextPage) => {
-              setLoading(true);
-              setPage(nextPage);
-            }}
-          />
-        </div>
-      )}
       <ResultModal
         closeLabel={copy.cancel}
         message={result?.message ?? ""}
@@ -313,33 +416,29 @@ function UsersTable({
             </td>
             {canManage && (
               <td className="text-end">
-                {locale && (
-                  <Link
-                    className="btn btn-sm btn-outline-primary me-2"
-                    href={`/${locale}/admin/users/edit?id=${user.id}`}
+                <RowActions label={`${user.username} actions`}>
+                  {locale && (
+                    <Dropdown.Item
+                      as={Link}
+                      href={`/${locale}/admin/users/${encodeURIComponent(String(user.id))}/details`}
+                    >
+                      {copy.edit}
+                    </Dropdown.Item>
+                  )}
+                  <Dropdown.Item
+                    onClick={() =>
+                      void request(`/api/admin/users/${user.id}/enabled`, "PUT", {
+                        enabled: !user.enabled,
+                      })
+                    }
                   >
-                    {copy.edit}
-                  </Link>
-                )}
-                <Button
-                  size="sm"
-                  variant="outline-secondary"
-                  onClick={() =>
-                    void request(`/api/admin/users/${user.id}/enabled`, "PUT", {
-                      enabled: !user.enabled,
-                    })
-                  }
-                >
-                  {user.enabled ? copy.disable : copy.enable}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline-danger"
-                  className="ms-2"
-                  onClick={() => setUserToDelete(user)}
-                >
-                  {copy.delete}
-                </Button>
+                    {user.enabled ? copy.disable : copy.enable}
+                  </Dropdown.Item>
+                  <Dropdown.Divider />
+                  <Dropdown.Item className="text-danger" onClick={() => setUserToDelete(user)}>
+                    {copy.delete}
+                  </Dropdown.Item>
+                </RowActions>
               </td>
             )}
           </tr>
@@ -365,21 +464,40 @@ function SessionsTable({
   request,
   copy,
   canManage,
+  accessToken,
 }: {
   items: Session[];
   request: AdminRequest;
   copy: Copy;
   canManage: boolean;
+  accessToken: string | null;
 }) {
   const [sessionAction, setSessionAction] = useState<{
     url: string;
     label: string;
     message: string;
   } | null>(null);
+  const [detail, setDetail] = useState<SessionDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  const showDetail = async (id: string) => {
+    if (!accessToken) return;
+    setDetailLoading(true);
+    try {
+      const response = await adminRequest<SessionDetail>(accessToken, {
+        url: `/api/admin/sessions/${encodeURIComponent(id)}`,
+      });
+      if (response.status < 300) setDetail(response.data);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
   return (
     <>
       <thead>
         <tr>
+          <th>Session ID</th>
           <th>{copy.user}</th>
           <th>{copy.created}</th>
           <th>{copy.lastActive}</th>
@@ -389,48 +507,70 @@ function SessionsTable({
         </tr>
       </thead>
       <tbody>
-        {items.map((session) => (
-          <tr key={session.id}>
-            <td data-label={copy.user}>{session.username ?? "-"}</td>
-            <td data-label={copy.created}>{date(session.createdAt)}</td>
-            <td data-label={copy.lastActive}>{date(session.lastAccessedAt)}</td>
-            <td data-label={copy.expires}>{date(session.expiresAt)}</td>
-            <td data-label={copy.authorizations}>{session.authorizationCount}</td>
-            {canManage && (
-              <td className="text-end">
+        {items.map((session) => {
+          const expired = !session.active;
+          return (
+            <tr key={session.id}>
+              <td className="font-monospace small" data-label="Session ID">
                 <Button
-                  size="sm"
-                  variant="outline-danger"
-                  onClick={() =>
-                    setSessionAction({
-                      url: `/api/admin/sessions/${encodeURIComponent(session.id)}`,
-                      label: copy.signOut,
-                      message: copy.signOutConfirm,
-                    })
-                  }
+                  variant="link"
+                  className="font-monospace p-0 text-decoration-none"
+                  onClick={() => void showDetail(session.id)}
                 >
-                  {copy.signOut}
+                  {session.id.slice(0, 12)}…
                 </Button>
-                {session.username && (
-                  <Button
-                    size="sm"
-                    variant="outline-danger"
-                    className="ms-2"
-                    onClick={() =>
-                      setSessionAction({
-                        url: `/api/admin/users/${encodeURIComponent(session.username ?? "")}/sessions`,
-                        label: copy.signOutAll,
-                        message: copy.signOutAllConfirm,
-                      })
-                    }
-                  >
-                    {copy.signOutAll}
-                  </Button>
-                )}
               </td>
-            )}
-          </tr>
-        ))}
+              <td data-label={copy.user}>
+                <div className="fw-medium">{session.username ?? "-"}</div>
+                <Badge bg={expired ? "secondary" : "success"}>
+                  {expired ? "Expired" : "Active"}
+                </Badge>
+              </td>
+              <td data-label={copy.created}>{date(session.createdAt)}</td>
+              <td data-label={copy.lastActive}>{date(session.lastAccessedAt)}</td>
+              <td data-label={copy.expires}>{date(session.expiresAt)}</td>
+              <td data-label={copy.authorizations}>{session.authorizationCount}</td>
+              <td className="text-end">
+                <RowActions label="Session actions">
+                  <Dropdown.Item onClick={() => void showDetail(session.id)}>
+                    View details
+                  </Dropdown.Item>
+                  {canManage && !expired && (
+                    <>
+                      <Dropdown.Divider />
+                      <Dropdown.Item
+                        className="text-danger"
+                        onClick={() =>
+                          setSessionAction({
+                            url: `/api/admin/sessions/${encodeURIComponent(session.id)}`,
+                            label: copy.signOut,
+                            message: copy.signOutConfirm,
+                          })
+                        }
+                      >
+                        {copy.signOut}
+                      </Dropdown.Item>
+                      {session.username && (
+                        <Dropdown.Item
+                          className="text-danger"
+                          onClick={() =>
+                            setSessionAction({
+                              url: `/api/admin/users/${encodeURIComponent(session.username ?? "")}/sessions`,
+                              label: copy.signOutAll,
+                              message: copy.signOutAllConfirm,
+                            })
+                          }
+                        >
+                          {copy.signOutAll}
+                        </Dropdown.Item>
+                      )}
+                    </>
+                  )}
+                </RowActions>
+              </td>
+            </tr>
+          );
+        })}
       </tbody>
       <ConfirmModal
         cancelLabel={copy.cancel}
@@ -443,6 +583,80 @@ function SessionsTable({
         }}
         show={sessionAction !== null}
       />
+      <Modal
+        show={detail !== null || detailLoading}
+        onHide={() => setDetail(null)}
+        size="lg"
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Session details</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {detailLoading && !detail ? (
+            <LoadingState />
+          ) : detail ? (
+            <div className="d-grid gap-4">
+              <dl className="row mb-0">
+                <dt className="col-sm-4">Session ID</dt>
+                <dd className="col-sm-8 font-monospace text-break">{detail.session.id}</dd>
+                <dt className="col-sm-4">{copy.user}</dt>
+                <dd className="col-sm-8">{detail.session.username ?? "-"}</dd>
+                <dt className="col-sm-4">{copy.created}</dt>
+                <dd className="col-sm-8">{date(detail.session.createdAt)}</dd>
+                <dt className="col-sm-4">{copy.lastActive}</dt>
+                <dd className="col-sm-8">{date(detail.session.lastAccessedAt)}</dd>
+                <dt className="col-sm-4">{copy.expires}</dt>
+                <dd className="col-sm-8">{date(detail.session.expiresAt)}</dd>
+              </dl>
+              <div>
+                <h3 className="h6">{copy.authorizations}</h3>
+                {detail.authorizations.length === 0 ? (
+                  <div className="text-body-secondary">No authorizations</div>
+                ) : (
+                  <div className="table-responsive">
+                    <table className="table table-sm align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th>Client</th>
+                          <th>Grant type</th>
+                          <th>Scopes</th>
+                          <th>Access token expires</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {detail.authorizations.map((authorization) => (
+                          <tr key={authorization.id}>
+                            <td>
+                              <div>{authorization.clientName}</div>
+                              <div className="small text-body-secondary font-monospace">
+                                {authorization.clientId}
+                              </div>
+                            </td>
+                            <td>{authorization.grantType}</td>
+                            <td>
+                              {authorization.scopes.map((scope) => (
+                                <Badge bg="secondary" className="me-1" key={scope}>
+                                  {scope}
+                                </Badge>
+                              ))}
+                            </td>
+                            <td>
+                              {authorization.accessTokenExpiresAt
+                                ? date(authorization.accessTokenExpiresAt)
+                                : "-"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
+        </Modal.Body>
+      </Modal>
     </>
   );
 }
@@ -452,13 +666,16 @@ function ConsentsTable({
   request,
   copy,
   canManage,
+  locale,
 }: {
   items: Consent[];
   request: AdminRequest;
   copy: Copy;
   canManage: boolean;
+  locale?: Locale;
 }) {
   const [consentToRevoke, setConsentToRevoke] = useState<Consent | null>(null);
+  const formatDate = (value: string) => new Date(value).toLocaleString(locale);
   return (
     <>
       <thead>
@@ -466,34 +683,73 @@ function ConsentsTable({
           <th>{copy.user}</th>
           <th>{copy.client}</th>
           <th>{copy.grantedScopes}</th>
+          <th>{copy.created}</th>
           <th />
         </tr>
       </thead>
       <tbody>
-        {items.map((consent) => (
-          <tr key={`${consent.clientId}-${consent.principalName}`}>
-            <td data-label={copy.user}>{consent.principalName}</td>
-            <td data-label={copy.client}>{consent.clientName}</td>
-            <td data-label={copy.grantedScopes}>
-              {consent.authorities.map((scope) => (
-                <Badge bg="light" text="dark" className="border me-1" key={scope}>
-                  {scope.replace("SCOPE_", "")}
-                </Badge>
-              ))}
-            </td>
-            {canManage && (
-              <td className="text-end">
-                <Button
-                  size="sm"
-                  variant="outline-danger"
-                  onClick={() => setConsentToRevoke(consent)}
-                >
-                  {copy.revoke}
-                </Button>
+        {items.map((consent) => {
+          const detailHref = locale
+            ? `/${locale}/admin/consents/${encodeConsentRouteKey(consent.clientId, consent.principalName)}`
+            : undefined;
+          return (
+            <tr key={`${consent.clientId}-${consent.principalName}`}>
+              <td data-label={copy.user}>
+                {locale && consent.userId ? (
+                  <Link href={`/${locale}/admin/users/${consent.userId}/details`}>
+                    {consent.principalName}
+                  </Link>
+                ) : (
+                  consent.principalName
+                )}
               </td>
-            )}
-          </tr>
-        ))}
+              <td data-label={copy.client}>
+                <div>
+                  {locale ? (
+                    <Link
+                      href={`/${locale}/admin/clients/${encodeURIComponent(consent.clientId)}/settings`}
+                    >
+                      {consent.clientName}
+                    </Link>
+                  ) : (
+                    consent.clientName
+                  )}
+                </div>
+                <div className="small text-body-secondary font-monospace">{consent.clientId}</div>
+              </td>
+              <td data-label={copy.grantedScopes}>
+                <div className="d-flex flex-wrap gap-1">
+                  {consent.authorities.map((scope) => (
+                    <Badge bg="light" text="dark" className="border" key={scope}>
+                      {scope.replace("SCOPE_", "")}
+                    </Badge>
+                  ))}
+                </div>
+              </td>
+              <td data-label={copy.created}>{formatDate(consent.createdAt)}</td>
+              <td className="text-end">
+                <RowActions label={`${consent.clientName} consent actions`}>
+                  {detailHref && (
+                    <Dropdown.Item as={Link} href={detailHref}>
+                      View details
+                    </Dropdown.Item>
+                  )}
+                  {canManage && (
+                    <>
+                      {detailHref && <Dropdown.Divider />}
+                      <Dropdown.Item
+                        className="text-danger"
+                        onClick={() => setConsentToRevoke(consent)}
+                      >
+                        {copy.revoke}
+                      </Dropdown.Item>
+                    </>
+                  )}
+                </RowActions>
+              </td>
+            </tr>
+          );
+        })}
       </tbody>
       <ConfirmModal
         cancelLabel={copy.cancel}

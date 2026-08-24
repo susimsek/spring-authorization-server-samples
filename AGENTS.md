@@ -57,7 +57,10 @@ This repo is a Java 25 + Spring Boot 4.1 sample application for the Authorizatio
 
 ## Project Structure
 
-- `frontend`: Next.js App Router + TypeScript login UI built with pnpm, React-Bootstrap, Bootstrap, and Font Awesome. Maven exports it into Spring Boot static resources.
+- `src/main/frontend`: Next.js App Router + TypeScript login, Administration Console, and Account Console UI built with pnpm, React-Bootstrap, Bootstrap, and Font Awesome. Maven exports it into Spring Boot static resources.
+  - `app/[lang]/admin` and `components/admin`: Administration Console routes and UI.
+  - `app/[lang]/account` and `components/account`: end-user Account Console routes and UI.
+  - `lib/console-auth.ts`: shared browser OIDC Authorization Code + PKCE, refresh-token, and logout adapter.
 
 - Application root: `src/main/java/io/github/susimsek/springauthserversamples`
   - `config`: Spring configuration
@@ -212,7 +215,9 @@ curl http://localhost:9090/actuator/health/readiness
 - Form login is used for end-user authentication.
 - Registered OAuth2 clients are stored in `oauth2_registered_client`.
 - Seeded users for local dev: `admin/admin` and `user/user`.
-- Seeded OAuth2 clients for local dev: `demo-client/demo-secret` and `pkce-client/demo-secret`.
+- Seeded OAuth2 clients for local dev: `demo-client/demo-secret`, `pkce-client/demo-secret`, `admin-console`, and `account-console`.
+- `admin-console` and `account-console` are public browser clients using Authorization Code + PKCE (S256), `refresh_token`, OIDC logout, and non-reused refresh tokens. Their local redirect URIs use `/en|tr/admin/callback` and `/en|tr/account/callback` respectively.
+- The Admin Console requests `admin-api`; its APIs additionally require the relevant administrative authority. The Account Console requests `account-api`; `admin/admin` and `user/user` can use it.
 - The issuer is configured via `app.authorization-server.issuer`.
 - Client secrets are stored as BCrypt hashes in Liquibase seed data.
 - The sample enables OpenID Connect 1.0.
@@ -251,7 +256,9 @@ curl http://localhost:9090/actuator/health/readiness
 - Keep authority constants in `AuthoritiesConstants`.
 - Do not store plain text passwords or client secrets in seed data.
 - Keep the Authorization Server filter chain scoped to authorization endpoints; do not collapse multiple chains into `anyRequest`.
- - Preserve the current split between HTML login redirects and non-HTML localized OAuth2 error responses.
+- Preserve the current split between HTML login redirects and non-HTML localized OAuth2 error responses.
+- Keep console authentication aligned with the Keycloak JavaScript adapter model: use Authorization Code + PKCE, refresh only when the access token is near expiry (or explicitly forced), and invoke the OIDC logout endpoint with the ID-token hint and registered post-logout URI.
+- Do not persist console access, ID, or refresh tokens in browser storage. The Spring Session-backed server session supplies browser SSO; OAuth authorization and token records remain in `oauth2_authorization`.
 
 ### Database and Liquibase
 
@@ -316,10 +323,11 @@ curl http://localhost:9090/actuator/health/readiness
 
 ## Frontend Build
 
-- Keep the login UI in `frontend/`; do not move authentication logic into Next.js.
+- Keep the login, Administration Console, and Account Console UI in `src/main/frontend/`; do not move authentication logic into Next.js or replace the shared `lib/console-auth.ts` OIDC flow with a custom token flow.
 - Maven uses `frontend-maven-plugin` + Corepack to install Node/pnpm, run `pnpm typecheck`, and run `pnpm build`.
 - Next.js uses static export; Spring Boot serves the generated assets and Spring Security continues to process `POST /login`.
 - CSRF is intentionally disabled in this sample.
+- Console routes are localized under `/en/admin/`, `/tr/admin/`, `/en/account/`, and `/tr/account/`; callback routes must remain aligned with the seeded registered-client redirect URIs.
 
 ## Session persistence
 

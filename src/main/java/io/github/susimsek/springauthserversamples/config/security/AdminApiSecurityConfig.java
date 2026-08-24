@@ -25,6 +25,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.context.NullSecurityContextRepository;
 
 @Configuration(proxyBeanMethods = false)
 public class AdminApiSecurityConfig {
@@ -37,6 +38,10 @@ public class AdminApiSecurityConfig {
             HttpSecurity http, JwtDecoder adminApiJwtDecoder) {
         http.securityMatcher("/api/admin/**")
                 .csrf(AbstractHttpConfigurer::disable)
+                .securityContext(
+                        securityContext ->
+                                securityContext.securityContextRepository(
+                                        new NullSecurityContextRepository()))
                 .sessionManagement(
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(
@@ -46,6 +51,14 @@ public class AdminApiSecurityConfig {
                                         .hasAuthority("ROLE_ADMIN")
                                         .requestMatchers("/api/admin/whoami")
                                         .hasAuthority("SCOPE_admin-api")
+                                        .requestMatchers(
+                                                HttpMethod.GET, "/api/admin/client-scopes/**")
+                                        .hasAnyAuthority(
+                                                "ROLE_ADMIN",
+                                                "ROLE_CLIENT_VIEWER",
+                                                "ROLE_CLIENT_MANAGER")
+                                        .requestMatchers("/api/admin/client-scopes/**")
+                                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_CLIENT_MANAGER")
                                         .requestMatchers(HttpMethod.GET, "/api/admin/clients/**")
                                         .hasAnyAuthority(
                                                 "ROLE_ADMIN",

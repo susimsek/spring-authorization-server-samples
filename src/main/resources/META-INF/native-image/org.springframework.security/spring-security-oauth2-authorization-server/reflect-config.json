@@ -54,6 +54,18 @@
     "allDeclaredMethods": true
   },
   {
+    "name": "org.springframework.security.core.authority.FactorGrantedAuthority",
+    "allDeclaredFields": true,
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true
+  },
+  {
+    "name": "org.springframework.security.core.context.SecurityContextImpl",
+    "allDeclaredFields": true,
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true
+  },
+  {
     "name": "org.springframework.security.oauth2.core.AbstractOAuth2Token",
     "allDeclaredFields": true,
     "allDeclaredConstructors": true,
@@ -156,6 +168,12 @@
     "allDeclaredMethods": true
   },
   {
+    "name": "org.springframework.security.web.jackson.WebJacksonModule",
+    "allDeclaredFields": true,
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true
+  },
+  {
     "name": "org.springframework.security.oauth2.server.authorization.jackson.OAuth2AuthorizationServerJacksonModule",
     "allDeclaredFields": true,
     "allDeclaredConstructors": true,
@@ -163,6 +181,18 @@
   },
   {
     "name": "org.springframework.security.web.jackson.DefaultSavedRequestMixin",
+    "allDeclaredFields": true,
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true
+  },
+  {
+    "name": "org.springframework.security.web.savedrequest.SavedCookie",
+    "allDeclaredFields": true,
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true
+  },
+  {
+    "name": "org.springframework.security.web.jackson.SavedCookieMixin",
     "allDeclaredFields": true,
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true
@@ -180,6 +210,18 @@
     "allDeclaredMethods": true
   },
   {
+    "name": "org.springframework.security.jackson.UsernamePasswordAuthenticationTokenDeserializer",
+    "allDeclaredFields": true,
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true
+  },
+  {
+    "name": "org.springframework.security.jackson.UserDeserializer",
+    "allDeclaredFields": true,
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true
+  },
+  {
     "name": "org.springframework.security.jackson.UserMixin",
     "allDeclaredFields": true,
     "allDeclaredConstructors": true,
@@ -192,6 +234,12 @@
     "allDeclaredMethods": true
   },
   {
+    "name": "org.springframework.security.jackson.FactorGrantedAuthorityMixin",
+    "allDeclaredFields": true,
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true
+  },
+  {
     "name": "org.springframework.security.oauth2.server.authorization.jackson.OAuth2TokenExchangeActorMixin",
     "allDeclaredFields": true,
     "allDeclaredConstructors": true,
@@ -199,6 +247,12 @@
   },
   {
     "name": "org.springframework.security.oauth2.server.authorization.jackson.OAuth2AuthorizationRequestMixin",
+    "allDeclaredFields": true,
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true
+  },
+  {
+    "name": "org.springframework.security.oauth2.server.authorization.jackson.OAuth2AuthorizationRequestDeserializer",
     "allDeclaredFields": true,
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true

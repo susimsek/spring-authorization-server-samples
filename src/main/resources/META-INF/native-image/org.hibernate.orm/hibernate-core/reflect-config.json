@@ -1,0 +1,10 @@
+[
+  {
+    "name": "java.time.Instant",
+    "fields": [
+      {
+        "name": "serialVersionUID"
+      }
+    ]
+  }
+]

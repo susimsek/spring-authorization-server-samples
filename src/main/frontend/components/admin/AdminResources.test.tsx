@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element, react/display-name */
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 import dictionary from "@/i18n/dictionaries/en.json";
 import { adminRequest } from "@/lib/admin-api";
@@ -61,19 +61,24 @@ describe("AdminResources", () => {
       screen.getByRole("link", { name: dictionary.admin.resources.createUser }),
     ).toHaveAttribute("href", "/en/admin/users/new");
 
-    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.resources.disable }));
+    fireEvent.click(screen.getByRole("button", { name: "ada actions" }));
+    fireEvent.click(screen.getByText(dictionary.admin.resources.disable));
     await waitFor(() =>
       expect(mockAdminRequest).toHaveBeenCalledWith(
         "token",
         expect.objectContaining({ method: "PUT", url: "/api/admin/users/1/enabled" }),
       ),
     );
+    await screen.findByText("ada");
 
-    expect(
-      await screen.findByRole("button", { name: dictionary.admin.resources.delete }),
-    ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.resources.delete }));
-    fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.resources.delete })[1]);
+    fireEvent.click(screen.getByRole("button", { name: "ada actions" }));
+    fireEvent.click(screen.getByText(dictionary.admin.resources.delete));
+    expect(screen.getByText(dictionary.admin.resources.deleteUserConfirm)).toBeInTheDocument();
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: dictionary.admin.resources.delete,
+      }),
+    );
     await waitFor(() =>
       expect(mockAdminRequest).toHaveBeenCalledWith(
         "token",
@@ -92,6 +97,7 @@ describe("AdminResources", () => {
           lastAccessedAt: "2026-01-01T12:30:00Z",
           expiresAt: "2026-01-01T13:00:00Z",
           authorizationCount: 2,
+          active: true,
         },
         button: dictionary.admin.resources.signOutAll,
         confirm: dictionary.admin.resources.signOutAll,
@@ -103,6 +109,8 @@ describe("AdminResources", () => {
           clientName: "Web client",
           principalName: "ada@example.com",
           authorities: ["SCOPE_openid"],
+          createdAt: "2026-01-01T12:00:00Z",
+          updatedAt: "2026-01-01T12:30:00Z",
         },
         button: dictionary.admin.resources.revoke,
         confirm: dictionary.admin.resources.revoke,
@@ -122,9 +130,16 @@ describe("AdminResources", () => {
           resource={resource as "sessions" | "consents"}
         />,
       );
-      expect(await screen.findByRole("button", { name: expected.button })).toBeInTheDocument();
-      fireEvent.click(screen.getByRole("button", { name: expected.button }));
-      fireEvent.click(screen.getAllByRole("button", { name: expected.confirm })[1]);
+      await screen.findByText(resource === "sessions" ? "ada@example.com" : "Web client");
+      if (resource === "sessions") {
+        fireEvent.click(screen.getByRole("button", { name: "Session actions" }));
+      } else {
+        fireEvent.click(screen.getByRole("button", { name: "Web client consent actions" }));
+      }
+      fireEvent.click(screen.getByText(expected.button));
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", { name: expected.confirm }),
+      );
       await waitFor(() =>
         expect(mockAdminRequest).toHaveBeenCalledWith(
           "token",
@@ -180,7 +195,8 @@ describe("AdminResources", () => {
     });
     render(<AdminResources copy={dictionary.admin.resources} resource="users" locale="en" />);
     expect(await screen.findByAltText("")).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.resources.enable }));
+    fireEvent.click(screen.getByRole("button", { name: "bob actions" }));
+    fireEvent.click(screen.getByText(dictionary.admin.resources.enable));
     expect(await screen.findByText(dictionary.admin.resources.operationError)).toBeVisible();
 
     mockAdminRequest.mockResolvedValue({
@@ -193,6 +209,7 @@ describe("AdminResources", () => {
           lastAccessedAt: "2026-01-01T12:30:00Z",
           expiresAt: "2026-01-01T13:00:00Z",
           authorizationCount: 0,
+          active: true,
         },
       ]),
     } as never);
@@ -230,6 +247,7 @@ describe("AdminResources", () => {
                 lastAccessedAt: "2026-01-01T12:30:00Z",
                 expiresAt: "2026-01-01T13:00:00Z",
                 authorizationCount: 1,
+                active: true,
               },
             ],
             number: 0,
@@ -242,10 +260,15 @@ describe("AdminResources", () => {
     });
     const view = render(<AdminResources copy={dictionary.admin.resources} resource="sessions" />);
     expect(await screen.findByText("ada")).toBeVisible();
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "50" } });
+    fireEvent.change(screen.getAllByRole("combobox").at(-1)!, { target: { value: "50" } });
     expect(await screen.findByText("ada")).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.resources.signOut }));
-    fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.resources.signOut })[1]);
+    fireEvent.click(screen.getByRole("button", { name: "Session actions" }));
+    fireEvent.click(screen.getByText(dictionary.admin.resources.signOut));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: dictionary.admin.resources.signOut,
+      }),
+    );
     await waitFor(() =>
       expect(mockAdminRequest).toHaveBeenCalledWith("token", {
         url: "/api/admin/sessions/session-1",
@@ -280,7 +303,8 @@ describe("AdminResources", () => {
     } as never);
     render(<AdminResources copy={dictionary.admin.resources} resource="users" locale="en" />);
     await screen.findByText("ada");
-    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.resources.delete }));
+    fireEvent.click(screen.getByRole("button", { name: "ada actions" }));
+    fireEvent.click(screen.getByText(dictionary.admin.resources.delete));
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.cancel }));
   });
 });

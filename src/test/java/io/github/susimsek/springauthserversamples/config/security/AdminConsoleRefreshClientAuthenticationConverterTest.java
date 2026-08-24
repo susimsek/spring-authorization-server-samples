@@ -28,6 +28,13 @@ class AdminConsoleRefreshClientAuthenticationConverterTest {
     }
 
     @Test
+    void returnsNullForRevokeRequestWithoutClientId() {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/oauth2/revoke");
+
+        assertThat(converter.convert(request)).isNull();
+    }
+
+    @Test
     void returnsNullForNonAdminOrUnsupportedRequests() {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/oauth2/token");
         request.addParameter(OAuth2ParameterNames.GRANT_TYPE, "client_credentials");

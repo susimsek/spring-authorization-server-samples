@@ -14,6 +14,8 @@ import { problemErrorCode, problemViolations } from "@/lib/problem-detail";
 
 import { useAdminAuth } from "./AdminAuthProvider";
 import { ErrorState, LoadingState } from "./AsyncState";
+import { HelpItem } from "./HelpItem";
+import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import { ResultModal } from "./ResultModal";
 import type { AdminClient } from "./ClientsTable";
 
@@ -23,6 +25,13 @@ type Detail = AdminClient & {
   authorizationCodeTimeToLive: string;
   accessTokenTimeToLive: string;
   refreshTokenTimeToLive: string;
+};
+
+type ClientScopeOption = {
+  id: string;
+  name: string;
+  displayName: string | null;
+  description: string | null;
 };
 
 type FormState = {
@@ -60,8 +69,8 @@ const GRANTS = ["authorization_code", "refresh_token", "client_credentials"];
 const clientSchema = (validation: Dictionary["admin"]["common"]["validation"]) =>
   z
     .object({
-      clientId: z.string().trim().min(1, validation.required),
-      clientName: z.string().trim().min(1, validation.required),
+      clientId: z.string().trim().min(1, validation.required).max(100, validation.max100),
+      clientName: z.string().trim().min(1, validation.required).max(200, validation.max200),
       scopes: z.string().trim().min(1, validation.scope),
       clientAuthenticationMethods: z.array(z.string()).min(1, validation.selection),
       authorizationGrantTypes: z.array(z.string()).min(1, validation.selection),
@@ -133,14 +142,17 @@ export function ClientForm({
   dictionary,
   mode,
   id,
+  embedded = false,
 }: {
   locale: Locale;
   dictionary: Dictionary;
   mode: "create" | "edit";
   id?: string | null;
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const { accessToken } = useAdminAuth();
+  const alerts = useConsoleAlerts();
   const missingId = mode === "edit" && !id;
   const [loading, setLoading] = useState(mode === "edit" && Boolean(id));
   const [saving, setSaving] = useState(false);
@@ -148,6 +160,8 @@ export function ClientForm({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [createdSecret, setCreatedSecret] = useState<string | null>(null);
   const [createdClientId, setCreatedClientId] = useState<string | null>(null);
+  const [step, setStep] = useState(0);
+  const [scopeCatalog, setScopeCatalog] = useState<ClientScopeOption[]>([]);
   const {
     register,
     handleSubmit,
@@ -182,6 +196,19 @@ export function ClientForm({
     name: "requireAuthorizationConsent",
     defaultValue: EMPTY.requireAuthorizationConsent,
   });
+  const selectedScopes = useWatch({ control, name: "scopes", defaultValue: EMPTY.scopes });
+
+  useEffect(() => {
+    if (mode !== "create" || !accessToken) return;
+    adminRequest<{ content: ClientScopeOption[] }>(accessToken, {
+      url: "/api/admin/client-scopes?page=0&size=100",
+    })
+      .then((response) => {
+        if (response.status < 300 && Array.isArray(response.data.content))
+          setScopeCatalog(response.data.content);
+      })
+      .catch(() => undefined);
+  }, [accessToken, mode]);
 
   useEffect(() => {
     if (mode !== "edit") {
@@ -230,6 +257,14 @@ export function ClientForm({
       selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value],
       { shouldDirty: true, shouldValidate: true },
     );
+  };
+
+  const toggleScope = (scope: string) => {
+    const selected = words(getValues("scopes"));
+    const next = selected.includes(scope)
+      ? selected.filter((item) => item !== scope)
+      : [...selected, scope];
+    setValue("scopes", next.join(" "), { shouldDirty: true, shouldValidate: true });
   };
 
   const submit = async (values: FormState) => {
@@ -289,6 +324,9 @@ export function ClientForm({
             : dictionary.admin.clients.saveError,
         );
       }
+      alerts.addAlert(
+        locale === "tr" ? "İstemci başarıyla kaydedildi." : "Client saved successfully.",
+      );
       if (mode === "create") {
         const created = response.data as {
           client: Detail;
@@ -299,10 +337,10 @@ export function ClientForm({
           setCreatedSecret(created.clientSecret);
           return;
         }
-        router.push(`/${locale}/admin/clients/detail?id=${encodeURIComponent(created.client.id)}`);
+        router.push(`/${locale}/admin/clients/${encodeURIComponent(created.client.id)}/settings`);
       } else {
         const saved = response.data as Detail;
-        router.push(`/${locale}/admin/clients/detail?id=${encodeURIComponent(saved.id)}`);
+        router.push(`/${locale}/admin/clients/${encodeURIComponent(saved.id)}/settings`);
       }
       router.refresh();
     } catch (exception: unknown) {
@@ -321,141 +359,273 @@ export function ClientForm({
 
   if (loading) return <LoadingState />;
 
+  const stepLabels =
+    locale === "tr"
+      ? ["Genel ayarlar", "Yetenek yapılandırması", "Giriş ayarları"]
+      : ["General settings", "Capability config", "Login settings"];
+  const nextLabel = locale === "tr" ? "Devam" : "Next";
+  const backLabel = locale === "tr" ? "Geri" : "Back";
+
   return (
     <Form onSubmit={handleSubmit(submit)}>
       {error && (
         <Alert variant="danger">{errorMessage ?? dictionary.admin.clients.saveError}</Alert>
       )}
-      <Card className="border-0 shadow-sm mb-3">
-        <Card.Body>
-          <h2 className="h6 mb-3">{dictionary.admin.clients.general}</h2>
-          <Row className="g-3">
-            <Col md={6}>
-              <Form.Label>{dictionary.admin.clients.clientId}</Form.Label>
-              <Form.Control isInvalid={Boolean(errors.clientId)} {...register("clientId")} />
-              <Form.Control.Feedback type="invalid">
-                {errors.clientId?.message}
-              </Form.Control.Feedback>
-            </Col>
-            <Col md={6}>
-              <Form.Label>{dictionary.admin.clients.clientName}</Form.Label>
-              <Form.Control isInvalid={Boolean(errors.clientName)} {...register("clientName")} />
-              <Form.Control.Feedback type="invalid">
-                {errors.clientName?.message}
-              </Form.Control.Feedback>
-            </Col>
-          </Row>
-        </Card.Body>
-      </Card>
 
-      <Card className="border-0 shadow-sm mb-3">
-        <Card.Body>
-          <h2 className="h6 mb-3">{dictionary.admin.clients.capabilities}</h2>
-          <Row className="g-4">
-            <Col lg={6}>
-              <Form.Label>{dictionary.admin.clients.authMethods}</Form.Label>
-              {METHODS.map((method) => (
-                <Form.Check
-                  key={method}
-                  type="checkbox"
-                  label={method}
-                  checked={clientAuthenticationMethods.includes(method)}
-                  onChange={() => toggle("clientAuthenticationMethods", method)}
-                />
-              ))}
-              {errors.clientAuthenticationMethods && (
-                <div className="invalid-feedback d-block">
-                  {errors.clientAuthenticationMethods.message}
+      {mode === "create" && (
+        <div className="admin-stepper mb-4" aria-label="Client creation steps">
+          {stepLabels.map((label, index) => (
+            <button
+              className={`admin-step ${index === step ? "active" : ""} ${index < step ? "complete" : ""}`}
+              key={label}
+              onClick={() => index < step && setStep(index)}
+              type="button"
+            >
+              <span className="admin-step-number">{index + 1}</span>
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {(mode === "edit" || step === 0) && (
+        <Card className={`admin-panel-card mb-3${embedded ? " admin-detail-section" : ""}`}>
+          <Card.Body>
+            <h2 className="h5 mb-1">{dictionary.admin.clients.general}</h2>
+            <p className="small text-body-secondary mb-4">
+              {mode === "create" ? stepLabels[0] : dictionary.admin.clients.editSubtitle}
+            </p>
+            <Row className="g-3">
+              <Col md={6}>
+                <Form.Label>{dictionary.admin.clients.clientId}</Form.Label>
+                <Form.Control isInvalid={Boolean(errors.clientId)} {...register("clientId")} />
+                <Form.Control.Feedback type="invalid">
+                  {errors.clientId?.message}
+                </Form.Control.Feedback>
+              </Col>
+              <Col md={6}>
+                <Form.Label>{dictionary.admin.clients.clientName}</Form.Label>
+                <Form.Control isInvalid={Boolean(errors.clientName)} {...register("clientName")} />
+                <Form.Control.Feedback type="invalid">
+                  {errors.clientName?.message}
+                </Form.Control.Feedback>
+              </Col>
+            </Row>
+          </Card.Body>
+        </Card>
+      )}
+
+      {(mode === "edit" || step === 1) && (
+        <Card className={`admin-panel-card mb-3${embedded ? " admin-detail-section" : ""}`}>
+          <Card.Body>
+            <h2 className="h5 mb-1">{dictionary.admin.clients.capabilities}</h2>
+            <p className="small text-body-secondary mb-4">{stepLabels[1]}</p>
+            <Row className="g-4">
+              <Col lg={6}>
+                <Form.Label className="fw-semibold">
+                  <HelpItem
+                    label={dictionary.admin.clients.authMethods}
+                    help={
+                      locale === "tr"
+                        ? "İstemcinin token endpointinde kullanacağı kimlik doğrulama yöntemlerini seçin."
+                        : "Select how this client authenticates at the token endpoint."
+                    }
+                  />
+                </Form.Label>
+                <div className="admin-choice-list">
+                  {METHODS.map((method) => (
+                    <Form.Check
+                      key={method}
+                      type="checkbox"
+                      label={method}
+                      checked={clientAuthenticationMethods.includes(method)}
+                      onChange={() => toggle("clientAuthenticationMethods", method)}
+                    />
+                  ))}
                 </div>
-              )}
-            </Col>
-            <Col lg={6}>
-              <Form.Label>{dictionary.admin.clients.grants}</Form.Label>
-              {GRANTS.map((grant) => (
-                <Form.Check
-                  key={grant}
-                  type="checkbox"
-                  label={grant}
-                  checked={authorizationGrantTypes.includes(grant)}
-                  onChange={() => toggle("authorizationGrantTypes", grant)}
-                />
-              ))}
-              {errors.authorizationGrantTypes && (
-                <div className="invalid-feedback d-block">
-                  {errors.authorizationGrantTypes.message}
+                {errors.clientAuthenticationMethods && (
+                  <div className="invalid-feedback d-block">
+                    {errors.clientAuthenticationMethods.message}
+                  </div>
+                )}
+              </Col>
+              <Col lg={6}>
+                <Form.Label className="fw-semibold">{dictionary.admin.clients.grants}</Form.Label>
+                <div className="admin-choice-list">
+                  {GRANTS.map((grant) => (
+                    <Form.Check
+                      key={grant}
+                      type="checkbox"
+                      label={grant}
+                      checked={authorizationGrantTypes.includes(grant)}
+                      onChange={() => toggle("authorizationGrantTypes", grant)}
+                    />
+                  ))}
                 </div>
+                {errors.authorizationGrantTypes && (
+                  <div className="invalid-feedback d-block">
+                    {errors.authorizationGrantTypes.message}
+                  </div>
+                )}
+              </Col>
+              <Col md={6}>
+                <div className="admin-setting-row">
+                  <div>
+                    <div className="fw-semibold">
+                      <HelpItem
+                        label={dictionary.admin.clients.requirePkce}
+                        help={
+                          locale === "tr"
+                            ? "Authorization Code akışında S256 PKCE kullanımını zorunlu kılar."
+                            : "Requires S256 PKCE for the Authorization Code flow."
+                        }
+                      />
+                    </div>
+                    <div className="small text-body-secondary">S256</div>
+                  </div>
+                  <Form.Check
+                    type="switch"
+                    checked={requireProofKey}
+                    onChange={(e) =>
+                      setValue("requireProofKey", e.target.checked, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      })
+                    }
+                  />
+                </div>
+              </Col>
+              <Col md={6}>
+                <div className="admin-setting-row">
+                  <div className="fw-semibold">
+                    <HelpItem
+                      label={dictionary.admin.clients.requireConsent}
+                      help={
+                        locale === "tr"
+                          ? "Kullanıcıdan istemci scope’ları için açık onay alınmasını zorunlu kılar."
+                          : "Requires explicit user consent for requested client scopes."
+                      }
+                    />
+                  </div>
+                  <Form.Check
+                    type="switch"
+                    checked={requireAuthorizationConsent}
+                    onChange={(e) =>
+                      setValue("requireAuthorizationConsent", e.target.checked, {
+                        shouldDirty: true,
+                      })
+                    }
+                  />
+                </div>
+              </Col>
+            </Row>
+          </Card.Body>
+        </Card>
+      )}
+
+      {(mode === "edit" || step === 2) && (
+        <Card className={`admin-panel-card mb-3${embedded ? " admin-detail-section" : ""}`}>
+          <Card.Body>
+            <h2 className="h5 mb-1">{stepLabels[2]}</h2>
+            <p className="small text-body-secondary mb-4">
+              {dictionary.admin.clients.redirectUris}
+            </p>
+            <Row className="g-3">
+              <Col lg={6}>
+                <Form.Label>
+                  <HelpItem
+                    label={dictionary.admin.clients.redirectUris}
+                    help={
+                      locale === "tr"
+                        ? "Authorization cevabının dönebileceği tam ve izin verilen URI’ler."
+                        : "Exact allowed redirect URIs for authorization responses."
+                    }
+                  />
+                </Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={4}
+                  placeholder="https://app.example/callback"
+                  isInvalid={Boolean(errors.redirectUris)}
+                  {...register("redirectUris")}
+                />
+                <Form.Control.Feedback type="invalid">
+                  {errors.redirectUris?.message}
+                </Form.Control.Feedback>
+              </Col>
+              <Col lg={6}>
+                <Form.Label>{dictionary.admin.clients.postLogoutUris}</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={4}
+                  isInvalid={Boolean(errors.postLogoutRedirectUris)}
+                  {...register("postLogoutRedirectUris")}
+                />
+                <Form.Control.Feedback type="invalid">
+                  {errors.postLogoutRedirectUris?.message}
+                </Form.Control.Feedback>
+              </Col>
+              {mode === "create" && (
+                <Col xs={12}>
+                  <Form.Label>{dictionary.admin.clients.scopes}</Form.Label>
+                  <div className="client-scope-create-grid">
+                    {scopeCatalog.map((scope) => (
+                      <label className="client-scope-create-option" key={scope.id}>
+                        <Form.Check
+                          type="checkbox"
+                          checked={words(selectedScopes).includes(scope.name)}
+                          onChange={() => toggleScope(scope.name)}
+                        />
+                        <span>
+                          <strong className="font-monospace">{scope.name}</strong>
+                          {scope.displayName && (
+                            <span className="text-body-secondary ms-2">{scope.displayName}</span>
+                          )}
+                          {scope.description && (
+                            <span className="d-block small text-body-secondary mt-1">
+                              {scope.description}
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  <input type="hidden" {...register("scopes")} />
+                  {errors.scopes && (
+                    <div className="invalid-feedback d-block">{errors.scopes.message}</div>
+                  )}
+                </Col>
               )}
-            </Col>
-            <Col lg={6}>
-              <Form.Label>{dictionary.admin.clients.redirectUris}</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={4}
-                placeholder="https://app.example/callback"
-                isInvalid={Boolean(errors.redirectUris)}
-                {...register("redirectUris")}
-              />
-              <Form.Control.Feedback type="invalid">
-                {errors.redirectUris?.message}
-              </Form.Control.Feedback>
-            </Col>
-            <Col lg={6}>
-              <Form.Label>{dictionary.admin.clients.postLogoutUris}</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={4}
-                isInvalid={Boolean(errors.postLogoutRedirectUris)}
-                {...register("postLogoutRedirectUris")}
-              />
-              <Form.Control.Feedback type="invalid">
-                {errors.postLogoutRedirectUris?.message}
-              </Form.Control.Feedback>
-            </Col>
-            <Col xs={12}>
-              <Form.Label>{dictionary.admin.clients.scopes}</Form.Label>
-              <Form.Control
-                placeholder="openid profile"
-                isInvalid={Boolean(errors.scopes)}
-                {...register("scopes")}
-              />
-              <Form.Control.Feedback type="invalid">{errors.scopes?.message}</Form.Control.Feedback>
-            </Col>
-          </Row>
-        </Card.Body>
-      </Card>
+            </Row>
+          </Card.Body>
+        </Card>
+      )}
 
-      <Card className="border-0 shadow-sm mb-3">
-        <Card.Body>
-          <h2 className="h6 mb-3">{dictionary.admin.clients.security}</h2>
-          <Form.Check
-            type="switch"
-            label={dictionary.admin.clients.requirePkce}
-            checked={requireProofKey}
-            onChange={(event) => {
-              setValue("requireProofKey", event.target.checked, {
-                shouldDirty: true,
-                shouldValidate: true,
-              });
-            }}
-          />
-          <Form.Check
-            type="switch"
-            label={dictionary.admin.clients.requireConsent}
-            checked={requireAuthorizationConsent}
-            onChange={(event) => {
-              setValue("requireAuthorizationConsent", event.target.checked, { shouldDirty: true });
-            }}
-          />
-        </Card.Body>
-      </Card>
-
-      <div className="d-flex gap-2 justify-content-end">
-        <Button variant="outline-secondary" onClick={() => router.push(`/${locale}/admin/clients`)}>
-          {dictionary.admin.common.cancel}
+      <div className="d-flex gap-2 justify-content-between align-items-center">
+        <Button
+          variant="outline-secondary"
+          type="button"
+          onClick={() =>
+            mode === "create" && step > 0
+              ? setStep(step - 1)
+              : router.push(
+                  embedded && id
+                    ? `/${locale}/admin/clients/${encodeURIComponent(id)}/settings`
+                    : `/${locale}/admin/clients`,
+                )
+          }
+        >
+          {mode === "create" && step > 0 ? backLabel : dictionary.admin.common.cancel}
         </Button>
-        <Button type="submit" disabled={saving}>
-          {saving ? dictionary.admin.common.saving : dictionary.admin.common.save}
-        </Button>
+        {mode === "create" && step < 2 ? (
+          <Button type="button" onClick={() => setStep(step + 1)}>
+            {nextLabel}
+          </Button>
+        ) : (
+          <Button type="submit" disabled={saving}>
+            {saving ? dictionary.admin.common.saving : dictionary.admin.common.save}
+          </Button>
+        )}
       </div>
 
       <ResultModal
@@ -463,9 +633,7 @@ export function ClientForm({
         message={dictionary.admin.clients.secretHelp}
         onClose={() => {
           if (createdClientId) {
-            router.push(
-              `/${locale}/admin/clients/detail?id=${encodeURIComponent(createdClientId)}`,
-            );
+            router.push(`/${locale}/admin/clients/${encodeURIComponent(createdClientId)}/settings`);
             router.refresh();
           }
         }}

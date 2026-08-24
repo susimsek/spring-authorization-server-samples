@@ -6,6 +6,7 @@ import io.github.susimsek.springauthserversamples.mapper.AuthorizationServerMapp
 import io.github.susimsek.springauthserversamples.repository.AuthorizationConsentRepository;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
+import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -22,13 +23,95 @@ public class AdminConsentService {
     private final AuthorizationConsentRepository authorizationConsentRepository;
     private final AuthorizationRepository authorizationRepository;
     private final ClientRepository clientRepository;
+    private final UserRepository userRepository;
     private final AuthorizationServerMapperSupport mapperSupport;
     private final AdminAuditEventService adminAuditEventService;
 
     @Transactional(readOnly = true)
-    public Page<ConsentView> consents(String query, Pageable pageable) {
+    public Page<ConsentView> consents(
+            String query, String clientId, String username, String scope, Pageable pageable) {
+        String search = AdminSearch.normalize(query);
+        String client = AdminSearch.normalize(clientId);
+        String principal = AdminSearch.normalize(username);
+        String grantedScope = AdminSearch.normalize(scope);
         Page<AuthorizationConsentEntity> consents =
-                authorizationConsentRepository.search(AdminSearch.normalize(query), pageable);
+                authorizationConsentRepository.findAll(
+                        (root, criteriaQuery, cb) -> {
+                            var predicate = cb.conjunction();
+                            if (!search.isBlank()) {
+                                String like = "%" + search.toLowerCase() + "%";
+                                predicate =
+                                        cb.and(
+                                                predicate,
+                                                cb.or(
+                                                        cb.like(
+                                                                cb.lower(
+                                                                        root.get("id")
+                                                                                .get(
+                                                                                        "principalName")),
+                                                                like),
+                                                        cb.like(
+                                                                cb.lower(
+                                                                        root.get("id")
+                                                                                .get(
+                                                                                        "registeredClientId")),
+                                                                like)));
+                            }
+                            if (!client.isBlank()) {
+                                predicate =
+                                        cb.and(
+                                                predicate,
+                                                cb.like(
+                                                        cb.lower(
+                                                                root.get("id")
+                                                                        .get("registeredClientId")),
+                                                        "%" + client.toLowerCase() + "%"));
+                            }
+                            if (!principal.isBlank()) {
+                                predicate =
+                                        cb.and(
+                                                predicate,
+                                                cb.like(
+                                                        cb.lower(
+                                                                root.get("id")
+                                                                        .get("principalName")),
+                                                        "%" + principal.toLowerCase() + "%"));
+                            }
+                            if (!grantedScope.isBlank()) {
+                                predicate =
+                                        cb.and(
+                                                predicate,
+                                                cb.like(
+                                                        cb.lower(root.get("authorities")),
+                                                        "%" + grantedScope.toLowerCase() + "%"));
+                            }
+                            return predicate;
+                        },
+                        pageable);
+        return toConsentViews(consents);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ConsentView> consents(String query, Pageable pageable) {
+        return consents(query, "", "", "", pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public ConsentView consent(String clientId, String username) {
+        AuthorizationConsentEntity consent =
+                authorizationConsentRepository
+                        .findByIdRegisteredClientIdAndIdPrincipalName(clientId, username)
+                        .orElseThrow(() -> AdminClientException.notFound("Consent not found"));
+        Map<String, String> clientNames =
+                clientRepository.findById(clientId).stream()
+                        .collect(
+                                java.util.stream.Collectors.toMap(
+                                        client -> client.getId(),
+                                        client -> client.getClientName()));
+        return consentView(consent, clientNames, userIds(java.util.List.of(consent)));
+    }
+
+    private Page<ConsentView> toConsentViews(Page<AuthorizationConsentEntity> consents) {
         Map<String, String> clientNames =
                 clientRepository
                         .findAllById(
@@ -41,7 +124,60 @@ public class AdminConsentService {
                                 java.util.stream.Collectors.toMap(
                                         client -> client.getId(),
                                         client -> client.getClientName()));
-        return consents.map(consent -> consentView(consent, clientNames));
+        Map<String, Long> userIds = userIds(consents.getContent());
+        return consents.map(consent -> consentView(consent, clientNames, userIds));
+    }
+
+    private Map<String, Long> userIds(java.util.List<AuthorizationConsentEntity> consents) {
+        return userRepository
+                .findAllByUsernameIn(
+                        consents.stream()
+                                .map(consent -> consent.getId().getPrincipalName())
+                                .distinct()
+                                .toList())
+                .stream()
+                .collect(
+                        java.util.stream.Collectors.toMap(
+                                user -> user.getUsername(), user -> user.getId()));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ConsentView> clientConsents(String clientId, Pageable pageable) {
+        if (!clientRepository.existsById(clientId)) {
+            throw AdminClientException.notFound("Client not found");
+        }
+        Map<String, String> clientNames =
+                clientRepository.findById(clientId).stream()
+                        .collect(
+                                java.util.stream.Collectors.toMap(
+                                        client -> client.getId(),
+                                        client -> client.getClientName()));
+        Page<AuthorizationConsentEntity> consents =
+                authorizationConsentRepository.findByIdRegisteredClientId(clientId, pageable);
+        Map<String, Long> userIds = userIds(consents.getContent());
+        return consents.map(consent -> consentView(consent, clientNames, userIds));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ConsentView> userConsents(Long userId, String currentUsername, Pageable pageable) {
+        String username =
+                adminUserService.requireManageableUser(userId, currentUsername).getUsername();
+        Page<AuthorizationConsentEntity> consents =
+                authorizationConsentRepository.findByIdPrincipalName(username, pageable);
+        Map<String, String> clientNames =
+                clientRepository
+                        .findAllById(
+                                consents.getContent().stream()
+                                        .map(c -> c.getId().getRegisteredClientId())
+                                        .distinct()
+                                        .toList())
+                        .stream()
+                        .collect(
+                                java.util.stream.Collectors.toMap(
+                                        client -> client.getId(),
+                                        client -> client.getClientName()));
+        Map<String, Long> userIds = userIds(consents.getContent());
+        return consents.map(consent -> consentView(consent, clientNames, userIds));
     }
 
     @Transactional
@@ -57,17 +193,28 @@ public class AdminConsentService {
     }
 
     private ConsentView consentView(
-            AuthorizationConsentEntity consent, Map<String, String> clientNames) {
+            AuthorizationConsentEntity consent,
+            Map<String, String> clientNames,
+            Map<String, Long> userIds) {
         String clientId = consent.getId().getRegisteredClientId();
         return new ConsentView(
                 clientId,
                 clientNames.getOrDefault(clientId, clientId),
                 consent.getId().getPrincipalName(),
+                userIds.get(consent.getId().getPrincipalName()),
                 mapperSupport.readAuthorities(consent.getAuthorities()).stream()
                         .map(authority -> authority.getAuthority())
-                        .collect(java.util.stream.Collectors.toUnmodifiableSet()));
+                        .collect(java.util.stream.Collectors.toUnmodifiableSet()),
+                consent.getCreatedAt(),
+                consent.getUpdatedAt());
     }
 
     public record ConsentView(
-            String clientId, String clientName, String principalName, Set<String> authorities) {}
+            String clientId,
+            String clientName,
+            String principalName,
+            Long userId,
+            Set<String> authorities,
+            java.time.Instant createdAt,
+            java.time.Instant updatedAt) {}
 }

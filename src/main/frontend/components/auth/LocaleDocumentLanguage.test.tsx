@@ -1,5 +1,7 @@
 import { render, screen } from "@testing-library/react";
 
+import { StoreProvider } from "@/store/StoreProvider";
+
 import { LocaleDocumentLanguage } from "./LocaleDocumentLanguage";
 
 describe("LocaleDocumentLanguage", () => {
@@ -7,9 +9,11 @@ describe("LocaleDocumentLanguage", () => {
     document.documentElement.lang = "en";
 
     render(
-      <LocaleDocumentLanguage lang="tr">
-        <span>Content</span>
-      </LocaleDocumentLanguage>,
+      <StoreProvider>
+        <LocaleDocumentLanguage lang="tr">
+          <span>Content</span>
+        </LocaleDocumentLanguage>
+      </StoreProvider>,
     );
 
     expect(screen.getByText("Content")).toBeVisible();
@@ -18,15 +22,19 @@ describe("LocaleDocumentLanguage", () => {
 
   it("updates the language when the prop changes", () => {
     const { rerender } = render(
-      <LocaleDocumentLanguage lang="en">
-        <span>Content</span>
-      </LocaleDocumentLanguage>,
+      <StoreProvider>
+        <LocaleDocumentLanguage lang="en">
+          <span>Content</span>
+        </LocaleDocumentLanguage>
+      </StoreProvider>,
     );
 
     rerender(
-      <LocaleDocumentLanguage lang="tr">
-        <span>Content</span>
-      </LocaleDocumentLanguage>,
+      <StoreProvider>
+        <LocaleDocumentLanguage lang="tr">
+          <span>Content</span>
+        </LocaleDocumentLanguage>
+      </StoreProvider>,
     );
 
     expect(document.documentElement.lang).toBe("tr");

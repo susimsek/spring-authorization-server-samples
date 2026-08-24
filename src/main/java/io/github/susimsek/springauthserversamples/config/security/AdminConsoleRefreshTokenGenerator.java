@@ -14,7 +14,8 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Toke
 
 final class AdminConsoleRefreshTokenGenerator implements OAuth2TokenGenerator<OAuth2RefreshToken> {
 
-    private static final String ADMIN_CONSOLE_CLIENT_ID = "admin-console";
+    private static final java.util.Set<String> CONSOLE_CLIENT_IDS =
+            java.util.Set.of("admin-console", "account-console");
 
     private final OAuth2RefreshTokenGenerator defaultGenerator = new OAuth2RefreshTokenGenerator();
     private final StringKeyGenerator refreshTokenGenerator =
@@ -26,7 +27,7 @@ final class AdminConsoleRefreshTokenGenerator implements OAuth2TokenGenerator<OA
         if (!OAuth2TokenType.REFRESH_TOKEN.equals(context.getTokenType())) {
             return null;
         }
-        if (!ADMIN_CONSOLE_CLIENT_ID.equals(context.getRegisteredClient().getClientId())) {
+        if (!CONSOLE_CLIENT_IDS.contains(context.getRegisteredClient().getClientId())) {
             return defaultGenerator.generate(context);
         }
 

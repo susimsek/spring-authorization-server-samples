@@ -125,7 +125,10 @@
       "roles": "Roller",
       "sessions": "Oturumlar",
       "consents": "İzinler",
-      "keys": "Anahtarlar"
+      "keys": "Anahtarlar",
+      "events": "Olaylar",
+      "clientScopes": "İstemci scope’ları",
+      "serverInfo": "Sunucu bilgisi"
     },
     "dashboard": {
       "title": "Genel Bakış",
@@ -185,7 +188,11 @@
         "roleDuplicate": "Bu rol zaten kayıtlı.",
         "password": "Parola en az 8 karakter olmalıdır.",
         "roles": "En az bir rol seçin.",
-        "roleFormat": "ROLE_AUDITOR gibi büyük harfli ROLE_ adları kullanın."
+        "roleFormat": "ROLE_AUDITOR gibi büyük harfli ROLE_ adları kullanın.",
+        "max50": "En fazla 50 karakter kullanın.",
+        "max100": "En fazla 100 karakter kullanın.",
+        "max200": "En fazla 200 karakter kullanın.",
+        "max500": "En fazla 500 karakter kullanın."
       }
     },
     "roles": {
@@ -260,8 +267,131 @@
       "of": "/",
       "records": "kayıt",
       "authorizations": "Yetkilendirmeler",
-      "signOutAll": "Tüm oturumları kapat"
+      "signOutAll": "Tüm oturumları kapat",
+      "rowsPerPage": "Sayfa başına",
+      "first": "İlk sayfa",
+      "last": "Son sayfa",
+      "createdAt": "Oluşturulma zamanı",
+      "updatedAt": "Güncellenme zamanı"
     },
-    "placeholder": "Bu yönetim bölümü sonraki geliştirme adımı için hazır."
+    "placeholder": "Bu yönetim bölümü sonraki geliştirme adımı için hazır.",
+    "clientScopes": {
+      "title": "İstemci scope’ları",
+      "subtitle": "Yeniden kullanılabilir OAuth 2.0 / OpenID Connect scope’ları oluşturun ve istemcilere atayın.",
+      "search": "İstemci scope’larında ara",
+      "create": "İstemci scope’u oluştur",
+      "edit": "Düzenle",
+      "delete": "Sil",
+      "name": "Ad",
+      "displayName": "Görünen ad",
+      "description": "Açıklama",
+      "empty": "İstemci scope’u bulunamadı.",
+      "saved": "İstemci scope’u kaydedildi.",
+      "deleted": "İstemci scope’u silindi.",
+      "operationError": "İstemci scope işlemi tamamlanamadı.",
+      "deleteConfirm": "Bu istemci scope’u silinsin mi?",
+      "assignedDeleteError": "Atanmış istemci scope’ları silinemez.",
+      "defaultScopes": "Atanmış varsayılan scope’lar",
+      "optionalScopes": "Atanmış isteğe bağlı scope’lar",
+      "availableScopes": "Kullanılabilir scope’lar",
+      "defaultHelp": "Varsayılan scope’lar bu istemci için otomatik olarak dahil edilir.",
+      "optionalHelp": "İsteğe bağlı scope’lar yalnız açıkça istendiğinde kullanılabilir.",
+      "addDefault": "Varsayılan olarak ekle",
+      "addOptional": "İsteğe bağlı olarak ekle",
+      "remove": "Kaldır",
+      "assignmentSaved": "İstemci scope atamaları güncellendi."
+    }
+  },
+  "account": {
+    "product": "Hesap Konsolu",
+    "manage": "Hesabım",
+    "logout": "Çıkış yap",
+    "nav": {
+      "personalInfo": "Kişisel bilgiler",
+      "security": "Güvenlik",
+      "sessions": "Cihaz etkinliği",
+      "applications": "Uygulamalar"
+    },
+    "common": {
+      "save": "Kaydet",
+      "saving": "Kaydediliyor…",
+      "loading": "Yükleniyor…",
+      "empty": "Kayıt bulunamadı.",
+      "operationError": "Hesap işlemi tamamlanamadı.",
+      "retry": "Tekrar dene",
+      "cancel": "İptal",
+      "required": "Zorunlu"
+    },
+    "validation": {
+      "required": "Bu alan zorunludur.",
+      "email": "Geçerli bir e-posta adresi girin.",
+      "max100": "En fazla 100 karakter kullanın.",
+      "password": "Parola en az 8 karakter olmalıdır.",
+      "passwordMismatch": "Parolalar eşleşmiyor.",
+      "currentPassword": "Mevcut parola hatalı.",
+      "invalid": "Bu değeri kontrol edin.",
+      "max200": "En fazla 200 karakter kullanın.",
+      "passwordSame": "Yeni parola mevcut parolanızdan farklı olmalıdır."
+    },
+    "profile": {
+      "title": "Kişisel bilgiler",
+      "subtitle": "Hesabınızla ilişkili temel bilgileri yönetin.",
+      "username": "Kullanıcı adı",
+      "usernameHelp": "Kullanıcı adınız yetkilendirme sunucusu tarafından yönetilir ve buradan değiştirilemez.",
+      "firstName": "Ad",
+      "lastName": "Soyad",
+      "email": "E-posta",
+      "saved": "Profiliniz güncellendi.",
+      "createdAt": "Oluşturulma zamanı",
+      "updatedAt": "Güncellenme zamanı",
+      "sectionTitle": "Temel bilgiler",
+      "sectionHelp": "Hesabınızla ilişkili kişisel bilgileri inceleyin ve güncelleyin.",
+      "metadata": "Hesap bilgileri",
+      "cancel": "Değişiklikleri iptal et"
+    },
+    "security": {
+      "title": "Güvenlik",
+      "subtitle": "Parolanızı ve hesap güvenliğinizi yönetin.",
+      "currentPassword": "Mevcut parola",
+      "newPassword": "Yeni parola",
+      "confirmPassword": "Yeni parolayı doğrula",
+      "saved": "Parolanız güncellendi.",
+      "sectionTitle": "Parola",
+      "sectionHelp": "Diğer hesaplarınızda kullanmadığınız güçlü bir parola seçin.",
+      "policyTitle": "Parola gereksinimleri",
+      "policyMinLength": "En az 8 karakter",
+      "policyMatch": "Parolalar eşleşiyor",
+      "cancel": "Değişiklikleri temizle",
+      "policyMaxLength": "En fazla 200 karakter",
+      "policyDifferent": "Mevcut paroladan farklı"
+    },
+    "sessions": {
+      "title": "Cihaz etkinliği",
+      "subtitle": "Hesabınızın açık olduğu oturumları inceleyin ve yönetin.",
+      "help": "Tanımadığınız veya artık kullanmadığınız oturumları kapatın.",
+      "session": "Oturum",
+      "lastAccess": "Son etkinlik",
+      "expires": "Bitiş",
+      "current": "Mevcut oturum",
+      "signOut": "Oturumu kapat",
+      "signOutOthers": "Diğer oturumları kapat",
+      "created": "Oturum başlangıcı",
+      "applications": "Uygulamalar",
+      "signOutAll": "Tüm oturumları kapat",
+      "signOutConfirm": "Bu oturum kapatılsın mı?",
+      "signOutOthersConfirm": "Diğer tüm oturumlar kapatılsın mı?",
+      "signOutAllConfirm": "Mevcut oturum dahil tüm oturumlar kapatılsın mı?"
+    },
+    "applications": {
+      "title": "Uygulamalar",
+      "subtitle": "Hesabınıza erişim izni verilmiş uygulamaları inceleyin.",
+      "help": "Erişimi iptal etmek kayıtlı izni ve ilgili yetkilendirmeyi kaldırır.",
+      "application": "Uygulama",
+      "access": "Verilen erişim",
+      "revoke": "Erişimi iptal et",
+      "grantedAt": "İzin zamanı",
+      "updatedAt": "Son güncelleme",
+      "revokeConfirm": "Bu uygulamanın erişimi iptal edilsin mi?"
+    }
   }
 }

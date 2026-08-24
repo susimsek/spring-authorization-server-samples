@@ -1,5 +1,9 @@
 [
   {
+    "name": "com.github.benmanes.caffeine.jcache.copy.JavaSerializationCopier",
+    "allPublicConstructors": true
+  },
+  {
     "name": "org.hibernate.cache.jcache.internal.JCacheRegionFactory",
     "allPublicConstructors": true
   }

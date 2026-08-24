@@ -13,6 +13,7 @@ import io.github.susimsek.springauthserversamples.domain.UserSessionEntity;
 import io.github.susimsek.springauthserversamples.repository.UserSessionRepository;
 import io.github.susimsek.springauthserversamples.session.JpaIndexedSessionRepository;
 import io.github.susimsek.springauthserversamples.session.JpaSession;
+import jakarta.servlet.http.Cookie;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -21,7 +22,14 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.session.autoconfigure.SessionProperties;
 import org.springframework.core.convert.ConversionService;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.scheduling.TaskScheduler;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.FactorGrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextImpl;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.web.savedrequest.DefaultSavedRequest;
 import org.springframework.session.MapSession;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -50,6 +58,55 @@ class SessionConfigTest {
                 .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
                 .containsEntry("username", "admin")
                 .containsEntry("enabled", true);
+    }
+
+    @Test
+    void springSessionConversionServiceRoundTripsSavedRequest() {
+        ConversionService conversionService =
+                config.springSessionConversionService(
+                        new SecurityJsonMapper(getClass().getClassLoader()));
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/en/account/");
+        request.setCookies(new Cookie("locale", "tr"));
+        request.setServerName("localhost");
+        request.setServerPort(9090);
+        DefaultSavedRequest savedRequest = new DefaultSavedRequest(request);
+
+        byte[] serialized = conversionService.convert(savedRequest, byte[].class);
+        Object deserialized = conversionService.convert(serialized, Object.class);
+
+        assertThat(deserialized)
+                .isInstanceOf(DefaultSavedRequest.class)
+                .extracting(value -> ((DefaultSavedRequest) value).getRedirectUrl())
+                .isEqualTo("http://localhost:9090/en/account/");
+    }
+
+    @Test
+    void springSessionConversionServiceRoundTripsAuthenticatedSecurityContext() {
+        ConversionService conversionService =
+                config.springSessionConversionService(
+                        new SecurityJsonMapper(getClass().getClassLoader()));
+        UserDetails principal =
+                org.springframework.security.core.userdetails.User.withUsername("admin")
+                        .password("password")
+                        .roles("ADMIN")
+                        .build();
+        UsernamePasswordAuthenticationToken authentication =
+                UsernamePasswordAuthenticationToken.authenticated(
+                        principal,
+                        "password",
+                        List.of(
+                                new SimpleGrantedAuthority("ROLE_ADMIN"),
+                                FactorGrantedAuthority.fromFactor("PASSWORD")));
+        SecurityContextImpl securityContext = new SecurityContextImpl(authentication);
+
+        byte[] serialized = conversionService.convert(securityContext, byte[].class);
+        SecurityContextImpl deserialized =
+                (SecurityContextImpl) conversionService.convert(serialized, Object.class);
+
+        assertThat(deserialized.getAuthentication().getName()).isEqualTo("admin");
+        assertThat(deserialized.getAuthentication().getAuthorities())
+                .extracting(authority -> authority.getAuthority())
+                .contains("ROLE_ADMIN", "FACTOR_PASSWORD");
     }
 
     @Test

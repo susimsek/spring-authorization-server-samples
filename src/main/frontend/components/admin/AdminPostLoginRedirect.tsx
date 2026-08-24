@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 const ADMIN_RETURN_TO = "AUTH_ADMIN_RETURN_TO";
 
 export function AdminPostLoginRedirect() {
+  const router = useRouter();
+
   useEffect(() => {
     const returnTo = sessionStorage.getItem(ADMIN_RETURN_TO);
     if (!returnTo || !returnTo.startsWith("/")) {
@@ -12,8 +15,8 @@ export function AdminPostLoginRedirect() {
     }
 
     sessionStorage.removeItem(ADMIN_RETURN_TO);
-    window.location.replace(returnTo);
-  }, []);
+    router.replace(returnTo);
+  }, [router]);
 
   return null;
 }

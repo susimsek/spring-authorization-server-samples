@@ -15,7 +15,7 @@ type AuthLayoutProps = {
 
 export function AuthLayout({ locale, dictionary, children }: AuthLayoutProps) {
   return (
-    <div className="min-vh-100 bg-body-tertiary">
+    <div className="auth-app min-vh-100 bg-body-tertiary">
       <AuthNavbar locale={locale} dictionary={dictionary} />
       <Container>
         <Row className="justify-content-center align-items-center auth-content-row py-4 py-md-5">

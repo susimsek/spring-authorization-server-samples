@@ -2,6 +2,7 @@ package io.github.susimsek.springauthserversamples.service.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -9,10 +10,12 @@ import static org.mockito.Mockito.when;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentEntity;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentId;
 import io.github.susimsek.springauthserversamples.domain.RegisteredClientEntity;
+import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.mapper.AuthorizationServerMapperSupport;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationConsentRepository;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
+import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -30,6 +33,7 @@ class AdminConsentServiceTest {
     @Mock private AuthorizationConsentRepository authorizationConsentRepository;
     @Mock private AuthorizationRepository authorizationRepository;
     @Mock private ClientRepository clientRepository;
+    @Mock private UserRepository userRepository;
     @Mock private AuthorizationServerMapperSupport mapperSupport;
     @Mock private AdminAuditEventService adminAuditEventService;
 
@@ -41,10 +45,20 @@ class AdminConsentServiceTest {
         client.setId("client-one");
         client.setClientName("Client One");
         Pageable pageable = Pageable.unpaged();
-        when(authorizationConsentRepository.search("alice", pageable))
+        when(authorizationConsentRepository.findAll(
+                        any(org.springframework.data.jpa.domain.Specification.class),
+                        org.mockito.ArgumentMatchers.eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(knownClient, missingClient)));
         when(clientRepository.findAllById(List.of("client-one", "client-two")))
                 .thenReturn(List.of(client));
+        UserEntity alice = new UserEntity();
+        alice.setId(1L);
+        alice.setUsername("alice");
+        UserEntity bob = new UserEntity();
+        bob.setId(2L);
+        bob.setUsername("bob");
+        when(userRepository.findAllByUsernameIn(List.of("alice", "bob")))
+                .thenReturn(List.of(alice, bob));
         when(mapperSupport.readAuthorities("openid profile"))
                 .thenReturn(
                         Set.of(
@@ -59,10 +73,25 @@ class AdminConsentServiceTest {
         assertThat(result)
                 .containsExactly(
                         new AdminConsentService.ConsentView(
-                                "client-one", "Client One", "alice", Set.of("openid", "profile")),
+                                "client-one",
+                                "Client One",
+                                "alice",
+                                1L,
+                                Set.of("openid", "profile"),
+                                java.time.Instant.parse("2026-08-21T00:00:00Z"),
+                                java.time.Instant.parse("2026-08-21T00:00:00Z")),
                         new AdminConsentService.ConsentView(
-                                "client-two", "client-two", "bob", Set.of("email")));
-        verify(authorizationConsentRepository).search("alice", pageable);
+                                "client-two",
+                                "client-two",
+                                "bob",
+                                2L,
+                                Set.of("email"),
+                                java.time.Instant.parse("2026-08-21T00:00:00Z"),
+                                java.time.Instant.parse("2026-08-21T00:00:00Z")));
+        verify(authorizationConsentRepository)
+                .findAll(
+                        any(org.springframework.data.jpa.domain.Specification.class),
+                        org.mockito.ArgumentMatchers.eq(pageable));
         verify(clientRepository).findAllById(List.of("client-one", "client-two"));
         verify(mapperSupport).readAuthorities("openid profile");
         verify(mapperSupport).readAuthorities("email");
@@ -71,11 +100,17 @@ class AdminConsentServiceTest {
     @Test
     void returnsEmptyConsentsWithoutLoadingClients() {
         Pageable pageable = Pageable.unpaged();
-        when(authorizationConsentRepository.search("", pageable)).thenReturn(Page.empty(pageable));
+        when(authorizationConsentRepository.findAll(
+                        any(org.springframework.data.jpa.domain.Specification.class),
+                        org.mockito.ArgumentMatchers.eq(pageable)))
+                .thenReturn(Page.empty(pageable));
 
         assertThat(service().consents(null, pageable).getContent()).isEmpty();
 
-        verify(authorizationConsentRepository).search("", pageable);
+        verify(authorizationConsentRepository)
+                .findAll(
+                        any(org.springframework.data.jpa.domain.Specification.class),
+                        org.mockito.ArgumentMatchers.eq(pageable));
         verify(clientRepository).findAllById(List.of());
         verifyNoInteractions(mapperSupport);
     }
@@ -110,8 +145,12 @@ class AdminConsentServiceTest {
 
     private static AuthorizationConsentEntity consent(
             String clientId, String principalName, String authorities) {
-        return new AuthorizationConsentEntity(
-                new AuthorizationConsentId(clientId, principalName), authorities);
+        AuthorizationConsentEntity entity =
+                new AuthorizationConsentEntity(
+                        new AuthorizationConsentId(clientId, principalName), authorities);
+        entity.setCreatedAt(java.time.Instant.parse("2026-08-21T00:00:00Z"));
+        entity.setUpdatedAt(java.time.Instant.parse("2026-08-21T00:00:00Z"));
+        return entity;
     }
 
     private AdminConsentService service() {
@@ -120,6 +159,7 @@ class AdminConsentServiceTest {
                 authorizationConsentRepository,
                 authorizationRepository,
                 clientRepository,
+                userRepository,
                 mapperSupport,
                 adminAuditEventService);
     }

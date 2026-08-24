@@ -13,7 +13,8 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 
 final class AdminConsoleRefreshClientAuthenticationProvider implements AuthenticationProvider {
 
-    private static final String ADMIN_CONSOLE_CLIENT_ID = "admin-console";
+    private static final java.util.Set<String> CONSOLE_CLIENT_IDS =
+            java.util.Set.of("admin-console", "account-console");
 
     private final RegisteredClientRepository registeredClientRepository;
 
@@ -29,12 +30,12 @@ final class AdminConsoleRefreshClientAuthenticationProvider implements Authentic
                 (OAuth2ClientAuthenticationToken) authentication;
         if (!ClientAuthenticationMethod.NONE.equals(
                         clientAuthentication.getClientAuthenticationMethod())
-                || !ADMIN_CONSOLE_CLIENT_ID.equals(clientAuthentication.getPrincipal())) {
+                || !CONSOLE_CLIENT_IDS.contains(clientAuthentication.getPrincipal())) {
             return null;
         }
 
         RegisteredClient registeredClient =
-                registeredClientRepository.findByClientId(ADMIN_CONSOLE_CLIENT_ID);
+                registeredClientRepository.findByClientId(clientAuthentication.getName());
         if (registeredClient == null
                 || !registeredClient
                         .getClientAuthenticationMethods()

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AdminPostLoginRedirect } from "@/components/admin/AdminPostLoginRedirect";
 
 export default function HomePage() {
@@ -5,9 +6,9 @@ export default function HomePage() {
     <>
       <AdminPostLoginRedirect />
       <main className="min-vh-100 d-flex align-items-center justify-content-center bg-body-tertiary">
-        <a className="btn btn-primary" href="/en/login">
+        <Link className="btn btn-primary" href="/en/login">
           Continue
-        </a>
+        </Link>
       </main>
     </>
   );

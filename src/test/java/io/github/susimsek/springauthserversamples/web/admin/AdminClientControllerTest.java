@@ -5,7 +5,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
+import io.github.susimsek.springauthserversamples.service.admin.AdminClientScopeService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminClientService;
+import io.github.susimsek.springauthserversamples.service.admin.AdminConsentService;
+import io.github.susimsek.springauthserversamples.service.admin.AdminSessionService;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Set;
@@ -17,7 +21,19 @@ import org.springframework.http.HttpStatus;
 class AdminClientControllerTest {
 
     private final AdminClientService adminClientService = mock(AdminClientService.class);
-    private final AdminClientController controller = new AdminClientController(adminClientService);
+    private final AdminSessionService adminSessionService = mock(AdminSessionService.class);
+    private final AdminClientScopeService adminClientScopeService =
+            mock(AdminClientScopeService.class);
+    private final AdminConsentService adminConsentService = mock(AdminConsentService.class);
+    private final AdminAuditEventService adminAuditEventService =
+            mock(AdminAuditEventService.class);
+    private final AdminClientController controller =
+            new AdminClientController(
+                    adminClientService,
+                    adminClientScopeService,
+                    adminSessionService,
+                    adminConsentService,
+                    adminAuditEventService);
 
     @Test
     void returnsClientPage() {

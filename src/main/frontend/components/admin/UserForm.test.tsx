@@ -94,14 +94,18 @@ describe("UserForm", () => {
       return { status: 200, data: {} } as never;
     });
 
-    render(<UserForm dictionary={dictionary} id="7" locale="en" />);
+    const view = render(<UserForm dictionary={dictionary} id="7" locale="en" />);
     expect(await screen.findByDisplayValue("ada")).toBeVisible();
     expect(screen.getByAltText("")).toBeVisible();
-    fireEvent.click(screen.getAllByRole("checkbox")[2]);
+
+    view.rerender(<UserForm dictionary={dictionary} id="7" locale="en" tab="roles" />);
+    await waitFor(() => expect(screen.getAllByRole("checkbox")).toHaveLength(2));
+    fireEvent.click(screen.getAllByRole("checkbox")[1]);
+
+    view.rerender(<UserForm dictionary={dictionary} id="7" locale="en" tab="credentials" />);
     fireEvent.change(document.querySelector('input[name="password"]')!, {
       target: { value: "new-password" },
     });
-    fireEvent.click(screen.getAllByRole("checkbox")[0]);
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.save }));
 
     await waitFor(() =>
@@ -111,8 +115,9 @@ describe("UserForm", () => {
         data: { password: "new-password" },
       }),
     );
-    expect(mockPush).toHaveBeenCalledWith("/en/admin/users");
+    expect(mockPush).toHaveBeenCalledWith("/en/admin/users/7/credentials");
 
+    view.rerender(<UserForm dictionary={dictionary} id="7" locale="en" tab="details" />);
     fireEvent.click(
       screen.getAllByRole("button", { name: dictionary.admin.resources.removeAvatar })[0],
     );
@@ -269,13 +274,10 @@ describe("UserForm", () => {
     fireEvent.change(input, {
       target: { files: [new File(["image"], "avatar.png", { type: "image/png" })] },
     });
-    expect(await screen.findByText(dictionary.admin.resources.avatarHelp)).toBeVisible();
-    await waitFor(() => {
-      const avatarFeedback = [...view.container.querySelectorAll(".invalid-feedback")].find(
-        (element) => element.textContent === dictionary.admin.resources.avatarHelp,
-      );
-      expect(avatarFeedback).toHaveClass("d-block");
-    });
+    await waitFor(() =>
+      expect(screen.getAllByText(dictionary.admin.resources.avatarHelp)).toHaveLength(2),
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(dictionary.admin.resources.avatarHelp);
 
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.resources.removeAvatar }));
     fireEvent.click(
@@ -305,8 +307,11 @@ describe("UserForm", () => {
       }
       return { status: 200, data: {} } as never;
     });
-    render(<UserForm dictionary={dictionary} id="10" locale="en" />);
+    const passwordView = render(<UserForm dictionary={dictionary} id="10" locale="en" />);
     await screen.findByDisplayValue("ada");
+    passwordView.rerender(
+      <UserForm dictionary={dictionary} id="10" locale="en" tab="credentials" />,
+    );
 
     fireEvent.change(document.querySelector('input[name="password"]')!, {
       target: { value: "new-password" },

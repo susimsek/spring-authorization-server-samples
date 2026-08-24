@@ -9,6 +9,10 @@ import io.github.susimsek.springauthserversamples.security.AuthorizationEndpoint
 import io.github.susimsek.springauthserversamples.security.LocalizedOAuth2ErrorResponseHandler;
 import io.github.susimsek.springauthserversamples.security.OAuth2KeyJwkSource;
 import io.github.susimsek.springauthserversamples.service.OAuth2KeyService;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +44,8 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Toke
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Configuration(proxyBeanMethods = false)
 @RequiredArgsConstructor
@@ -71,6 +77,9 @@ public class AuthorizationServerConfig {
                                         .authorizationEndpoint(
                                                 authorizationEndpoint ->
                                                         authorizationEndpoint
+                                                                .authorizationRequestConverter(
+                                                                        new DefaultClientScopesAuthorizationRequestConverter(
+                                                                                registeredClientRepository))
                                                                 .consentPage("/consent")
                                                                 .errorResponseHandler(
                                                                         authorizationEndpointErrorResponseHandler))
@@ -96,8 +105,11 @@ public class AuthorizationServerConfig {
                                                                         localizedOAuth2ErrorResponseHandler))
                                         .tokenEndpoint(
                                                 tokenEndpoint ->
-                                                        tokenEndpoint.errorResponseHandler(
-                                                                localizedOAuth2ErrorResponseHandler))
+                                                        tokenEndpoint
+                                                                .accessTokenRequestConverter(
+                                                                        new DefaultClientScopesClientCredentialsConverter())
+                                                                .errorResponseHandler(
+                                                                        localizedOAuth2ErrorResponseHandler))
                                         .tokenIntrospectionEndpoint(
                                                 tokenIntrospectionEndpoint ->
                                                         tokenIntrospectionEndpoint
@@ -194,6 +206,13 @@ public class AuthorizationServerConfig {
                                         .sorted()
                                         .collect(Collectors.toList()));
             }
+
+            if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())
+                    && Set.of("admin-console", "account-console")
+                            .contains(context.getRegisteredClient().getClientId())) {
+                currentSessionId()
+                        .ifPresent(sessionId -> context.getClaims().claim("sid", sessionId));
+            }
         };
     }
 
@@ -205,5 +224,25 @@ public class AuthorizationServerConfig {
                                 context.getAuthorizationGrantType())
                         || AuthorizationGrantType.REFRESH_TOKEN.equals(
                                 context.getAuthorizationGrantType()));
+    }
+
+    private static java.util.Optional<String> currentSessionId() {
+        if (!(RequestContextHolder.getRequestAttributes()
+                instanceof ServletRequestAttributes attributes)) {
+            return java.util.Optional.empty();
+        }
+        var session = attributes.getRequest().getSession(false);
+        if (session == null) {
+            return java.util.Optional.empty();
+        }
+        try {
+            byte[] digest =
+                    MessageDigest.getInstance("SHA-256")
+                            .digest(session.getId().getBytes(StandardCharsets.US_ASCII));
+            return java.util.Optional.of(
+                    Base64.getUrlEncoder().withoutPadding().encodeToString(digest));
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 is required for OIDC session identifiers", ex);
+        }
     }
 }

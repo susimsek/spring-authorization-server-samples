@@ -27,7 +27,7 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-@RestControllerAdvice(annotations = AdminApi.class)
+@RestControllerAdvice(annotations = {AdminApi.class, AccountApi.class})
 @Slf4j
 public class AdminClientExceptionHandler extends ResponseEntityExceptionHandler {
 

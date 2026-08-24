@@ -204,4 +204,154 @@ class SpaFilterTest {
 
         verify(dispatcher).forward(request, response);
     }
+
+    @Test
+    void forwardsLocalizedDynamicClientRouteToExportedTemplate() throws Exception {
+        Resource exact = mock(Resource.class);
+        Resource template = mock(Resource.class);
+
+        when(request.getRequestURI()).thenReturn("/en/admin/clients/client-123/settings");
+        when(resourceLoader.getResource(
+                        "classpath:/static/en/admin/clients/client-123/settings/index.html"))
+                .thenReturn(exact);
+        when(resourceLoader.getResource("classpath:/static/en/admin/clients/_/settings/index.html"))
+                .thenReturn(template);
+        when(exact.exists()).thenReturn(false);
+        when(template.exists()).thenReturn(true);
+        when(request.getRequestDispatcher("/en/admin/clients/_/settings/index.html"))
+                .thenReturn(dispatcher);
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(dispatcher).forward(request, response);
+        verify(filterChain, never()).doFilter(request, response);
+    }
+
+    @Test
+    void redirectsLocaleLessDynamicUserRouteAndPreservesEntityPath() throws Exception {
+        Resource englishExact = mock(Resource.class);
+        Resource englishTemplate = mock(Resource.class);
+        Resource turkishExact = mock(Resource.class);
+        Resource turkishTemplate = mock(Resource.class);
+
+        when(request.getRequestURI()).thenReturn("/admin/users/42/sessions");
+        when(resourceLoader.getResource("classpath:/static/en/admin/users/42/sessions/index.html"))
+                .thenReturn(englishExact);
+        when(resourceLoader.getResource("classpath:/static/en/admin/users/_/sessions/index.html"))
+                .thenReturn(englishTemplate);
+        when(resourceLoader.getResource("classpath:/static/tr/admin/users/42/sessions/index.html"))
+                .thenReturn(turkishExact);
+        when(resourceLoader.getResource("classpath:/static/tr/admin/users/_/sessions/index.html"))
+                .thenReturn(turkishTemplate);
+        when(englishExact.exists()).thenReturn(false);
+        when(englishTemplate.exists()).thenReturn(true);
+        when(turkishExact.exists()).thenReturn(false);
+        when(turkishTemplate.exists()).thenReturn(true);
+        when(localeResolver.resolveLocale(request)).thenReturn(Locale.forLanguageTag("tr"));
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(response).sendRedirect("/tr/admin/users/42/sessions");
+        verify(filterChain, never()).doFilter(request, response);
+    }
+
+    @Test
+    void rejectsUnsupportedDynamicAdminSection() throws Exception {
+        Resource resource = mock(Resource.class);
+        when(request.getRequestURI()).thenReturn("/en/admin/clients/client-123/unknown");
+        when(resourceLoader.getResource(
+                        "classpath:/static/en/admin/clients/client-123/unknown/index.html"))
+                .thenReturn(resource);
+        when(resource.exists()).thenReturn(false);
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void forwardsDynamicClientFlightPayloadToExportedTemplate() throws Exception {
+        Resource exact = mock(Resource.class);
+        Resource template = mock(Resource.class);
+
+        when(request.getRequestURI()).thenReturn("/en/admin/clients/client-123/settings/index.txt");
+        when(resourceLoader.getResource(
+                        "classpath:/static/en/admin/clients/client-123/settings/index.txt"))
+                .thenReturn(exact);
+        when(resourceLoader.getResource("classpath:/static/en/admin/clients/_/settings/index.txt"))
+                .thenReturn(template);
+        when(exact.exists()).thenReturn(false);
+        when(template.exists()).thenReturn(true);
+        when(request.getRequestDispatcher("/en/admin/clients/_/settings/index.txt"))
+                .thenReturn(dispatcher);
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(dispatcher).forward(request, response);
+        verify(filterChain, never()).doFilter(request, response);
+    }
+
+    @Test
+    void forwardsDynamicUserFlightTreePayloadToExportedTemplate() throws Exception {
+        Resource exact = mock(Resource.class);
+        Resource template = mock(Resource.class);
+
+        when(request.getRequestURI()).thenReturn("/tr/admin/users/42/sessions/__next._tree.txt");
+        when(resourceLoader.getResource(
+                        "classpath:/static/tr/admin/users/42/sessions/__next._tree.txt"))
+                .thenReturn(exact);
+        when(resourceLoader.getResource(
+                        "classpath:/static/tr/admin/users/_/sessions/__next._tree.txt"))
+                .thenReturn(template);
+        when(exact.exists()).thenReturn(false);
+        when(template.exists()).thenReturn(true);
+        when(request.getRequestDispatcher("/tr/admin/users/_/sessions/__next._tree.txt"))
+                .thenReturn(dispatcher);
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(dispatcher).forward(request, response);
+        verify(filterChain, never()).doFilter(request, response);
+    }
+
+    @Test
+    void forwardsDynamicRoleDetailRouteToExportedTemplate() throws Exception {
+        Resource exact = mock(Resource.class);
+        Resource template = mock(Resource.class);
+
+        when(request.getRequestURI()).thenReturn("/en/admin/roles/ROLE_AUDITOR");
+        when(resourceLoader.getResource("classpath:/static/en/admin/roles/ROLE_AUDITOR/index.html"))
+                .thenReturn(exact);
+        when(resourceLoader.getResource("classpath:/static/en/admin/roles/_/index.html"))
+                .thenReturn(template);
+        when(exact.exists()).thenReturn(false);
+        when(template.exists()).thenReturn(true);
+        when(request.getRequestDispatcher("/en/admin/roles/_/index.html")).thenReturn(dispatcher);
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(dispatcher).forward(request, response);
+        verify(filterChain, never()).doFilter(request, response);
+    }
+
+    @Test
+    void forwardsDynamicConsentDetailRouteToExportedTemplate() throws Exception {
+        Resource exact = mock(Resource.class);
+        Resource template = mock(Resource.class);
+
+        when(request.getRequestURI()).thenReturn("/en/admin/consents/616263");
+        when(resourceLoader.getResource("classpath:/static/en/admin/consents/616263/index.html"))
+                .thenReturn(exact);
+        when(resourceLoader.getResource("classpath:/static/en/admin/consents/_/index.html"))
+                .thenReturn(template);
+        when(exact.exists()).thenReturn(false);
+        when(template.exists()).thenReturn(true);
+        when(request.getRequestDispatcher("/en/admin/consents/_/index.html"))
+                .thenReturn(dispatcher);
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(dispatcher).forward(request, response);
+        verify(filterChain, never()).doFilter(request, response);
+    }
 }

@@ -11,20 +11,23 @@ import org.springframework.security.web.authentication.AuthenticationConverter;
 
 final class AdminConsoleRefreshClientAuthenticationConverter implements AuthenticationConverter {
 
-    private static final String ADMIN_CONSOLE_CLIENT_ID = "admin-console";
+    private static final java.util.Set<String> CONSOLE_CLIENT_IDS =
+            java.util.Set.of("admin-console", "account-console");
 
     @Override
     public @Nullable Authentication convert(HttpServletRequest request) {
         if (!(AuthorizationGrantType.REFRESH_TOKEN
-                                .getValue()
-                                .equals(request.getParameter(OAuth2ParameterNames.GRANT_TYPE))
-                        || request.getRequestURI().endsWith("/oauth2/revoke"))
-                || !ADMIN_CONSOLE_CLIENT_ID.equals(
-                        request.getParameter(OAuth2ParameterNames.CLIENT_ID))) {
+                        .getValue()
+                        .equals(request.getParameter(OAuth2ParameterNames.GRANT_TYPE))
+                || request.getRequestURI().endsWith("/oauth2/revoke"))) {
             return null;
         }
 
+        String clientId = request.getParameter(OAuth2ParameterNames.CLIENT_ID);
+        if (clientId == null || !CONSOLE_CLIENT_IDS.contains(clientId)) {
+            return null;
+        }
         return new OAuth2ClientAuthenticationToken(
-                ADMIN_CONSOLE_CLIENT_ID, ClientAuthenticationMethod.NONE, null, null);
+                clientId, ClientAuthenticationMethod.NONE, null, null);
     }
 }

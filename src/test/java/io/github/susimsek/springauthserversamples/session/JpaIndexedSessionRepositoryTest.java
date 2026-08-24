@@ -79,6 +79,9 @@ class JpaIndexedSessionRepositoryTest {
 
         repository.save(session);
 
+        assertThat(store.findBySessionId(session.getId()).orElseThrow().getPrimaryId())
+                .isEqualTo(session.getId());
+
         JpaSession reloaded = repository.findById(session.getId());
 
         assertThat(reloaded).isNotNull();

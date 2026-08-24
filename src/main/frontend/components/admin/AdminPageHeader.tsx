@@ -1,21 +1,26 @@
 import type { ReactNode } from "react";
+import { ViewHeader } from "./ViewHeader";
 
 export function AdminPageHeader({
   title,
   description,
   actions,
+  status,
+  help,
 }: {
   title: string;
   description?: string;
   actions?: ReactNode;
+  status?: ReactNode;
+  help?: ReactNode;
 }) {
   return (
-    <div className="admin-page-header d-flex flex-wrap justify-content-between align-items-start gap-3">
-      <div>
-        <h1>{title}</h1>
-        {description && <p>{description}</p>}
-      </div>
-      {actions && <div className="d-flex flex-wrap gap-2">{actions}</div>}
-    </div>
+    <ViewHeader
+      title={title}
+      description={description}
+      actions={actions}
+      status={status}
+      help={help}
+    />
   );
 }

@@ -17,6 +17,10 @@ jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
 }));
 
+function advanceCreateStep(label = "Next") {
+  fireEvent.click(screen.getByRole("button", { name: label }));
+}
+
 describe("ClientForm", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -41,6 +45,8 @@ describe("ClientForm", () => {
     fireEvent.change(document.querySelector('input[name="clientName"]')!, {
       target: { value: "Web client" },
     });
+    advanceCreateStep();
+    advanceCreateStep();
     fireEvent.change(document.querySelector('textarea[name="redirectUris"]')!, {
       target: { value: "https://app.example/callback" },
     });
@@ -54,7 +60,7 @@ describe("ClientForm", () => {
 
     fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.common.close })[1]);
     await waitFor(() =>
-      expect(mockPush).toHaveBeenCalledWith("/en/admin/clients/detail?id=client-1"),
+      expect(mockPush).toHaveBeenCalledWith("/en/admin/clients/client-1/settings"),
     );
     expect(mockRefresh).toHaveBeenCalled();
   });
@@ -86,12 +92,13 @@ describe("ClientForm", () => {
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.save }));
 
     await waitFor(() =>
-      expect(mockPush).toHaveBeenCalledWith("/en/admin/clients/detail?id=client-1"),
+      expect(mockPush).toHaveBeenCalledWith("/en/admin/clients/client-1/settings"),
     );
   });
 
   it("covers capability toggles, switches, cancel, and validation branches", async () => {
     render(<ClientForm dictionary={dictionary} locale="en" mode="create" />);
+    advanceCreateStep();
     const checkboxes = await screen.findAllByRole("checkbox");
     fireEvent.click(checkboxes[0]);
     fireEvent.click(checkboxes[0]);
@@ -102,10 +109,14 @@ describe("ClientForm", () => {
     fireEvent.click(checkboxes[5]);
     fireEvent.click(checkboxes[6]);
     fireEvent.click(checkboxes[7]);
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.cancel }));
     expect(mockPush).toHaveBeenCalledWith("/en/admin/clients");
 
+    advanceCreateStep();
+    advanceCreateStep();
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.save }));
+    fireEvent.click(screen.getByRole("button", { name: /1 General settings/ }));
     expect(await screen.findAllByText(dictionary.admin.common.validation.required)).toHaveLength(2);
   });
 
@@ -121,12 +132,14 @@ describe("ClientForm", () => {
     fireEvent.change(document.querySelector('input[name="clientName"]')!, {
       target: { value: "Mobile client" },
     });
+    advanceCreateStep("Devam");
+    advanceCreateStep("Devam");
     fireEvent.change(document.querySelector('textarea[name="redirectUris"]')!, {
       target: { value: "https://app.example/callback" },
     });
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.save }));
     await waitFor(() =>
-      expect(mockPush).toHaveBeenCalledWith("/tr/admin/clients/detail?id=client-2"),
+      expect(mockPush).toHaveBeenCalledWith("/tr/admin/clients/client-2/settings"),
     );
     expect(mockRefresh).toHaveBeenCalled();
   });
@@ -154,6 +167,8 @@ describe("ClientForm", () => {
     fireEvent.change(document.querySelector('input[name="clientName"]')!, {
       target: { value: "Duplicate" },
     });
+    advanceCreateStep();
+    advanceCreateStep();
     fireEvent.change(document.querySelector('textarea[name="redirectUris"]')!, {
       target: { value: "https://app.example/callback" },
     });

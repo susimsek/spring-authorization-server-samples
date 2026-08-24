@@ -7,7 +7,7 @@ This image exposes an HTTP-based authorization server on port `9090`. It serves 
 
 ## Features
 
-- Custom Next.js/React-Bootstrap login UI bundled into the Spring Boot image
+- Custom Next.js/React-Bootstrap login, Administration Console, and Account Console UIs bundled into the Spring Boot image
 
 - OAuth2 Authorization Server with OIDC enabled
 - Authorization Code, Refresh Token, and Client Credentials grants
@@ -45,7 +45,7 @@ docker run --rm -p 9090:9090 \
   -e SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5432/authserversamples \
   -e SPRING_DATASOURCE_USERNAME=appuser \
   -e SPRING_DATASOURCE_PASSWORD=appuser \
-  -e APP_AUTHORIZATION_SERVER_ISSUER=http://127.0.0.1:9090 \
+  -e APP_AUTHORIZATION_SERVER_ISSUER=http://localhost:9090 \
   suayb/spring-authorization-server-samples:latest-native
 ```
 
@@ -61,6 +61,17 @@ The server is available at:
 ```text
 localhost:9090
 ```
+
+### Browser consoles
+
+The image includes two static OIDC clients. Open either URL in a browser; it redirects to the localized Spring Security login screen when necessary.
+
+| Console | URL | Seeded login | Required scope |
+| --- | --- | --- | --- |
+| Administration | `http://localhost:9090/en/admin/` or `/tr/admin/` | `admin/admin` | `admin-api` and the required administrative authority |
+| Account | `http://localhost:9090/en/account/` or `/tr/account/` | `admin/admin` or `user/user` | `account-api` |
+
+Both consoles are public OAuth2 clients (`admin-console` and `account-console`) using Authorization Code + PKCE, refresh-token rotation, and OIDC logout. They share the authorization server's browser SSO session. Set `APP_AUTHORIZATION_SERVER_ISSUER` to the exact public browser address of the container and use redirect URIs registered for that address; the supplied Docker command uses `http://localhost:9090`, which is included in the seed data.
 
 ### 3. Check health
 
@@ -171,6 +182,11 @@ OIDC:
 
 - `GET /connect/logout`
 
+Browser UIs:
+
+- `GET /en/admin/`, `GET /tr/admin/`
+- `GET /en/account/`, `GET /tr/account/`
+
 Health:
 
 - `GET /actuator/health`
@@ -209,3 +225,4 @@ readinessProbe:
 - Never commit production private keys to source control or bake them into the container image.
 - OAuth2 error responses honor `Accept-Language`; use headers such as `Accept-Language: en` on token-oriented requests when you want localized error messages.
 - `authorization_code` flow requires a browser login and redirect handling, so it is not shown as a curl-only example here.
+- The console clients are registered for `localhost:9090` and `https://spring-authorization-server-samples.local`; register additional callback and post-logout redirect URIs before exposing the image through another public address.

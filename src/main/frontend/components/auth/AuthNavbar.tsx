@@ -17,7 +17,7 @@ type AuthNavbarProps = {
 
 export function AuthNavbar({ locale, dictionary }: AuthNavbarProps) {
   return (
-    <Navbar className="bg-body border-bottom">
+    <Navbar className="auth-navbar bg-body border-bottom">
       <Container>
         <Navbar.Brand
           href={`/${locale}/login`}

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import axios from "axios";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 import type { Locale } from "@/i18n/config";
 import { adminRequest, registerAdminTokenHandlers } from "@/lib/admin-api";
@@ -14,6 +15,17 @@ type AdminWhoAmI = {
   access: AdminAccess;
 };
 
+function isCanceledRequest(error: unknown) {
+  return (
+    axios.isCancel(error) ||
+    (error instanceof DOMException && error.name === "AbortError") ||
+    (typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "ERR_CANCELED")
+  );
+}
+
 export function AdminAuthGuard({
   locale,
   children,
@@ -22,71 +34,64 @@ export function AdminAuthGuard({
   children: React.ReactNode;
 }) {
   const [authorized, setAuthorized] = useState(false);
+  const bootstrapStarted = useRef(false);
   const pathname = usePathname();
+  const router = useRouter();
   const {
     accessToken,
     beginAuthorization,
     expiresAt,
+    initialized,
     isLoggingOut,
     refreshAccessToken,
     setAccess,
+    setUsername,
   } = useAdminAuth();
   const isAuthorizationCallback = pathname.replace(/\/+$/, "").endsWith("/callback");
 
-  useEffect(() => {
-    if (!accessToken || isAuthorizationCallback) {
-      return;
-    }
+  const startLogin = useCallback(() => {
+    if (bootstrapStarted.current) return;
+    bootstrapStarted.current = true;
+    // Equivalent to Keycloak init({ onLoad: "login-required" }).
+    void beginAuthorization(locale, `${window.location.pathname}${window.location.search}`).catch(
+      () => {
+        bootstrapStarted.current = false;
+      },
+    );
+  }, [beginAuthorization, locale]);
 
-    const reauthorize = () => {
-      void beginAuthorization(locale, `${window.location.pathname}${window.location.search}`);
-    };
-    registerAdminTokenHandlers({ refresh: refreshAccessToken, unauthorized: reauthorize });
+  useEffect(() => {
+    if (!accessToken || isAuthorizationCallback) return;
+
+    registerAdminTokenHandlers({
+      refresh: refreshAccessToken,
+      unauthorized: startLogin,
+    });
 
     return () => registerAdminTokenHandlers(undefined);
-  }, [
-    accessToken,
-    beginAuthorization,
-    isAuthorizationCallback,
-    locale,
-    pathname,
-    refreshAccessToken,
-  ]);
+  }, [accessToken, isAuthorizationCallback, refreshAccessToken, startLogin]);
 
   useEffect(() => {
-    if (!expiresAt || isAuthorizationCallback) {
-      return;
-    }
+    if (!expiresAt || isAuthorizationCallback) return;
 
-    // Renew shortly before expiry so normal API requests continue without interruption.
     const renewIn = Math.max(expiresAt - Date.now() - 30_000, 0);
     const timer = window.setTimeout(() => {
       void refreshAccessToken().then((token) => {
-        if (!token) {
-          return beginAuthorization(locale, `${window.location.pathname}${window.location.search}`);
-        }
+        if (!token) startLogin();
       });
     }, renewIn);
 
     return () => window.clearTimeout(timer);
-  }, [
-    beginAuthorization,
-    expiresAt,
-    isAuthorizationCallback,
-    locale,
-    pathname,
-    refreshAccessToken,
-  ]);
+  }, [expiresAt, isAuthorizationCallback, refreshAccessToken, startLogin]);
 
   useEffect(() => {
-    if (isLoggingOut || isAuthorizationCallback) {
-      return;
-    }
+    if (!initialized || isLoggingOut || isAuthorizationCallback) return;
 
     if (!accessToken) {
-      void beginAuthorization(locale, `${window.location.pathname}${window.location.search}`);
+      startLogin();
       return;
     }
+    bootstrapStarted.current = false;
 
     const controller = new AbortController();
 
@@ -94,14 +99,13 @@ export function AdminAuthGuard({
       url: "/api/admin/whoami",
       signal: controller.signal,
     })
-      .then(async (response) => {
-        if (response.status === 401) {
-          await beginAuthorization(locale, `${window.location.pathname}${window.location.search}`);
-          return null;
-        }
+      .then((response) => {
+        // admin-api already attempts a single refresh and invokes the registered
+        // unauthorized handler when the refresh cannot recover the request.
+        if (response.status === 401) return null;
 
         if (response.status === 403) {
-          window.location.replace(`/${locale}/error?type=access_denied`);
+          router.replace(`/${locale}/error?type=access_denied`);
           return null;
         }
 
@@ -116,36 +120,39 @@ export function AdminAuthGuard({
 
         const hasAdminAccess = Object.values(admin.access).some(Boolean);
         if (!hasAdminAccess) {
-          window.location.replace(`/${locale}/error?type=access_denied`);
+          router.replace(`/${locale}/error?type=access_denied`);
           return;
         }
 
         setAccess(admin.access);
+        setUsername(admin.username);
         setAuthorized(true);
       })
       .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
-        }
-        window.location.replace(`/${locale}/error?type=server_error`);
+        // Route transitions abort the in-flight whoami request. Axios reports
+        // this as CanceledError/ERR_CANCELED, not DOMException AbortError.
+        // Treating it as a server failure caused the Clients/Scopes error page.
+        if (isCanceledRequest(error)) return;
+        router.replace(`/${locale}/error?type=server_error`);
       });
 
     return () => controller.abort();
   }, [
     accessToken,
-    beginAuthorization,
+    initialized,
     isAuthorizationCallback,
     isLoggingOut,
     locale,
-    pathname,
+    refreshAccessToken,
+    router,
+    startLogin,
     setAccess,
+    setUsername,
   ]);
 
-  if (isAuthorizationCallback) {
-    return children;
-  }
+  if (isAuthorizationCallback) return children;
 
-  if (!authorized) {
+  if (!initialized || !authorized || !accessToken) {
     return (
       <div className="min-vh-100 d-flex align-items-center justify-content-center bg-body-tertiary">
         <div className="spinner-border text-primary" role="status">

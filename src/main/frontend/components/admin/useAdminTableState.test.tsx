@@ -67,4 +67,16 @@ describe("useAdminTableState", () => {
     expect(removeEventListener).toHaveBeenCalledWith("admin-table-state", expect.any(Function));
     expect(removeEventListener).toHaveBeenCalledWith("popstate", expect.any(Function));
   });
+  it("persists consent-specific username and scope filters in the URL", () => {
+    window.history.replaceState(null, "", "/en/admin/consents");
+    const { result } = renderHook(() => useAdminTableState());
+
+    act(() => result.current.setUsername("alice"));
+    act(() => result.current.setScope("profile"));
+
+    expect(Object.fromEntries(new URLSearchParams(window.location.search))).toEqual({
+      username: "alice",
+      scope: "profile",
+    });
+  });
 });

@@ -26,6 +26,9 @@
 			<column name="password" type="varchar(255)">
 				<constraints nullable="false"/>
 			</column>
+			<column name="first_name" type="varchar(100)"/>
+			<column name="last_name" type="varchar(100)"/>
+			<column name="email" type="varchar(200)"/>
 			<column name="enabled" type="boolean" defaultValueBoolean="true">
 				<constraints nullable="false"/>
 			</column>
@@ -102,7 +105,6 @@
 			separator=";"
 			tableName="authorities"
 			usePreparedStatements="true">
-			<column header="id" type="numeric"/>
 			<column header="name" type="string"/>
 		</loadData>
 	</changeSet>

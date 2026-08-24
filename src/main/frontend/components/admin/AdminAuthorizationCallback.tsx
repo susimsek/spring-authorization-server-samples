@@ -1,42 +1,67 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Alert, Spinner } from "react-bootstrap";
 
 import type { Locale } from "@/i18n/config";
 
 import { useAdminAuth } from "./AdminAuthProvider";
 
-const subscribeToHydration = () => () => {};
-const getHydratedSnapshot = () => true;
-const getServerHydratedSnapshot = () => false;
+type AuthorizationResponse = {
+  code: string | null;
+  state: string | null;
+  error: string | null;
+};
+
+function readAuthorizationResponse(): AuthorizationResponse {
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const query = new URLSearchParams(window.location.search);
+  return {
+    code: hash.get("code") ?? query.get("code"),
+    state: hash.get("state") ?? query.get("state"),
+    error: hash.get("error") ?? query.get("error"),
+  };
+}
+
+function clearAuthorizationResponseFromUrl() {
+  window.history.replaceState(window.history.state, "", window.location.pathname);
+}
 
 export function AdminAuthorizationCallback({ locale }: { locale: Locale }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const { completeAuthorization } = useAdminAuth();
-  const hydrated = useSyncExternalStore(
-    subscribeToHydration,
-    getHydratedSnapshot,
-    getServerHydratedSnapshot,
-  );
+  const { beginAuthorization, completeAuthorization, retryAuthorization } = useAdminAuth();
   const [failed, setFailed] = useState(false);
   const completed = useRef(false);
-  const code = searchParams.get("code");
-  const state = searchParams.get("state");
-  const invalidResponse = !code || !state;
 
   useEffect(() => {
-    if (!hydrated || completed.current || !code || !state) return;
+    if (completed.current) return;
     completed.current = true;
+
+    const { code, state, error } = readAuthorizationResponse();
+    clearAuthorizationResponseFromUrl();
+
+    if (error) {
+      void retryAuthorization(locale, state, error).catch(() => setFailed(true));
+      return;
+    }
+
+    const recover = async () => {
+      clearAuthorizationResponseFromUrl();
+      await beginAuthorization(locale, `/${locale}/admin`, { prompt: "none" });
+    };
+
+    if (!code || !state) {
+      void recover().catch(() => setFailed(true));
+      return;
+    }
 
     void completeAuthorization(locale, code, state)
       .then((returnTo) => router.replace(returnTo))
-      .catch(() => setFailed(true));
-  }, [code, completeAuthorization, hydrated, locale, router, state]);
+      .catch(() => recover().catch(() => setFailed(true)));
+  }, [beginAuthorization, completeAuthorization, locale, retryAuthorization, router]);
 
-  if (hydrated && (invalidResponse || failed)) {
+  if (failed) {
     return <Alert variant="danger">The administration session could not be established.</Alert>;
   }
 

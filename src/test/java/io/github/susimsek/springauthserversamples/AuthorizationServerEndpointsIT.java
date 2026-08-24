@@ -146,21 +146,33 @@ class AuthorizationServerEndpointsIT {
 
     @Test
     void adminConsoleUsesPkceWithoutConsent() throws Exception {
+        MvcResult loginResult =
+                mockMvc.perform(
+                                post("/login")
+                                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                        .param("username", "admin")
+                                        .param("password", "admin"))
+                        .andExpect(status().is3xxRedirection())
+                        .andReturn();
+        var sessionCookie = loginResult.getResponse().getCookie("SESSION");
+        assertThat(sessionCookie).isNotNull();
+
         String codeVerifier = "admin-console-code-verifier-0123456789012345678901234567890";
         String redirectUri = "http://localhost:9090/en/admin/callback";
 
         MvcResult result =
                 mockMvc.perform(
                                 get("/oauth2/authorize")
-                                        .with(user("admin").roles("ADMIN"))
+                                        .cookie(sessionCookie)
                                         .accept(MediaType.TEXT_HTML)
                                         .queryParam("response_type", "code")
                                         .queryParam("client_id", "admin-console")
-                                        .queryParam("scope", "profile admin-api")
+                                        .queryParam("scope", "openid profile admin-api")
                                         .queryParam("redirect_uri", redirectUri)
                                         .queryParam("code_challenge", codeChallenge(codeVerifier))
                                         .queryParam("code_challenge_method", "S256")
-                                        .queryParam("state", "admin-console-state"))
+                                        .queryParam("state", "admin-console-state")
+                                        .queryParam("nonce", "admin-console-nonce"))
                         .andExpect(status().is3xxRedirection())
                         .andReturn();
 
@@ -187,7 +199,10 @@ class AuthorizationServerEndpointsIT {
                 JSON_MAPPER.readTree(tokenResult.getResponse().getContentAsString());
         String accessToken = tokenResponse.get("access_token").asText();
         String refreshToken = tokenResponse.get("refresh_token").asText();
+        String idToken = tokenResponse.get("id_token").asText();
         assertThat(refreshToken).isNotBlank();
+        assertThat(idToken).isNotBlank();
+        assertThat(jwtClaims(idToken).get("nonce").asText()).isEqualTo("admin-console-nonce");
         assertThat(jwtClaims(accessToken).get("picture").asText())
                 .matches("http://127\\.0\\.0\\.1:\\d+/avatars/[a-f0-9-]{36}\\?v=\\d+");
         mockMvc.perform(get("/api/admin/whoami").header("Authorization", "Bearer " + accessToken))
@@ -205,6 +220,7 @@ class AuthorizationServerEndpointsIT {
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.access_token").isNotEmpty())
                         .andExpect(jsonPath("$.refresh_token").isNotEmpty())
+                        .andExpect(jsonPath("$.id_token").isNotEmpty())
                         .andReturn();
 
         String rotatedRefreshToken =
@@ -227,6 +243,171 @@ class AuthorizationServerEndpointsIT {
                                 .param("grant_type", "refresh_token")
                                 .param("refresh_token", rotatedRefreshToken))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void adminConsoleOidcLogoutUsesIdTokenHint() throws Exception {
+        MvcResult loginResult =
+                mockMvc.perform(
+                                post("/login")
+                                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                        .param("username", "admin")
+                                        .param("password", "admin"))
+                        .andExpect(status().is3xxRedirection())
+                        .andReturn();
+        var sessionCookie = loginResult.getResponse().getCookie("SESSION");
+        assertThat(sessionCookie).isNotNull();
+
+        String codeVerifier = "admin-console-logout-verifier-012345678901234567890123456789012";
+        String redirectUri = "http://localhost:9090/en/admin/callback";
+        MvcResult authorizeResult =
+                mockMvc.perform(
+                                get("/oauth2/authorize")
+                                        .cookie(sessionCookie)
+                                        .queryParam("response_type", "code")
+                                        .queryParam("client_id", "admin-console")
+                                        .queryParam("scope", "openid profile admin-api")
+                                        .queryParam("redirect_uri", redirectUri)
+                                        .queryParam("code_challenge", codeChallenge(codeVerifier))
+                                        .queryParam("code_challenge_method", "S256")
+                                        .queryParam("state", "logout-state")
+                                        .queryParam("nonce", "logout-nonce"))
+                        .andExpect(status().is3xxRedirection())
+                        .andReturn();
+        URI callbackUri = URI.create(authorizeResult.getResponse().getRedirectedUrl());
+        String authorizationCode =
+                UriComponentsBuilder.fromUri(callbackUri).build().getQueryParams().getFirst("code");
+        MvcResult tokenResult =
+                mockMvc.perform(
+                                post("/oauth2/token")
+                                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                        .param("client_id", "admin-console")
+                                        .param("code", authorizationCode)
+                                        .param("code_verifier", codeVerifier)
+                                        .param("grant_type", "authorization_code")
+                                        .param("redirect_uri", redirectUri))
+                        .andExpect(status().isOk())
+                        .andReturn();
+        String idToken =
+                JSON_MAPPER
+                        .readTree(tokenResult.getResponse().getContentAsString())
+                        .get("id_token")
+                        .asText();
+
+        mockMvc.perform(
+                        get("/connect/logout")
+                                .cookie(sessionCookie)
+                                .queryParam("client_id", "admin-console")
+                                .queryParam("id_token_hint", idToken)
+                                .queryParam(
+                                        "post_logout_redirect_uri",
+                                        "http://localhost:9090/en/admin/"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(
+                        logoutResult ->
+                                assertThat(logoutResult.getResponse().getRedirectedUrl())
+                                        .isEqualTo("http://localhost:9090/en/admin/"));
+    }
+
+    @Test
+    void adminConsoleSilentAuthorizationReusesAuthenticatedSession() throws Exception {
+        MvcResult loginResult =
+                mockMvc.perform(
+                                post("/login")
+                                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                        .param("username", "admin")
+                                        .param("password", "admin"))
+                        .andExpect(status().is3xxRedirection())
+                        .andReturn();
+        var sessionCookie = loginResult.getResponse().getCookie("SESSION");
+        assertThat(sessionCookie).isNotNull();
+
+        String codeVerifier = "admin-console-silent-code-verifier-0123456789012345678901234567890";
+        String redirectUri = "http://localhost:9090/en/admin/callback";
+
+        MvcResult result =
+                mockMvc.perform(
+                                get("/oauth2/authorize")
+                                        .cookie(sessionCookie)
+                                        .accept(MediaType.TEXT_HTML)
+                                        .queryParam("response_type", "code")
+                                        .queryParam("client_id", "admin-console")
+                                        .queryParam("scope", "openid profile admin-api")
+                                        .queryParam("redirect_uri", redirectUri)
+                                        .queryParam("code_challenge", codeChallenge(codeVerifier))
+                                        .queryParam("code_challenge_method", "S256")
+                                        .queryParam("prompt", "none")
+                                        .queryParam("state", "reload-state")
+                                        .queryParam("nonce", "reload-nonce"))
+                        .andExpect(status().is3xxRedirection())
+                        .andReturn();
+
+        URI callbackUri = URI.create(result.getResponse().getRedirectedUrl());
+        assertThat(callbackUri.getPath()).isEqualTo("/en/admin/callback");
+        assertThat(callbackUri.getQuery()).contains("code=");
+        assertThat(callbackUri.getQuery()).contains("state=reload-state");
+    }
+
+    @Test
+    void adminAndAccountConsolesReuseTheSameSsoSession() throws Exception {
+        MvcResult loginResult =
+                mockMvc.perform(
+                                post("/login")
+                                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                        .param("username", "admin")
+                                        .param("password", "admin"))
+                        .andExpect(status().is3xxRedirection())
+                        .andReturn();
+        var sessionCookie = loginResult.getResponse().getCookie("SESSION");
+        assertThat(sessionCookie).isNotNull();
+
+        assertConsoleAuthorizationRedirectsWithoutLogin(
+                sessionCookie,
+                "admin-console",
+                "openid profile admin-api",
+                "http://localhost:9090/en/admin/callback",
+                "shared-sso-admin-state",
+                "shared-sso-admin-nonce",
+                "shared-sso-admin-verifier-012345678901234567890123456789012");
+        assertConsoleAuthorizationRedirectsWithoutLogin(
+                sessionCookie,
+                "account-console",
+                "openid profile account-api",
+                "http://localhost:9090/en/account/callback",
+                "shared-sso-account-state",
+                "shared-sso-account-nonce",
+                "shared-sso-account-verifier-0123456789012345678901234567890");
+    }
+
+    private void assertConsoleAuthorizationRedirectsWithoutLogin(
+            jakarta.servlet.http.Cookie sessionCookie,
+            String clientId,
+            String scope,
+            String redirectUri,
+            String state,
+            String nonce,
+            String codeVerifier)
+            throws Exception {
+        MvcResult result =
+                mockMvc.perform(
+                                get("/oauth2/authorize")
+                                        .cookie(sessionCookie)
+                                        .accept(MediaType.TEXT_HTML)
+                                        .queryParam("response_type", "code")
+                                        .queryParam("client_id", clientId)
+                                        .queryParam("scope", scope)
+                                        .queryParam("redirect_uri", redirectUri)
+                                        .queryParam("code_challenge", codeChallenge(codeVerifier))
+                                        .queryParam("code_challenge_method", "S256")
+                                        .queryParam("state", state)
+                                        .queryParam("nonce", nonce))
+                        .andExpect(status().is3xxRedirection())
+                        .andReturn();
+
+        URI callbackUri = URI.create(result.getResponse().getRedirectedUrl());
+        assertThat(callbackUri.toString()).startsWith(redirectUri);
+        assertThat(callbackUri.getQuery()).contains("code=");
+        assertThat(callbackUri.getQuery()).contains("state=" + state);
     }
 
     private JsonNode tokenRequest(String clientId, String clientSecret, Map<String, String> form)

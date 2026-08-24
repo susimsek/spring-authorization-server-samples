@@ -31,24 +31,27 @@ This repository is a Spring Boot 4.1 + Java 25 sample application built around t
 4. [Configuration](#configuration)
 5. [Configuration and Profiles](#configuration-and-profiles)
 6. [RSA Signing Keys](#rsa-signing-keys)
-7. [Run Locally](#run-locally)
-8. [API Quick Overview](#api-quick-overview)
-9. [OAuth2 and OIDC Endpoints](#oauth2-and-oidc-endpoints)
-10. [Authorization Server Flows](#authorization-server-flows)
-11. [Try with curl](#try-with-curl)
-12. [Client Registration and Seed Data](#client-registration-and-seed-data)
-13. [Database](#database)
-14. [Internationalization](#internationalization)
-15. [Build](#build)
-16. [Performance Tests](#performance-tests)
-17. [Code Quality](#code-quality)
-18. [GraalVM Native Image](#graalvm-native-image)
-19. [Docker Image](#docker-image)
-20. [Kubernetes Health Probe](#kubernetes-health-probe)
-21. [Docker Compose Support](#docker-compose-support)
-22. [Helm](#helm)
-23. [Terraform](#terraform)
-24. [Continuous Integration](#continuous-integration)
+7. [Persistent User Sessions](#persistent-user-sessions)
+8. [Frontend](#frontend)
+9. [Administration and Account Consoles](#administration-and-account-consoles)
+10. [Run Locally](#run-locally)
+11. [API Quick Overview](#api-quick-overview)
+12. [OAuth2 and OIDC Endpoints](#oauth2-and-oidc-endpoints)
+13. [Authorization Server Flows](#authorization-server-flows)
+14. [Try with curl](#try-with-curl)
+15. [Client Registration and Seed Data](#client-registration-and-seed-data)
+16. [Database](#database)
+17. [Internationalization](#internationalization)
+18. [Build](#build)
+19. [Performance Tests](#performance-tests)
+20. [Code Quality](#code-quality)
+21. [GraalVM Native Image](#graalvm-native-image)
+22. [Docker Image](#docker-image)
+23. [Kubernetes Health Probe](#kubernetes-health-probe)
+24. [Docker Compose Support](#docker-compose-support)
+25. [Helm](#helm)
+26. [Terraform](#terraform)
+27. [Continuous Integration](#continuous-integration)
 
 ## Features
 
@@ -59,6 +62,7 @@ This repository is a Spring Boot 4.1 + Java 25 sample application built around t
 - JPA-backed registered client storage
 - JPA-backed authorization and consent storage
 - Form login backed by Spring Security and JPA user storage
+- Built-in Administration and Account consoles using public OIDC clients with Authorization Code + PKCE, refresh tokens, and OIDC logout
 - H2 in-memory database in PostgreSQL compatibility mode for `dev`
 - PostgreSQL support for `prod`
 - XML-based Liquibase schema migrations
@@ -217,6 +221,19 @@ pnpm dev
 ```
 
 The exported page is served at `/login` and submits credentials directly to Spring Security's `POST /login` endpoint. CSRF protection is intentionally disabled in this sample.
+
+## Administration and Account Consoles
+
+The static frontend also contains browser-based OIDC clients for administration and end-user account management. Both use the Authorization Code flow with PKCE (S256), obtain access, ID, and refresh tokens, refresh access tokens before they expire, and sign out through the OIDC end-session endpoint. Access, ID, and refresh tokens remain in browser memory; only the short-lived authorization transaction is retained across the redirect callback.
+
+| Console | Entry URL | OIDC client | API scope | Access |
+| --- | --- | --- | --- | --- |
+| Administration | `/en/admin/` or `/tr/admin/` | `admin-console` | `admin-api` | Administrative API permissions; the seeded `admin/admin` user has `ROLE_ADMIN` |
+| Account | `/en/account/` or `/tr/account/` | `account-console` | `account-api` | Authenticated users, including `admin/admin` and `user/user` |
+
+The authorization server browser session provides SSO between the login screen and the console clients. The Admin Console includes client, client-scope, user, role, session, consent, signing-key, event, and server-information screens. The Account Console provides personal information, security, authorized applications, and session-management screens.
+
+The registered redirect and post-logout redirect URIs are seeded for `localhost:9090` and `https://spring-authorization-server-samples.local`. When deploying elsewhere, set `app.authorization-server.issuer` (or `APP_AUTHORIZATION_SERVER_ISSUER`) to the public address and register matching client redirect URIs.
 
 ## Run Locally
 
