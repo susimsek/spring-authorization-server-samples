@@ -11,6 +11,7 @@ import { adminRequest } from "@/lib/admin-api";
 import { encodeConsentRouteKey } from "@/lib/consent-route";
 
 import { useAdminAuth } from "./AdminAuthProvider";
+import { AdminActionIcon } from "./AdminActionIcon";
 import { ConfirmModal } from "./ConfirmModal";
 import { AdminPageHeader } from "./AdminPageHeader";
 import { PaginationControls } from "./PaginationControls";
@@ -191,11 +192,13 @@ function AdminResourcesContent({
           <>
             {resource === "users" && access?.manageUsers && locale && (
               <Link className="btn btn-primary" href={`/${locale}/admin/users/new`}>
+                <AdminActionIcon action="add" />
                 {copy.createUser}
               </Link>
             )}
             {resource === "keys" && access?.manageKeys && (
               <Button variant="primary" onClick={() => void rotateKey()}>
+                <AdminActionIcon action="rotate" />
                 {copy.rotateKey}
               </Button>
             )}
@@ -422,6 +425,7 @@ function UsersTable({
                       as={Link}
                       href={`/${locale}/admin/users/${encodeURIComponent(String(user.id))}/details`}
                     >
+                      <AdminActionIcon action="edit" />
                       {copy.edit}
                     </Dropdown.Item>
                   )}
@@ -436,6 +440,7 @@ function UsersTable({
                   </Dropdown.Item>
                   <Dropdown.Divider />
                   <Dropdown.Item className="text-danger" onClick={() => setUserToDelete(user)}>
+                    <AdminActionIcon action="delete" />
                     {copy.delete}
                   </Dropdown.Item>
                 </RowActions>
@@ -548,6 +553,7 @@ function SessionsTable({
                           })
                         }
                       >
+                        <AdminActionIcon action="remove" />
                         {copy.signOut}
                       </Dropdown.Item>
                       {session.username && (
@@ -561,6 +567,7 @@ function SessionsTable({
                             })
                           }
                         >
+                          <AdminActionIcon action="remove" />
                           {copy.signOutAll}
                         </Dropdown.Item>
                       )}
@@ -741,6 +748,7 @@ function ConsentsTable({
                         className="text-danger"
                         onClick={() => setConsentToRevoke(consent)}
                       >
+                        <AdminActionIcon action="revoke" />
                         {copy.revoke}
                       </Dropdown.Item>
                     </>

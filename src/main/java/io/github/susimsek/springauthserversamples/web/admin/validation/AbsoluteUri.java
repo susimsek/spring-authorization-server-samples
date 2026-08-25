@@ -17,7 +17,7 @@ import java.lang.annotation.Target;
 @Target({FIELD, PARAMETER, TYPE_USE})
 public @interface AbsoluteUri {
 
-    String message() default "{admin.validation.uri}";
+    String message() default "{app.api.problem.violation.uri}";
 
     Class<?>[] groups() default {};
 

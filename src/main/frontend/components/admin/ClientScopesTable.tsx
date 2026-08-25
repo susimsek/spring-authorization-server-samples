@@ -1,13 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Form, Modal } from "react-bootstrap";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
 
 import { useAdminAuth } from "./AdminAuthProvider";
+import { AdminActionIcon } from "./AdminActionIcon";
 import { AdminPageHeader } from "./AdminPageHeader";
 import { ConfirmModal } from "./ConfirmModal";
 import { DataTable } from "./DataTable";
@@ -52,16 +56,22 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
   const [reload, setReload] = useState(0);
   const [editing, setEditing] = useState<ClientScope | null>(null);
   const [showEditor, setShowEditor] = useState(false);
-  const [values, setValues] = useState<Values>(EMPTY);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<ClientScope | null>(null);
-  const scopeValidation = {
-    name: values.name.trim().length > 0 && values.name.length <= 100,
-    displayName: values.displayName.length <= 200,
-    description: values.description.length <= 500,
-  };
-  const scopeValid =
-    scopeValidation.name && scopeValidation.displayName && scopeValidation.description;
+  const clientScopeSchema = z.object({
+    name: z.string().trim().min(1, common.validation.required).max(100, common.validation.max100),
+    displayName: z.string().max(200, common.validation.max200),
+    description: z.string().max(500, common.validation.max500),
+  });
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<Values>({
+    resolver: zodResolver(clientScopeSchema),
+    defaultValues: EMPTY,
+  });
 
   useEffect(() => {
     if (!accessToken) return;
@@ -81,20 +91,20 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
 
   const openCreate = () => {
     setEditing(null);
-    setValues(EMPTY);
+    reset(EMPTY);
     setShowEditor(true);
   };
   const openEdit = (scope: ClientScope) => {
     setEditing(scope);
-    setValues({
+    reset({
       name: scope.name,
       displayName: scope.displayName ?? "",
       description: scope.description ?? "",
     });
     setShowEditor(true);
   };
-  const save = async () => {
-    if (!accessToken || !scopeValid) return;
+  const save = async (values: Values) => {
+    if (!accessToken) return;
     setSaving(true);
     const response = await adminRequest<ClientScope>(accessToken, {
       url: editing
@@ -136,7 +146,12 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
         title={copy.title}
         description={copy.subtitle}
         actions={
-          access?.manageClients ? <Button onClick={openCreate}>{copy.create}</Button> : undefined
+          access?.manageClients ? (
+            <Button onClick={openCreate}>
+              <AdminActionIcon action="add" />
+              {copy.create}
+            </Button>
+          ) : undefined
         }
       />
       <Form
@@ -198,6 +213,7 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
                 {access?.manageClients && (
                   <RowActions label={`${scope.name} actions`}>
                     <button className="dropdown-item" type="button" onClick={() => openEdit(scope)}>
+                      <AdminActionIcon action="edit" />
                       {copy.edit}
                     </button>
                     <div className="dropdown-divider" />
@@ -206,6 +222,7 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
                       type="button"
                       onClick={() => setDeleting(scope)}
                     >
+                      <AdminActionIcon action="delete" />
                       {copy.delete}
                     </button>
                   </RowActions>
@@ -221,50 +238,39 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
           <Modal.Title>{editing ? copy.edit : copy.create}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <Form.Group className="mb-3">
-            <Form.Label>{copy.name}</Form.Label>
-            <Form.Control
-              value={values.name}
-              isInvalid={!scopeValidation.name}
-              onChange={(event) =>
-                setValues((current) => ({ ...current, name: event.target.value }))
-              }
-              autoFocus
-            />
-            <Form.Control.Feedback type="invalid">
-              {!values.name.trim() ? common.validation.required : common.validation.max100}
-            </Form.Control.Feedback>
-          </Form.Group>
-          <Form.Group className="mb-3">
-            <Form.Label>{copy.displayName}</Form.Label>
-            <Form.Control
-              value={values.displayName}
-              isInvalid={!scopeValidation.displayName}
-              onChange={(event) =>
-                setValues((current) => ({ ...current, displayName: event.target.value }))
-              }
-            />
-            <Form.Control.Feedback type="invalid">{common.validation.max200}</Form.Control.Feedback>
-          </Form.Group>
-          <Form.Group>
-            <Form.Label>{copy.description}</Form.Label>
-            <Form.Control
-              as="textarea"
-              isInvalid={!scopeValidation.description}
-              rows={3}
-              value={values.description}
-              onChange={(event) =>
-                setValues((current) => ({ ...current, description: event.target.value }))
-              }
-            />
-            <Form.Control.Feedback type="invalid">{common.validation.max500}</Form.Control.Feedback>
-          </Form.Group>
+          <Form id="client-scope-form" onSubmit={handleSubmit(save)}>
+            <Form.Group className="mb-3">
+              <Form.Label>{copy.name}</Form.Label>
+              <Form.Control autoFocus isInvalid={Boolean(errors.name)} {...register("name")} />
+              <Form.Control.Feedback type="invalid">{errors.name?.message}</Form.Control.Feedback>
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>{copy.displayName}</Form.Label>
+              <Form.Control isInvalid={Boolean(errors.displayName)} {...register("displayName")} />
+              <Form.Control.Feedback type="invalid">
+                {errors.displayName?.message}
+              </Form.Control.Feedback>
+            </Form.Group>
+            <Form.Group>
+              <Form.Label>{copy.description}</Form.Label>
+              <Form.Control
+                as="textarea"
+                isInvalid={Boolean(errors.description)}
+                rows={3}
+                {...register("description")}
+              />
+              <Form.Control.Feedback type="invalid">
+                {errors.description?.message}
+              </Form.Control.Feedback>
+            </Form.Group>
+          </Form>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="outline-secondary" onClick={() => setShowEditor(false)}>
             {common.cancel}
           </Button>
-          <Button disabled={saving || !scopeValid} onClick={() => void save()}>
+          <Button disabled={saving} form="client-scope-form" type="submit">
+            <AdminActionIcon action="save" />
             {saving ? common.saving : common.save}
           </Button>
         </Modal.Footer>

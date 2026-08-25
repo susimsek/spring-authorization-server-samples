@@ -16,7 +16,7 @@ import java.lang.annotation.Target;
 @Target({FIELD, PARAMETER})
 public @interface PositiveDuration {
 
-    String message() default "{admin.validation.ttl}";
+    String message() default "{app.api.problem.violation.ttl}";
 
     Class<?>[] groups() default {};
 

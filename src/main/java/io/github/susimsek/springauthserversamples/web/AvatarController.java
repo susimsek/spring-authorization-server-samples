@@ -1,7 +1,11 @@
 package io.github.susimsek.springauthserversamples.web;
 
+import io.github.susimsek.springauthserversamples.config.openapi.OpenApiConfig;
 import io.github.susimsek.springauthserversamples.repository.UserAvatarRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
@@ -16,12 +20,16 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
+@Tag(
+        name = "Account",
+        description = "Account Console profile, session, and application management.")
 public class AvatarController {
 
     private final UserAvatarRepository userAvatarRepository;
     private final UserRepository userRepository;
 
     @GetMapping("/avatars/{id}")
+    @Operation(summary = "Get public avatar")
     ResponseEntity<byte[]> avatar(
             @PathVariable String id,
             @RequestParam("v") long version,
@@ -45,6 +53,8 @@ public class AvatarController {
     }
 
     @GetMapping({"/account/avatar", "/api/account/avatar"})
+    @Operation(summary = "Get current user avatar")
+    @SecurityRequirement(name = OpenApiConfig.ACCOUNT_BEARER)
     ResponseEntity<byte[]> currentUserAvatar(
             Authentication authentication,
             @org.springframework.web.bind.annotation.RequestHeader(

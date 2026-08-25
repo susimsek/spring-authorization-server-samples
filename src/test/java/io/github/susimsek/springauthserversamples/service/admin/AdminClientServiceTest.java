@@ -12,6 +12,7 @@ import io.github.susimsek.springauthserversamples.mapper.RegisteredClientMapper;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationConsentRepository;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import io.github.susimsek.springauthserversamples.web.admin.AdminClientCreatedView;
 import io.github.susimsek.springauthserversamples.web.admin.AdminClientRequest;
 import io.github.susimsek.springauthserversamples.web.admin.AdminClientView;
@@ -69,7 +70,7 @@ class AdminClientServiceTest {
         when(clientRepository.existsByClientId("service-client")).thenReturn(true);
 
         assertThatThrownBy(() -> service().create(confidentialRequest()))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Client ID is already registered");
     }
 
@@ -135,7 +136,7 @@ class AdminClientServiceTest {
                                                         null,
                                                         null,
                                                         null)))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage(
                         "The 'none' authentication method cannot be combined with other methods");
     }
@@ -165,7 +166,7 @@ class AdminClientServiceTest {
         when(registeredClientMapper.toObject(entity, mapperSupport)).thenReturn(publicClient);
 
         assertThatThrownBy(() -> service().update("client-id", confidentialRequest()))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage(
                         "Regenerate a client secret before enabling a secret authentication"
                                 + " method");
@@ -179,7 +180,7 @@ class AdminClientServiceTest {
         when(registeredClientMapper.toObject(entity, mapperSupport)).thenReturn(adminConsole);
 
         assertThatThrownBy(() -> service().update("client-id", confidentialRequest()))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("The administration console client cannot be changed");
     }
 
@@ -202,7 +203,7 @@ class AdminClientServiceTest {
     @Test
     void rejectsPublicClientsWithoutPkce() {
         assertThatThrownBy(() -> service().create(publicClientRequest(false)))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("PKCE must be required for a public authorization_code client");
     }
 
@@ -225,7 +226,7 @@ class AdminClientServiceTest {
                                                         null,
                                                         null,
                                                         null)))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Empty redirect URI is not allowed");
     }
 
@@ -248,7 +249,7 @@ class AdminClientServiceTest {
                                                         Duration.ZERO,
                                                         null,
                                                         null)))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("authorization code TTL must be greater than zero");
     }
 

@@ -14,12 +14,14 @@ import { adminRequest } from "@/lib/admin-api";
 import { problemErrorCode, problemViolations } from "@/lib/problem-detail";
 
 import { useAdminAuth } from "./AdminAuthProvider";
+import { AdminActionIcon } from "./AdminActionIcon";
 import { ErrorState, LoadingState } from "./AsyncState";
 import { ConfirmModal } from "./ConfirmModal";
 import { DetailTabs } from "./DetailTabs";
 import { EntityRelatedData } from "./EntityRelatedData";
 import { AdminBreadcrumb } from "./AdminBreadcrumb";
 import { ReadOnlyMetadata } from "./ReadOnlyMetadata";
+import { UserGroups } from "./UserGroups";
 
 type User = {
   id: number;
@@ -37,6 +39,7 @@ const USER_DETAIL_TABS = [
   "details",
   "credentials",
   "roles",
+  "groups",
   "sessions",
   "consents",
   "events",
@@ -268,6 +271,7 @@ export function UserForm({
       href: `${userBaseUrl}/credentials`,
     },
     { key: "roles", label: tr ? "Rol eşlemeleri" : "Role mapping", href: `${userBaseUrl}/roles` },
+    { key: "groups", label: dictionary.admin.nav.groups, href: `${userBaseUrl}/groups` },
     { key: "sessions", label: tr ? "Oturumlar" : "Sessions", href: `${userBaseUrl}/sessions` },
     { key: "consents", label: tr ? "İzinler" : "Consents", href: `${userBaseUrl}/consents` },
     { key: "events", label: tr ? "Olaylar" : "Events", href: `${userBaseUrl}/events` },
@@ -335,6 +339,7 @@ export function UserForm({
                       onClick={() => setShowAvatarDeleteConfirm(true)}
                       type="button"
                     >
+                      <AdminActionIcon action="delete" />
                       {copy.removeAvatar}
                     </Button>
                   )}
@@ -425,6 +430,10 @@ export function UserForm({
           </Card>
         )}
 
+        {editing && id && activeTab === "groups" && (
+          <UserGroups dictionary={dictionary} userId={id} />
+        )}
+
         {editing && id && activeTab === "sessions" && (
           <EntityRelatedData
             resource="sessions"
@@ -462,6 +471,7 @@ export function UserForm({
               {dictionary.admin.common.cancel}
             </Button>
             <Button type="submit" disabled={saving}>
+              <AdminActionIcon action="save" />
               {saving ? dictionary.admin.common.saving : dictionary.admin.common.save}
             </Button>
           </div>

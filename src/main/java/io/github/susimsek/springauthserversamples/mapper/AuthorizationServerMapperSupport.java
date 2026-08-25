@@ -16,6 +16,7 @@ import org.springframework.security.oauth2.server.authorization.settings.ClientS
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
 
 @Component
@@ -85,7 +86,7 @@ public class AuthorizationServerMapperSupport {
         }
         try {
             return securityJsonMapper.delegate().writeValueAsString(value);
-        } catch (Exception ex) {
+        } catch (JacksonException ex) {
             throw new IllegalStateException("Failed to serialize authorization server value", ex);
         }
     }
@@ -96,7 +97,7 @@ public class AuthorizationServerMapperSupport {
         }
         try {
             return securityJsonMapper.delegate().readValue(value, MAP_TYPE_REFERENCE);
-        } catch (Exception ex) {
+        } catch (JacksonException ex) {
             throw new IllegalStateException("Failed to deserialize authorization server value", ex);
         }
     }

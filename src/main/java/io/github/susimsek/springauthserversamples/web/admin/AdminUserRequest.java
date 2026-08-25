@@ -13,31 +13,31 @@ import java.util.Set;
 public record AdminUserRequest(
         @NotBlank(
                         groups = {CreateValidation.class, UpdateValidation.class},
-                        message = "{admin.validation.required}")
+                        message = "{app.api.problem.violation.required}")
                 @Size(
                         max = 100,
                         groups = {CreateValidation.class, UpdateValidation.class})
                 String username,
         @NotBlank(
                         groups = {CreateValidation.class, PasswordChangeValidation.class},
-                        message = "{admin.validation.required}")
+                        message = "{app.api.problem.violation.required}")
                 @Size(
                         min = 8,
                         max = 200,
                         groups = {CreateValidation.class, PasswordChangeValidation.class},
-                        message = "{admin.validation.password}")
+                        message = "{app.api.problem.violation.password}")
                 @OptionalPassword(groups = UpdateValidation.class)
                 String password,
         @NotNull(
                         groups = {CreateValidation.class, UpdateValidation.class},
-                        message = "{admin.validation.required}")
+                        message = "{app.api.problem.violation.required}")
                 Boolean enabled,
         @NotEmpty(
                         groups = {CreateValidation.class, UpdateValidation.class},
-                        message = "{admin.validation.roles}")
+                        message = "{app.api.problem.violation.roles}")
                 Set<
                                 @NotBlank(
                                         groups = {CreateValidation.class, UpdateValidation.class},
-                                        message = "{admin.validation.roles}")
+                                        message = "{app.api.problem.violation.roles}")
                                 String>
                         roles) {}

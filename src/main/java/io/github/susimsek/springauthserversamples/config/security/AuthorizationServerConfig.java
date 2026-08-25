@@ -43,6 +43,7 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Toke
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -63,11 +64,17 @@ public class AuthorizationServerConfig {
     SecurityFilterChain authorizationServerSecurityFilterChain(
             HttpSecurity http,
             OAuth2TokenGenerator<OAuth2Token> tokenGenerator,
-            RegisteredClientRepository registeredClientRepository) {
+            RegisteredClientRepository registeredClientRepository,
+            SecurityContextRepository securityContextRepository) {
         OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
                 new OAuth2AuthorizationServerConfigurer();
 
         http.securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
+                .securityContext(
+                        securityContext ->
+                                securityContext
+                                        .securityContextRepository(securityContextRepository)
+                                        .requireExplicitSave(false))
                 .with(
                         authorizationServerConfigurer,
                         authorizationServer ->

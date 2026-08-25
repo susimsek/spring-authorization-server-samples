@@ -16,7 +16,7 @@ import java.lang.annotation.Target;
 @Target({FIELD, PARAMETER})
 public @interface OptionalPassword {
 
-    String message() default "{admin.validation.password}";
+    String message() default "{app.api.problem.violation.password}";
 
     Class<?>[] groups() default {};
 

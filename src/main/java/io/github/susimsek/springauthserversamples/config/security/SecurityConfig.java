@@ -15,6 +15,10 @@ import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.context.DelegatingSecurityContextRepository;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
 
@@ -43,8 +47,14 @@ public class SecurityConfig {
 
     @Bean
     @Order(3)
-    SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) {
-        http.csrf(AbstractHttpConfigurer::disable)
+    SecurityFilterChain defaultSecurityFilterChain(
+            HttpSecurity http, SecurityContextRepository securityContextRepository) {
+        http.securityContext(
+                        securityContext ->
+                                securityContext
+                                        .securityContextRepository(securityContextRepository)
+                                        .requireExplicitSave(false))
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(
                         authorize ->
                                 authorize
@@ -63,6 +73,9 @@ public class SecurityConfig {
                                                 "/en/**",
                                                 "/tr/**",
                                                 "/_next/**",
+                                                "/v3/api-docs/**",
+                                                "/swagger-ui.html",
+                                                "/swagger-ui/**",
                                                 "/actuator/health",
                                                 "/actuator/health/**",
                                                 "/error")
@@ -84,5 +97,12 @@ public class SecurityConfig {
         http.oauth2ResourceServer(resourceServer -> resourceServer.jwt(Customizer.withDefaults()));
 
         return http.build();
+    }
+
+    @Bean
+    SecurityContextRepository securityContextRepository() {
+        return new DelegatingSecurityContextRepository(
+                new RequestAttributeSecurityContextRepository(),
+                new HttpSessionSecurityContextRepository());
     }
 }

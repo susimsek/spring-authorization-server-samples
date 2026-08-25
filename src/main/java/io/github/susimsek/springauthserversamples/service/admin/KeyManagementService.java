@@ -6,6 +6,7 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import io.github.susimsek.springauthserversamples.domain.OAuth2KeyEntity;
 import io.github.susimsek.springauthserversamples.repository.OAuth2KeyRepository;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.UUID;
@@ -61,7 +62,7 @@ public class KeyManagementService {
             adminAuditEventService.record("key.rotated", "key", saved.getId());
             return keyView(saved);
         } catch (Exception ex) {
-            throw AdminClientException.serverError(
+            throw ApiException.serverError(
                     "admin_key_rotation_failed", "Could not rotate the signing key", ex);
         }
     }

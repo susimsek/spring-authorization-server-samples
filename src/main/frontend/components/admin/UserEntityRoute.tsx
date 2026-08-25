@@ -7,7 +7,15 @@ import type { Dictionary } from "@/i18n/get-dictionary";
 
 import { UserForm } from "./UserForm";
 
-const SECTIONS = new Set(["details", "credentials", "roles", "sessions", "consents", "events"]);
+const SECTIONS = new Set([
+  "details",
+  "credentials",
+  "roles",
+  "groups",
+  "sessions",
+  "consents",
+  "events",
+]);
 
 export function UserEntityRoute({
   locale,

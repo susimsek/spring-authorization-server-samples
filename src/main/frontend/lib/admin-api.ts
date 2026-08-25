@@ -43,7 +43,8 @@ function normalizePageResponse(data: unknown) {
   const metadata = pageResponse.page;
   if (!isPageMetadata(metadata)) return data;
 
-  const { page: _page, ...content } = pageResponse;
+  const content = { ...pageResponse };
+  delete content.page;
   return { ...content, ...metadata };
 }
 

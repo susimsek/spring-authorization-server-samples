@@ -4,14 +4,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.github.susimsek.springauthserversamples.domain.AuthorizationEntity;
+import io.github.susimsek.springauthserversamples.domain.RegisteredClientEntity;
 import io.github.susimsek.springauthserversamples.domain.UserSessionEntity;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.repository.UserSessionRepository;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -94,11 +98,33 @@ class AdminSessionServiceTest {
     }
 
     @Test
+    void loadsAuthorizationClientsForSessionDetailInOneBatch() {
+        UserSessionEntity session = session("session-id", "user", 1_000L);
+        AuthorizationEntity first = authorization("authorization-1", "client-1");
+        AuthorizationEntity second = authorization("authorization-2", "client-2");
+        RegisteredClientEntity firstClient = client("client-1", "first-client", "First Client");
+        RegisteredClientEntity secondClient = client("client-2", "second-client", "Second Client");
+        when(userSessionRepository.findBySessionId("session-id")).thenReturn(Optional.of(session));
+        when(authorizationRepository.findAllBySessionIdOrderByAccessTokenIssuedAtDesc("session-id"))
+                .thenReturn(List.of(first, second));
+        when(clientRepository.findAllById(List.of("client-1", "client-2")))
+                .thenReturn(List.of(firstClient, secondClient));
+
+        AdminSessionService.SessionDetailView detail = service().session("session-id", "admin");
+
+        assertThat(detail.authorizations())
+                .extracting(AdminSessionService.AuthorizationView::clientName)
+                .containsExactly("First Client", "Second Client");
+        verify(clientRepository).findAllById(List.of("client-1", "client-2"));
+        verify(clientRepository, never()).findById(org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
     void rejectsUnknownSessions() {
         when(userSessionRepository.findBySessionId("missing")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service().deleteSession("missing", "admin"))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Session not found");
 
         verify(userSessionRepository).findBySessionId("missing");
@@ -139,6 +165,22 @@ class AdminSessionServiceTest {
                 return authorizationCount;
             }
         };
+    }
+
+    private static AuthorizationEntity authorization(String id, String clientId) {
+        AuthorizationEntity authorization = new AuthorizationEntity();
+        authorization.setId(id);
+        authorization.setRegisteredClientId(clientId);
+        authorization.setAuthorizationGrantType("authorization_code");
+        return authorization;
+    }
+
+    private static RegisteredClientEntity client(String id, String clientId, String clientName) {
+        RegisteredClientEntity client = new RegisteredClientEntity();
+        client.setId(id);
+        client.setClientId(clientId);
+        client.setClientName(clientName);
+        return client;
     }
 
     private AdminSessionService service() {

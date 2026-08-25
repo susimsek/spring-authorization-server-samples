@@ -7,6 +7,7 @@ import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
 import { useAdminAuth } from "./AdminAuthProvider";
+import { AdminActionIcon } from "./AdminActionIcon";
 import { ConfirmModal } from "./ConfirmModal";
 import { ErrorState, LoadingState } from "./AsyncState";
 import { ResultModal } from "./ResultModal";
@@ -129,10 +130,12 @@ export function ClientDetail({
             disabled={!access?.manageClients}
             onClick={() => setShowSecretConfirm(true)}
           >
+            <AdminActionIcon action="regenerate" />
             {dictionary.admin.clients.regenerateSecret}
           </Dropdown.Item>
           <Dropdown.Divider />
           <Dropdown.Item className="text-danger" onClick={() => setShowDeleteConfirm(true)}>
+            <AdminActionIcon action="delete" />
             {dictionary.admin.clients.delete}
           </Dropdown.Item>
         </RowActions>
@@ -227,6 +230,7 @@ export function ClientDetail({
                       disabled={!access?.manageClients}
                       onClick={() => setShowSecretConfirm(true)}
                     >
+                      <AdminActionIcon action="regenerate" />
                       {dictionary.admin.clients.regenerateSecret}
                     </Button>
                   </Card.Body>

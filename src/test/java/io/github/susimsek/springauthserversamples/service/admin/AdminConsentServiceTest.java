@@ -16,6 +16,7 @@ import io.github.susimsek.springauthserversamples.repository.AuthorizationConsen
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -135,7 +136,7 @@ class AdminConsentServiceTest {
         when(authorizationConsentRepository.existsById(id)).thenReturn(false);
 
         assertThatThrownBy(() -> service().revokeConsent("client", "user", "admin"))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Consent not found");
 
         verify(adminUserService).assertCanManageUsername("user", "admin");

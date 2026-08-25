@@ -14,6 +14,8 @@ import type { Dictionary } from "@/i18n/get-dictionary";
 import { accountRequest } from "@/lib/account-api";
 import { DetailLoadingState, EmptyState, ErrorState } from "@/components/admin/AsyncState";
 import { ConfirmModal } from "@/components/admin/ConfirmModal";
+import { PaginationControls } from "@/components/admin/PaginationControls";
+import { useAdminTableState } from "@/components/admin/useAdminTableState";
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import { useAccountAuth } from "./AccountAuthProvider";
 
@@ -29,6 +31,7 @@ type Session = {
 
 type PendingAction =
   { type: "single"; session: Session } | { type: "others" } | { type: "all" } | null;
+type SessionPage = { content: Session[]; totalPages: number; totalElements: number };
 
 export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
   const { accessToken, logout } = useAccountAuth();
@@ -38,26 +41,32 @@ export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [pending, setPending] = useState<PendingAction>(null);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [refresh, setRefresh] = useState(0);
+  const { page, size, setPage, setSize } = useAdminTableState();
 
   const load = useCallback(async () => {
     if (!accessToken) return;
     setLoading(true);
-    const response = await accountRequest<Session[]>(accessToken, {
-      url: "/api/account/sessions",
+    const response = await accountRequest<SessionPage>(accessToken, {
+      url: `/api/account/sessions?page=${page}&size=${size}`,
     });
     if (response.status < 300) {
-      setItems(response.data);
+      setItems(response.data.content);
+      setTotalPages(response.data.totalPages);
+      setTotalElements(response.data.totalElements);
       setFailed(false);
     } else {
       setFailed(true);
     }
     setLoading(false);
-  }, [accessToken]);
+  }, [accessToken, page, size]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(timer);
-  }, [load]);
+  }, [load, refresh]);
 
   const remove = async (id: string) => {
     if (!accessToken) return;
@@ -66,7 +75,9 @@ export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
       url: `/api/account/sessions/${encodeURIComponent(id)}`,
     });
     if (response.status < 300) {
-      setItems((current) => current.filter((session) => session.id !== id));
+      setLoading(true);
+      if (items.length === 1 && page > 0) setPage(page - 1);
+      else setRefresh((current) => current + 1);
       alerts.addAlert(copy.sessions.signOut);
     } else alerts.addError(copy.common.operationError);
   };
@@ -78,7 +89,9 @@ export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
       url: "/api/account/sessions/others",
     });
     if (response.status < 300) {
-      setItems((current) => current.filter((session) => session.current));
+      setLoading(true);
+      if (items.length === 1 && page > 0) setPage(page - 1);
+      else setRefresh((current) => current + 1);
       alerts.addAlert(copy.sessions.signOutOthers);
     } else alerts.addError(copy.common.operationError);
   };
@@ -228,6 +241,22 @@ export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
               ))}
             </div>
           )}
+          <div className="px-4 pb-4">
+            <PaginationControls
+              first={dictionary.admin.resources.first}
+              last={dictionary.admin.resources.last}
+              next={dictionary.admin.resources.next}
+              onPageChange={setPage}
+              onSizeChange={setSize}
+              page={page}
+              pageLabel={dictionary.admin.resources.page}
+              previous={dictionary.admin.resources.previous}
+              rowsPerPage={dictionary.admin.resources.rowsPerPage}
+              size={size}
+              totalElements={totalElements}
+              totalPages={totalPages}
+            />
+          </div>
         </Card.Body>
       </Card>
 

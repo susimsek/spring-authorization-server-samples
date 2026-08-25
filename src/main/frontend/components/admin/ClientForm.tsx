@@ -13,6 +13,7 @@ import { adminRequest } from "@/lib/admin-api";
 import { problemErrorCode, problemViolations } from "@/lib/problem-detail";
 
 import { useAdminAuth } from "./AdminAuthProvider";
+import { AdminActionIcon } from "./AdminActionIcon";
 import { ErrorState, LoadingState } from "./AsyncState";
 import { HelpItem } from "./HelpItem";
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
@@ -623,6 +624,7 @@ export function ClientForm({
           </Button>
         ) : (
           <Button type="submit" disabled={saving}>
+            <AdminActionIcon action="save" />
             {saving ? dictionary.admin.common.saving : dictionary.admin.common.save}
           </Button>
         )}

@@ -4,7 +4,15 @@ import { UserEntityRoute } from "@/components/admin/UserEntityRoute";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 
-const sections = ["details", "credentials", "roles", "sessions", "consents", "events"] as const;
+const sections = [
+  "details",
+  "credentials",
+  "roles",
+  "groups",
+  "sessions",
+  "consents",
+  "events",
+] as const;
 
 export function generateStaticParams() {
   return sections.map((section) => ({ id: "_", section }));

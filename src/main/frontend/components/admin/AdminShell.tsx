@@ -45,6 +45,7 @@ export function AdminShell({ locale, dictionary, children }: Props) {
     ["/client-scopes", dictionary.admin.nav.clientScopes, faLayerGroup, access?.viewClients],
     ["/users", dictionary.admin.nav.users, faUsers, access?.viewUsers],
     ["/roles", dictionary.admin.nav.roles, faUserShield, access?.manageRoles],
+    ["/groups", dictionary.admin.nav.groups, faLayerGroup, access?.manageRoles],
     ["/sessions", dictionary.admin.nav.sessions, faLaptop, access?.viewSessions],
     ["/consents", dictionary.admin.nav.consents, faShieldHalved, access?.viewConsents],
     ["/keys", dictionary.admin.nav.keys, faKey, access?.viewKeys],

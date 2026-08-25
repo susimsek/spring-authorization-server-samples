@@ -38,13 +38,16 @@ public class AdminClientConfigurationValidator
                 || (methods.contains(ClientAuthenticationMethod.NONE.getValue())
                         && methods.size() > 1)) {
             valid = false;
-            violation(context, "clientAuthenticationMethods", "{admin.validation.selection}");
+            violation(
+                    context,
+                    "clientAuthenticationMethods",
+                    "{app.api.problem.violation.selection}");
         }
         if (!ALLOWED_GRANTS.containsAll(grants)
                 || (methods.contains(ClientAuthenticationMethod.NONE.getValue())
                         && grants.contains(AuthorizationGrantType.CLIENT_CREDENTIALS.getValue()))) {
             valid = false;
-            violation(context, "authorizationGrantTypes", "{admin.validation.selection}");
+            violation(context, "authorizationGrantTypes", "{app.api.problem.violation.selection}");
         }
 
         boolean authorizationCode =
@@ -52,17 +55,17 @@ public class AdminClientConfigurationValidator
         if (authorizationCode
                 && (request.redirectUris() == null || request.redirectUris().isEmpty())) {
             valid = false;
-            violation(context, "redirectUris", "{admin.validation.required}");
+            violation(context, "redirectUris", "{app.api.problem.violation.required}");
         }
         if (methods.contains(ClientAuthenticationMethod.NONE.getValue())
                 && authorizationCode
                 && !request.requireProofKey()) {
             valid = false;
-            violation(context, "authorizationGrantTypes", "{admin.validation.selection}");
+            violation(context, "authorizationGrantTypes", "{app.api.problem.violation.selection}");
         }
         if (request.requireProofKey() && !authorizationCode) {
             valid = false;
-            violation(context, "authorizationGrantTypes", "{admin.validation.selection}");
+            violation(context, "authorizationGrantTypes", "{app.api.problem.violation.selection}");
         }
         return valid;
     }

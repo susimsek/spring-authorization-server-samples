@@ -1,5 +1,7 @@
 package io.github.susimsek.springauthserversamples.web.admin;
 
+import io.github.susimsek.springauthserversamples.config.openapi.OpenApiConfig;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupDTO;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAvatarService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminConsentService;
@@ -9,11 +11,14 @@ import io.github.susimsek.springauthserversamples.service.admin.AdminServerInfoS
 import io.github.susimsek.springauthserversamples.service.admin.AdminSessionService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminUserService;
 import io.github.susimsek.springauthserversamples.service.admin.KeyManagementService;
+import io.github.susimsek.springauthserversamples.web.ApiController;
 import io.github.susimsek.springauthserversamples.web.admin.validation.CreateValidation;
 import io.github.susimsek.springauthserversamples.web.admin.validation.PasswordChangeValidation;
 import io.github.susimsek.springauthserversamples.web.admin.validation.UpdateValidation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -33,9 +38,13 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@AdminApi
+@ApiController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
+@Tag(
+        name = "Admin - Identity",
+        description = "Keycloak-style users, roles, sessions, consents, events, and signing keys.")
+@SecurityRequirement(name = OpenApiConfig.ADMIN_BEARER)
 class AdminIdentityController {
 
     private final AdminUserService adminUserService;
@@ -49,16 +58,19 @@ class AdminIdentityController {
     private final AdminRoleService adminRoleService;
 
     @GetMapping("/dashboard")
+    @Operation(summary = "Get administration dashboard")
     AdminDashboardService.DashboardView dashboard() {
         return adminDashboardService.dashboard();
     }
 
     @GetMapping("/server-info")
+    @Operation(summary = "Get server information")
     AdminServerInfoService.ServerInfoView serverInfo() {
         return adminServerInfoService.serverInfo();
     }
 
     @GetMapping("/events")
+    @Operation(summary = "Search administrative events")
     Page<AdminAuditEventService.EventView> events(
             @RequestParam(defaultValue = "") String q,
             @RequestParam(defaultValue = "") String action,
@@ -75,6 +87,7 @@ class AdminIdentityController {
     }
 
     @GetMapping("/users/{id}/events")
+    @Operation(summary = "List user events")
     Page<AdminAuditEventService.EventView> userEvents(
             @PathVariable Long id,
             @PageableDefault(
@@ -88,6 +101,7 @@ class AdminIdentityController {
     }
 
     @GetMapping("/users/{id}/sessions")
+    @Operation(summary = "List user sessions")
     Page<AdminSessionService.SessionView> userSessions(
             @PathVariable Long id,
             @PageableDefault(
@@ -100,6 +114,7 @@ class AdminIdentityController {
     }
 
     @GetMapping("/users/{id}/consents")
+    @Operation(summary = "List user consents")
     Page<AdminConsentService.ConsentView> userConsents(
             @PathVariable Long id,
             @PageableDefault(size = 20, sort = "id.registeredClientId") Pageable pageable,
@@ -108,11 +123,15 @@ class AdminIdentityController {
     }
 
     @GetMapping("/roles")
-    List<AdminRoleService.RoleView> roles() {
-        return adminRoleService.roles();
+    @Operation(summary = "Search roles")
+    Page<AdminRoleService.RoleView> roles(
+            @RequestParam(defaultValue = "") String q,
+            @PageableDefault(size = 20, sort = "name") Pageable pageable) {
+        return adminRoleService.roles(q, pageable);
     }
 
     @GetMapping("/roles/{name}")
+    @Operation(summary = "Get role")
     AdminRoleService.RoleDetailView role(
             @PathVariable String name,
             @RequestParam(defaultValue = "") String q,
@@ -121,6 +140,7 @@ class AdminIdentityController {
     }
 
     @GetMapping("/roles/{name}/available-users")
+    @Operation(summary = "Search users available for a role")
     Page<AdminRoleService.UserEntityView> availableRoleUsers(
             @PathVariable String name,
             @RequestParam(defaultValue = "") String q,
@@ -129,6 +149,7 @@ class AdminIdentityController {
     }
 
     @PostMapping("/roles/{name}/users")
+    @Operation(summary = "Assign user to role")
     AdminRoleService.RoleDetailView assignRoleUser(
             @PathVariable String name,
             @Valid @RequestBody AdminRoleUserRequest request,
@@ -139,6 +160,7 @@ class AdminIdentityController {
     }
 
     @DeleteMapping("/roles/{name}/users/{userId}")
+    @Operation(summary = "Remove user from role")
     AdminRoleService.RoleDetailView removeRoleUser(
             @PathVariable String name,
             @PathVariable Long userId,
@@ -148,18 +170,21 @@ class AdminIdentityController {
     }
 
     @PostMapping("/roles")
+    @Operation(summary = "Create role")
     ResponseEntity<AdminRoleService.RoleView> createRole(
             @Valid @RequestBody AdminRoleRequest request) {
         return ResponseEntity.status(201).body(adminRoleService.createRole(request.name()));
     }
 
     @DeleteMapping("/roles/{name}")
+    @Operation(summary = "Delete role")
     ResponseEntity<Void> deleteRole(@PathVariable String name) {
         adminRoleService.deleteRole(name);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/users")
+    @Operation(summary = "Search users")
     Page<AdminUserService.UserView> users(
             @RequestParam(defaultValue = "") String q,
             @RequestParam(required = false) Boolean enabled,
@@ -168,11 +193,23 @@ class AdminIdentityController {
     }
 
     @GetMapping("/users/{id}")
+    @Operation(summary = "Get user")
     AdminUserService.UserView user(@PathVariable Long id, Authentication authentication) {
         return adminUserService.user(id, authentication.getName());
     }
 
+    @GetMapping("/users/{id}/groups")
+    @Operation(summary = "List a user's groups")
+    Page<AdminGroupDTO> userGroups(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "") String q,
+            @PageableDefault(size = 20, sort = "name") Pageable pageable,
+            Authentication authentication) {
+        return adminUserService.groups(id, q, pageable, authentication.getName());
+    }
+
     @PostMapping("/users")
+    @Operation(summary = "Create user")
     ResponseEntity<AdminUserService.UserView> createUser(
             @Validated(CreateValidation.class) @RequestBody AdminUserRequest request) {
         return ResponseEntity.status(201)
@@ -185,6 +222,7 @@ class AdminIdentityController {
     }
 
     @PutMapping("/users/{id}")
+    @Operation(summary = "Update user")
     AdminUserService.UserView updateUser(
             @PathVariable Long id,
             @Validated(UpdateValidation.class) @RequestBody AdminUserRequest request,
@@ -198,6 +236,7 @@ class AdminIdentityController {
     }
 
     @PutMapping(path = "/users/{id}/avatar", consumes = "multipart/form-data")
+    @Operation(summary = "Upload user avatar")
     AdminAvatarService.AvatarView updateAvatar(
             @PathVariable Long id,
             @RequestParam("file") MultipartFile file,
@@ -206,12 +245,14 @@ class AdminIdentityController {
     }
 
     @DeleteMapping("/users/{id}/avatar")
+    @Operation(summary = "Delete user avatar")
     ResponseEntity<Void> deleteAvatar(@PathVariable Long id, Authentication authentication) {
         adminAvatarService.deleteAvatar(id, authentication.getName());
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/users/{id}/password")
+    @Operation(summary = "Reset user password")
     ResponseEntity<Void> changePassword(
             @PathVariable Long id,
             @Validated(PasswordChangeValidation.class) @RequestBody AdminUserRequest request,
@@ -221,12 +262,14 @@ class AdminIdentityController {
     }
 
     @DeleteMapping("/users/{id}")
+    @Operation(summary = "Delete user")
     ResponseEntity<Void> deleteUser(@PathVariable Long id, Authentication authentication) {
         adminUserService.deleteUser(id, authentication.getName());
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/users/{id}/enabled")
+    @Operation(summary = "Enable or disable user")
     ResponseEntity<Void> setUserEnabled(
             @PathVariable Long id,
             @Valid @RequestBody AdminUserEnabledRequest request,
@@ -236,6 +279,7 @@ class AdminIdentityController {
     }
 
     @GetMapping("/sessions")
+    @Operation(summary = "Search browser sessions")
     Page<AdminSessionService.SessionView> sessions(
             @RequestParam(defaultValue = "") String q,
             @RequestParam(defaultValue = "") String clientId,
@@ -253,18 +297,21 @@ class AdminIdentityController {
     }
 
     @GetMapping("/sessions/{id}")
+    @Operation(summary = "Get browser session")
     AdminSessionService.SessionDetailView session(
             @PathVariable String id, Authentication authentication) {
         return adminSessionService.session(id, authentication.getName());
     }
 
     @DeleteMapping("/sessions/{id}")
+    @Operation(summary = "Delete browser session")
     ResponseEntity<Void> deleteSession(@PathVariable String id, Authentication authentication) {
         adminSessionService.deleteSession(id, authentication.getName());
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/users/{username}/sessions")
+    @Operation(summary = "Delete all sessions for a user")
     ResponseEntity<Void> deleteUserSessions(
             @PathVariable String username, Authentication authentication) {
         adminSessionService.deleteUserSessions(username, authentication.getName());
@@ -272,6 +319,7 @@ class AdminIdentityController {
     }
 
     @GetMapping("/consents")
+    @Operation(summary = "Search user consents")
     Page<AdminConsentService.ConsentView> consents(
             @RequestParam(defaultValue = "") String q,
             @RequestParam(defaultValue = "") String clientId,
@@ -282,12 +330,14 @@ class AdminIdentityController {
     }
 
     @GetMapping("/consents/{clientId}/{username}")
+    @Operation(summary = "Get user consent")
     AdminConsentService.ConsentView consent(
             @PathVariable String clientId, @PathVariable String username) {
         return adminConsentService.consent(clientId, username);
     }
 
     @DeleteMapping("/consents/{clientId}/{username}")
+    @Operation(summary = "Revoke user consent")
     ResponseEntity<Void> revokeConsent(
             @PathVariable String clientId,
             @PathVariable String username,
@@ -297,6 +347,7 @@ class AdminIdentityController {
     }
 
     @GetMapping("/keys")
+    @Operation(summary = "List signing keys")
     Page<KeyManagementService.KeyView> keys(
             @RequestParam(defaultValue = "") String q,
             @RequestParam(required = false) Boolean active,
@@ -309,6 +360,7 @@ class AdminIdentityController {
     }
 
     @PostMapping("/keys/rotate")
+    @Operation(summary = "Rotate signing key")
     KeyManagementService.KeyView rotateKey() {
         return keyManagementService.rotateKey();
     }

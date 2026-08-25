@@ -3,6 +3,7 @@ package io.github.susimsek.springauthserversamples.service.admin;
 import io.github.susimsek.springauthserversamples.domain.UserAvatarEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.repository.UserAvatarRepository;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.time.Instant;
@@ -56,25 +57,25 @@ public class AdminAvatarService {
 
     private static AvatarPayload avatarPayload(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "avatar", "admin_avatar_empty", "Avatar file is required");
         }
         if (file.getSize() > 2 * 1024 * 1024) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "avatar", "admin_avatar_too_large", "Avatar must not exceed 2 MiB");
         }
         try {
             byte[] content = file.getBytes();
             String contentType = imageContentType(content);
             if (contentType == null) {
-                throw AdminClientException.badRequest(
+                throw ApiException.badRequest(
                         "avatar",
                         "admin_avatar_invalid_type",
                         "Avatar must be a JPEG or PNG image");
             }
             return new AvatarPayload(content, contentType);
         } catch (IOException exception) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "avatar", "admin_avatar_unreadable", "Avatar could not be read");
         }
     }
@@ -97,7 +98,7 @@ public class AdminAvatarService {
                 if (width > MAX_AVATAR_DIMENSION
                         || height > MAX_AVATAR_DIMENSION
                         || (long) width * height > MAX_AVATAR_PIXELS) {
-                    throw AdminClientException.badRequest(
+                    throw ApiException.badRequest(
                             "avatar",
                             "admin_avatar_dimensions",
                             "Avatar dimensions must not exceed 4 megapixels");

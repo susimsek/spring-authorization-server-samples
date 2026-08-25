@@ -51,6 +51,35 @@ class AuthorizationServerEndpointsIT {
     }
 
     @Test
+    void openApiGroupsExposeDocumentedControllerContracts() throws Exception {
+        mockMvc.perform(get("/v3/api-docs/admin-api"))
+                .andExpect(status().isOk())
+                .andExpect(
+                        jsonPath("$.paths['/api/admin/clients'].get.summary")
+                                .value("Search clients"))
+                .andExpect(
+                        jsonPath("$.paths['/api/admin/clients'].get.security[0].adminBearer")
+                                .exists());
+
+        mockMvc.perform(get("/v3/api-docs/account-api"))
+                .andExpect(status().isOk())
+                .andExpect(
+                        jsonPath("$.paths['/api/account/profile'].get.summary")
+                                .value("Read profile"))
+                .andExpect(
+                        jsonPath("$.paths['/api/account/profile'].get.security[0].accountBearer")
+                                .exists());
+
+        mockMvc.perform(get("/v3/api-docs/oauth2-oidc"))
+                .andExpect(status().isOk())
+                .andExpect(
+                        jsonPath("$.paths['/oauth2/token'].post.summary").value("Token Endpoint"))
+                .andExpect(
+                        jsonPath("$.paths['/oidc/session-status'].get.summary")
+                                .value("Get browser SSO session status"));
+    }
+
+    @Test
     void clientCredentialsTokenCanBeIntrospectedAndRevoked() throws Exception {
         String accessToken =
                 tokenRequest(

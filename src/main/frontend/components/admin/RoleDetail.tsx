@@ -10,6 +10,7 @@ import { adminRequest } from "@/lib/admin-api";
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 
 import { useAdminAuth } from "./AdminAuthProvider";
+import { AdminActionIcon } from "./AdminActionIcon";
 import { AdminBreadcrumb } from "./AdminBreadcrumb";
 import { DataTable } from "./DataTable";
 import { ErrorState, LoadingState } from "./AsyncState";
@@ -222,6 +223,7 @@ export function RoleDetail({
               )}
             </div>
             <Button disabled={!selectedUser} onClick={() => void assign()}>
+              <AdminActionIcon action="assign" />
               {tr ? "Ata" : "Assign"}
             </Button>
           </div>
@@ -292,6 +294,7 @@ export function RoleDetail({
               </td>
               <td className="text-end">
                 <Button size="sm" variant="outline-danger" onClick={() => void remove(user)}>
+                  <AdminActionIcon action="remove" />
                   {tr ? "Rolü kaldır" : "Remove role"}
                 </Button>
               </td>

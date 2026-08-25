@@ -48,6 +48,11 @@ spring:
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.xml
 
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    try-it-out-enabled: false
+
 server:
   port: 9090
   shutdown: graceful

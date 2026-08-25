@@ -1,13 +1,16 @@
 package io.github.susimsek.springauthserversamples.service.admin;
 
 import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
+import io.github.susimsek.springauthserversamples.domain.GroupEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupDTO;
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
-import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
+import io.github.susimsek.springauthserversamples.repository.GroupRepository;
 import io.github.susimsek.springauthserversamples.repository.UserAvatarRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
-import io.github.susimsek.springauthserversamples.repository.UserSessionRepository;
 import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,10 +28,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminUserService {
 
     private final UserRepository userRepository;
+    private final GroupRepository groupRepository;
     private final UserAvatarRepository userAvatarRepository;
     private final AuthorityRepository authorityRepository;
-    private final UserSessionRepository userSessionRepository;
-    private final AuthorizationRepository authorizationRepository;
+    private final UserAccessInvalidationService userAccessInvalidationService;
     private final PasswordEncoder passwordEncoder;
     private final AdminAuditEventService adminAuditEventService;
 
@@ -45,7 +48,7 @@ public class AdminUserService {
             String username, String password, boolean enabled, Set<String> roles) {
         validateUser(username, password);
         if (userRepository.findByUsername(username).isPresent()) {
-            throw AdminClientException.conflict(
+            throw ApiException.conflict(
                     "username", "admin_user_duplicate_username", "Username is already registered");
         }
         UserEntity user = new UserEntity();
@@ -67,16 +70,16 @@ public class AdminUserService {
         assertCanManageUser(user, currentUsername);
         if (!user.getUsername().equals(username)
                 && userRepository.findByUsername(username).isPresent()) {
-            throw AdminClientException.conflict(
+            throw ApiException.conflict(
                     "username", "admin_user_duplicate_username", "Username is already registered");
         }
         if (user.getUsername().equals(currentUsername) && !enabled) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "admin_user_protected", "You cannot disable your own account");
         }
         assertRoleAssignmentAllowed(roles, currentUsername);
         assertNotLastAdmin(user, requestedRoleNames(roles));
-        invalidateUserSessions(user.getUsername());
+        userAccessInvalidationService.invalidate(user.getUsername());
         user.setUsername(username);
         user.setEnabled(enabled);
         user.setAuthorities(resolveAuthorities(roles));
@@ -88,7 +91,7 @@ public class AdminUserService {
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public void changePassword(Long id, String password, String currentUsername) {
         if (password == null || password.length() < 8) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "password",
                     "admin_user_invalid_password",
                     "Password must be at least 8 characters");
@@ -96,7 +99,7 @@ public class AdminUserService {
         UserEntity user = findUser(id);
         assertCanManageUser(user, currentUsername);
         user.setPassword(passwordEncoder.encode(password));
-        invalidateUserSessions(user.getUsername());
+        userAccessInvalidationService.invalidate(user.getUsername());
         adminAuditEventService.record("user.password.updated", "user", user.getId().toString());
     }
 
@@ -106,11 +109,11 @@ public class AdminUserService {
         UserEntity user = findUser(id);
         assertCanManageUser(user, currentUsername);
         if (user.getUsername().equals(currentUsername)) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "admin_user_protected", "You cannot delete your own account");
         }
         assertNotLastAdmin(user, Set.of());
-        invalidateUserSessions(user.getUsername());
+        userAccessInvalidationService.invalidate(user.getUsername());
         userRepository.delete(user);
         adminAuditEventService.record("user.deleted", "user", id.toString());
     }
@@ -126,6 +129,17 @@ public class AdminUserService {
         return new PageImpl<>(userViews(users.getContent()), pageable, users.getTotalElements());
     }
 
+    @Transactional(readOnly = true)
+    public Page<AdminGroupDTO> groups(
+            Long userId, String query, Pageable pageable, String currentUsername) {
+        UserEntity user = findUser(userId);
+        assertCanManageUser(user, currentUsername);
+        Page<GroupEntity> groups =
+                groupRepository.findByUserIdAndNameContainingIgnoreCase(
+                        userId, AdminSearch.normalize(query), pageable);
+        return groupViews(groups, pageable);
+    }
+
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public UserView assignRole(Long id, String roleName, String currentUsername) {
@@ -134,9 +148,9 @@ public class AdminUserService {
         AuthorityEntity role =
                 authorityRepository
                         .findByName(roleName)
-                        .orElseThrow(() -> AdminClientException.notFound("Role not found"));
+                        .orElseThrow(() -> ApiException.notFound("Role not found"));
         if (user.getAuthorities().add(role)) {
-            invalidateUserSessions(user.getUsername());
+            userAccessInvalidationService.invalidate(user.getUsername());
             adminAuditEventService.record("user.role.assigned", "user", id.toString());
         }
         return userView(user, avatarUrl(user.getId()));
@@ -157,7 +171,7 @@ public class AdminUserService {
             if (user.getAuthorities().isEmpty()) {
                 user.setAuthorities(resolveAuthorities(Set.of(AuthoritiesConstants.USER)));
             }
-            invalidateUserSessions(user.getUsername());
+            userAccessInvalidationService.invalidate(user.getUsername());
             adminAuditEventService.record("user.role.removed", "user", id.toString());
         }
         return userView(user, avatarUrl(user.getId()));
@@ -169,12 +183,12 @@ public class AdminUserService {
         UserEntity user = findUser(id);
         assertCanManageUser(user, currentUsername);
         if (user.getUsername().equals(currentUsername) && !enabled) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "admin_user_protected", "You cannot disable your own account");
         }
         if (!enabled) {
             assertNotLastAdmin(user, Set.of());
-            invalidateUserSessions(user.getUsername());
+            userAccessInvalidationService.invalidate(user.getUsername());
         }
         user.setEnabled(enabled);
         adminAuditEventService.record("user.enabled.updated", "user", user.getId().toString());
@@ -194,21 +208,21 @@ public class AdminUserService {
                 .ifPresentOrElse(
                         user -> assertCanManageUser(user, currentUsername),
                         () -> {
-                            throw AdminClientException.notFound("User not found");
+                            throw ApiException.notFound("User not found");
                         });
     }
 
     private UserEntity findUser(Long id) {
         return userRepository
                 .findById(id)
-                .orElseThrow(() -> AdminClientException.notFound("User not found"));
+                .orElseThrow(() -> ApiException.notFound("User not found"));
     }
 
     private Set<AuthorityEntity> resolveAuthorities(Set<String> roles) {
         Set<String> requestedRoles = requestedRoleNames(roles);
         List<AuthorityEntity> authorities = authorityRepository.findByNameIn(requestedRoles);
         if (authorities.size() != requestedRoles.size()) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "roles", "admin_user_invalid_roles", "One or more roles are invalid");
         }
         return Set.copyOf(authorities);
@@ -220,7 +234,7 @@ public class AdminUserService {
         Set<String> requestedRoles = requestedRoleNames(roles);
         if (!administratorRoles.contains(AuthoritiesConstants.ADMIN)
                 && !administratorRoles.containsAll(requestedRoles)) {
-            throw AdminClientException.forbidden(
+            throw ApiException.forbidden(
                     "admin_role_escalation", "You can only assign roles you already have");
         }
     }
@@ -230,7 +244,7 @@ public class AdminUserService {
                 authorities(userRepository.findByUsername(currentUsername).orElseThrow());
         if (!administratorRoles.contains(AuthoritiesConstants.ADMIN)
                 && authorities(target).contains(AuthoritiesConstants.ADMIN)) {
-            throw AdminClientException.forbidden(
+            throw ApiException.forbidden(
                     "admin_user_protected", "Only an administrator can manage an administrator");
         }
     }
@@ -239,14 +253,9 @@ public class AdminUserService {
         if (authorities(user).contains(AuthoritiesConstants.ADMIN)
                 && !replacementRoles.contains(AuthoritiesConstants.ADMIN)
                 && userRepository.countByAuthoritiesName(AuthoritiesConstants.ADMIN) <= 1) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "admin_last_admin_protected", "The last administrator must be retained");
         }
-    }
-
-    private void invalidateUserSessions(String username) {
-        userSessionRepository.deleteByPrincipalName(username);
-        authorizationRepository.deleteByPrincipalName(username);
     }
 
     private List<UserView> userViews(List<UserEntity> users) {
@@ -287,6 +296,35 @@ public class AdminUserService {
                 user.getUpdatedAt());
     }
 
+    private AdminGroupDTO groupView(GroupEntity group) {
+        return groupView(group, userRepository.countByGroupsId(group.getId()));
+    }
+
+    private AdminGroupDTO groupView(GroupEntity group, long userCount) {
+        Set<String> roles =
+                group.getAuthorities().stream()
+                        .map(AuthorityEntity::getName)
+                        .sorted()
+                        .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        return new AdminGroupDTO(group.getId(), group.getName(), roles, userCount);
+    }
+
+    private Page<AdminGroupDTO> groupViews(Page<GroupEntity> groups, Pageable pageable) {
+        List<GroupEntity> content = groups.getContent();
+        if (content.isEmpty()) {
+            return new PageImpl<>(List.of(), pageable, groups.getTotalElements());
+        }
+        Map<Long, Long> userCounts =
+                userRepository
+                        .countUsersByGroupIdIn(content.stream().map(GroupEntity::getId).toList())
+                        .stream()
+                        .collect(
+                                java.util.stream.Collectors.toMap(
+                                        UserRepository.GroupUserCount::getGroupId,
+                                        UserRepository.GroupUserCount::getUserCount));
+        return groups.map(group -> groupView(group, userCounts.getOrDefault(group.getId(), 0L)));
+    }
+
     private static Set<String> authorities(UserEntity user) {
         return user.getAuthorities().stream()
                 .map(AuthorityEntity::getName)
@@ -299,11 +337,11 @@ public class AdminUserService {
 
     private static void validateUser(String username, String password) {
         if (username == null || username.isBlank()) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "username", "admin_user_invalid_username", "Username is required");
         }
         if (password != null && password.length() < 8) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "password",
                     "admin_user_invalid_password",
                     "Password must be at least 8 characters");

@@ -26,7 +26,8 @@
 			<properties-maven-plugin.version>1.2.1</properties-maven-plugin.version>
 			<sonar-maven-plugin.version>5.7.0.6970</sonar-maven-plugin.version>
 			<gatling.version>3.15.1</gatling.version>
-			<gatling-maven-plugin.version>4.21.10</gatling-maven-plugin.version>
+		<gatling-maven-plugin.version>4.21.10</gatling-maven-plugin.version>
+		<springdoc-openapi.version>3.1.0</springdoc-openapi.version>
 			<jib-maven-plugin.version>3.5.2</jib-maven-plugin.version>
 			<jib-spring-boot-extension-maven.version>0.1.0</jib-spring-boot-extension-maven.version>
 			<jib-native-image-extension-maven.version>0.1.0</jib-native-image-extension-maven.version>
@@ -68,6 +69,11 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>${springdoc-openapi.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

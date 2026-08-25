@@ -22,16 +22,24 @@ jest.mock("./useAdminTableState", () => ({
   }),
 }));
 
+function rolePage(content: { name: string }[]) {
+  return {
+    content,
+    totalPages: content.length === 0 ? 0 : 1,
+    totalElements: content.length,
+  };
+}
+
 describe("RolesTable", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockAdminRequest.mockReset();
   });
 
-  it("loads roles, protects built-in roles and filters roles", async () => {
+  it("loads a server-side role page and protects built-in roles", async () => {
     mockAdminRequest.mockResolvedValue({
       status: 200,
-      data: [{ name: "ROLE_ADMIN" }, { name: "ROLE_USER" }, { name: "ROLE_AUDITOR" }],
+      data: rolePage([{ name: "ROLE_ADMIN" }, { name: "ROLE_USER" }, { name: "ROLE_AUDITOR" }]),
     } as never);
     render(<RolesTable dictionary={dictionary} />);
     expect(await screen.findByText("ROLE_AUDITOR")).toBeVisible();
@@ -41,21 +49,21 @@ describe("RolesTable", () => {
     expect(
       screen.getAllByRole("button", { name: dictionary.admin.roles.delete })[2],
     ).not.toBeDisabled();
-    fireEvent.change(screen.getByRole("textbox", { name: dictionary.admin.resources.search }), {
-      target: { value: "auditor" },
+    expect(mockAdminRequest).toHaveBeenCalledWith("token", {
+      url: "/api/admin/roles?q=&page=0&size=10",
     });
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "20" } });
-    await waitFor(() => expect(screen.getByText("ROLE_AUDITOR")).toBeVisible());
   });
 
   it("validates and creates a role, then refreshes the list", async () => {
     mockAdminRequest
-      .mockResolvedValueOnce({ status: 200, data: [] } as never)
+      .mockResolvedValueOnce({ status: 200, data: rolePage([]) } as never)
       .mockResolvedValueOnce({ status: 201, data: { name: "ROLE_AUDITOR" } } as never)
-      .mockResolvedValueOnce({ status: 200, data: [{ name: "ROLE_AUDITOR" }] } as never);
+      .mockResolvedValueOnce({ status: 200, data: rolePage([{ name: "ROLE_AUDITOR" }]) } as never);
     render(<RolesTable dictionary={dictionary} />);
     await waitFor(() =>
-      expect(mockAdminRequest).toHaveBeenCalledWith("token", { url: "/api/admin/roles" }),
+      expect(mockAdminRequest).toHaveBeenCalledWith("token", {
+        url: "/api/admin/roles?q=&page=0&size=10",
+      }),
     );
     await waitFor(() =>
       expect(screen.getByRole("button", { name: dictionary.admin.roles.create })).toBeVisible(),
@@ -78,14 +86,16 @@ describe("RolesTable", () => {
 
   it("maps duplicate role errors and deletes a role after confirmation", async () => {
     mockAdminRequest
-      .mockResolvedValueOnce({ status: 200, data: [{ name: "ROLE_AUDITOR" }] } as never)
+      .mockResolvedValueOnce({ status: 200, data: rolePage([{ name: "ROLE_AUDITOR" }]) } as never)
       .mockResolvedValueOnce({
         status: 400,
         data: {
           errorCode: "admin_role_duplicate_name",
           violations: [{ field: "name" }],
         },
-      } as never);
+      } as never)
+      .mockResolvedValueOnce({ status: 204, data: null } as never)
+      .mockResolvedValueOnce({ status: 200, data: rolePage([]) } as never);
     render(<RolesTable dictionary={dictionary} />);
     expect(await screen.findByText("ROLE_AUDITOR")).toBeVisible();
     fireEvent.change(screen.getByRole("textbox", { name: dictionary.admin.roles.name }), {
@@ -94,7 +104,6 @@ describe("RolesTable", () => {
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.roles.create }));
     expect(await screen.findByText(dictionary.admin.common.validation.roleDuplicate)).toBeVisible();
 
-    mockAdminRequest.mockResolvedValueOnce({ status: 204, data: null } as never);
     fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.roles.delete })[0]);
     expect(await screen.findByText(dictionary.admin.roles.deleteConfirm)).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.cancel }));
@@ -116,7 +125,7 @@ describe("RolesTable", () => {
 
   it("shows an operation error when deleting a role fails", async () => {
     mockAdminRequest
-      .mockResolvedValueOnce({ status: 200, data: [{ name: "ROLE_AUDITOR" }] } as never)
+      .mockResolvedValueOnce({ status: 200, data: rolePage([{ name: "ROLE_AUDITOR" }]) } as never)
       .mockResolvedValueOnce({ status: 500, data: null } as never);
     render(<RolesTable dictionary={dictionary} />);
     expect(await screen.findByText("ROLE_AUDITOR")).toBeVisible();

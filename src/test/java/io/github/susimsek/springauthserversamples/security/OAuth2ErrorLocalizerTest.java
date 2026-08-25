@@ -37,12 +37,12 @@ class OAuth2ErrorLocalizerTest {
 
     @Test
     void localizesPlainMessageKey() {
-        when(messageSource.getMessage("app.auth.unauthorized", null, "default", Locale.ENGLISH))
+        when(messageSource.getMessage("app.security.unauthorized", null, "default", Locale.ENGLISH))
                 .thenReturn("Localized");
 
         String localized =
                 new OAuth2ErrorLocalizer(messageSource)
-                        .localize("app.auth.unauthorized", "default", Locale.ENGLISH);
+                        .localize("app.security.unauthorized", "default", Locale.ENGLISH);
 
         assertThat(localized).isEqualTo("Localized");
     }

@@ -7,6 +7,7 @@ import io.github.susimsek.springauthserversamples.repository.AuthorizationConsen
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -101,7 +102,7 @@ public class AdminConsentService {
         AuthorizationConsentEntity consent =
                 authorizationConsentRepository
                         .findByIdRegisteredClientIdAndIdPrincipalName(clientId, username)
-                        .orElseThrow(() -> AdminClientException.notFound("Consent not found"));
+                        .orElseThrow(() -> ApiException.notFound("Consent not found"));
         Map<String, String> clientNames =
                 clientRepository.findById(clientId).stream()
                         .collect(
@@ -144,7 +145,7 @@ public class AdminConsentService {
     @Transactional(readOnly = true)
     public Page<ConsentView> clientConsents(String clientId, Pageable pageable) {
         if (!clientRepository.existsById(clientId)) {
-            throw AdminClientException.notFound("Client not found");
+            throw ApiException.notFound("Client not found");
         }
         Map<String, String> clientNames =
                 clientRepository.findById(clientId).stream()
@@ -185,7 +186,7 @@ public class AdminConsentService {
         adminUserService.assertCanManageUsername(username, currentUsername);
         AuthorizationConsentId id = new AuthorizationConsentId(clientId, username);
         if (!authorizationConsentRepository.existsById(id)) {
-            throw AdminClientException.notFound("Consent not found");
+            throw ApiException.notFound("Consent not found");
         }
         authorizationConsentRepository.deleteById(id);
         authorizationRepository.deleteByPrincipalNameAndRegisteredClientId(username, clientId);

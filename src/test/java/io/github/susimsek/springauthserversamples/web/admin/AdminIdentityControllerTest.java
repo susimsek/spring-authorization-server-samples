@@ -65,16 +65,17 @@ class AdminIdentityControllerTest {
                         "https://issuer.example/connect/logout",
                         "PT30M",
                         null);
-        var roles = List.of(new AdminRoleService.RoleView("ROLE_ADMIN"));
+        var pageable = PageRequest.of(0, 20);
+        var roles = new PageImpl<>(java.util.List.of(new AdminRoleService.RoleView("ROLE_ADMIN")));
         when(adminDashboardService.dashboard()).thenReturn(dashboard);
         when(adminServerInfoService.serverInfo()).thenReturn(serverInfo);
-        when(adminRoleService.roles()).thenReturn(roles);
+        when(adminRoleService.roles("", pageable)).thenReturn(roles);
         when(adminRoleService.createRole("ROLE_AUDITOR"))
                 .thenReturn(new AdminRoleService.RoleView("ROLE_AUDITOR"));
 
         assertThat(controller.dashboard()).isSameAs(dashboard);
         assertThat(controller.serverInfo()).isSameAs(serverInfo);
-        assertThat(controller.roles()).containsExactlyElementsOf(roles);
+        assertThat(controller.roles("", pageable)).isSameAs(roles);
         assertThat(controller.createRole(new AdminRoleRequest("ROLE_AUDITOR")).getStatusCode())
                 .isEqualTo(HttpStatus.CREATED);
         assertThat(controller.createRole(new AdminRoleRequest("ROLE_AUDITOR")).getBody().name())

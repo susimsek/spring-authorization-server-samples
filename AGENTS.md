@@ -115,6 +115,8 @@ This repo is a Java 25 + Spring Boot 4.1 sample application for the Authorizatio
   - `AuthorizationServerEndpointsIT`
 - Keep integration tests focused on end-to-end wiring of Spring Boot, Spring Security, authorization server endpoints, persistence, and Liquibase-seeded client data.
 - Maintain strong JaCoCo coverage for handwritten application code.
+- New service behavior requires focused unit tests. New controller behavior requires an HTTP-level integration test when it changes an externally observable contract, authorization rule, persistence behavior, or Problem Detail response.
+- Security-sensitive changes must test the affected authorization decision and session/token invalidation behavior.
 - The current verification command is:
   - `./mvnw verify`
 
@@ -209,6 +211,7 @@ curl http://localhost:9090/actuator/health/readiness
   - New framework resources that native image must keep
 - If native runtime fails because resources are missing, add focused `RuntimeHints` instead of broad classpath inclusion.
 - Pay attention to Liquibase XML/CSV resources, i18n bundles, H2, Hibernate, Hibernate JCache, and the custom JPA-backed Authorization Server services when changing native-sensitive code.
+- Verify a native executable after changes to authentication, sessions, persistence, static assets, Liquibase, or runtime hints. Add focused hints only; broad reflection, serialization, or resource allowlists are not acceptable.
 
 ## Authentication
 
@@ -236,6 +239,19 @@ curl http://localhost:9090/actuator/health/readiness
 - This sample does not use the gRPC Protovalidate layer from the original project.
 - Prefer request validation through Spring Security / Authorization Server defaults unless there is a clear application-specific need.
 - Keep configuration minimal and consistent with framework defaults.
+
+### API, Services, and Administration Flows
+
+- Keep controllers limited to HTTP concerns. Put authorization checks, transactions, domain validation, mapping orchestration, and side effects in services.
+- Put API request and response records under the relevant `dto/<feature>` package, use the `DTO` suffix, and use MapStruct for entity-to-DTO mapping where a mapper is warranted.
+- Every application API error must use the centralized `ApiException` / `ApiErrorCode` / `ApiExceptionHandler` Problem Detail contract. Add localized message keys for new codes and map validation violations to field names.
+- Document every application endpoint in its controller with Springdoc `@Operation`, request/response schemas, representative examples, and relevant security requirements. Do not add endpoint documentation programmatically when controller annotations can express it.
+- Every mutable administration operation must define its authorization rule, audit event, cache impact, session/token impact, and tests before it is considered complete.
+- Any change that affects a user's effective permissions, credentials, enabled state, group memberships, group role mappings, consent, or active authorization must invalidate affected browser sessions and OAuth2 authorizations through `UserAccessInvalidationService` in the same transaction.
+- Use stable, resource-oriented audit event names such as `group.user.added` and include the resource type and identifier.
+- Collection endpoints must use `Pageable`, default to `size=20`, enforce `size <= 100`, and use a stable default sort. Do not return unbounded collections from application APIs.
+- List DTO assembly must not issue a repository query per row. Preload related data or use batch/aggregate queries for counts and derived fields to avoid N+1 behavior.
+- Backend authorization is authoritative. Match UI access flags with explicit HTTP method and path rules, but never rely on hidden UI controls for protection.
 
 ### Error Handling and i18n
 
@@ -320,14 +336,6 @@ curl http://localhost:9090/actuator/health/readiness
 - Forgetting that port `9090` is now the sample’s default HTTP port.
 - Changing `oauth2_registered_client` seed structure without checking `RegisteredClientEntity`, mapper behavior, and Spring Security's `RegisteredClient` model.
 - Adding new Liquibase resources or native-sensitive framework usage without updating runtime hints where needed.
-
-## Frontend Build
-
-- Keep the login, Administration Console, and Account Console UI in `src/main/frontend/`; do not move authentication logic into Next.js or replace the shared `lib/console-auth.ts` OIDC flow with a custom token flow.
-- Maven uses `frontend-maven-plugin` + Corepack to install Node/pnpm, run `pnpm typecheck`, and run `pnpm build`.
-- Next.js uses static export; Spring Boot serves the generated assets and Spring Security continues to process `POST /login`.
-- CSRF is intentionally disabled in this sample.
-- Console routes are localized under `/en/admin/`, `/tr/admin/`, `/en/account/`, and `/tr/account/`; callback routes must remain aligned with the seeded registered-client redirect URIs.
 
 ## Session persistence
 

@@ -228,6 +228,66 @@ class SpaFilterTest {
     }
 
     @Test
+    void forwardsLocalizedDynamicGroupRouteToExportedTemplate() throws Exception {
+        Resource exact = mock(Resource.class);
+        Resource template = mock(Resource.class);
+
+        when(request.getRequestURI()).thenReturn("/en/admin/groups/42");
+        when(resourceLoader.getResource("classpath:/static/en/admin/groups/42/index.html"))
+                .thenReturn(exact);
+        when(resourceLoader.getResource("classpath:/static/en/admin/groups/_/index.html"))
+                .thenReturn(template);
+        when(exact.exists()).thenReturn(false);
+        when(template.exists()).thenReturn(true);
+        when(request.getRequestDispatcher("/en/admin/groups/_/index.html")).thenReturn(dispatcher);
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(dispatcher).forward(request, response);
+        verify(filterChain, never()).doFilter(request, response);
+    }
+
+    @Test
+    void forwardsDynamicGroupDataRequestToExportedDataTemplate() throws Exception {
+        Resource exact = mock(Resource.class);
+        Resource template = mock(Resource.class);
+
+        when(request.getRequestURI()).thenReturn("/en/admin/groups/42.txt");
+        when(resourceLoader.getResource("classpath:/static/en/admin/groups/42.txt"))
+                .thenReturn(exact);
+        when(resourceLoader.getResource("classpath:/static/en/admin/groups/_/index.txt"))
+                .thenReturn(template);
+        when(exact.exists()).thenReturn(false);
+        when(template.exists()).thenReturn(true);
+        when(request.getRequestDispatcher("/en/admin/groups/_/index.txt")).thenReturn(dispatcher);
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(dispatcher).forward(request, response);
+        verify(filterChain, never()).doFilter(request, response);
+    }
+
+    @Test
+    void forwardsDynamicGroupIndexDataRequestToExportedDataTemplate() throws Exception {
+        Resource exact = mock(Resource.class);
+        Resource template = mock(Resource.class);
+
+        when(request.getRequestURI()).thenReturn("/en/admin/groups/42/index.txt");
+        when(resourceLoader.getResource("classpath:/static/en/admin/groups/42/index.txt"))
+                .thenReturn(exact);
+        when(resourceLoader.getResource("classpath:/static/en/admin/groups/_/index.txt"))
+                .thenReturn(template);
+        when(exact.exists()).thenReturn(false);
+        when(template.exists()).thenReturn(true);
+        when(request.getRequestDispatcher("/en/admin/groups/_/index.txt")).thenReturn(dispatcher);
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(dispatcher).forward(request, response);
+        verify(filterChain, never()).doFilter(request, response);
+    }
+
+    @Test
     void redirectsLocaleLessDynamicUserRouteAndPreservesEntityPath() throws Exception {
         Resource englishExact = mock(Resource.class);
         Resource englishTemplate = mock(Resource.class);

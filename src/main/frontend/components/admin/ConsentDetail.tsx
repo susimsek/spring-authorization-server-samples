@@ -13,6 +13,7 @@ import { decodeConsentRouteKey } from "@/lib/consent-route";
 
 import { AdminBreadcrumb } from "./AdminBreadcrumb";
 import { useAdminAuth } from "./AdminAuthProvider";
+import { AdminActionIcon } from "./AdminActionIcon";
 import { ConfirmModal } from "./ConfirmModal";
 import { DetailLoadingState, ErrorState } from "./AsyncState";
 import { ViewHeader } from "./ViewHeader";
@@ -116,6 +117,7 @@ export function ConsentDetail({
         actions={
           access?.manageConsents ? (
             <Button variant="outline-danger" onClick={() => setShowRevoke(true)}>
+              <AdminActionIcon action="revoke" />
               {dictionary.admin.resources.revoke}
             </Button>
           ) : undefined

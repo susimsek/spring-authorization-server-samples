@@ -1,5 +1,6 @@
 package io.github.susimsek.springauthserversamples.web.admin;
 
+import io.github.susimsek.springauthserversamples.web.ApiController;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -10,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@AdminApi
+@ApiController
 @RequestMapping("/api/admin")
 public class AdminWhoAmIController {
 

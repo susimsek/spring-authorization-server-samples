@@ -1,10 +1,10 @@
-package io.github.susimsek.springauthserversamples.web.admin;
+package io.github.susimsek.springauthserversamples.web.error;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.github.susimsek.springauthserversamples.service.admin.AdminClientException;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Locale;
@@ -28,7 +28,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
-class AdminClientExceptionHandlerTest {
+class ApiExceptionHandlerTest {
 
     @AfterEach
     void clearLocale() {
@@ -39,27 +39,27 @@ class AdminClientExceptionHandlerTest {
     void localizesProblemDetailFromTheRequestLocale() {
         StaticMessageSource messages = new StaticMessageSource();
         messages.addMessage(
-                "admin.error.title", Locale.forLanguageTag("tr"), "Yönetim isteği başarısız");
+                "app.api.problem.title", Locale.forLanguageTag("tr"), "API isteği başarısız");
         messages.addMessage(
-                "admin.error.admin_user_invalid_username",
+                "app.api.problem.user_invalid_username",
                 Locale.forLanguageTag("tr"),
                 "Kullanıcı adı gerekli.");
         LocaleContextHolder.setLocale(Locale.forLanguageTag("tr"));
 
-        AdminClientExceptionHandler handler = handler(messages);
+        ApiExceptionHandler handler = handler(messages);
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/admin/users");
         var problem =
-                handler.handleAdminClientException(
-                        AdminClientException.badRequest(
+                handler.handleApiException(
+                        ApiException.badRequest(
                                 "username", "admin_user_invalid_username", "Username is required"),
                         request);
 
-        assertThat(problem.getTitle()).isEqualTo("Yönetim isteği başarısız");
+        assertThat(problem.getTitle()).isEqualTo("API isteği başarısız");
         assertThat(problem.getDetail()).isEqualTo("Kullanıcı adı gerekli.");
-        assertThat(problem.getType()).hasToString("urn:problem:admin_user_invalid_username");
+        assertThat(problem.getType()).hasToString("urn:problem:user_invalid_username");
         assertThat(problem.getInstance()).hasToString("/api/admin/users");
         assertThat(problem.getProperties())
-                .containsEntry("errorCode", "admin_user_invalid_username")
+                .containsEntry("errorCode", "user_invalid_username")
                 .containsEntry(
                         "violations", java.util.List.of(java.util.Map.of("field", "username")));
     }
@@ -68,15 +68,14 @@ class AdminClientExceptionHandlerTest {
     void returnsProblemWithoutViolationsWhenFieldIsMissing() {
         var problem =
                 handler(new StaticMessageSource())
-                        .handleAdminClientException(
-                                AdminClientException.forbidden(
-                                        "admin_access_denied", "Access denied"));
+                        .handleApiException(
+                                ApiException.forbidden("admin_access_denied", "Access denied"));
 
         assertThat(problem.getStatus()).isEqualTo(403);
-        assertThat(problem.getDetail()).isEqualTo("Access denied");
-        assertThat(problem.getType()).hasToString("urn:problem:admin_access_denied");
+        assertThat(problem.getDetail()).isEqualTo("You are not allowed to perform this operation.");
+        assertThat(problem.getType()).hasToString("urn:problem:forbidden");
         assertThat(problem.getProperties())
-                .containsEntry("errorCode", "admin_access_denied")
+                .containsEntry("errorCode", "forbidden")
                 .doesNotContainKey("violations");
     }
 
@@ -84,7 +83,11 @@ class AdminClientExceptionHandlerTest {
     void returnsLocalizedViolationsForBeanValidationFailures() throws NoSuchMethodException {
         StaticMessageSource messages = new StaticMessageSource();
         messages.addMessage(
-                "admin.validation.title", Locale.forLanguageTag("tr"), "Doğrulama başarısız");
+                "app.api.problem.title", Locale.forLanguageTag("tr"), "API isteği başarısız");
+        messages.addMessage(
+                "app.api.problem.validation_failed",
+                Locale.forLanguageTag("tr"),
+                "İstek geçersiz veri içeriyor.");
         LocaleContextHolder.setLocale(Locale.forLanguageTag("tr"));
         BeanPropertyBindingResult bindingResult =
                 new BeanPropertyBindingResult(new Object(), "adminClientRequest");
@@ -99,8 +102,7 @@ class AdminClientExceptionHandlerTest {
                         "redirectUris[1]",
                         "Geçerli mutlak URI değerleri girin."));
         bindingResult.addError(new ObjectError("adminClientRequest", "İstek geçersiz."));
-        Method method =
-                AdminClientExceptionHandlerTest.class.getDeclaredMethod("request", String.class);
+        Method method = ApiExceptionHandlerTest.class.getDeclaredMethod("request", String.class);
         MethodArgumentNotValidException exception =
                 new MethodArgumentNotValidException(new MethodParameter(method, 0), bindingResult);
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/admin/clients");
@@ -116,8 +118,8 @@ class AdminClientExceptionHandlerTest {
 
         assertThat(problem).isNotNull();
         assertThat(problem.getStatus()).isEqualTo(400);
-        assertThat(problem.getTitle()).isEqualTo("Doğrulama başarısız");
-        assertThat(problem.getDetail()).isEqualTo("Geçerli mutlak URI değerleri girin.");
+        assertThat(problem.getTitle()).isEqualTo("API isteği başarısız");
+        assertThat(problem.getDetail()).isEqualTo("İstek geçersiz veri içeriyor.");
         assertThat(problem.getType()).hasToString("urn:problem:validation_failed");
         assertThat(problem.getInstance()).hasToString("/api/admin/clients");
         assertThat(problem.getProperties())
@@ -145,8 +147,8 @@ class AdminClientExceptionHandlerTest {
 
         assertThat(problem).isNotNull();
         assertThat(problem.getStatus()).isEqualTo(400);
-        assertThat(problem.getTitle()).isEqualTo("Validation failed");
-        assertThat(problem.getDetail()).isEqualTo("The request contains an invalid value.");
+        assertThat(problem.getTitle()).isEqualTo("API request failed");
+        assertThat(problem.getDetail()).isEqualTo("The request contains invalid data.");
         assertThat(problem.getInstance()).hasToString("/api/admin/clients");
         assertThat(problem.getProperties())
                 .containsEntry("errorCode", "validation_failed")
@@ -157,7 +159,7 @@ class AdminClientExceptionHandlerTest {
     @Test
     void returnsParameterNamesForHandlerMethodValidation() throws NoSuchMethodException {
         Method method =
-                AdminClientExceptionHandlerTest.class.getDeclaredMethod(
+                ApiExceptionHandlerTest.class.getDeclaredMethod(
                         "validatedRequest", String.class, String.class);
         MethodParameter namedParameter = mock(MethodParameter.class);
         when(namedParameter.getParameterName()).thenReturn("clientId");
@@ -187,7 +189,7 @@ class AdminClientExceptionHandlerTest {
 
         assertThat(problem).isNotNull();
         assertThat(problem.getStatus()).isEqualTo(400);
-        assertThat(problem.getDetail()).isEqualTo("Validation failed");
+        assertThat(problem.getDetail()).isEqualTo("The request contains invalid data.");
         assertThat(problem.getProperties())
                 .containsEntry("errorCode", "validation_failed")
                 .containsEntry(
@@ -200,8 +202,9 @@ class AdminClientExceptionHandlerTest {
     @Test
     void doesNotExposeUnhandledExceptionDetails() {
         StaticMessageSource messages = new StaticMessageSource();
+        messages.addMessage("app.api.problem.title", Locale.ENGLISH, "API request failed");
         messages.addMessage(
-                "admin.error.internal", Locale.ENGLISH, "An unexpected error occurred.");
+                "app.api.problem.internal_error", Locale.ENGLISH, "An unexpected error occurred.");
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/admin/clients");
 
         var response =
@@ -213,7 +216,7 @@ class AdminClientExceptionHandlerTest {
 
         assertThat(problem).isNotNull();
         assertThat(problem.getStatus()).isEqualTo(500);
-        assertThat(problem.getTitle()).isEqualTo("Admin request failed");
+        assertThat(problem.getTitle()).isEqualTo("API request failed");
         assertThat(problem.getDetail()).isEqualTo("An unexpected error occurred.");
         assertThat(problem.getDetail()).doesNotContain("database connection details");
         assertThat(problem.getType()).hasToString("urn:problem:internal_error");
@@ -238,8 +241,8 @@ class AdminClientExceptionHandlerTest {
                 (error, sourceType) -> null);
     }
 
-    private static AdminClientExceptionHandler handler(StaticMessageSource messages) {
-        AdminClientExceptionHandler handler = new AdminClientExceptionHandler();
+    private static ApiExceptionHandler handler(StaticMessageSource messages) {
+        ApiExceptionHandler handler = new ApiExceptionHandler();
         handler.setMessageSource(messages);
         return handler;
     }

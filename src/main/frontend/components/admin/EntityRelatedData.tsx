@@ -9,6 +9,7 @@ import { adminRequest } from "@/lib/admin-api";
 import { encodeConsentRouteKey } from "@/lib/consent-route";
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import { useAdminAuth } from "./AdminAuthProvider";
+import { AdminActionIcon } from "./AdminActionIcon";
 import { DataTable } from "./DataTable";
 import { ErrorState, LoadingState } from "./AsyncState";
 import { PaginationControls } from "./PaginationControls";
@@ -194,6 +195,7 @@ export function EntityRelatedData({
                       size="sm"
                       onClick={() => void removeSession(session)}
                     >
+                      <AdminActionIcon action="remove" />
                       {copy.signOut}
                     </Button>
                   </td>
@@ -256,6 +258,7 @@ export function EntityRelatedData({
                         size="sm"
                         onClick={() => void revokeConsent(consent)}
                       >
+                        <AdminActionIcon action="revoke" />
                         {copy.revoke}
                       </Button>
                     )}

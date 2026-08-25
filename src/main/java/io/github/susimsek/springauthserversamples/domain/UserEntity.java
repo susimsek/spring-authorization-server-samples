@@ -10,6 +10,8 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.NamedAttributeNode;
 import jakarta.persistence.NamedEntityGraph;
+import jakarta.persistence.NamedEntityGraphs;
+import jakarta.persistence.NamedSubgraph;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import java.util.HashSet;
@@ -30,9 +32,21 @@ import org.hibernate.proxy.HibernateProxy;
 @Entity
 @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 @Table(name = "users")
-@NamedEntityGraph(
-        name = "User.withAuthorities",
-        attributeNodes = @NamedAttributeNode("authorities"))
+@NamedEntityGraphs({
+    @NamedEntityGraph(
+            name = "User.withAuthorities",
+            attributeNodes = @NamedAttributeNode("authorities")),
+    @NamedEntityGraph(
+            name = "User.withEffectiveAuthorities",
+            attributeNodes = {
+                @NamedAttributeNode("authorities"),
+                @NamedAttributeNode(value = "groups", subgraph = "groups")
+            },
+            subgraphs =
+                    @NamedSubgraph(
+                            name = "groups",
+                            attributeNodes = @NamedAttributeNode("authorities")))
+})
 public class UserEntity extends AuditableEntity {
 
     @Id
@@ -65,6 +79,13 @@ public class UserEntity extends AuditableEntity {
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "authority_id"))
     private Set<AuthorityEntity> authorities = new HashSet<>();
+
+    @ManyToMany
+    @JoinTable(
+            name = "user_groups",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "group_id"))
+    private Set<GroupEntity> groups = new HashSet<>();
 
     public UserEntity(
             Long id,

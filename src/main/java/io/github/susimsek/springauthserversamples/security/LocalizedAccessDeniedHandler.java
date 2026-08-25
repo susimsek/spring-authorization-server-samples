@@ -28,7 +28,7 @@ public class LocalizedAccessDeniedHandler implements AccessDeniedHandler {
                 new OAuth2Error(
                         OAuth2ErrorCodes.ACCESS_DENIED,
                         errorLocalizer.localize(
-                                "app.auth.accessDenied",
+                                "app.security.access_denied",
                                 "You do not have permission to access this resource.",
                                 request.getLocale()),
                         null);

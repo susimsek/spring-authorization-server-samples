@@ -44,7 +44,12 @@ public interface AuthorizationRepository extends JpaRepository<AuthorizationEnti
 
     long deleteBySessionId(String sessionId);
 
+    long deleteBySessionIdIn(Collection<String> sessionIds);
+
     List<AuthorizationEntity> findAllBySessionIdOrderByAccessTokenIssuedAtDesc(String sessionId);
+
+    List<AuthorizationEntity> findAllBySessionIdInOrderByAccessTokenIssuedAtDesc(
+            Collection<String> sessionIds);
 
     long countByPrincipalName(String principalName);
 

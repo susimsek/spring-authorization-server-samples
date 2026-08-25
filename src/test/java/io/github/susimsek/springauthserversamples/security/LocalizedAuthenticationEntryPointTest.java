@@ -23,7 +23,7 @@ class LocalizedAuthenticationEntryPointTest {
         request.addPreferredLocale(Locale.forLanguageTag("tr"));
         MockHttpServletResponse response = new MockHttpServletResponse();
         when(errorLocalizer.localize(
-                        "app.auth.unauthorized",
+                        "app.security.unauthorized",
                         "Authentication is required.",
                         Locale.forLanguageTag("tr")))
                 .thenReturn("Kimlik doğrulaması gerekli.");

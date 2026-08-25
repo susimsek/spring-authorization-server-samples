@@ -33,6 +33,11 @@ public class DomainUserDetailsService implements UserDetailsService {
     }
 
     private static String[] authorities(UserEntity user) {
-        return user.getAuthorities().stream().map(AuthorityEntity::getName).toArray(String[]::new);
+        return java.util.stream.Stream.concat(
+                        user.getAuthorities().stream(),
+                        user.getGroups().stream().flatMap(group -> group.getAuthorities().stream()))
+                .map(AuthorityEntity::getName)
+                .distinct()
+                .toArray(String[]::new);
     }
 }

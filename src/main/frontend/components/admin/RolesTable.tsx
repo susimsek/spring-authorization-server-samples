@@ -13,6 +13,7 @@ import { adminRequest } from "@/lib/admin-api";
 import { problemErrorCode, problemViolations } from "@/lib/problem-detail";
 
 import { useAdminAuth } from "./AdminAuthProvider";
+import { AdminActionIcon } from "./AdminActionIcon";
 import { ConfirmModal } from "./ConfirmModal";
 import { DataTable } from "./DataTable";
 import { ErrorState, LoadingState } from "./AsyncState";
@@ -21,6 +22,7 @@ import { ResourceFilters } from "./ResourceFilters";
 import { useAdminTableState } from "./useAdminTableState";
 
 type Role = { name: string };
+type RolePage = { content: Role[]; totalPages: number; totalElements: number };
 
 export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
   const { accessToken } = useAdminAuth();
@@ -28,6 +30,9 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
   const lang = params?.lang ?? "en";
   const copy = dictionary.admin.roles;
   const [roles, setRoles] = useState<Role[]>([]);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [refresh, setRefresh] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
@@ -54,15 +59,19 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
 
   useEffect(() => {
     if (!accessToken) return;
-    adminRequest<Role[]>(accessToken, { url: "/api/admin/roles" })
+    adminRequest<RolePage>(accessToken, {
+      url: `/api/admin/roles?q=${encodeURIComponent(query)}&page=${page}&size=${size}`,
+    })
       .then((response) => {
         if (response.status >= 300) throw new Error();
-        setRoles(response.data);
+        setRoles(response.data.content);
+        setTotalPages(response.data.totalPages);
+        setTotalElements(response.data.totalElements);
         setError(false);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [accessToken]);
+  }, [accessToken, page, query, refresh, size]);
 
   const createRole = async ({ name }: { name: string }) => {
     if (!accessToken || !name) return;
@@ -85,10 +94,9 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
         }
         throw new Error();
       }
-      const rolesResponse = await adminRequest<Role[]>(accessToken, { url: "/api/admin/roles" });
-      if (rolesResponse.status >= 300) throw new Error();
       reset({ name: "" });
-      setRoles(rolesResponse.data);
+      setLoading(true);
+      setRefresh((current) => current + 1);
       setError(false);
     } catch {
       setError(true);
@@ -106,7 +114,12 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
         method: "DELETE",
       });
       if (response.status >= 300) throw new Error();
-      setRoles((current) => current.filter((currentRole) => currentRole.name !== role));
+      setLoading(true);
+      if (roles.length === 1 && page > 0) {
+        setPage(page - 1);
+      } else {
+        setRefresh((current) => current + 1);
+      }
       setError(false);
     } catch {
       setError(true);
@@ -116,11 +129,6 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
   };
 
   if (loading) return <LoadingState />;
-  const filteredRoles = roles.filter((role) =>
-    role.name.toLowerCase().includes(query.toLowerCase()),
-  );
-  const totalPages = Math.ceil(filteredRoles.length / size);
-  const visibleRoles = filteredRoles.slice(page * size, (page + 1) * size);
   return (
     <>
       {error && <ErrorState message={copy.operationError} />}
@@ -134,6 +142,7 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
               placeholder="ROLE_AUDITOR"
             />
             <Button disabled={saving} type="submit">
+              <AdminActionIcon action="add" />
               {copy.create}
             </Button>
           </Form>
@@ -150,7 +159,7 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
       <DataTable
         emptyMessage={dictionary.admin.resources.empty}
         footer={
-          filteredRoles.length > 0 ? (
+          totalElements > 0 ? (
             <PaginationControls
               next={dictionary.admin.resources.next}
               previous={dictionary.admin.resources.previous}
@@ -162,12 +171,12 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
               onSizeChange={setSize}
               page={page}
               size={size}
-              totalElements={filteredRoles.length}
+              totalElements={totalElements}
               totalPages={totalPages}
             />
           ) : undefined
         }
-        isEmpty={filteredRoles.length === 0}
+        isEmpty={roles.length === 0}
       >
         <thead>
           <tr>
@@ -176,7 +185,7 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
           </tr>
         </thead>
         <tbody>
-          {visibleRoles.map((role) => (
+          {roles.map((role) => (
             <tr key={role.name}>
               <td className="font-monospace" data-label={copy.name}>
                 <Link
@@ -193,6 +202,7 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
                   size="sm"
                   variant="outline-danger"
                 >
+                  <AdminActionIcon action="delete" />
                   {copy.delete}
                 </Button>
               </td>

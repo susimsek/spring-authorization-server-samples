@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import io.github.susimsek.springauthserversamples.domain.OAuth2KeyEntity;
 import io.github.susimsek.springauthserversamples.repository.OAuth2KeyRepository;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -78,7 +79,7 @@ class KeyManagementServiceTest {
         when(keyRepository.findAllForRotation()).thenThrow(new IllegalStateException("database"));
 
         assertThatThrownBy(() -> service().rotateKey())
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Could not rotate the signing key");
     }
 

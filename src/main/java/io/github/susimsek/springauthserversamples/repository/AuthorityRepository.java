@@ -3,13 +3,15 @@ package io.github.susimsek.springauthserversamples.repository;
 import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface AuthorityRepository extends JpaRepository<AuthorityEntity, Long> {
 
     List<AuthorityEntity> findByNameIn(Iterable<String> names);
 
-    List<AuthorityEntity> findAllByOrderByNameAsc();
+    Page<AuthorityEntity> findByNameContainingIgnoreCase(String name, Pageable pageable);
 
     boolean existsByName(String name);
 

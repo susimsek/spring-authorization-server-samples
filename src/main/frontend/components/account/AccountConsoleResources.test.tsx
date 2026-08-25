@@ -34,24 +34,28 @@ describe("Account console resources", () => {
       if (!config.method) {
         return {
           status: 200,
-          data: [
-            {
-              id: "sid-current",
-              createdAt: "2026-08-23T10:00:00Z",
-              lastAccessedAt: "2026-08-23T10:30:00Z",
-              expiresAt: "2026-08-23T11:00:00Z",
-              current: true,
-              clients: [{ clientId: "account-console", clientName: "Account Console" }],
-            },
-            {
-              id: "sid-other",
-              createdAt: "2026-08-22T10:00:00Z",
-              lastAccessedAt: "2026-08-22T10:30:00Z",
-              expiresAt: "2026-08-24T11:00:00Z",
-              current: false,
-              clients: [{ clientId: "mobile", clientName: "Mobile App" }],
-            },
-          ],
+          data: {
+            content: [
+              {
+                id: "sid-current",
+                createdAt: "2026-08-23T10:00:00Z",
+                lastAccessedAt: "2026-08-23T10:30:00Z",
+                expiresAt: "2026-08-23T11:00:00Z",
+                current: true,
+                clients: [{ clientId: "account-console", clientName: "Account Console" }],
+              },
+              {
+                id: "sid-other",
+                createdAt: "2026-08-22T10:00:00Z",
+                lastAccessedAt: "2026-08-22T10:30:00Z",
+                expiresAt: "2026-08-24T11:00:00Z",
+                current: false,
+                clients: [{ clientId: "mobile", clientName: "Mobile App" }],
+              },
+            ],
+            totalPages: 1,
+            totalElements: 2,
+          },
         } as never;
       }
       return { status: 204, data: null } as never;
@@ -84,15 +88,19 @@ describe("Account console resources", () => {
       if (!config.method) {
         return {
           status: 200,
-          data: [
-            {
-              clientId: "web-client",
-              clientName: "Web Client",
-              scopes: ["SCOPE_openid", "SCOPE_profile"],
-              createdAt: "2026-08-20T10:00:00Z",
-              updatedAt: "2026-08-21T10:00:00Z",
-            },
-          ],
+          data: {
+            content: [
+              {
+                clientId: "web-client",
+                clientName: "Web Client",
+                scopes: ["SCOPE_openid", "SCOPE_profile"],
+                createdAt: "2026-08-20T10:00:00Z",
+                updatedAt: "2026-08-21T10:00:00Z",
+              },
+            ],
+            totalPages: 1,
+            totalElements: 1,
+          },
         } as never;
       }
       return { status: 204, data: null } as never;

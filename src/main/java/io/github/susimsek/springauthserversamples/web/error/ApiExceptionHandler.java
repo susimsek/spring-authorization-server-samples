@@ -1,6 +1,8 @@
-package io.github.susimsek.springauthserversamples.web.admin;
+package io.github.susimsek.springauthserversamples.web.error;
 
-import io.github.susimsek.springauthserversamples.service.admin.AdminClientException;
+import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
+import io.github.susimsek.springauthserversamples.web.ApiController;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.LinkedHashSet;
@@ -27,60 +29,50 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-@RestControllerAdvice(annotations = {AdminApi.class, AccountApi.class})
+/** Renders one RFC 9457 error contract for the Administration and Account APIs. */
+@RestControllerAdvice(annotations = ApiController.class)
 @Slf4j
-public class AdminClientExceptionHandler extends ResponseEntityExceptionHandler {
+public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
-    @ExceptionHandler(AdminClientException.class)
-    ProblemDetail handleAdminClientException(
-            AdminClientException exception, HttpServletRequest request) {
+    @ExceptionHandler(ApiException.class)
+    public ProblemDetail handleApiException(ApiException exception, HttpServletRequest request) {
         return problemDetail(exception, request);
     }
 
-    ProblemDetail handleAdminClientException(AdminClientException exception) {
+    public ProblemDetail handleApiException(ApiException exception) {
         return problemDetail(exception, null);
     }
 
     @ExceptionHandler(Exception.class)
     public @Nullable ResponseEntity<Object> handleUnhandled(
             Exception exception, WebRequest request) {
-        log.error("Unhandled admin API exception", exception);
+        log.error("Unhandled API exception", exception);
         ProblemDetail problemDetail =
-                ProblemDetail.forStatusAndDetail(
-                        HttpStatus.INTERNAL_SERVER_ERROR,
-                        message("admin.error.internal", "An unexpected error occurred."));
-        problemDetail.setTitle(message("admin.error.title", "Admin request failed"));
-        problemDetail.setType(URI.create("urn:problem:internal_error"));
+                createProblemDetail(HttpStatus.INTERNAL_SERVER_ERROR, ApiErrorCode.INTERNAL_ERROR);
         requestUri(request).ifPresent(problemDetail::setInstance);
-        problemDetail.setProperty("errorCode", "internal_error");
         return createResponseEntity(
                 problemDetail, HttpHeaders.EMPTY, HttpStatus.INTERNAL_SERVER_ERROR, request);
     }
 
     @Override
-    protected ResponseEntity<Object> handleMethodArgumentNotValid(
+    public ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException exception,
             HttpHeaders headers,
             HttpStatusCode status,
             WebRequest request) {
         List<String> fields =
                 exception.getBindingResult().getAllErrors().stream()
-                        .map(AdminClientExceptionHandler::field)
+                        .map(ApiExceptionHandler::field)
                         .collect(
                                 java.util.stream.Collectors.collectingAndThen(
                                         java.util.stream.Collectors.toCollection(
                                                 LinkedHashSet::new),
                                         List::copyOf));
-        String detail =
-                exception.getBindingResult().getAllErrors().stream()
-                        .findFirst()
-                        .map(error -> error.getDefaultMessage())
-                        .orElseGet(() -> message("admin.validation.required", "Validation failed"));
-        return validationProblem(detail, fields, headers, status, request);
+        return validationProblem(fields, headers, status, request);
     }
 
     @Override
-    protected ResponseEntity<Object> handleHandlerMethodValidationException(
+    public ResponseEntity<Object> handleHandlerMethodValidationException(
             HandlerMethodValidationException exception,
             HttpHeaders headers,
             HttpStatusCode status,
@@ -93,62 +85,48 @@ public class AdminClientExceptionHandler extends ResponseEntityExceptionHandler 
                         .distinct()
                         .toList();
         return validationProblem(
-                message("admin.validation.required", "Validation failed"),
-                fields.isEmpty() ? List.of("request") : fields,
-                headers,
-                status,
-                request);
+                fields.isEmpty() ? List.of("request") : fields, headers, status, request);
     }
 
     @Override
-    protected ResponseEntity<Object> handleHttpMessageNotReadable(
+    public ResponseEntity<Object> handleHttpMessageNotReadable(
             HttpMessageNotReadableException exception,
             HttpHeaders headers,
             HttpStatusCode status,
             WebRequest request) {
-        return validationProblem(
-                message("admin.validation.request", "The request contains an invalid value."),
-                List.of("request"),
-                headers,
-                status,
-                request);
+        return validationProblem(List.of("request"), headers, status, request);
     }
 
-    private ProblemDetail problemDetail(
-            AdminClientException exception, HttpServletRequest request) {
-        String messageCode = "admin.error." + exception.getErrorCode();
+    private ProblemDetail problemDetail(ApiException exception, HttpServletRequest request) {
         ProblemDetail problemDetail =
-                ProblemDetail.forStatusAndDetail(
-                        exception.getStatus(), message(messageCode, exception.getMessage()));
-        problemDetail.setTitle(message("admin.error.title", "Admin request failed"));
-        problemDetail.setType(URI.create("urn:problem:" + exception.getErrorCode()));
+                createProblemDetail(exception.getStatus(), exception.getErrorCode());
         if (request != null) {
             problemDetail.setInstance(URI.create(request.getRequestURI()));
         }
-        problemDetail.setProperty("errorCode", exception.getErrorCode());
-        java.util.Optional.ofNullable(exception.getField())
-                .ifPresent(
-                        field -> {
-                            problemDetail.setProperty(
-                                    "violations", List.of(Map.of("field", field)));
-                        });
+        if (exception.getField() != null) {
+            problemDetail.setProperty("violations", List.of(Map.of("field", exception.getField())));
+        }
         return problemDetail;
     }
 
     private ResponseEntity<Object> validationProblem(
-            String detail,
-            List<String> fields,
-            HttpHeaders headers,
-            HttpStatusCode status,
-            WebRequest request) {
-        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(status, detail);
-        problemDetail.setTitle(message("admin.validation.title", "Validation failed"));
-        problemDetail.setType(URI.create("urn:problem:validation_failed"));
+            List<String> fields, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        ProblemDetail problemDetail =
+                createProblemDetail(HttpStatus.BAD_REQUEST, ApiErrorCode.VALIDATION_FAILED);
         requestUri(request).ifPresent(problemDetail::setInstance);
-        problemDetail.setProperty("errorCode", "validation_failed");
         problemDetail.setProperty(
                 "violations", fields.stream().map(field -> Map.of("field", field)).toList());
         return createResponseEntity(problemDetail, headers, status, request);
+    }
+
+    private ProblemDetail createProblemDetail(HttpStatus status, ApiErrorCode errorCode) {
+        ProblemDetail problemDetail =
+                ProblemDetail.forStatusAndDetail(
+                        status, message(errorCode.messageCode(), errorCode.defaultMessage()));
+        problemDetail.setTitle(message("app.api.problem.title", "API request failed"));
+        problemDetail.setType(URI.create(errorCode.type()));
+        problemDetail.setProperty("errorCode", errorCode.value());
+        return problemDetail;
     }
 
     private static String field(ObjectError error) {
@@ -168,19 +146,19 @@ public class AdminClientExceptionHandler extends ResponseEntityExceptionHandler 
         return field.substring(0, end);
     }
 
-    private String message(String code, String defaultMessage) {
-        MessageSource messageSource = getMessageSource();
-        return messageSource == null
-                ? defaultMessage
-                : messageSource.getMessage(
-                        code, null, defaultMessage, LocaleContextHolder.getLocale());
-    }
-
     private static java.util.Optional<URI> requestUri(WebRequest request) {
         if (request instanceof ServletWebRequest servletWebRequest) {
             return java.util.Optional.of(
                     URI.create(servletWebRequest.getRequest().getRequestURI()));
         }
         return java.util.Optional.empty();
+    }
+
+    private String message(String code, String defaultMessage) {
+        MessageSource messageSource = getMessageSource();
+        return messageSource == null
+                ? defaultMessage
+                : messageSource.getMessage(
+                        code, null, defaultMessage, LocaleContextHolder.getLocale());
     }
 }

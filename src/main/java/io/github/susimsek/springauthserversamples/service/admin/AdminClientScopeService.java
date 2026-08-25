@@ -5,6 +5,7 @@ import io.github.susimsek.springauthserversamples.mapper.AuthorizationServerMapp
 import io.github.susimsek.springauthserversamples.mapper.RegisteredClientMapper;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientScopeRepository;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import io.github.susimsek.springauthserversamples.web.admin.AdminClientScopeAssignmentRequest;
 import io.github.susimsek.springauthserversamples.web.admin.AdminClientScopeRequest;
 import java.time.Instant;
@@ -52,7 +53,7 @@ public class AdminClientScopeService {
     public ClientScopeView create(AdminClientScopeRequest request) {
         String name = normalizeName(request.name());
         if (clientScopeRepository.existsByName(name)) {
-            throw AdminClientException.conflict(
+            throw ApiException.conflict(
                     "admin_client_scope_duplicate", "Client scope already exists");
         }
         ClientScopeEntity entity = new ClientScopeEntity();
@@ -71,23 +72,22 @@ public class AdminClientScopeService {
             allEntries = true)
     public ClientScopeView update(String id, AdminClientScopeRequest request) {
         ClientScopeEntity entity = required(id);
-        String oldName = entity.getName();
         String name = normalizeName(request.name());
         clientScopeRepository
                 .findByName(name)
                 .filter(existing -> !existing.getId().equals(id))
                 .ifPresent(
                         ignored -> {
-                            throw AdminClientException.conflict(
+                            throw ApiException.conflict(
                                     "admin_client_scope_duplicate", "Client scope already exists");
                         });
+        if (!entity.getName().equals(name)) {
+            renameAssignedScope(entity.getName(), name);
+        }
         entity.setName(name);
         entity.setDisplayName(trimToNull(request.displayName()));
         entity.setDescription(trimToNull(request.description()));
         ClientScopeEntity saved = clientScopeRepository.save(entity);
-        if (!oldName.equals(name)) {
-            renameAssignedScope(oldName, name);
-        }
         adminAuditEventService.record("client-scope.updated", "client-scope", id);
         return ClientScopeView.from(saved);
     }
@@ -103,7 +103,7 @@ public class AdminClientScopeService {
                                                 .readCollection(client.getScopes())
                                                 .contains(entity.getName()));
         if (assigned) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "admin_client_scope_assigned", "Assigned client scopes cannot be deleted");
         }
         clientScopeRepository.delete(entity);
@@ -125,28 +125,28 @@ public class AdminClientScopeService {
             allEntries = true)
     public ScopeAssignments updateAssignments(
             String clientId, AdminClientScopeAssignmentRequest request) {
-        RegisteredClient existing = clientRequired(clientId);
         Set<String> defaults = normalized(request.defaultScopes());
         Set<String> optional = normalized(request.optionalScopes());
         Set<String> intersection = new LinkedHashSet<>(defaults);
         intersection.retainAll(optional);
         if (!intersection.isEmpty()) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "admin_client_scope_assignment_overlap",
                     "A scope cannot be both default and optional");
         }
         Set<String> union = new LinkedHashSet<>(defaults);
         union.addAll(optional);
         if (union.isEmpty()) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "admin_client_invalid_scopes", "At least one client scope is required");
         }
         long known = clientScopeRepository.countByNameIn(union);
         if (known != union.size()) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "admin_client_scope_unknown", "One or more client scopes do not exist");
         }
 
+        RegisteredClient existing = clientRequired(clientId);
         RegisteredClient.Builder builder = RegisteredClient.from(existing);
         builder.scopes(
                 scopes -> {
@@ -209,13 +209,13 @@ public class AdminClientScopeService {
         return clientRepository
                 .findById(id)
                 .map(entity -> registeredClientMapper.toObject(entity, mapperSupport))
-                .orElseThrow(() -> AdminClientException.notFound("Client not found"));
+                .orElseThrow(() -> ApiException.notFound("Client not found"));
     }
 
     private ClientScopeEntity required(String id) {
         return clientScopeRepository
                 .findById(id)
-                .orElseThrow(() -> AdminClientException.notFound("Client scope not found"));
+                .orElseThrow(() -> ApiException.notFound("Client scope not found"));
     }
 
     private static Set<String> normalized(Set<String> values) {
@@ -237,7 +237,7 @@ public class AdminClientScopeService {
         if (!StringUtils.hasText(name)
                 || name.length() > 100
                 || name.chars().anyMatch(Character::isWhitespace)) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "name", "admin_client_scope_invalid_name", "Client scope name is invalid");
         }
         return name;

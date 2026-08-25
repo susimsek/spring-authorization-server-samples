@@ -35,6 +35,7 @@ public class SpaFilter extends OncePerRequestFilter {
             Map.of(
                     "roles", Set.of(),
                     "consents", Set.of(),
+                    "groups", Set.of(),
                     "clients",
                             Set.of(
                                     "settings",
@@ -144,7 +145,10 @@ public class SpaFilter extends OncePerRequestFilter {
         }
 
         String resource = segments[3];
-        String entityId = segments[4];
+        boolean dataRequest = localizedPath.endsWith(".txt");
+        String entityId = dataRequest ? removeTxtExtension(segments[4]) : segments[4];
+        boolean entityIndexDataRequest =
+                dataRequest && segments.length == 6 && "index.txt".equals(segments[5]);
         if (!StringUtils.hasText(entityId) || "_".equals(entityId)) {
             return List.of();
         }
@@ -155,16 +159,16 @@ public class SpaFilter extends OncePerRequestFilter {
         }
 
         if (sections.isEmpty()) {
-            return segments.length == 5
-                    ? List.of("/" + segments[1] + "/admin/" + resource + "/_/index.html")
+            return segments.length == 5 || entityIndexDataRequest
+                    ? List.of(dynamicIndexPath(segments[1], resource, dataRequest))
                     : List.of();
         }
 
-        if (segments.length < 6 || !sections.contains(segments[5])) {
+        String section = segments.length < 6 ? "" : removeTxtExtension(segments[5]);
+        if (!sections.contains(section)) {
             return List.of();
         }
 
-        String section = segments[5];
         StringBuilder template =
                 new StringBuilder()
                         .append('/')
@@ -175,13 +179,21 @@ public class SpaFilter extends OncePerRequestFilter {
                         .append(section);
 
         if (segments.length == 6) {
-            return List.of(template + "/index.html");
+            return List.of(template + (dataRequest ? "/index.txt" : "/index.html"));
         }
 
         for (int i = 6; i < segments.length; i++) {
             template.append('/').append(segments[i]);
         }
         return List.of(template.toString());
+    }
+
+    private static String dynamicIndexPath(String locale, String resource, boolean dataRequest) {
+        return "/" + locale + "/admin/" + resource + "/_/index" + (dataRequest ? ".txt" : ".html");
+    }
+
+    private static String removeTxtExtension(String value) {
+        return value.endsWith(".txt") ? value.substring(0, value.length() - 4) : value;
     }
 
     private boolean resourceExists(String indexPath) {

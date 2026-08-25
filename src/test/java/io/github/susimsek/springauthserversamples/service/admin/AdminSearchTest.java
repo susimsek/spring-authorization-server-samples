@@ -3,6 +3,7 @@ package io.github.susimsek.springauthserversamples.service.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import org.junit.jupiter.api.Test;
 
 class AdminSearchTest {
@@ -16,7 +17,7 @@ class AdminSearchTest {
     @Test
     void rejectsSearchTermsOverTheLimit() {
         assertThatThrownBy(() -> AdminSearch.normalize("a".repeat(101)))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Search query must not exceed 100 characters");
     }
 }

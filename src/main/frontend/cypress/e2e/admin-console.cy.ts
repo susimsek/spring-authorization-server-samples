@@ -49,6 +49,7 @@ describe("admin console", () => {
       ["/clients", "Clients"],
       ["/users", "Users"],
       ["/roles", "Roles"],
+      ["/groups", "Groups"],
       ["/sessions", "Sessions"],
       ["/consents", "Consents"],
       ["/keys", "Keys"],
@@ -91,12 +92,11 @@ describe("admin console", () => {
 
     cy.contains(".admin-sidebar a", "Clients").click();
     cy.get("tbody tr", { timeout: 15_000 }).first().find("td").first().find("a").click();
-    cy.location("pathname").should("match", /^\/en\/admin\/clients\/detail\/?$/);
-    cy.contains("a", "Edit", { timeout: 15_000 }).should("be.visible");
+    cy.location("pathname").should("match", /^\/en\/admin\/clients\/[^/]+\/settings\/?$/);
 
     cy.contains(".admin-sidebar a", "Users").click();
     cy.get("tbody tr", { timeout: 15_000 }).first().contains("a", "Edit").click();
-    cy.location("pathname").should("match", /^\/en\/admin\/users\/edit\/?$/);
+    cy.location("pathname").should("match", /^\/en\/admin\/users\/[^/]+\/details\/?$/);
     cy.contains("Created at", { timeout: 15_000 }).should("be.visible");
     cy.contains("Updated at", { timeout: 15_000 }).should("be.visible");
   });

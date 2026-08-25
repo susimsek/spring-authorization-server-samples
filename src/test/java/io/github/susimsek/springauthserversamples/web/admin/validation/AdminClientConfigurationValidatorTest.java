@@ -230,10 +230,10 @@ class AdminClientConfigurationValidatorTest {
                         "authorizationGrantTypes");
         assertThat(context.templates())
                 .containsExactly(
-                        "{admin.validation.selection}",
-                        "{admin.validation.selection}",
-                        "{admin.validation.required}",
-                        "{admin.validation.selection}");
+                        "{app.api.problem.violation.selection}",
+                        "{app.api.problem.violation.selection}",
+                        "{app.api.problem.violation.required}",
+                        "{app.api.problem.violation.selection}");
     }
 
     private static AdminClientRequest request(

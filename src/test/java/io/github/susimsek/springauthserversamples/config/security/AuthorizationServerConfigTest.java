@@ -68,14 +68,14 @@ class AuthorizationServerConfigTest {
 
     @Test
     void addsProfilePictureAndAdminRolesToAccessToken() {
-        UserRepository userRepository = mock(UserRepository.class);
-        UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
         UserEntity user = new UserEntity();
         user.setId(42L);
+        UserRepository userRepository = mock(UserRepository.class);
+        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(user));
         UserAvatarRepository.AvatarVersion avatar = mock(UserAvatarRepository.AvatarVersion.class);
         when(avatar.getPublicId()).thenReturn("avatar-id");
         when(avatar.getUpdatedAt()).thenReturn(Instant.parse("2026-01-01T00:00:00Z"));
-        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(user));
+        UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
         when(avatarRepository.findVersionByUserId(42L)).thenReturn(Optional.of(avatar));
         JwtClaimsSet.Builder claims = JwtClaimsSet.builder();
 

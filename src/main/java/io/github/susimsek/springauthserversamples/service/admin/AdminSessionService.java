@@ -1,9 +1,12 @@
 package io.github.susimsek.springauthserversamples.service.admin;
 
+import io.github.susimsek.springauthserversamples.domain.AuthorizationEntity;
+import io.github.susimsek.springauthserversamples.domain.RegisteredClientEntity;
 import io.github.susimsek.springauthserversamples.domain.UserSessionEntity;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.repository.UserSessionRepository;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +47,7 @@ public class AdminSessionService {
         var client =
                 clientRepository
                         .findByClientId(clientId.trim())
-                        .orElseThrow(() -> AdminClientException.notFound("Client not found"));
+                        .orElseThrow(() -> ApiException.notFound("Client not found"));
         List<String> sessionIds =
                 authorizationRepository.findDistinctSessionIdsByRegisteredClientId(client.getId());
         if (sessionIds.isEmpty()) {
@@ -60,18 +63,26 @@ public class AdminSessionService {
         UserSessionEntity session =
                 userSessionRepository
                         .findBySessionId(sessionId)
-                        .orElseThrow(() -> AdminClientException.notFound("Session not found"));
+                        .orElseThrow(() -> ApiException.notFound("Session not found"));
         adminUserService.assertCanManageUsername(session.getPrincipalName(), currentUsername);
-        List<AuthorizationView> authorizations =
-                authorizationRepository
-                        .findAllBySessionIdOrderByAccessTokenIssuedAtDesc(sessionId)
+        List<AuthorizationEntity> authorizations =
+                authorizationRepository.findAllBySessionIdOrderByAccessTokenIssuedAtDesc(sessionId);
+        Map<String, RegisteredClientEntity> clients =
+                clientRepository
+                        .findAllById(
+                                authorizations.stream()
+                                        .map(AuthorizationEntity::getRegisteredClientId)
+                                        .distinct()
+                                        .toList())
                         .stream()
+                        .collect(
+                                java.util.stream.Collectors.toMap(
+                                        client -> client.getId(), client -> client));
+        List<AuthorizationView> authorizationViews =
+                authorizations.stream()
                         .map(
                                 authorization -> {
-                                    var client =
-                                            clientRepository
-                                                    .findById(authorization.getRegisteredClientId())
-                                                    .orElse(null);
+                                    var client = clients.get(authorization.getRegisteredClientId());
                                     return new AuthorizationView(
                                             authorization.getId(),
                                             client == null
@@ -87,8 +98,8 @@ public class AdminSessionService {
                                             authorization.getRefreshTokenExpiresAt());
                                 })
                         .toList();
-        Map<String, Long> counts = Map.of(sessionId, (long) authorizations.size());
-        return new SessionDetailView(sessionView(session, counts), authorizations);
+        Map<String, Long> counts = Map.of(sessionId, (long) authorizationViews.size());
+        return new SessionDetailView(sessionView(session, counts), authorizationViews);
     }
 
     @Transactional(readOnly = true)
@@ -103,7 +114,7 @@ public class AdminSessionService {
     @Transactional(readOnly = true)
     public Page<SessionView> clientSessions(String clientId, Pageable pageable) {
         if (!clientRepository.existsById(clientId)) {
-            throw AdminClientException.notFound("Client not found");
+            throw ApiException.notFound("Client not found");
         }
         List<String> sessionIds =
                 authorizationRepository.findDistinctSessionIdsByRegisteredClientId(clientId);
@@ -136,7 +147,7 @@ public class AdminSessionService {
         UserSessionEntity session =
                 userSessionRepository
                         .findBySessionId(sessionId)
-                        .orElseThrow(() -> AdminClientException.notFound("Session not found"));
+                        .orElseThrow(() -> ApiException.notFound("Session not found"));
         adminUserService.assertCanManageUsername(session.getPrincipalName(), currentUsername);
         userSessionRepository.deleteBySessionId(sessionId);
         authorizationRepository.deleteBySessionId(sessionId);

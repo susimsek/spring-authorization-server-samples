@@ -73,6 +73,8 @@ public interface UserSessionRepository extends JpaRepository<UserSessionEntity, 
     @Query("delete from UserSessionEntity s where s.sessionId = :sessionId")
     int deleteBySessionId(@Param("sessionId") String sessionId);
 
+    long deleteBySessionIdIn(Collection<String> sessionIds);
+
     long deleteByPrincipalName(String principalName);
 
     @Modifying

@@ -8,6 +8,7 @@ import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
 
 import { useAdminAuth } from "./AdminAuthProvider";
+import { AdminActionIcon } from "./AdminActionIcon";
 import { ErrorState, LoadingState } from "./AsyncState";
 import type { ClientScope } from "./ClientScopesTable";
 
@@ -101,6 +102,7 @@ export function ClientScopeAssignments({ clientId, dictionary, onChanged }: Prop
               disabled={saving}
               onClick={() => move(scope.name, "default")}
             >
+              <AdminActionIcon action="add" />
               {copy.addDefault}
             </Button>
           )}
@@ -111,6 +113,7 @@ export function ClientScopeAssignments({ clientId, dictionary, onChanged }: Prop
               disabled={saving}
               onClick={() => move(scope.name, "optional")}
             >
+              <AdminActionIcon action="add" />
               {copy.addOptional}
             </Button>
           )}
@@ -122,6 +125,7 @@ export function ClientScopeAssignments({ clientId, dictionary, onChanged }: Prop
               disabled={saving}
               onClick={() => move(scope.name, "available")}
             >
+              <AdminActionIcon action="remove" />
               {copy.remove}
             </Button>
           )}

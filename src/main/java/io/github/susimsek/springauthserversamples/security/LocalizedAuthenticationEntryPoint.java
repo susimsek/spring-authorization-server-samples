@@ -27,7 +27,7 @@ public class LocalizedAuthenticationEntryPoint implements AuthenticationEntryPoi
                 new OAuth2Error(
                         "unauthorized",
                         errorLocalizer.localize(
-                                "app.auth.unauthorized",
+                                "app.security.unauthorized",
                                 "Authentication is required.",
                                 request.getLocale()),
                         null);

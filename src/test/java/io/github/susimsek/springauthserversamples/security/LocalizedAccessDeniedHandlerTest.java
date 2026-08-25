@@ -24,7 +24,7 @@ class LocalizedAccessDeniedHandlerTest {
         request.addPreferredLocale(Locale.forLanguageTag("tr"));
         MockHttpServletResponse response = new MockHttpServletResponse();
         when(errorLocalizer.localize(
-                        "app.auth.accessDenied",
+                        "app.security.access_denied",
                         "You do not have permission to access this resource.",
                         Locale.forLanguageTag("tr")))
                 .thenReturn("Bu kaynağa erişim izniniz yok.");

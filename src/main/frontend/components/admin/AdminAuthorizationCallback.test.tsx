@@ -28,7 +28,9 @@ describe("AdminAuthorizationCallback", () => {
     beginAuthorization.mockResolvedValue(undefined);
     render(<AdminAuthorizationCallback locale="en" />);
 
-    await waitFor(() => expect(beginAuthorization).toHaveBeenCalledWith("en", "/en/admin"));
+    await waitFor(() =>
+      expect(beginAuthorization).toHaveBeenCalledWith("en", "/en/admin", { prompt: "none" }),
+    );
     expect(completeAuthorization).not.toHaveBeenCalled();
   });
 

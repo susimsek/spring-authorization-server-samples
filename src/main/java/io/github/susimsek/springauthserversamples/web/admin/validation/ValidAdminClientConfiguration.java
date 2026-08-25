@@ -15,7 +15,7 @@ import java.lang.annotation.Target;
 @Target(TYPE)
 public @interface ValidAdminClientConfiguration {
 
-    String message() default "{admin.validation.client_configuration}";
+    String message() default "{app.api.problem.violation.client_configuration}";
 
     Class<?>[] groups() default {};
 

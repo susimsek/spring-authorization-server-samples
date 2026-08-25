@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import io.github.susimsek.springauthserversamples.domain.UserAvatarEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.repository.UserAvatarRepository;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.time.Instant;
 import java.util.Base64;
 import org.junit.jupiter.api.Test;
@@ -73,7 +74,7 @@ class AdminAvatarServiceTest {
                                                         "image/png",
                                                         "not an image".getBytes()),
                                                 "admin"))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Avatar must be a JPEG or PNG image");
     }
 

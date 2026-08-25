@@ -8,13 +8,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
+import io.github.susimsek.springauthserversamples.domain.GroupEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupDTO;
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
-import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
+import io.github.susimsek.springauthserversamples.repository.GroupRepository;
 import io.github.susimsek.springauthserversamples.repository.UserAvatarRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
-import io.github.susimsek.springauthserversamples.repository.UserSessionRepository;
 import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -32,10 +34,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 class AdminUserServiceTest {
 
     @Mock private UserRepository userRepository;
+    @Mock private GroupRepository groupRepository;
     @Mock private UserAvatarRepository userAvatarRepository;
     @Mock private AuthorityRepository authorityRepository;
-    @Mock private UserSessionRepository userSessionRepository;
-    @Mock private AuthorizationRepository authorizationRepository;
+    @Mock private UserAccessInvalidationService userAccessInvalidationService;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private AdminAuditEventService adminAuditEventService;
 
@@ -64,21 +66,21 @@ class AdminUserServiceTest {
         when(userRepository.findByUsername("manager")).thenReturn(Optional.of(manager));
 
         assertThatThrownBy(() -> service().user(5L, "manager"))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Only an administrator can manage an administrator");
     }
 
     @Test
     void createUserRejectsBlankUsername() {
         assertThatThrownBy(() -> service().createUser(" ", "password-123", true, Set.of()))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Username is required");
     }
 
     @Test
     void createUserRejectsShortPassword() {
         assertThatThrownBy(() -> service().createUser("alice", "short", true, Set.of()))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Password must be at least 8 characters");
     }
 
@@ -112,7 +114,7 @@ class AdminUserServiceTest {
                 .thenReturn(Optional.of(user(1L, "alice", AuthoritiesConstants.USER)));
 
         assertThatThrownBy(() -> service().createUser("alice", "password-123", true, Set.of()))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Username is already registered");
     }
 
@@ -129,7 +131,7 @@ class AdminUserServiceTest {
                                                 "password-123",
                                                 true,
                                                 Set.of("ROLE_UNKNOWN")))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("One or more roles are invalid");
     }
 
@@ -144,7 +146,7 @@ class AdminUserServiceTest {
                                                 true,
                                                 Set.of(AuthoritiesConstants.USER),
                                                 "administrator"))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Username is required");
     }
 
@@ -166,7 +168,7 @@ class AdminUserServiceTest {
                                                 true,
                                                 Set.of(AuthoritiesConstants.USER),
                                                 "administrator"))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Username is already registered");
     }
 
@@ -185,7 +187,7 @@ class AdminUserServiceTest {
                                                 false,
                                                 Set.of(AuthoritiesConstants.ADMIN),
                                                 "administrator"))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("You cannot disable your own account");
     }
 
@@ -205,7 +207,7 @@ class AdminUserServiceTest {
                                                 true,
                                                 Set.of(AuthoritiesConstants.ADMIN),
                                                 "manager"))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("You can only assign roles you already have");
     }
 
@@ -225,7 +227,7 @@ class AdminUserServiceTest {
                                                 true,
                                                 Set.of(AuthoritiesConstants.USER),
                                                 "administrator"))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("The last administrator must be retained");
     }
 
@@ -252,8 +254,7 @@ class AdminUserServiceTest {
         assertThat(updated.username()).isEqualTo("alice-updated");
         assertThat(updated.enabled()).isFalse();
         assertThat(updated.authorities()).containsExactly(AuthoritiesConstants.ADMIN);
-        verify(userSessionRepository).deleteByPrincipalName("alice");
-        verify(authorizationRepository).deleteByPrincipalName("alice");
+        verify(userAccessInvalidationService).invalidate("alice");
         verify(adminAuditEventService).record("user.updated", "user", "5");
     }
 
@@ -265,14 +266,14 @@ class AdminUserServiceTest {
         when(userRepository.findByUsername("manager")).thenReturn(Optional.of(manager));
 
         assertThatThrownBy(() -> service().changePassword(5L, "new-password", "manager"))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Only an administrator can manage an administrator");
     }
 
     @Test
     void changePasswordRejectsShortPasswords() {
         assertThatThrownBy(() -> service().changePassword(5L, "short", "manager"))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Password must be at least 8 characters");
     }
 
@@ -287,8 +288,7 @@ class AdminUserServiceTest {
         service().changePassword(5L, "new-password", "administrator");
 
         assertThat(user.getPassword()).isEqualTo("encoded-password");
-        verify(userSessionRepository).deleteByPrincipalName("alice");
-        verify(authorizationRepository).deleteByPrincipalName("alice");
+        verify(userAccessInvalidationService).invalidate("alice");
         verify(adminAuditEventService).record("user.password.updated", "user", "5");
     }
 
@@ -300,7 +300,7 @@ class AdminUserServiceTest {
         when(userRepository.findByUsername("manager")).thenReturn(Optional.of(manager));
 
         assertThatThrownBy(() -> service().setUserEnabled(5L, false, "manager"))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Only an administrator can manage an administrator");
     }
 
@@ -311,7 +311,7 @@ class AdminUserServiceTest {
         when(userRepository.findByUsername("administrator")).thenReturn(Optional.of(administrator));
 
         assertThatThrownBy(() -> service().setUserEnabled(5L, false, "administrator"))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("You cannot disable your own account");
     }
 
@@ -324,7 +324,7 @@ class AdminUserServiceTest {
         when(userRepository.countByAuthoritiesName(AuthoritiesConstants.ADMIN)).thenReturn(1L);
 
         assertThatThrownBy(() -> service().setUserEnabled(5L, false, "admin"))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("The last administrator must be retained");
     }
 
@@ -338,8 +338,7 @@ class AdminUserServiceTest {
         service().setUserEnabled(5L, false, "administrator");
 
         assertThat(target.isEnabled()).isFalse();
-        verify(userSessionRepository).deleteByPrincipalName("alice");
-        verify(authorizationRepository).deleteByPrincipalName("alice");
+        verify(userAccessInvalidationService).invalidate("alice");
         verify(adminAuditEventService).record("user.enabled.updated", "user", "5");
     }
 
@@ -354,8 +353,7 @@ class AdminUserServiceTest {
         service().setUserEnabled(5L, true, "administrator");
 
         assertThat(target.isEnabled()).isTrue();
-        verify(userSessionRepository, never()).deleteByPrincipalName("alice");
-        verify(authorizationRepository, never()).deleteByPrincipalName("alice");
+        verify(userAccessInvalidationService, never()).invalidate("alice");
         verify(adminAuditEventService).record("user.enabled.updated", "user", "5");
     }
 
@@ -366,7 +364,7 @@ class AdminUserServiceTest {
         when(userRepository.findByUsername("administrator")).thenReturn(Optional.of(administrator));
 
         assertThatThrownBy(() -> service().deleteUser(5L, "administrator"))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("You cannot delete your own account");
     }
 
@@ -380,7 +378,7 @@ class AdminUserServiceTest {
         when(userRepository.countByAuthoritiesName(AuthoritiesConstants.ADMIN)).thenReturn(1L);
 
         assertThatThrownBy(() -> service().deleteUser(5L, "other-admin"))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("The last administrator must be retained");
     }
 
@@ -393,8 +391,7 @@ class AdminUserServiceTest {
 
         service().deleteUser(5L, "administrator");
 
-        verify(userSessionRepository).deleteByPrincipalName("alice");
-        verify(authorizationRepository).deleteByPrincipalName("alice");
+        verify(userAccessInvalidationService).invalidate("alice");
         verify(userRepository).delete(target);
         verify(adminAuditEventService).record("user.deleted", "user", "5");
     }
@@ -443,7 +440,7 @@ class AdminUserServiceTest {
         when(userRepository.findByUsername("missing")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service().assertCanManageUsername("missing", "admin"))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("User not found");
     }
 
@@ -467,13 +464,38 @@ class AdminUserServiceTest {
         assertThat(service().requireManageableUser(5L, "administrator")).isSameAs(target);
     }
 
+    @Test
+    void groupsReturnsOnlyGroupsOfManageableUser() {
+        GroupEntity group = new GroupEntity();
+        group.setId(7L);
+        group.setName("finance");
+        group.setAuthorities(Set.of(authority(3L, AuthoritiesConstants.USER)));
+        UserEntity target = user(5L, "alice", AuthoritiesConstants.USER);
+        UserEntity administrator = user(6L, "administrator", AuthoritiesConstants.ADMIN);
+        when(userRepository.findById(5L)).thenReturn(Optional.of(target));
+        when(userRepository.findByUsername("administrator")).thenReturn(Optional.of(administrator));
+        when(groupRepository.findByUserIdAndNameContainingIgnoreCase(
+                        org.mockito.ArgumentMatchers.eq(5L),
+                        org.mockito.ArgumentMatchers.eq(""),
+                        any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(group)));
+        when(userRepository.countUsersByGroupIdIn(List.of(7L)))
+                .thenReturn(List.of(groupUserCount(7L, 1L)));
+
+        var result = service().groups(5L, "", Pageable.ofSize(20), "administrator");
+
+        assertThat(result.getContent())
+                .containsExactly(
+                        new AdminGroupDTO(7L, "finance", Set.of(AuthoritiesConstants.USER), 1));
+    }
+
     private AdminUserService service() {
         return new AdminUserService(
                 userRepository,
+                groupRepository,
                 userAvatarRepository,
                 authorityRepository,
-                userSessionRepository,
-                authorizationRepository,
+                userAccessInvalidationService,
                 passwordEncoder,
                 adminAuditEventService);
     }
@@ -483,6 +505,20 @@ class AdminUserServiceTest {
         authority.setId(id);
         authority.setName(role);
         return authority;
+    }
+
+    private static UserRepository.GroupUserCount groupUserCount(Long groupId, long userCount) {
+        return new UserRepository.GroupUserCount() {
+            @Override
+            public Long getGroupId() {
+                return groupId;
+            }
+
+            @Override
+            public long getUserCount() {
+                return userCount;
+            }
+        };
     }
 
     private static UserEntity user(Long id, String username, String role) {

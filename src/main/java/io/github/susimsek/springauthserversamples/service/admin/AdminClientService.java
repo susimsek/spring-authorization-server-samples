@@ -5,6 +5,7 @@ import io.github.susimsek.springauthserversamples.mapper.RegisteredClientMapper;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationConsentRepository;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import io.github.susimsek.springauthserversamples.web.admin.AdminClientCreatedView;
 import io.github.susimsek.springauthserversamples.web.admin.AdminClientRequest;
 import io.github.susimsek.springauthserversamples.web.admin.AdminClientView;
@@ -70,7 +71,7 @@ public class AdminClientService {
     public AdminClientCreatedView create(AdminClientRequest request) {
         validate(request);
         if (clientRepository.existsByClientId(request.clientId())) {
-            throw AdminClientException.conflict(
+            throw ApiException.conflict(
                     "clientId",
                     "admin_client_duplicate_client_id",
                     "Client ID is already registered");
@@ -105,7 +106,7 @@ public class AdminClientService {
         rejectAdminConsoleMutation(existing);
         if (!existing.getClientId().equals(request.clientId())
                 && clientRepository.existsByClientId(request.clientId())) {
-            throw AdminClientException.conflict(
+            throw ApiException.conflict(
                     "clientId",
                     "admin_client_duplicate_client_id",
                     "Client ID is already registered");
@@ -119,7 +120,7 @@ public class AdminClientService {
         if (!requiresSecret(request)) {
             builder.clientSecret(null).clientSecretExpiresAt(null);
         } else if (existing.getClientSecret() == null) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "clientAuthenticationMethods",
                     "admin_client_secret_required",
                     "Regenerate a client secret before enabling a secret authentication method");
@@ -163,15 +164,15 @@ public class AdminClientService {
 
     private static void validate(AdminClientRequest request) {
         if (request == null) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "admin_client_invalid_request", "Request body is required");
         }
         if (!hasText(request.clientId())) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "clientId", "admin_client_invalid_client_id", "Client ID is required");
         }
         if (!hasText(request.clientName())) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "clientName", "admin_client_invalid_client_name", "Client name is required");
         }
         requireNonEmpty(
@@ -196,20 +197,20 @@ public class AdminClientService {
 
         boolean publicClient = methods.contains(ClientAuthenticationMethod.NONE.getValue());
         if (publicClient && methods.size() > 1) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "clientAuthenticationMethods",
                     "admin_client_invalid_authentication_methods",
                     "The 'none' authentication method cannot be combined with other methods");
         }
         if (publicClient && grants.contains(AuthorizationGrantType.CLIENT_CREDENTIALS.getValue())) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "authorizationGrantTypes",
                     "admin_client_invalid_grant_types",
                     "A public client cannot use the client_credentials grant");
         }
         if (grants.contains(AuthorizationGrantType.AUTHORIZATION_CODE.getValue())
                 && redirectUris.isEmpty()) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "redirectUris",
                     "admin_client_redirect_uri_required",
                     "At least one redirect URI is required for authorization_code");
@@ -217,14 +218,14 @@ public class AdminClientService {
         if (publicClient
                 && grants.contains(AuthorizationGrantType.AUTHORIZATION_CODE.getValue())
                 && !request.requireProofKey()) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "authorizationGrantTypes",
                     "admin_client_pkce_required",
                     "PKCE must be required for a public authorization_code client");
         }
         if (request.requireProofKey()
                 && !grants.contains(AuthorizationGrantType.AUTHORIZATION_CODE.getValue())) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "authorizationGrantTypes",
                     "admin_client_invalid_pkce",
                     "PKCE requires the authorization_code grant");
@@ -257,12 +258,12 @@ public class AdminClientService {
         return clientRepository
                 .findById(id)
                 .map(entity -> registeredClientMapper.toObject(entity, mapperSupport))
-                .orElseThrow(() -> AdminClientException.notFound("Client not found"));
+                .orElseThrow(() -> ApiException.notFound("Client not found"));
     }
 
     private static void rejectAdminConsoleMutation(RegisteredClient client) {
         if (ADMIN_CONSOLE_CLIENT_ID.equals(client.getClientId())) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     "admin_client_protected",
                     "The administration console client cannot be changed");
         }
@@ -374,7 +375,7 @@ public class AdminClientService {
 
     private static void validateUri(String field, String label, String value) {
         if (!hasText(value)) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     field, "admin_client_invalid_uri", "Empty " + label + " is not allowed");
         }
         try {
@@ -383,14 +384,14 @@ public class AdminClientService {
                 throw new IllegalArgumentException();
             }
         } catch (IllegalArgumentException exception) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     field, "admin_client_invalid_uri", "Invalid " + label + ": " + value);
         }
     }
 
     private static void validatePositiveDuration(String field, String label, Duration duration) {
         if (duration != null && (duration.isZero() || duration.isNegative())) {
-            throw AdminClientException.badRequest(
+            throw ApiException.badRequest(
                     field, "admin_client_invalid_ttl", label + " must be greater than zero");
         }
     }
@@ -398,7 +399,7 @@ public class AdminClientService {
     private static <T> void requireNonEmpty(
             Set<T> values, String field, String errorCode, String message) {
         if (values == null || values.isEmpty()) {
-            throw AdminClientException.badRequest(field, errorCode, message);
+            throw ApiException.badRequest(field, errorCode, message);
         }
     }
 

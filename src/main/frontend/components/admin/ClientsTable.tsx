@@ -7,6 +7,7 @@ import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
 import { useAdminAuth } from "./AdminAuthProvider";
+import { AdminActionIcon } from "./AdminActionIcon";
 import { PaginationControls } from "./PaginationControls";
 import { ResourceFilters } from "./ResourceFilters";
 import { DataTable } from "./DataTable";
@@ -63,6 +64,7 @@ export function ClientsTable({ locale, dictionary }: { locale: Locale; dictionar
         }}
       >
         <Link href={`/${locale}/admin/clients/new`} className="btn btn-primary text-nowrap">
+          <AdminActionIcon action="add" />
           {dictionary.admin.clients.create}
         </Link>
       </ResourceFilters>
@@ -144,6 +146,7 @@ export function ClientsTable({ locale, dictionary }: { locale: Locale; dictionar
                     as={Link}
                     href={`/${locale}/admin/clients/${encodeURIComponent(c.id)}/settings`}
                   >
+                    <AdminActionIcon action="edit" />
                     {dictionary.admin.clients.edit}
                   </Dropdown.Item>
                 </RowActions>

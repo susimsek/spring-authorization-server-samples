@@ -11,18 +11,20 @@ import java.util.Set;
 
 @ValidAdminClientConfiguration
 public record AdminClientRequest(
-        @NotBlank(message = "{admin.validation.required}") @Size(max = 100) String clientId,
-        @NotBlank(message = "{admin.validation.required}") @Size(max = 200) String clientName,
-        @NotEmpty(message = "{admin.validation.selection}")
-                Set<@NotBlank(message = "{admin.validation.selection}") String>
+        @NotBlank(message = "{app.api.problem.violation.required}") @Size(max = 100)
+                String clientId,
+        @NotBlank(message = "{app.api.problem.violation.required}") @Size(max = 200)
+                String clientName,
+        @NotEmpty(message = "{app.api.problem.violation.selection}")
+                Set<@NotBlank(message = "{app.api.problem.violation.selection}") String>
                         clientAuthenticationMethods,
-        @NotEmpty(message = "{admin.validation.selection}")
-                Set<@NotBlank(message = "{admin.validation.selection}") String>
+        @NotEmpty(message = "{app.api.problem.violation.selection}")
+                Set<@NotBlank(message = "{app.api.problem.violation.selection}") String>
                         authorizationGrantTypes,
         Set<@AbsoluteUri String> redirectUris,
         Set<@AbsoluteUri String> postLogoutRedirectUris,
-        @NotEmpty(message = "{admin.validation.scope}")
-                Set<@NotBlank(message = "{admin.validation.scope}") String> scopes,
+        @NotEmpty(message = "{app.api.problem.violation.scope}")
+                Set<@NotBlank(message = "{app.api.problem.violation.scope}") String> scopes,
         boolean requireAuthorizationConsent,
         boolean requireProofKey,
         @PositiveDuration Duration authorizationCodeTimeToLive,

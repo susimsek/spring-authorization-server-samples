@@ -12,6 +12,7 @@ import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -30,11 +31,17 @@ class AdminRoleServiceTest {
     @Mock private AdminUserService adminUserService;
 
     @Test
-    void rolesReturnsMappedViews() {
-        when(authorityRepository.findAllByOrderByNameAsc())
-                .thenReturn(List.of(authority(2L, "ROLE_ADMIN"), authority(3L, "ROLE_AUDITOR")));
+    void rolesReturnsMappedPage() {
+        var pageable = PageRequest.of(0, 20);
+        when(authorityRepository.findByNameContainingIgnoreCase("", pageable))
+                .thenReturn(
+                        new PageImpl<>(
+                                java.util.List.of(
+                                        authority(2L, "ROLE_ADMIN"), authority(3L, "ROLE_AUDITOR")),
+                                pageable,
+                                2));
 
-        assertThat(service().roles())
+        assertThat(service().roles("", pageable).getContent())
                 .containsExactly(
                         new AdminRoleService.RoleView("ROLE_ADMIN"),
                         new AdminRoleService.RoleView("ROLE_AUDITOR"));
@@ -43,7 +50,7 @@ class AdminRoleServiceTest {
     @Test
     void rejectsAnInvalidRoleName() {
         assertThatThrownBy(() -> service().createRole("role_user"))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Role names must use ROLE_ uppercase format");
     }
 
@@ -52,7 +59,7 @@ class AdminRoleServiceTest {
         when(authorityRepository.existsByName("ROLE_AUDITOR")).thenReturn(true);
 
         assertThatThrownBy(() -> service().createRole("ROLE_AUDITOR"))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Role is already registered");
     }
 
@@ -79,7 +86,7 @@ class AdminRoleServiceTest {
         when(authorityRepository.findByName("ROLE_AUDITOR")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service().deleteRole("ROLE_AUDITOR"))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Role not found");
     }
 
@@ -89,7 +96,7 @@ class AdminRoleServiceTest {
                 .thenReturn(Optional.of(authority(1L, AuthoritiesConstants.ADMIN)));
 
         assertThatThrownBy(() -> service().deleteRole(AuthoritiesConstants.ADMIN))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Role cannot be removed");
 
         verify(authorityRepository, never()).delete(any(AuthorityEntity.class));
@@ -101,7 +108,7 @@ class AdminRoleServiceTest {
                 .thenReturn(Optional.of(authority(2L, AuthoritiesConstants.USER)));
 
         assertThatThrownBy(() -> service().deleteRole(AuthoritiesConstants.USER))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Role cannot be removed");
 
         verify(authorityRepository, never()).delete(any(AuthorityEntity.class));
@@ -114,7 +121,7 @@ class AdminRoleServiceTest {
         when(userRepository.countByAuthoritiesId(4L)).thenReturn(2L);
 
         assertThatThrownBy(() -> service().deleteRole("ROLE_AUDITOR"))
-                .isInstanceOf(AdminClientException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Role is assigned to one or more users");
 
         verify(authorityRepository, never()).delete(any(AuthorityEntity.class));
@@ -134,12 +141,12 @@ class AdminRoleServiceTest {
 
     @Test
     void searchesAssignedUsersOnTheServer() {
-        AuthorityEntity role = authority(4L, "ROLE_AUDITOR");
         UserEntity alice = new UserEntity();
         alice.setId(10L);
         alice.setUsername("alice");
         alice.setEnabled(true);
         var pageable = PageRequest.of(0, 20);
+        AuthorityEntity role = authority(4L, "ROLE_AUDITOR");
         when(authorityRepository.findByName("ROLE_AUDITOR")).thenReturn(Optional.of(role));
         when(userRepository.findByAuthoritiesNameAndUsernameContainingIgnoreCase(
                         "ROLE_AUDITOR", "ali", pageable))
