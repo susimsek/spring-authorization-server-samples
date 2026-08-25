@@ -68,8 +68,8 @@ The image includes two static OIDC clients. Open either URL in a browser; it red
 
 | Console | URL | Seeded login | Required scope |
 | --- | --- | --- | --- |
-| Administration | `http://localhost:9090/en/admin/` or `/tr/admin/` | `admin/admin` | `admin-api` and the required administrative authority |
-| Account | `http://localhost:9090/en/account/` or `/tr/account/` | `admin/admin` or `user/user` | `account-api` |
+| Administration | `http://localhost:9090/admin` | `admin/admin` | `admin-api` and the required administrative authority |
+| Account | `http://localhost:9090/account` | `admin/admin` or `user/user` | `account-api` |
 
 Both consoles are public OAuth2 clients (`admin-console` and `account-console`) using Authorization Code + PKCE, refresh-token rotation, and OIDC logout. They share the authorization server's browser SSO session. Set `APP_AUTHORIZATION_SERVER_ISSUER` to the exact public browser address of the container and use redirect URIs registered for that address; the supplied Docker command uses `http://localhost:9090`, which is included in the seed data.
 
