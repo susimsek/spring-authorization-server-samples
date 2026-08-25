@@ -228,8 +228,8 @@ The static frontend also contains browser-based OIDC clients for administration 
 
 | Console | Entry URL | OIDC client | API scope | Access |
 | --- | --- | --- | --- | --- |
-| Administration | `/en/admin/` or `/tr/admin/` | `admin-console` | `admin-api` | Administrative API permissions; the seeded `admin/admin` user has `ROLE_ADMIN` |
-| Account | `/en/account/` or `/tr/account/` | `account-console` | `account-api` | Authenticated users, including `admin/admin` and `user/user` |
+| Administration | `/admin` | `admin-console` | `admin-api` | Administrative API permissions; the seeded `admin/admin` user has `ROLE_ADMIN` |
+| Account | `/account` | `account-console` | `account-api` | Authenticated users, including `admin/admin` and `user/user` |
 
 The authorization server browser session provides SSO between the login screen and the console clients. The Admin Console includes client, client-scope, user, role, session, consent, signing-key, event, and server-information screens. The Account Console provides personal information, security, authorized applications, and session-management screens.
 
