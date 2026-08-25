@@ -14,15 +14,15 @@ These instructions apply to `src/main/frontend/**` and supplement the repository
 
 ## Quick Reference
 
-| Action | Command |
-| --- | --- |
+| Action               | Command                                   |
+| -------------------- | ----------------------------------------- |
 | Install dependencies | `corepack pnpm install --frozen-lockfile` |
-| Format check | `pnpm format:check` |
-| Type check | `pnpm typecheck` |
-| Lint | `pnpm lint` |
-| Unit/component tests | `pnpm test` |
-| Production build | `pnpm build` |
-| Cypress E2E tests | `pnpm cypress:run` |
+| Format check         | `pnpm format:check`                       |
+| Type check           | `pnpm typecheck`                          |
+| Lint                 | `pnpm lint`                               |
+| Unit/component tests | `pnpm test`                               |
+| Production build     | `pnpm build`                              |
+| Cypress E2E tests    | `pnpm cypress:run`                        |
 
 ## Project Structure
 
