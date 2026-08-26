@@ -3,14 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { Button, Card, Form } from "react-bootstrap";
+import { Button } from "react-bootstrap";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
-import { problemErrorCode, problemViolations } from "@/lib/problem-detail";
 
 import { useAdminAuth } from "./AdminAuthProvider";
 import { AdminActionIcon } from "./AdminActionIcon";
@@ -38,24 +34,6 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
   const [error, setError] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<string | null>(null);
   const { page, query, setPage, setQuery, setSize, size } = useAdminTableState();
-  const roleSchema = z.object({
-    name: z
-      .string()
-      .trim()
-      .max(50, dictionary.admin.common.validation.max50)
-      .regex(/^ROLE_[A-Z0-9_]+$/, dictionary.admin.common.validation.roleFormat),
-  });
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-    setError: setFieldError,
-  } = useForm<{ name: string }>({
-    resolver: zodResolver(roleSchema),
-    mode: "onBlur",
-    defaultValues: { name: "" },
-  });
 
   useEffect(() => {
     if (!accessToken) return;
@@ -72,38 +50,6 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [accessToken, page, query, refresh, size]);
-
-  const createRole = async ({ name }: { name: string }) => {
-    if (!accessToken || !name) return;
-    setSaving(true);
-    try {
-      const response = await adminRequest<Role>(accessToken, {
-        url: "/api/admin/roles",
-        method: "POST",
-        data: { name },
-      });
-      if (response.status >= 300) {
-        const errorCode = problemErrorCode(response.data);
-        if (problemViolations(response.data).some(({ field }) => field === "name")) {
-          setFieldError("name", {
-            message:
-              errorCode === "admin_role_duplicate_name"
-                ? dictionary.admin.common.validation.roleDuplicate
-                : dictionary.admin.common.validation.roleFormat,
-          });
-        }
-        throw new Error();
-      }
-      reset({ name: "" });
-      setLoading(true);
-      setRefresh((current) => current + 1);
-      setError(false);
-    } catch {
-      setError(true);
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const deleteRole = async (role: string) => {
     if (!accessToken) return;
@@ -132,30 +78,17 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
   return (
     <>
       {error && <ErrorState message={copy.operationError} />}
-      <Card className="border-0 shadow-sm mb-3">
-        <Card.Body>
-          <Form className="d-flex gap-2" onSubmit={handleSubmit(createRole)}>
-            <Form.Control
-              aria-label={copy.name}
-              isInvalid={Boolean(errors.name)}
-              {...register("name")}
-              placeholder="ROLE_AUDITOR"
-            />
-            <Button disabled={saving} type="submit">
-              <AdminActionIcon action="add" />
-              {copy.create}
-            </Button>
-          </Form>
-          {errors.name && <div className="invalid-feedback d-block">{errors.name.message}</div>}
-          <Form.Text>{copy.help}</Form.Text>
-        </Card.Body>
-      </Card>
       <ResourceFilters
         key={query}
         onQueryChange={setQuery}
         query={query}
         searchLabel={dictionary.admin.resources.search}
-      />
+      >
+        <Link className="btn btn-primary text-nowrap" href={`/${lang}/admin/roles/new`}>
+          <AdminActionIcon action="add" />
+          {copy.create}
+        </Link>
+      </ResourceFilters>
       <DataTable
         emptyMessage={dictionary.admin.resources.empty}
         footer={

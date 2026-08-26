@@ -54,6 +54,18 @@ export function AccountAuthGuard({
     );
   }, [beginAuthorization, locale]);
 
+  const restoreSession = useCallback(() => {
+    if (bootstrapStarted.current) return;
+    bootstrapStarted.current = true;
+    // Equivalent to Keycloak init({ onLoad: "check-sso" }). Tokens intentionally remain
+    // in memory, so a reload obtains a new authorization code from the browser SSO session.
+    void beginAuthorization(locale, `${window.location.pathname}${window.location.search}`, {
+      prompt: "none",
+    }).catch(() => {
+      bootstrapStarted.current = false;
+    });
+  }, [beginAuthorization, locale]);
+
   useEffect(() => {
     if (!accessToken || callback) return;
     registerAccountTokenHandlers({
@@ -79,7 +91,7 @@ export function AccountAuthGuard({
   useEffect(() => {
     if (!initialized || isLoggingOut || callback) return;
     if (!accessToken) {
-      startLogin();
+      restoreSession();
       return;
     }
     bootstrapStarted.current = false;
@@ -109,6 +121,7 @@ export function AccountAuthGuard({
     isLoggingOut,
     locale,
     refreshAccessToken,
+    restoreSession,
     router,
     startLogin,
     setUsername,

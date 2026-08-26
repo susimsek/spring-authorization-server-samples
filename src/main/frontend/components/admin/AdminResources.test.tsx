@@ -260,6 +260,12 @@ describe("AdminResources", () => {
     });
     const view = render(<AdminResources copy={dictionary.admin.resources} resource="sessions" />);
     expect(await screen.findByText("ada")).toBeVisible();
+    expect(screen.getByRole("textbox", { name: "Client ID" })).toHaveClass(
+      "admin-resource-filter-control",
+    );
+    expect(screen.getByRole("combobox", { name: "Session status" })).toHaveClass(
+      "admin-resource-filter-control",
+    );
     fireEvent.change(screen.getAllByRole("combobox").at(-1)!, { target: { value: "50" } });
     expect(await screen.findByText("ada")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Session actions" }));

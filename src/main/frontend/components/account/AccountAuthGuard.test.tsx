@@ -1,0 +1,72 @@
+import { render, screen, waitFor } from "@testing-library/react";
+
+import { accountRequest, registerAccountTokenHandlers } from "@/lib/account-api";
+
+import { AccountAuthGuard } from "./AccountAuthGuard";
+
+const mockAccountRequest = accountRequest as jest.MockedFunction<typeof accountRequest>;
+const mockRegisterAccountTokenHandlers = registerAccountTokenHandlers as jest.MockedFunction<
+  typeof registerAccountTokenHandlers
+>;
+const mockBeginAuthorization = jest.fn().mockResolvedValue(undefined);
+const mockRefreshAccessToken = jest.fn().mockResolvedValue("new-token");
+const mockSetUsername = jest.fn();
+let pathname = "/en/account/applications";
+let auth = {
+  accessToken: "token" as string | null,
+  beginAuthorization: mockBeginAuthorization,
+  expiresAt: null as number | null,
+  initialized: true,
+  isLoggingOut: false,
+  refreshAccessToken: mockRefreshAccessToken,
+  setUsername: mockSetUsername,
+};
+
+jest.mock("@/lib/account-api", () => ({
+  accountRequest: jest.fn(),
+  registerAccountTokenHandlers: jest.fn(),
+}));
+jest.mock("next/navigation", () => ({
+  usePathname: () => pathname,
+  useRouter: () => ({ replace: jest.fn() }),
+}));
+jest.mock("./AccountAuthProvider", () => ({ useAccountAuth: () => auth }));
+
+describe("AccountAuthGuard", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    pathname = "/en/account/applications";
+    auth = {
+      accessToken: "token",
+      beginAuthorization: mockBeginAuthorization,
+      expiresAt: null,
+      initialized: true,
+      isLoggingOut: false,
+      refreshAccessToken: mockRefreshAccessToken,
+      setUsername: mockSetUsername,
+    };
+    mockAccountRequest.mockResolvedValue({ status: 200, data: { username: "admin" } } as never);
+  });
+
+  it("silently restores the browser SSO session after a page reload", async () => {
+    auth = { ...auth, accessToken: null };
+
+    render(<AccountAuthGuard locale="tr">Protected</AccountAuthGuard>);
+
+    await waitFor(() =>
+      expect(mockBeginAuthorization).toHaveBeenCalledWith("tr", "/", { prompt: "none" }),
+    );
+    expect(screen.queryByText("Protected")).not.toBeInTheDocument();
+  });
+
+  it("loads the account profile after an access token is available", async () => {
+    render(<AccountAuthGuard locale="en">Account</AccountAuthGuard>);
+
+    expect(await screen.findByText("Account")).toBeVisible();
+    expect(mockSetUsername).toHaveBeenCalledWith("admin");
+    expect(mockRegisterAccountTokenHandlers).toHaveBeenCalledWith({
+      refresh: mockRefreshAccessToken,
+      unauthorized: expect.any(Function),
+    });
+  });
+});

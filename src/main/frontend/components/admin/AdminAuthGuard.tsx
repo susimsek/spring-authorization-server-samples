@@ -60,6 +60,19 @@ export function AdminAuthGuard({
     );
   }, [beginAuthorization, locale]);
 
+  const restoreSession = useCallback(() => {
+    if (bootstrapStarted.current) return;
+    bootstrapStarted.current = true;
+    // Tokens intentionally remain in memory. After a reload, probe the browser SSO
+    // session without showing the login page; the callback retries interactively only
+    // when the Authorization Server reports that no SSO session is available.
+    void beginAuthorization(locale, `${window.location.pathname}${window.location.search}`, {
+      prompt: "none",
+    }).catch(() => {
+      bootstrapStarted.current = false;
+    });
+  }, [beginAuthorization, locale]);
+
   useEffect(() => {
     if (!accessToken || isAuthorizationCallback) return;
 
@@ -88,7 +101,7 @@ export function AdminAuthGuard({
     if (!initialized || isLoggingOut || isAuthorizationCallback) return;
 
     if (!accessToken) {
-      startLogin();
+      restoreSession();
       return;
     }
     bootstrapStarted.current = false;
@@ -144,6 +157,7 @@ export function AdminAuthGuard({
     isLoggingOut,
     locale,
     refreshAccessToken,
+    restoreSession,
     router,
     startLogin,
     setAccess,

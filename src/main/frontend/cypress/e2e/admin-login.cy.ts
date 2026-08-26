@@ -1,5 +1,7 @@
 describe("admin login", () => {
   it("signs in from /admin and keeps the URL clean after reload", () => {
+    cy.intercept("POST", "/oauth2/token").as("initialToken");
+    cy.intercept("GET", "/api/admin/whoami").as("whoami");
     cy.visit("/admin");
 
     cy.env(["adminUsername", "adminPassword"], { log: false }).then(
@@ -11,6 +13,9 @@ describe("admin login", () => {
       },
     );
     cy.get('button[type="submit"]').click();
+
+    cy.wait("@initialToken", { timeout: 20_000 }).its("response.statusCode").should("eq", 200);
+    cy.wait("@whoami", { timeout: 20_000 }).its("response.statusCode").should("eq", 200);
 
     cy.location("pathname", { timeout: 20_000 }).should("match", /^\/(en|tr)\/admin\/?$/);
     cy.location("search").should("eq", "");

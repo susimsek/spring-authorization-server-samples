@@ -54,55 +54,27 @@ describe("RolesTable", () => {
     });
   });
 
-  it("validates and creates a role, then refreshes the list", async () => {
-    mockAdminRequest
-      .mockResolvedValueOnce({ status: 200, data: rolePage([]) } as never)
-      .mockResolvedValueOnce({ status: 201, data: { name: "ROLE_AUDITOR" } } as never)
-      .mockResolvedValueOnce({ status: 200, data: rolePage([{ name: "ROLE_AUDITOR" }]) } as never);
+  it("links creation to the dedicated role page", async () => {
+    mockAdminRequest.mockResolvedValueOnce({ status: 200, data: rolePage([]) } as never);
     render(<RolesTable dictionary={dictionary} />);
     await waitFor(() =>
       expect(mockAdminRequest).toHaveBeenCalledWith("token", {
         url: "/api/admin/roles?q=&page=0&size=10",
       }),
     );
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: dictionary.admin.roles.create })).toBeVisible(),
+    expect(screen.getByRole("link", { name: dictionary.admin.roles.create })).toHaveAttribute(
+      "href",
+      "/en/admin/roles/new",
     );
-    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.roles.create }));
-    expect(await screen.findByText(dictionary.admin.common.validation.roleFormat)).toBeVisible();
-    fireEvent.change(screen.getByRole("textbox", { name: dictionary.admin.roles.name }), {
-      target: { value: "ROLE_AUDITOR" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.roles.create }));
-    await waitFor(() =>
-      expect(mockAdminRequest).toHaveBeenCalledWith("token", {
-        url: "/api/admin/roles",
-        method: "POST",
-        data: { name: "ROLE_AUDITOR" },
-      }),
-    );
-    expect(await screen.findByText("ROLE_AUDITOR")).toBeVisible();
   });
 
-  it("maps duplicate role errors and deletes a role after confirmation", async () => {
+  it("deletes a role after confirmation", async () => {
     mockAdminRequest
       .mockResolvedValueOnce({ status: 200, data: rolePage([{ name: "ROLE_AUDITOR" }]) } as never)
-      .mockResolvedValueOnce({
-        status: 400,
-        data: {
-          errorCode: "admin_role_duplicate_name",
-          violations: [{ field: "name" }],
-        },
-      } as never)
       .mockResolvedValueOnce({ status: 204, data: null } as never)
       .mockResolvedValueOnce({ status: 200, data: rolePage([]) } as never);
     render(<RolesTable dictionary={dictionary} />);
     expect(await screen.findByText("ROLE_AUDITOR")).toBeVisible();
-    fireEvent.change(screen.getByRole("textbox", { name: dictionary.admin.roles.name }), {
-      target: { value: "ROLE_AUDITOR" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.roles.create }));
-    expect(await screen.findByText(dictionary.admin.common.validation.roleDuplicate)).toBeVisible();
 
     fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.roles.delete })[0]);
     expect(await screen.findByText(dictionary.admin.roles.deleteConfirm)).toBeVisible();

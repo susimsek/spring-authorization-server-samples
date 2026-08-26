@@ -3,14 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { Button, Card, Form } from "react-bootstrap";
+import { Button } from "react-bootstrap";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
-import { problemViolations } from "@/lib/problem-detail";
 
 import { useAdminAuth } from "./AdminAuthProvider";
 import { AdminActionIcon } from "./AdminActionIcon";
@@ -38,20 +34,6 @@ export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
   const [error, setError] = useState(false);
   const [groupToDelete, setGroupToDelete] = useState<Group | null>(null);
   const { page, query, setPage, setQuery, setSize, size } = useAdminTableState();
-  const schema = z.object({
-    name: z.string().trim().min(1, dictionary.admin.common.validation.required).max(100),
-  });
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-    setError: setFieldError,
-  } = useForm<{ name: string }>({
-    resolver: zodResolver(schema),
-    mode: "onBlur",
-    defaultValues: { name: "" },
-  });
 
   useEffect(() => {
     if (!accessToken) return;
@@ -68,32 +50,6 @@ export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [accessToken, page, query, refresh, size]);
-
-  const create = async ({ name }: { name: string }) => {
-    if (!accessToken) return;
-    setSaving(true);
-    try {
-      const response = await adminRequest<Group>(accessToken, {
-        url: "/api/admin/groups",
-        method: "POST",
-        data: { name },
-      });
-      if (response.status >= 300) {
-        if (problemViolations(response.data).some(({ field }) => field === "name")) {
-          setFieldError("name", { message: dictionary.admin.common.validation.required });
-        }
-        throw new Error();
-      }
-      reset();
-      setLoading(true);
-      setRefresh((current) => current + 1);
-      setError(false);
-    } catch {
-      setError(true);
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const remove = async (group: Group) => {
     if (!accessToken) return;
@@ -119,30 +75,17 @@ export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
   return (
     <>
       {error && <ErrorState message={copy.operationError} />}
-      <Card className="border-0 shadow-sm mb-3">
-        <Card.Body>
-          <Form className="d-flex gap-2" onSubmit={handleSubmit(create)}>
-            <Form.Control
-              aria-label={copy.name}
-              isInvalid={Boolean(errors.name)}
-              placeholder="finance-operators"
-              {...register("name")}
-            />
-            <Button disabled={saving} type="submit">
-              <AdminActionIcon action="add" />
-              {copy.create}
-            </Button>
-          </Form>
-          {errors.name && <div className="invalid-feedback d-block">{errors.name.message}</div>}
-          <Form.Text>{copy.help}</Form.Text>
-        </Card.Body>
-      </Card>
       <ResourceFilters
         key={query}
         onQueryChange={setQuery}
         query={query}
         searchLabel={dictionary.admin.resources.search}
-      />
+      >
+        <Link className="btn btn-primary text-nowrap" href={`/${lang}/admin/groups/new`}>
+          <AdminActionIcon action="add" />
+          {copy.create}
+        </Link>
+      </ResourceFilters>
       <DataTable
         emptyMessage={dictionary.admin.resources.empty}
         footer={

@@ -218,22 +218,22 @@ function AdminResourcesContent({
           <>
             <Form.Control
               aria-label="Client ID"
+              className="admin-resource-filter-control"
               placeholder="Client ID"
               value={clientId}
               onChange={(event) => {
                 setLoading(true);
                 setClientId(event.target.value);
               }}
-              style={{ maxWidth: "14rem" }}
             />
             <Form.Select
               aria-label="Session status"
+              className="admin-resource-filter-control"
               value={status || "active"}
               onChange={(event) => {
                 setLoading(true);
                 setStatus(event.target.value);
               }}
-              style={{ maxWidth: "10rem" }}
             >
               <option value="active">Active</option>
               <option value="expired">Expired</option>
@@ -245,44 +245,44 @@ function AdminResourcesContent({
           <>
             <Form.Control
               aria-label="Client ID"
+              className="admin-resource-filter-control"
               placeholder="Client ID"
               value={clientId}
               onChange={(event) => {
                 setLoading(true);
                 setClientId(event.target.value);
               }}
-              style={{ maxWidth: "13rem" }}
             />
             <Form.Control
               aria-label="Username"
+              className="admin-resource-filter-control"
               placeholder={copy.user}
               value={username}
               onChange={(event) => {
                 setLoading(true);
                 setUsername(event.target.value);
               }}
-              style={{ maxWidth: "13rem" }}
             />
             <Form.Control
               aria-label="Scope"
+              className="admin-resource-filter-control"
               placeholder="Scope"
               value={scope}
               onChange={(event) => {
                 setLoading(true);
                 setScope(event.target.value);
               }}
-              style={{ maxWidth: "12rem" }}
             />
           </>
         )}
         {(resource === "users" || resource === "keys") && (
           <Form.Select
+            className="admin-resource-filter-control"
             value={status}
             onChange={(event) => {
               setLoading(true);
               setStatus(event.target.value);
             }}
-            style={{ maxWidth: "10rem" }}
           >
             <option value="">{copy.all}</option>
             <option value="true">{resource === "users" ? copy.enabled : copy.active}</option>

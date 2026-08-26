@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Form, Modal } from "react-bootstrap";
 import { useForm } from "react-hook-form";
@@ -17,7 +19,9 @@ import { ConfirmModal } from "./ConfirmModal";
 import { DataTable } from "./DataTable";
 import { ErrorState, LoadingState } from "./AsyncState";
 import { PaginationControls } from "./PaginationControls";
+import { ResourceFilters } from "./ResourceFilters";
 import { RowActions } from "./RowActions";
+import { useAdminTableState } from "./useAdminTableState";
 
 export type ClientScope = {
   id: string;
@@ -42,15 +46,13 @@ const EMPTY: Values = { name: "", displayName: "", description: "" };
 export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
   const copy = dictionary.admin.clientScopes;
   const common = dictionary.admin.common;
+  const params = useParams<{ lang: string }>();
+  const locale = params?.lang ?? "en";
   const { access, accessToken } = useAdminAuth();
   const { addAlert, addError } = useConsoleAlerts();
   const [items, setItems] = useState<ClientScope[]>([]);
-  const [page, setPage] = useState(0);
-  const [size, setSize] = useState(20);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
-  const [query, setQuery] = useState("");
-  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [reload, setReload] = useState(0);
@@ -58,6 +60,7 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
   const [showEditor, setShowEditor] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<ClientScope | null>(null);
+  const { page, query, setPage, setQuery, setSize, size } = useAdminTableState();
   const clientScopeSchema = z.object({
     name: z.string().trim().min(1, common.validation.required).max(100, common.validation.max100),
     displayName: z.string().max(200, common.validation.max200),
@@ -89,11 +92,6 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
       .finally(() => setLoading(false));
   }, [accessToken, page, query, reload, size]);
 
-  const openCreate = () => {
-    setEditing(null);
-    reset(EMPTY);
-    setShowEditor(true);
-  };
   const openEdit = (scope: ClientScope) => {
     setEditing(scope);
     reset({
@@ -107,10 +105,8 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
     if (!accessToken) return;
     setSaving(true);
     const response = await adminRequest<ClientScope>(accessToken, {
-      url: editing
-        ? `/api/admin/client-scopes/${encodeURIComponent(editing.id)}`
-        : "/api/admin/client-scopes",
-      method: editing ? "PUT" : "POST",
+      url: `/api/admin/client-scopes/${encodeURIComponent(editing?.id ?? "")}`,
+      method: "PUT",
       data: values,
     });
     setSaving(false);
@@ -142,36 +138,23 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
 
   return (
     <>
-      <AdminPageHeader
-        title={copy.title}
-        description={copy.subtitle}
-        actions={
-          access?.manageClients ? (
-            <Button onClick={openCreate}>
-              <AdminActionIcon action="add" />
-              {copy.create}
-            </Button>
-          ) : undefined
-        }
-      />
-      <Form
-        className="admin-resource-toolbar"
-        onSubmit={(event) => {
-          event.preventDefault();
-          setPage(0);
-          setQuery(search.trim());
+      <AdminPageHeader title={copy.title} description={copy.subtitle} />
+      <ResourceFilters
+        key={query}
+        query={query}
+        searchLabel={copy.search}
+        onQueryChange={(value) => {
+          setLoading(true);
+          setQuery(value);
         }}
       >
-        <Form.Control
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder={copy.search}
-          aria-label={copy.search}
-        />
-        <Button type="submit" variant="outline-secondary">
-          {dictionary.admin.resources.search}
-        </Button>
-      </Form>
+        {access?.manageClients && (
+          <Link className="btn btn-primary text-nowrap" href={`/${locale}/admin/client-scopes/new`}>
+            <AdminActionIcon action="add" />
+            {copy.create}
+          </Link>
+        )}
+      </ResourceFilters>
       <DataTable
         isEmpty={items.length === 0}
         emptyMessage={copy.empty}
@@ -189,7 +172,7 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
             last={dictionary.admin.resources.last}
             onPageChange={setPage}
             onSizeChange={(nextSize) => {
-              setPage(0);
+              setLoading(true);
               setSize(nextSize);
             }}
           />

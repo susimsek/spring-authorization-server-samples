@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { UserForm } from "@/components/admin/UserForm";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
@@ -9,10 +11,10 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   const dictionary = getDictionary(locale);
   return (
     <>
-      <div className="admin-page-header">
-        <h1>{dictionary.admin.resources.createUserTitle}</h1>
-        <p>{dictionary.admin.resources.createUserSubtitle}</p>
-      </div>
+      <AdminPageHeader
+        title={dictionary.admin.resources.createUserTitle}
+        description={dictionary.admin.resources.createUserSubtitle}
+      />
       <UserForm locale={locale} dictionary={dictionary} />
     </>
   );

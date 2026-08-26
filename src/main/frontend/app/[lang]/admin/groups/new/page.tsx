@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
+import { GroupCreateForm } from "@/components/admin/GroupCreateForm";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
-import { ClientForm } from "@/components/admin/ClientForm";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 
@@ -14,10 +14,10 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   return (
     <>
       <AdminPageHeader
-        title={dictionary.admin.clients.createTitle}
-        description={dictionary.admin.clients.createSubtitle}
+        title={dictionary.admin.groups.create}
+        description={dictionary.admin.groups.help}
       />
-      <ClientForm locale={locale} dictionary={dictionary} mode="create" />
+      <GroupCreateForm dictionary={dictionary} locale={locale} />
     </>
   );
 }

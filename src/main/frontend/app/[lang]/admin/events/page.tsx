@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Badge, Button, Form, Offcanvas } from "react-bootstrap";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFilter, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { useParams } from "next/navigation";
 import { adminRequest } from "@/lib/admin-api";
 import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
 import { DataTable } from "@/components/admin/DataTable";
+import { ResourceFilters } from "@/components/admin/ResourceFilters";
+import { getDictionary } from "@/i18n/get-dictionary";
 
 export type Event = {
   id: string;
@@ -22,7 +22,8 @@ type Page<T> = { content: T[]; totalElements: number };
 export default function AdminEventsPage() {
   const { accessToken } = useAdminAuth();
   const params = useParams<{ lang: string }>();
-  const tr = params.lang === "tr";
+  const dictionary = getDictionary(params.lang === "tr" ? "tr" : "en");
+  const copy = dictionary.admin.events;
   const [events, setEvents] = useState<Event[]>([]);
   const [query, setQuery] = useState("");
   const [type, setType] = useState("");
@@ -59,45 +60,32 @@ export default function AdminEventsPage() {
     <>
       <div className="admin-page-header d-flex flex-wrap justify-content-between gap-3 align-items-end">
         <div>
-          <h1>{tr ? "Olaylar" : "Events"}</h1>
-          <p>
-            {tr
-              ? "Yönetim ve hesap işlemlerinin denetim geçmişi."
-              : "Audit history for administration and account actions."}
-          </p>
+          <h1>{copy.title}</h1>
+          <p>{copy.subtitle}</p>
         </div>
         <Badge bg="light" text="dark" className="border">
-          {total} {tr ? "olay" : "events"}
+          {total} {copy.records}
         </Badge>
       </div>
-      <div className="admin-event-toolbar mb-3">
-        <div className="input-group admin-search-input">
-          <span className="input-group-text">
-            <FontAwesomeIcon icon={faMagnifyingGlass} />
-          </span>
-          <Form.Control
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={tr ? "Olaylarda ara" : "Search events"}
-          />
-        </div>
-        <div className="input-group admin-event-type">
-          <span className="input-group-text">
-            <FontAwesomeIcon icon={faFilter} />
-          </span>
-          <Form.Select value={type} onChange={(e) => setType(e.target.value)}>
-            <option value="">{tr ? "Tüm işlem tipleri" : "All event types"}</option>
-            {types.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </Form.Select>
-        </div>
+      <ResourceFilters query={query} searchLabel={copy.search} onQueryChange={setQuery}>
         <Form.Select
-          aria-label={tr ? "Hedef tipi" : "Target type"}
-          value={targetType}
-          onChange={(e) => setTargetType(e.target.value)}
+          aria-label={copy.action}
+          className="admin-resource-filter-control"
+          value={type}
+          onChange={(event) => setType(event.target.value)}
         >
-          <option value="">{tr ? "Tüm hedef tipleri" : "All target types"}</option>
+          <option value="">{copy.allActions}</option>
+          {types.map((item) => (
+            <option key={item}>{item}</option>
+          ))}
+        </Form.Select>
+        <Form.Select
+          aria-label={copy.targetType}
+          className="admin-resource-filter-control"
+          value={targetType}
+          onChange={(event) => setTargetType(event.target.value)}
+        >
+          <option value="">{copy.allTargetTypes}</option>
           <option value="client">client</option>
           <option value="user">user</option>
           <option value="session">session</option>
@@ -107,26 +95,29 @@ export default function AdminEventsPage() {
           <option value="client-scope">client-scope</option>
         </Form.Select>
         <Form.Control
+          className="admin-resource-filter-control"
           value={targetId}
-          onChange={(e) => setTargetId(e.target.value)}
-          placeholder={tr ? "Hedef ID" : "Target ID"}
-          aria-label={tr ? "Hedef ID" : "Target ID"}
+          onChange={(event) => setTargetId(event.target.value)}
+          placeholder={copy.targetId}
+          aria-label={copy.targetId}
         />
         <Form.Control
+          className="admin-resource-filter-control"
           type="date"
           value={from}
-          onChange={(e) => setFrom(e.target.value)}
-          aria-label={tr ? "Başlangıç tarihi" : "From date"}
+          onChange={(event) => setFrom(event.target.value)}
+          aria-label={copy.from}
         />
         <Form.Control
+          className="admin-resource-filter-control"
           type="date"
           value={to}
-          onChange={(e) => setTo(e.target.value)}
-          aria-label={tr ? "Bitiş tarihi" : "To date"}
+          onChange={(event) => setTo(event.target.value)}
+          aria-label={copy.to}
         />
         {(query || type || targetType || targetId || from || to) && (
           <Button
-            variant="link"
+            variant="outline-secondary"
             onClick={() => {
               setQuery("");
               setType("");
@@ -136,20 +127,17 @@ export default function AdminEventsPage() {
               setTo("");
             }}
           >
-            {tr ? "Filtreleri temizle" : "Clear filters"}
+            {copy.clearFilters}
           </Button>
         )}
-      </div>
-      <DataTable
-        isEmpty={filtered.length === 0}
-        emptyMessage={tr ? "Olay bulunamadı." : "No events found."}
-      >
+      </ResourceFilters>
+      <DataTable isEmpty={filtered.length === 0} emptyMessage={copy.empty}>
         <thead>
           <tr>
-            <th>{tr ? "Zaman" : "Time"}</th>
-            <th>{tr ? "İşlem" : "Action"}</th>
-            <th>{tr ? "Yapan" : "Actor"}</th>
-            <th>{tr ? "Hedef" : "Target"}</th>
+            <th>{copy.time}</th>
+            <th>{copy.action}</th>
+            <th>{copy.actor}</th>
+            <th>{copy.target}</th>
             <th />
           </tr>
         </thead>
@@ -179,24 +167,24 @@ export default function AdminEventsPage() {
         className="admin-event-drawer"
       >
         <Offcanvas.Header closeButton>
-          <Offcanvas.Title>{tr ? "Olay ayrıntıları" : "Event details"}</Offcanvas.Title>
+          <Offcanvas.Title>{copy.details}</Offcanvas.Title>
         </Offcanvas.Header>
         <Offcanvas.Body>
           {selected && (
             <dl className="admin-event-details">
               <dt>ID</dt>
               <dd className="font-monospace text-break">{selected.id}</dd>
-              <dt>{tr ? "Zaman" : "Time"}</dt>
+              <dt>{copy.time}</dt>
               <dd>{new Date(selected.occurredAt).toLocaleString(params.lang)}</dd>
-              <dt>{tr ? "İşlem" : "Action"}</dt>
+              <dt>{copy.action}</dt>
               <dd>
                 <code>{selected.action}</code>
               </dd>
-              <dt>{tr ? "Yapan" : "Actor"}</dt>
+              <dt>{copy.actor}</dt>
               <dd>{selected.actor}</dd>
-              <dt>{tr ? "Hedef tipi" : "Target type"}</dt>
+              <dt>{copy.targetType}</dt>
               <dd>{selected.targetType}</dd>
-              <dt>{tr ? "Hedef" : "Target"}</dt>
+              <dt>{copy.target}</dt>
               <dd className="text-break">{selected.targetId}</dd>
             </dl>
           )}

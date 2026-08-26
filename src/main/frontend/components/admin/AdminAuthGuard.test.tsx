@@ -97,10 +97,12 @@ describe("AdminAuthGuard", () => {
     expect(mockRegisterAdminTokenHandlers).toHaveBeenLastCalledWith(undefined);
   });
 
-  it("starts authorization when no access token is present", async () => {
+  it("silently restores the browser SSO session when no access token is present", async () => {
     auth = { ...auth, accessToken: null };
     render(<AdminAuthGuard locale="tr">Protected</AdminAuthGuard>);
-    await waitFor(() => expect(mockBeginAuthorization).toHaveBeenCalledWith("tr", "/"));
+    await waitFor(() =>
+      expect(mockBeginAuthorization).toHaveBeenCalledWith("tr", "/", { prompt: "none" }),
+    );
     expect(screen.queryByText("Protected")).not.toBeInTheDocument();
   });
 
