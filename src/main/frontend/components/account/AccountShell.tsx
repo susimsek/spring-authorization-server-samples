@@ -31,7 +31,7 @@ export function AccountShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { logout, username } = useAccountAuth();
+  const { idTokenParsed, logout, tokenParsed, username } = useAccountAuth();
   const [open, setOpen] = useState(false);
   const items = [
     ["/personal-info", dictionary.account.nav.personalInfo, faAddressCard],
@@ -48,7 +48,7 @@ export function AccountShell({
               <Button
                 variant="link"
                 className="admin-menu-toggle d-lg-none me-2"
-                aria-label="Toggle navigation"
+                aria-label={dictionary.admin.common.toggleNavigation}
                 onClick={() => setOpen((v) => !v)}
               >
                 <FontAwesomeIcon icon={open ? faXmark : faBars} />
@@ -69,9 +69,11 @@ export function AccountShell({
               <ThemeSwitcher dictionary={dictionary} />
               <ConsoleUserMenu
                 username={username ?? "…"}
+                avatarSrc={idTokenParsed?.picture ?? tokenParsed?.picture}
                 accountHref={`/${locale}/account/personal-info`}
                 accountLabel={dictionary.account.nav.personalInfo}
                 logoutLabel={dictionary.account.logout}
+                signedInAsLabel={dictionary.admin.common.signedInAs}
                 onLogout={() => {
                   void logout(locale);
                 }}
@@ -84,7 +86,7 @@ export function AccountShell({
             <button
               type="button"
               className="admin-sidebar-backdrop d-lg-none"
-              aria-label="Close navigation"
+              aria-label={dictionary.admin.common.closeNavigation}
               onClick={() => setOpen(false)}
             />
           )}

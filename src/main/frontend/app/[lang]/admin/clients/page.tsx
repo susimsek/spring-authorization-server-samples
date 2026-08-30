@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { ClientsTable } from "@/components/admin/ClientsTable";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 
@@ -13,10 +14,10 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
 
   return (
     <>
-      <div className="admin-page-header">
-        <h1>{dictionary.admin.clients.title}</h1>
-        <p>{dictionary.admin.clients.subtitle}</p>
-      </div>
+      <AdminPageHeader
+        title={dictionary.admin.clients.title}
+        description={dictionary.admin.clients.subtitle}
+      />
       <ClientsTable locale={locale} dictionary={dictionary} />
     </>
   );

@@ -13,9 +13,7 @@ type AccountAuthRuntime = {
   beginAuthorization: (
     locale: Locale,
     returnTo: string,
-    options?: { prompt?: "none" },
   ) => Promise<void>;
-  retryAuthorization: (locale: Locale, state: string | null, error: string | null) => Promise<void>;
   completeAuthorization: (locale: Locale, code: string, state: string) => Promise<string>;
 };
 
@@ -51,7 +49,6 @@ export function AccountAuthProvider({ children }: { children: React.ReactNode })
     refreshAccessToken,
     logout,
     beginAuthorization,
-    retryAuthorization,
     completeAuthorization,
   } = useConsoleAuth(ACCOUNT_AUTH_CONFIG, "account");
 
@@ -60,10 +57,9 @@ export function AccountAuthProvider({ children }: { children: React.ReactNode })
       refreshAccessToken,
       logout,
       beginAuthorization,
-      retryAuthorization,
       completeAuthorization,
     }),
-    [beginAuthorization, completeAuthorization, logout, refreshAccessToken, retryAuthorization],
+    [beginAuthorization, completeAuthorization, logout, refreshAccessToken],
   );
 
   return (

@@ -56,6 +56,7 @@ public class AdminGroupService {
         }
         GroupEntity group = new GroupEntity();
         group.setName(name);
+        group.setParent(resolveParent(request.parentId(), null));
         AdminGroupDTO view = groupView(groupRepository.save(group));
         adminAuditEventService.record("group.created", "group", view.id().toString());
         return view;
@@ -70,6 +71,8 @@ public class AdminGroupService {
                     "name", "group_duplicate_name", "Group name is already registered");
         }
         group.setName(name);
+        group.setParent(resolveParent(request.parentId(), group));
+        invalidateUsersInGroupTree(group);
         adminAuditEventService.record("group.updated", "group", group.getId().toString());
         return groupView(group);
     }
@@ -79,7 +82,7 @@ public class AdminGroupService {
     public AdminGroupDTO updateRoles(Long id, AdminGroupRolesRequestDTO request) {
         GroupEntity group = findGroup(id);
         group.setAuthorities(resolveAuthorities(request.roles()));
-        invalidateUsers(group);
+        invalidateUsersInGroupTree(group);
         adminAuditEventService.record("group.roles.updated", "group", group.getId().toString());
         return groupView(group);
     }
@@ -127,6 +130,10 @@ public class AdminGroupService {
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public void delete(Long id) {
         GroupEntity group = findGroup(id);
+        if (groupRepository.existsByParentId(id)) {
+            throw ApiException.badRequest(
+                    "group_has_children", "Move or delete child groups before deleting this group");
+        }
         java.util.List<UserEntity> users = userRepository.findAllByGroupsId(id);
         users.forEach(user -> user.getGroups().remove(group));
         invalidateUsers(users);
@@ -172,7 +179,13 @@ public class AdminGroupService {
                         .map(AuthorityEntity::getName)
                         .sorted()
                         .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        return new AdminGroupDTO(group.getId(), group.getName(), roles, userCount);
+        return new AdminGroupDTO(
+                group.getId(),
+                group.getName(),
+                groupPath(group),
+                parentId(group),
+                roles,
+                userCount);
     }
 
     private Page<AdminGroupDTO> groupViews(Page<GroupEntity> groups, Pageable pageable) {
@@ -195,8 +208,9 @@ public class AdminGroupService {
         return new AdminGroupUserDTO(user.getId(), user.getUsername(), user.isEnabled());
     }
 
-    private void invalidateUsers(GroupEntity group) {
+    private void invalidateUsersInGroupTree(GroupEntity group) {
         invalidateUsers(userRepository.findAllByGroupsId(group.getId()));
+        groupRepository.findByParentId(group.getId()).forEach(this::invalidateUsersInGroupTree);
     }
 
     private void invalidateUsers(java.util.List<UserEntity> users) {
@@ -209,5 +223,48 @@ public class AdminGroupService {
             throw ApiException.badRequest("name", "group_invalid_name", "Group name is required");
         }
         return name;
+    }
+
+    private GroupEntity resolveParent(Long parentId, GroupEntity group) {
+        if (parentId == null) {
+            return null;
+        }
+        if (group != null && parentId.equals(group.getId())) {
+            throw ApiException.badRequest(
+                    "parentId", "group_invalid_parent", "A group cannot be its own parent");
+        }
+        GroupEntity parent = findGroup(parentId);
+        if (group != null && isDescendant(parent, group.getId())) {
+            throw ApiException.badRequest(
+                    "parentId",
+                    "group_invalid_parent",
+                    "A group cannot be moved into its descendant");
+        }
+        return parent;
+    }
+
+    private static boolean isDescendant(GroupEntity group, Long ancestorId) {
+        GroupEntity current = group;
+        while (current != null) {
+            if (ancestorId.equals(current.getId())) {
+                return true;
+            }
+            current = current.getParent();
+        }
+        return false;
+    }
+
+    private static Long parentId(GroupEntity group) {
+        return group.getParent() == null ? null : group.getParent().getId();
+    }
+
+    private static String groupPath(GroupEntity group) {
+        java.util.Deque<String> names = new java.util.ArrayDeque<>();
+        GroupEntity current = group;
+        while (current != null) {
+            names.addFirst(current.getName());
+            current = current.getParent();
+        }
+        return String.join(" / ", names);
     }
 }

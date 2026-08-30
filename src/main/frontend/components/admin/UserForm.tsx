@@ -33,6 +33,7 @@ type User = {
   updatedAt: string;
 };
 type Role = { name: string };
+type RolePage = { content: Role[] };
 type UserFormValues = { username: string; password: string; enabled: boolean; roles: string[] };
 
 const USER_DETAIL_TABS = [
@@ -123,10 +124,10 @@ export function UserForm({
 
   useEffect(() => {
     if (!accessToken) return;
-    adminRequest<Role[]>(accessToken, { url: "/api/admin/roles" })
+    adminRequest<RolePage>(accessToken, { url: "/api/admin/roles?page=0&size=100" })
       .then((response) => {
         if (response.status >= 300) throw new Error();
-        setAvailableRoles(response.data);
+        setAvailableRoles(response.data.content);
       })
       .catch(() => setError(true));
   }, [accessToken]);
@@ -261,20 +262,19 @@ export function UserForm({
 
   if (loading) return <LoadingState />;
   if (editing && error) return <ErrorState message={copy.notFound} />;
-  const tr = locale === "tr";
   const userBaseUrl = `/${locale}/admin/users/${encodeURIComponent(id ?? "")}`;
   const userTabs = [
-    { key: "details", label: tr ? "Ayrıntılar" : "Details", href: `${userBaseUrl}/details` },
+    { key: "details", label: copy.details, href: `${userBaseUrl}/details` },
     {
       key: "credentials",
-      label: tr ? "Kimlik bilgileri" : "Credentials",
+      label: copy.credentials,
       href: `${userBaseUrl}/credentials`,
     },
-    { key: "roles", label: tr ? "Rol eşlemeleri" : "Role mapping", href: `${userBaseUrl}/roles` },
+    { key: "roles", label: copy.roleMappings, href: `${userBaseUrl}/roles` },
     { key: "groups", label: dictionary.admin.nav.groups, href: `${userBaseUrl}/groups` },
-    { key: "sessions", label: tr ? "Oturumlar" : "Sessions", href: `${userBaseUrl}/sessions` },
-    { key: "consents", label: tr ? "İzinler" : "Consents", href: `${userBaseUrl}/consents` },
-    { key: "events", label: tr ? "Olaylar" : "Events", href: `${userBaseUrl}/events` },
+    { key: "sessions", label: copy.sessions, href: `${userBaseUrl}/sessions` },
+    { key: "consents", label: copy.consents, href: `${userBaseUrl}/consents` },
+    { key: "events", label: dictionary.admin.events.title, href: `${userBaseUrl}/events` },
   ];
   return (
     <>
@@ -289,16 +289,69 @@ export function UserForm({
           <div className="admin-detail-heading">
             <div>
               <h1 className="h3 mb-1">{getValues("username")}</h1>
-              <div className="text-body-secondary">{tr ? "Kullanıcı" : "User"}</div>
+              <div className="text-body-secondary">{copy.user}</div>
             </div>
           </div>
           <DetailTabs tabs={userTabs} active={activeTab} />
         </div>
       )}
-      <Form onSubmit={handleSubmit(submit)}>
+      <Form className={editing ? undefined : "admin-create-form"} onSubmit={handleSubmit(submit)}>
         {error && <Alert variant="danger">{copy.saveError}</Alert>}
 
-        {(!editing || activeTab === "details") && (
+        {!editing && (
+          <Card className="admin-panel-card admin-create-card">
+            <Card.Body className="d-grid gap-4">
+              <Form.Group>
+                <Form.Label>{copy.username}</Form.Label>
+                <Form.Control isInvalid={Boolean(errors.username)} {...register("username")} />
+                <Form.Control.Feedback type="invalid">
+                  {errors.username?.message}
+                </Form.Control.Feedback>
+              </Form.Group>
+              <Form.Check
+                type="switch"
+                label={copy.enabled}
+                checked={enabled}
+                onChange={(e) => setValue("enabled", e.target.checked, { shouldDirty: true })}
+              />
+              <Form.Group>
+                <Form.Label>{copy.password}</Form.Label>
+                <Form.Control
+                  type="password"
+                  isInvalid={Boolean(errors.password)}
+                  {...register("password")}
+                />
+                <Form.Control.Feedback type="invalid">
+                  {errors.password?.message}
+                </Form.Control.Feedback>
+              </Form.Group>
+              <Form.Group>
+                <Form.Label>{copy.roles}</Form.Label>
+                <div className="admin-role-grid">
+                  {availableRoles.map((role) => (
+                    <label
+                      className={`admin-role-option ${roles.includes(role.name) ? "selected" : ""}`}
+                      key={role.name}
+                    >
+                      <Form.Check
+                        type="checkbox"
+                        checked={roles.includes(role.name)}
+                        onChange={() => toggleRole(role.name)}
+                      />
+                      <span className="font-monospace">{role.name}</span>
+                    </label>
+                  ))}
+                </div>
+                <Form.Text>{copy.rolesHelp}</Form.Text>
+                {errors.roles && (
+                  <div className="invalid-feedback d-block">{errors.roles.message}</div>
+                )}
+              </Form.Group>
+            </Card.Body>
+          </Card>
+        )}
+
+        {editing && activeTab === "details" && (
           <Card className="admin-panel-card">
             <Card.Body className="d-grid gap-4">
               {editing && (
@@ -377,16 +430,12 @@ export function UserForm({
           </Card>
         )}
 
-        {(!editing || activeTab === "credentials") && (
+        {editing && activeTab === "credentials" && (
           <Card className="admin-panel-card">
             <Card.Body>
               <h2 className="h5 mb-1">{editing ? copy.resetPassword : copy.password}</h2>
               <p className="small text-body-secondary mb-3">
-                {editing
-                  ? tr
-                    ? "Kullanıcı için yeni bir parola belirleyin."
-                    : "Set a new password for this user."
-                  : ""}
+                {editing ? copy.resetPasswordHelp : ""}
               </p>
               <Form.Group>
                 <Form.Label>{editing ? copy.newPassword : copy.password}</Form.Label>
@@ -403,7 +452,7 @@ export function UserForm({
           </Card>
         )}
 
-        {(!editing || activeTab === "roles") && (
+        {editing && activeTab === "roles" && (
           <Card className="admin-panel-card">
             <Card.Body>
               <h2 className="h5 mb-3">{copy.roles}</h2>
@@ -462,7 +511,7 @@ export function UserForm({
         )}
 
         {(!editing || ["details", "credentials", "roles"].includes(activeTab)) && (
-          <div className="d-flex justify-content-end gap-2 mt-3">
+          <div className={`admin-create-actions${editing ? " mt-3" : ""}`}>
             <Button
               type="button"
               variant="outline-secondary"

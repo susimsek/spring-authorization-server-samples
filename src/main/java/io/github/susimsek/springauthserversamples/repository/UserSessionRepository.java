@@ -26,15 +26,17 @@ public interface UserSessionRepository extends JpaRepository<UserSessionEntity, 
     long countByExpiryTimeAfter(long expiryTime);
 
     @Query(
-            "select s from UserSessionEntity s where s.expiryTime > :expiryTime and (:query = '' or"
+            "select s from UserSessionEntity s where s.principalName is not null and"
+                    + " s.expiryTime > :expiryTime and (:query = '' or"
                     + " lower(s.principalName) like lower(concat('%', :query, '%')))")
     Page<UserSessionEntity> findActiveSessions(
             @Param("expiryTime") long expiryTime, @Param("query") String query, Pageable pageable);
 
     @Query(
-            "select s from UserSessionEntity s where (:status = 'all' or (:status = 'active' and"
-                + " s.expiryTime > :now) or (:status = 'expired' and s.expiryTime <= :now)) and"
-                + " (:query = '' or lower(s.principalName) like lower(concat('%', :query, '%')))")
+            "select s from UserSessionEntity s where s.principalName is not null and (:status ="
+                + " 'all' or (:status = 'active' and s.expiryTime > :now) or (:status = 'expired'"
+                + " and s.expiryTime <= :now)) and (:query = '' or lower(s.principalName) like"
+                + " lower(concat('%', :query, '%')))")
     Page<UserSessionEntity> findSessions(
             @Param("now") long now,
             @Param("query") String query,
@@ -42,10 +44,10 @@ public interface UserSessionRepository extends JpaRepository<UserSessionEntity, 
             Pageable pageable);
 
     @Query(
-            "select s from UserSessionEntity s where s.sessionId in :sessionIds and (:status ="
-                + " 'all' or (:status = 'active' and s.expiryTime > :now) or (:status = 'expired'"
-                + " and s.expiryTime <= :now)) and (:query = '' or lower(s.principalName) like"
-                + " lower(concat('%', :query, '%')))")
+            "select s from UserSessionEntity s where s.principalName is not null and s.sessionId in"
+                + " :sessionIds and (:status = 'all' or (:status = 'active' and s.expiryTime >"
+                + " :now) or (:status = 'expired' and s.expiryTime <= :now)) and (:query = '' or"
+                + " lower(s.principalName) like lower(concat('%', :query, '%')))")
     Page<UserSessionEntity> findSessionsBySessionIdIn(
             @Param("now") long now,
             @Param("query") String query,
@@ -54,7 +56,8 @@ public interface UserSessionRepository extends JpaRepository<UserSessionEntity, 
             Pageable pageable);
 
     @Query(
-            "select s from UserSessionEntity s where s.expiryTime > :expiryTime and"
+            "select s from UserSessionEntity s where s.principalName is not null and"
+                    + " s.expiryTime > :expiryTime and"
                     + " s.principalName = :principalName")
     Page<UserSessionEntity> findActiveSessionsByPrincipalName(
             @Param("expiryTime") long expiryTime,
@@ -62,7 +65,8 @@ public interface UserSessionRepository extends JpaRepository<UserSessionEntity, 
             Pageable pageable);
 
     @Query(
-            "select s from UserSessionEntity s where s.expiryTime > :expiryTime and"
+            "select s from UserSessionEntity s where s.principalName is not null and"
+                    + " s.expiryTime > :expiryTime and"
                     + " s.sessionId in :sessionIds")
     Page<UserSessionEntity> findActiveSessionsBySessionIdIn(
             @Param("expiryTime") long expiryTime,

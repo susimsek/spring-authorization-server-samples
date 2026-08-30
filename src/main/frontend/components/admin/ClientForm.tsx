@@ -325,9 +325,7 @@ export function ClientForm({
             : dictionary.admin.clients.saveError,
         );
       }
-      alerts.addAlert(
-        locale === "tr" ? "İstemci başarıyla kaydedildi." : "Client saved successfully.",
-      );
+      alerts.addAlert(dictionary.admin.clients.saved);
       if (mode === "create") {
         const created = response.data as {
           client: Detail;
@@ -360,21 +358,25 @@ export function ClientForm({
 
   if (loading) return <LoadingState />;
 
-  const stepLabels =
-    locale === "tr"
-      ? ["Genel ayarlar", "Yetenek yapılandırması", "Giriş ayarları"]
-      : ["General settings", "Capability config", "Login settings"];
-  const nextLabel = locale === "tr" ? "Devam" : "Next";
-  const backLabel = locale === "tr" ? "Geri" : "Back";
+  const stepLabels = [
+    dictionary.admin.clients.generalSettings,
+    dictionary.admin.clients.capabilityConfig,
+    dictionary.admin.clients.loginSettings,
+  ];
+  const nextLabel = dictionary.admin.clients.next;
+  const backLabel = dictionary.admin.clients.back;
 
   return (
-    <Form onSubmit={handleSubmit(submit)}>
+    <Form
+      className={mode === "create" ? "admin-create-form" : undefined}
+      onSubmit={handleSubmit(submit)}
+    >
       {error && (
         <Alert variant="danger">{errorMessage ?? dictionary.admin.clients.saveError}</Alert>
       )}
 
       {mode === "create" && (
-        <div className="admin-stepper mb-4" aria-label="Client creation steps">
+        <div className="admin-stepper mb-4" aria-label={dictionary.admin.clients.creationSteps}>
           {stepLabels.map((label, index) => (
             <button
               className={`admin-step ${index === step ? "active" : ""} ${index < step ? "complete" : ""}`}
@@ -390,7 +392,9 @@ export function ClientForm({
       )}
 
       {(mode === "edit" || step === 0) && (
-        <Card className={`admin-panel-card mb-3${embedded ? " admin-detail-section" : ""}`}>
+        <Card
+          className={`admin-panel-card mb-3${embedded ? " admin-detail-section" : ""}${mode === "create" ? " admin-create-card" : ""}`}
+        >
           <Card.Body>
             <h2 className="h5 mb-1">{dictionary.admin.clients.general}</h2>
             <p className="small text-body-secondary mb-4">
@@ -417,7 +421,9 @@ export function ClientForm({
       )}
 
       {(mode === "edit" || step === 1) && (
-        <Card className={`admin-panel-card mb-3${embedded ? " admin-detail-section" : ""}`}>
+        <Card
+          className={`admin-panel-card mb-3${embedded ? " admin-detail-section" : ""}${mode === "create" ? " admin-create-card" : ""}`}
+        >
           <Card.Body>
             <h2 className="h5 mb-1">{dictionary.admin.clients.capabilities}</h2>
             <p className="small text-body-secondary mb-4">{stepLabels[1]}</p>
@@ -426,11 +432,7 @@ export function ClientForm({
                 <Form.Label className="fw-semibold">
                   <HelpItem
                     label={dictionary.admin.clients.authMethods}
-                    help={
-                      locale === "tr"
-                        ? "İstemcinin token endpointinde kullanacağı kimlik doğrulama yöntemlerini seçin."
-                        : "Select how this client authenticates at the token endpoint."
-                    }
+                    help={dictionary.admin.clients.authMethodsHelp}
                   />
                 </Form.Label>
                 <div className="admin-choice-list">
@@ -475,11 +477,7 @@ export function ClientForm({
                     <div className="fw-semibold">
                       <HelpItem
                         label={dictionary.admin.clients.requirePkce}
-                        help={
-                          locale === "tr"
-                            ? "Authorization Code akışında S256 PKCE kullanımını zorunlu kılar."
-                            : "Requires S256 PKCE for the Authorization Code flow."
-                        }
+                        help={dictionary.admin.clients.requirePkceHelp}
                       />
                     </div>
                     <div className="small text-body-secondary">S256</div>
@@ -501,11 +499,7 @@ export function ClientForm({
                   <div className="fw-semibold">
                     <HelpItem
                       label={dictionary.admin.clients.requireConsent}
-                      help={
-                        locale === "tr"
-                          ? "Kullanıcıdan istemci scope’ları için açık onay alınmasını zorunlu kılar."
-                          : "Requires explicit user consent for requested client scopes."
-                      }
+                      help={dictionary.admin.clients.requireConsentHelp}
                     />
                   </div>
                   <Form.Check
@@ -525,7 +519,9 @@ export function ClientForm({
       )}
 
       {(mode === "edit" || step === 2) && (
-        <Card className={`admin-panel-card mb-3${embedded ? " admin-detail-section" : ""}`}>
+        <Card
+          className={`admin-panel-card mb-3${embedded ? " admin-detail-section" : ""}${mode === "create" ? " admin-create-card" : ""}`}
+        >
           <Card.Body>
             <h2 className="h5 mb-1">{stepLabels[2]}</h2>
             <p className="small text-body-secondary mb-4">
@@ -536,17 +532,13 @@ export function ClientForm({
                 <Form.Label>
                   <HelpItem
                     label={dictionary.admin.clients.redirectUris}
-                    help={
-                      locale === "tr"
-                        ? "Authorization cevabının dönebileceği tam ve izin verilen URI’ler."
-                        : "Exact allowed redirect URIs for authorization responses."
-                    }
+                    help={dictionary.admin.clients.redirectUrisHelp}
                   />
                 </Form.Label>
                 <Form.Control
                   as="textarea"
                   rows={4}
-                  placeholder="https://app.example/callback"
+                  placeholder={dictionary.admin.clients.redirectUrisPlaceholder}
                   isInvalid={Boolean(errors.redirectUris)}
                   {...register("redirectUris")}
                 />
@@ -602,7 +594,9 @@ export function ClientForm({
         </Card>
       )}
 
-      <div className="d-flex gap-2 justify-content-between align-items-center">
+      <div
+        className={`admin-create-actions${mode === "create" ? " admin-create-wizard-actions" : ""}`}
+      >
         <Button
           variant="outline-secondary"
           type="button"

@@ -33,12 +33,13 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<string | null>(null);
-  const { page, query, setPage, setQuery, setSize, size } = useAdminTableState();
+  const { clearFilters, page, query, setPage, setQuery, setSize, setSort, size, sort } =
+    useAdminTableState(20, false, "name,asc");
 
   useEffect(() => {
     if (!accessToken) return;
     adminRequest<RolePage>(accessToken, {
-      url: `/api/admin/roles?q=${encodeURIComponent(query)}&page=${page}&size=${size}`,
+      url: `/api/admin/roles?q=${encodeURIComponent(query)}&page=${page}&size=${size}&sort=${encodeURIComponent(sort)}`,
     })
       .then((response) => {
         if (response.status >= 300) throw new Error();
@@ -49,7 +50,7 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [accessToken, page, query, refresh, size]);
+  }, [accessToken, page, query, refresh, size, sort]);
 
   const deleteRole = async (role: string) => {
     if (!accessToken) return;
@@ -83,6 +84,33 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
         onQueryChange={setQuery}
         query={query}
         searchLabel={dictionary.admin.resources.search}
+        sort={{
+          label: dictionary.admin.resources.sort,
+          value: sort,
+          options: [
+            { value: "name,asc", label: `${copy.name} · ${dictionary.admin.resources.ascending}` },
+            {
+              value: "name,desc",
+              label: `${copy.name} · ${dictionary.admin.resources.descending}`,
+            },
+          ],
+          onChange: setSort,
+        }}
+        activeFilters={
+          query
+            ? [
+                {
+                  label: dictionary.admin.resources.search,
+                  value: query,
+                  onRemove: () => setQuery(""),
+                },
+              ]
+            : []
+        }
+        clearFiltersLabel={dictionary.admin.resources.clearFilters}
+        onClearFilters={clearFilters}
+        resultCount={totalElements}
+        recordsLabel={dictionary.admin.resources.records}
       >
         <Link className="btn btn-primary text-nowrap" href={`/${lang}/admin/roles/new`}>
           <AdminActionIcon action="add" />

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+	<changeSet id="009-add-group-parent" author="susimsek">
+		<addColumn tableName="groups">
+			<column name="parent_id" type="bigint"/>
+		</addColumn>
+		<addForeignKeyConstraint
+			baseTableName="groups"
+			baseColumnNames="parent_id"
+			constraintName="fk_groups_parent"
+			referencedTableName="groups"
+			referencedColumnNames="id"
+			onDelete="RESTRICT"/>
+		<createIndex indexName="idx_groups_parent" tableName="groups">
+			<column name="parent_id"/>
+		</createIndex>
+	</changeSet>
+</databaseChangeLog>

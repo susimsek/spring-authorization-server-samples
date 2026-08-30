@@ -17,7 +17,7 @@ import { PaginationControls } from "./PaginationControls";
 import { ResourceFilters } from "./ResourceFilters";
 import { useAdminTableState } from "./useAdminTableState";
 
-type Group = { id: number; name: string; roles: string[]; userCount: number };
+type Group = { id: number; name: string; path: string; roles: string[]; userCount: number };
 type GroupPage = { content: Group[]; totalPages: number; totalElements: number };
 
 export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
@@ -33,12 +33,13 @@ export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
   const [groupToDelete, setGroupToDelete] = useState<Group | null>(null);
-  const { page, query, setPage, setQuery, setSize, size } = useAdminTableState();
+  const { clearFilters, page, query, setPage, setQuery, setSize, setSort, size, sort } =
+    useAdminTableState(20, false, "name,asc");
 
   useEffect(() => {
     if (!accessToken) return;
     adminRequest<GroupPage>(accessToken, {
-      url: `/api/admin/groups?q=${encodeURIComponent(query)}&page=${page}&size=${size}`,
+      url: `/api/admin/groups?q=${encodeURIComponent(query)}&page=${page}&size=${size}&sort=${encodeURIComponent(sort)}`,
     })
       .then((response) => {
         if (response.status >= 300) throw new Error();
@@ -49,7 +50,7 @@ export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [accessToken, page, query, refresh, size]);
+  }, [accessToken, page, query, refresh, size, sort]);
 
   const remove = async (group: Group) => {
     if (!accessToken) return;
@@ -80,6 +81,33 @@ export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
         onQueryChange={setQuery}
         query={query}
         searchLabel={dictionary.admin.resources.search}
+        sort={{
+          label: dictionary.admin.resources.sort,
+          value: sort,
+          options: [
+            { value: "name,asc", label: `${copy.name} · ${dictionary.admin.resources.ascending}` },
+            {
+              value: "name,desc",
+              label: `${copy.name} · ${dictionary.admin.resources.descending}`,
+            },
+          ],
+          onChange: setSort,
+        }}
+        activeFilters={
+          query
+            ? [
+                {
+                  label: dictionary.admin.resources.search,
+                  value: query,
+                  onRemove: () => setQuery(""),
+                },
+              ]
+            : []
+        }
+        clearFiltersLabel={dictionary.admin.resources.clearFilters}
+        onClearFilters={clearFilters}
+        resultCount={totalElements}
+        recordsLabel={dictionary.admin.resources.records}
       >
         <Link className="btn btn-primary text-nowrap" href={`/${lang}/admin/groups/new`}>
           <AdminActionIcon action="add" />
@@ -121,7 +149,7 @@ export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
             <tr key={group.id}>
               <td data-label={copy.name}>
                 <Link className="text-decoration-none" href={`/${lang}/admin/groups/${group.id}`}>
-                  {group.name}
+                  {group.path}
                 </Link>
               </td>
               <td data-label={copy.roleMappings}>{group.roles.length}</td>

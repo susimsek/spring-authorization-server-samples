@@ -23,6 +23,7 @@ export type JwtPayload = {
   exp?: number;
   iat?: number;
   nonce?: string;
+  picture?: string;
   sid?: string;
   sub?: string;
   preferred_username?: string;
@@ -35,7 +36,6 @@ type AuthorizationTransaction = {
   createdAt: number;
   expires: number;
   nonce: string;
-  prompt?: "none";
   redirectUri: string;
   returnTo: string;
   state: string;
@@ -50,11 +50,17 @@ type ConsoleAuthConfig = {
   postLoginReturnToKey?: string;
 };
 
-type AuthorizationOptions = {
-  prompt?: "none";
-};
-
 const CALLBACK_TTL_MS = 5 * 60 * 1000;
+const TOKEN_STORAGE_PREFIX = "AUTH_CONSOLE_TOKEN";
+const CONSOLE_KINDS: ConsoleKind[] = ["admin", "account"];
+
+type StoredConsoleTokens = {
+  accessToken: string;
+  expiresAt: number;
+  idToken: string | null;
+  refreshToken: string | null;
+  version: 1;
+};
 
 function base64Url(bytes: Uint8Array) {
   let value = "";
@@ -169,6 +175,56 @@ function clearStoredTransactions(config: ConsoleAuthConfig) {
   if (config.postLoginReturnToKey) sessionStorage.removeItem(config.postLoginReturnToKey);
 }
 
+function tokenStorageKey(consoleKind: ConsoleKind) {
+  return `${TOKEN_STORAGE_PREFIX}:${consoleKind}`;
+}
+
+function isStoredConsoleTokens(value: unknown): value is StoredConsoleTokens {
+  if (!value || typeof value !== "object") return false;
+  const tokens = value as Partial<StoredConsoleTokens>;
+  return (
+    tokens.version === 1 &&
+    typeof tokens.accessToken === "string" &&
+    tokens.accessToken.length > 0 &&
+    typeof tokens.expiresAt === "number" &&
+    Number.isFinite(tokens.expiresAt) &&
+    (tokens.idToken === null || typeof tokens.idToken === "string") &&
+    (tokens.refreshToken === null || typeof tokens.refreshToken === "string")
+  );
+}
+
+function readStoredTokens(consoleKind: ConsoleKind) {
+  try {
+    const value = localStorage.getItem(tokenStorageKey(consoleKind));
+    if (!value) return null;
+    const tokens = JSON.parse(value) as unknown;
+    if (isStoredConsoleTokens(tokens)) return tokens;
+  } catch {
+    // Treat unavailable or malformed browser storage as an unauthenticated session.
+  }
+  return null;
+}
+
+function storeTokens(consoleKind: ConsoleKind, tokens: StoredConsoleTokens) {
+  try {
+    localStorage.setItem(tokenStorageKey(consoleKind), JSON.stringify(tokens));
+  } catch {
+    // The running console keeps working when storage is unavailable.
+  }
+}
+
+function removeStoredTokens(consoleKind: ConsoleKind) {
+  try {
+    localStorage.removeItem(tokenStorageKey(consoleKind));
+  } catch {
+    // Nothing else is required when browser storage is unavailable.
+  }
+}
+
+function removeAllStoredTokens() {
+  CONSOLE_KINDS.forEach(removeStoredTokens);
+}
+
 function isTransaction(value: unknown): value is AuthorizationTransaction {
   if (!value || typeof value !== "object") return false;
   const transaction = value as Partial<AuthorizationTransaction>;
@@ -181,7 +237,6 @@ function isTransaction(value: unknown): value is AuthorizationTransaction {
     Number.isFinite(transaction.expires) &&
     typeof transaction.nonce === "string" &&
     transaction.nonce.length > 0 &&
-    (transaction.prompt === undefined || transaction.prompt === "none") &&
     typeof transaction.redirectUri === "string" &&
     transaction.redirectUri.length > 0 &&
     typeof transaction.returnTo === "string" &&
@@ -220,6 +275,7 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
   const timeSkewRef = useRef<number | null>(null);
   const authorizationInProgress = useRef<Promise<void> | null>(null);
   const refreshInProgress = useRef<Promise<string | null> | null>(null);
+  const tokenGeneration = useRef(0);
 
   const releaseAuthorization = useCallback(() => {
     authorizationInProgress.current = null;
@@ -231,13 +287,15 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
   }, [config.postLoginReturnToKey, releaseAuthorization]);
 
   const clearAuthentication = useCallback(
-    (loggingOut = false) => {
+    (loggingOut = false, removeStoredToken = true) => {
+      tokenGeneration.current += 1;
       accessTokenRef.current = null;
       idTokenRef.current = null;
       refreshTokenRef.current = null;
       expiresAtRef.current = null;
       timeSkewRef.current = null;
       refreshInProgress.current = null;
+      if (removeStoredToken) removeStoredTokens(consoleKind);
       dispatch(clearConsoleAuth({ console: consoleKind, loggingOut }));
       clearTransactionState();
     },
@@ -247,9 +305,10 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
   const applyToken = useCallback(
     (token: ConsoleTokenResponse, timeLocal?: number, expectedNonce?: string) => {
       const accessPayload = decodeJwt(token.access_token);
-      // Keycloak setToken() replaces the complete token set after every successful exchange.
-      const nextIdToken = token.id_token ?? null;
-      const nextRefreshToken = token.refresh_token ?? null;
+      // A refresh response may omit id_token and refresh_token. Keep the prior values in that
+      // case; RFC 6749 permits refresh-token reuse when a replacement is not returned.
+      const nextIdToken = token.id_token ?? idTokenRef.current;
+      const nextRefreshToken = token.refresh_token ?? refreshTokenRef.current;
       const idPayload = decodeJwt(nextIdToken ?? undefined);
       const refreshPayload = decodeJwt(nextRefreshToken ?? undefined);
 
@@ -275,6 +334,13 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
       idTokenRef.current = nextIdToken;
       refreshTokenRef.current = nextRefreshToken;
       expiresAtRef.current = nextExpiresAt;
+      storeTokens(consoleKind, {
+        accessToken: token.access_token,
+        expiresAt: nextExpiresAt,
+        idToken: nextIdToken,
+        refreshToken: nextRefreshToken,
+        version: 1,
+      });
       dispatch(
         applyConsoleToken({
           console: consoleKind,
@@ -311,6 +377,7 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
         minValidity === -1 || !expiresAt || expiresAt <= Date.now() + minValidity * 1000;
       if (!shouldRefresh) return accessTokenRef.current;
 
+      const generation = tokenGeneration.current;
       let timeLocal = Date.now();
       const request = axios
         .post<ConsoleTokenResponse>(
@@ -320,9 +387,13 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
             grant_type: "refresh_token",
             refresh_token: currentRefreshToken,
           }),
-          { headers: { "Content-Type": "application/x-www-form-urlencoded" } },
+          {
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            withCredentials: true,
+          },
         )
         .then((response) => {
+          if (generation !== tokenGeneration.current) return null;
           timeLocal = (timeLocal + Date.now()) / 2;
           applyToken(response.data, timeLocal);
           return response.data.access_token;
@@ -350,13 +421,22 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
   );
 
   useEffect(() => {
-    // Mirrors Keycloak JS init({ onLoad: "check-sso" }): tokens stay in memory and
-    // startup probes the Authorization Server session through prompt=none.
+    const stored = readStoredTokens(consoleKind);
+    if (stored) {
+      applyToken({
+        access_token: stored.accessToken,
+        expires_in: Math.max(0, Math.ceil((stored.expiresAt - Date.now()) / 1000)),
+        id_token: stored.idToken ?? undefined,
+        refresh_token: stored.refreshToken ?? undefined,
+      });
+      return;
+    }
+
     dispatch(setConsoleInitialized({ console: consoleKind, initialized: true }));
-  }, [consoleKind, dispatch]);
+  }, [applyToken, consoleKind, dispatch]);
 
   const beginAuthorization = useCallback(
-    async (locale: Locale, returnTo: string, options: AuthorizationOptions = {}) => {
+    async (locale: Locale, returnTo: string) => {
       if (authorizationInProgress.current) return authorizationInProgress.current;
 
       const request = (async () => {
@@ -369,7 +449,6 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
           createdAt: Date.now(),
           expires: Date.now() + CALLBACK_TTL_MS,
           nonce,
-          prompt: options.prompt,
           redirectUri,
           returnTo,
           state,
@@ -391,7 +470,6 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
             state,
             ui_locales: locale,
           });
-          if (options.prompt) parameters.set("prompt", options.prompt);
           const authorizationUrl = new URL("/oauth2/authorize", window.location.origin);
           authorizationUrl.search = parameters.toString();
           window.location.assign(authorizationUrl);
@@ -408,33 +486,6 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
     [clearTransactionState, config],
   );
 
-  const retryAuthorization = useCallback(
-    async (locale: Locale, state: string | null, error: string | null) => {
-      if (!state) throw new Error("Missing authorization state");
-      const transaction = readAndRemoveTransaction(config, state);
-      if (!transaction) {
-        clearTransactionState();
-        throw new Error("Missing authorization transaction");
-      }
-
-      const interactionRequired = new Set([
-        "login_required",
-        "interaction_required",
-        "consent_required",
-        "account_selection_required",
-      ]);
-      if (transaction.prompt !== "none" || !error || !interactionRequired.has(error)) {
-        clearTransactionState();
-        throw new Error("Authorization could not be resumed");
-      }
-
-      const returnTo = transaction.returnTo;
-      clearTransactionState();
-      await beginAuthorization(locale, returnTo);
-    },
-    [beginAuthorization, clearTransactionState, config],
-  );
-
   const completeAuthorization = useCallback(
     async (_locale: Locale, code: string, state: string) => {
       const transaction = readAndRemoveTransaction(config, state);
@@ -443,6 +494,7 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
         throw new Error("Missing authorization transaction");
       }
 
+      const generation = tokenGeneration.current;
       let timeLocal = Date.now();
       try {
         const response = await axios.post<ConsoleTokenResponse>(
@@ -454,8 +506,14 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
             grant_type: "authorization_code",
             redirect_uri: transaction.redirectUri,
           }),
-          { headers: { "Content-Type": "application/x-www-form-urlencoded" } },
+          {
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            withCredentials: true,
+          },
         );
+        if (generation !== tokenGeneration.current) {
+          throw new Error("Authorization was cancelled");
+        }
         timeLocal = (timeLocal + Date.now()) / 2;
         applyToken(response.data, timeLocal, transaction.nonce);
         return transaction.returnTo;
@@ -470,9 +528,18 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
     async (locale: Locale) => {
       const idTokenHint = idTokenRef.current;
       clearStoredTransactions(config);
-      clearAuthentication(true);
+      clearAuthentication(true, false);
+      // OIDC logout ends the shared browser session. Clear both console token sets so a later
+      // navigation cannot hydrate a token issued before that shared logout.
+      removeAllStoredTokens();
 
       const postLogoutRedirectUri = `${window.location.origin}${config.postLogoutRedirectPath(locale)}`;
+      if (!idTokenHint) {
+        await axios.post("/logout").catch(() => undefined);
+        window.location.replace(`${window.location.origin}/${locale}/login?logout`);
+        return;
+      }
+
       const parameters = new URLSearchParams({
         client_id: config.clientId,
         post_logout_redirect_uri: postLogoutRedirectUri,
@@ -501,7 +568,6 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
     refreshAccessToken,
     logout,
     beginAuthorization,
-    retryAuthorization,
     completeAuthorization,
   };
 }

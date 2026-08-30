@@ -28,10 +28,12 @@ describe("dedicated administration creation forms", () => {
   });
 
   it("creates a group and opens its detail page", async () => {
-    mockAdminRequest.mockResolvedValueOnce({
-      status: 201,
-      data: { id: 7, name: "finance-operators" },
-    } as never);
+    mockAdminRequest.mockImplementation(async (_token, config) => {
+      if (config.url === "/api/admin/groups?page=0&size=100") {
+        return { status: 200, data: { content: [] } } as never;
+      }
+      return { status: 201, data: { id: 7, name: "finance-operators" } } as never;
+    });
     render(<GroupCreateForm dictionary={dictionary} locale="en" />);
 
     fireEvent.change(screen.getByRole("textbox", { name: dictionary.admin.groups.name }), {
@@ -43,7 +45,7 @@ describe("dedicated administration creation forms", () => {
       expect(mockAdminRequest).toHaveBeenCalledWith("token", {
         url: "/api/admin/groups",
         method: "POST",
-        data: { name: "finance-operators" },
+        data: { name: "finance-operators", parentId: null },
       }),
     );
     expect(mockPush).toHaveBeenCalledWith("/en/admin/groups/7");

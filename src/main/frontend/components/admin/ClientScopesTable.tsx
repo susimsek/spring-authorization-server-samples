@@ -60,7 +60,8 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
   const [showEditor, setShowEditor] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<ClientScope | null>(null);
-  const { page, query, setPage, setQuery, setSize, size } = useAdminTableState();
+  const { clearFilters, page, query, setPage, setQuery, setSize, setSort, size, sort } =
+    useAdminTableState(20, false, "name,asc");
   const clientScopeSchema = z.object({
     name: z.string().trim().min(1, common.validation.required).max(100, common.validation.max100),
     displayName: z.string().max(200, common.validation.max200),
@@ -79,7 +80,7 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
   useEffect(() => {
     if (!accessToken) return;
     adminRequest<PageData<ClientScope>>(accessToken, {
-      url: `/api/admin/client-scopes?q=${encodeURIComponent(query)}&page=${page}&size=${size}`,
+      url: `/api/admin/client-scopes?q=${encodeURIComponent(query)}&page=${page}&size=${size}&sort=${encodeURIComponent(sort)}`,
     })
       .then((response) => {
         if (response.status >= 300) throw new Error();
@@ -90,7 +91,7 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
       })
       .catch(() => setFailed(true))
       .finally(() => setLoading(false));
-  }, [accessToken, page, query, reload, size]);
+  }, [accessToken, page, query, reload, size, sort]);
 
   const openEdit = (scope: ClientScope) => {
     setEditing(scope);
@@ -143,6 +144,33 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
         key={query}
         query={query}
         searchLabel={copy.search}
+        sort={{
+          label: dictionary.admin.resources.sort,
+          value: sort,
+          options: [
+            { value: "name,asc", label: `${copy.name} · ${dictionary.admin.resources.ascending}` },
+            {
+              value: "name,desc",
+              label: `${copy.name} · ${dictionary.admin.resources.descending}`,
+            },
+          ],
+          onChange: setSort,
+        }}
+        activeFilters={
+          query
+            ? [
+                {
+                  label: dictionary.admin.resources.search,
+                  value: query,
+                  onRemove: () => setQuery(""),
+                },
+              ]
+            : []
+        }
+        clearFiltersLabel={dictionary.admin.resources.clearFilters}
+        onClearFilters={clearFilters}
+        resultCount={totalElements}
+        recordsLabel={dictionary.admin.resources.records}
         onQueryChange={(value) => {
           setLoading(true);
           setQuery(value);
@@ -194,7 +222,7 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
               <td className="text-body-secondary">{scope.description || "—"}</td>
               <td className="text-end">
                 {access?.manageClients && (
-                  <RowActions label={`${scope.name} actions`}>
+                  <RowActions label={`${scope.name} ${common.actions}`}>
                     <button className="dropdown-item" type="button" onClick={() => openEdit(scope)}>
                       <AdminActionIcon action="edit" />
                       {copy.edit}

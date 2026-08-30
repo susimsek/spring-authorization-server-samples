@@ -48,14 +48,12 @@ describe("AccountAuthGuard", () => {
     mockAccountRequest.mockResolvedValue({ status: 200, data: { username: "admin" } } as never);
   });
 
-  it("silently restores the browser SSO session after a page reload", async () => {
+  it("starts one authorization request to restore the browser SSO session", async () => {
     auth = { ...auth, accessToken: null };
 
     render(<AccountAuthGuard locale="tr">Protected</AccountAuthGuard>);
 
-    await waitFor(() =>
-      expect(mockBeginAuthorization).toHaveBeenCalledWith("tr", "/", { prompt: "none" }),
-    );
+    await waitFor(() => expect(mockBeginAuthorization).toHaveBeenCalledWith("tr", "/"));
     expect(screen.queryByText("Protected")).not.toBeInTheDocument();
   });
 

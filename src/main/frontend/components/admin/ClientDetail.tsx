@@ -94,23 +94,23 @@ export function ClientDetail({
   };
   if (!id || error) return <ErrorState message={dictionary.admin.clients.notFound} />;
   if (!client) return <LoadingState />;
-  const tr = locale === "tr";
   const detailUrl = `/${locale}/admin/clients/${encodeURIComponent(client.id)}`;
+  const copy = dictionary.admin.clients;
   const tabs = [
-    { key: "settings", label: tr ? "Ayarlar" : "Settings", href: `${detailUrl}/settings` },
+    { key: "settings", label: copy.settings, href: `${detailUrl}/settings` },
     {
       key: "credentials",
-      label: tr ? "Kimlik bilgileri" : "Credentials",
+      label: copy.credentials,
       href: `${detailUrl}/credentials`,
     },
     {
       key: "scopes",
-      label: tr ? "İstemci scope’ları" : "Client scopes",
+      label: copy.clientScopes,
       href: `${detailUrl}/scopes`,
     },
-    { key: "sessions", label: tr ? "Oturumlar" : "Sessions", href: `${detailUrl}/sessions` },
-    { key: "consents", label: tr ? "İzinler" : "Consents", href: `${detailUrl}/consents` },
-    { key: "events", label: tr ? "Olaylar" : "Events", href: `${detailUrl}/events` },
+    { key: "sessions", label: copy.sessions, href: `${detailUrl}/sessions` },
+    { key: "consents", label: copy.consents, href: `${detailUrl}/consents` },
+    { key: "events", label: copy.events, href: `${detailUrl}/events` },
   ];
   return (
     <>
@@ -125,7 +125,7 @@ export function ClientDetail({
           <h1 className="h3 mb-1">{client.clientName}</h1>
           <div className="font-monospace text-body-secondary">{client.clientId}</div>
         </div>
-        <RowActions label={`${client.clientName} actions`}>
+        <RowActions label={`${client.clientName} ${dictionary.admin.common.actions}`}>
           <Dropdown.Item
             disabled={!access?.manageClients}
             onClick={() => setShowSecretConfirm(true)}
@@ -152,46 +152,32 @@ export function ClientDetail({
           const expiresAt = client.clientSecretExpiresAt
             ? new Date(client.clientSecretExpiresAt)
             : null;
-          const methodLabel = publicClient
-            ? tr
-              ? "Public istemci"
-              : "Public client"
-            : tr
-              ? "Confidential istemci"
-              : "Confidential client";
+          const methodLabel = publicClient ? copy.publicClient : copy.confidentialClient;
           return (
             <div className="d-grid gap-3">
               <Card className="admin-panel-card">
                 <Card.Body>
                   <div className="d-flex flex-wrap align-items-start justify-content-between gap-3">
                     <div>
-                      <h2 className="h5 mb-1">
-                        {tr ? "İstemci kimlik doğrulaması" : "Client authentication"}
-                      </h2>
+                      <h2 className="h5 mb-1">{copy.clientAuthentication}</h2>
                       <p className="text-body-secondary small mb-0">
-                        {tr
-                          ? "Token endpoint'inde bu istemcinin nasıl kimlik doğruladığını gösterir."
-                          : "How this client authenticates at the token endpoint."}
+                        {copy.clientAuthenticationHelp}
                       </p>
                     </div>
                     <Badge bg={publicClient ? "secondary" : "primary"}>{methodLabel}</Badge>
                   </div>
                   <dl className="row mt-4 mb-0">
-                    <dt className="col-sm-4">
-                      {tr ? "Kimlik doğrulama yöntemi" : "Authentication method"}
-                    </dt>
+                    <dt className="col-sm-4">{copy.authenticationMethod}</dt>
                     <dd className="col-sm-8 font-monospace">{methods.join(", ")}</dd>
                     <dt className="col-sm-4">PKCE</dt>
                     <dd className="col-sm-8">
                       {client.requireProofKey ? (
-                        <Badge bg="success">S256 required</Badge>
+                        <Badge bg="success">{copy.pkceRequired}</Badge>
                       ) : (
-                        <Badge bg="secondary">{tr ? "Zorunlu değil" : "Not required"}</Badge>
+                        <Badge bg="secondary">{copy.pkceNotRequired}</Badge>
                       )}
                     </dd>
-                    <dt className="col-sm-4">
-                      {tr ? "İstemci oluşturulma zamanı" : "Client created"}
-                    </dt>
+                    <dt className="col-sm-4">{copy.clientCreated}</dt>
                     <dd className="col-sm-8">
                       {client.clientIdIssuedAt
                         ? new Date(client.clientIdIssuedAt).toLocaleString(locale)
@@ -206,23 +192,17 @@ export function ClientDetail({
                   <Card.Body>
                     <div className="d-flex flex-wrap align-items-start justify-content-between gap-3">
                       <div>
-                        <h2 className="h5 mb-1">{tr ? "Client secret" : "Client secret"}</h2>
+                        <h2 className="h5 mb-1">{copy.clientSecret}</h2>
                         <p className="text-body-secondary small mb-0">
-                          {tr
-                            ? "Secret yalnız oluşturulduğu veya yenilendiği anda gösterilir; sunucuda hash'li saklanır."
-                            : "The secret is shown only when created or regenerated; the server stores only its hash."}
+                          {copy.clientSecretDescription}
                         </p>
                       </div>
-                      <Badge bg="success">{tr ? "Yapılandırılmış" : "Configured"}</Badge>
+                      <Badge bg="success">{copy.configured}</Badge>
                     </div>
                     <dl className="row mt-4">
-                      <dt className="col-sm-4">{tr ? "Bitiş zamanı" : "Expires"}</dt>
+                      <dt className="col-sm-4">{copy.expires}</dt>
                       <dd className="col-sm-8">
-                        {expiresAt
-                          ? expiresAt.toLocaleString(locale)
-                          : tr
-                            ? "Süresiz"
-                            : "Does not expire"}
+                        {expiresAt ? expiresAt.toLocaleString(locale) : copy.doesNotExpire}
                       </dd>
                     </dl>
                     <Button
@@ -285,11 +265,7 @@ export function ClientDetail({
       <ConfirmModal
         cancelLabel={dictionary.admin.common.cancel}
         confirmLabel={dictionary.admin.clients.regenerateSecret}
-        message={
-          tr
-            ? "Mevcut client secret hemen geçersiz olacaktır. Yeni secret yalnız bir kez gösterilecektir. Devam edilsin mi?"
-            : "The current client secret will become invalid immediately. The new secret will be shown only once. Continue?"
-        }
+        message={copy.regenerateSecretConfirm}
         onCancel={() => setShowSecretConfirm(false)}
         onConfirm={() => {
           setShowSecretConfirm(false);

@@ -211,14 +211,16 @@ class AdminIdentityController {
     @PostMapping("/users")
     @Operation(summary = "Create user")
     ResponseEntity<AdminUserService.UserView> createUser(
-            @Validated(CreateValidation.class) @RequestBody AdminUserRequest request) {
+            @Validated(CreateValidation.class) @RequestBody AdminUserRequest request,
+            Authentication authentication) {
         return ResponseEntity.status(201)
                 .body(
                         adminUserService.createUser(
                                 request.username(),
                                 request.password(),
                                 request.enabled() == null || request.enabled(),
-                                request.roles()));
+                                request.roles(),
+                                authentication.getName()));
     }
 
     @PutMapping("/users/{id}")

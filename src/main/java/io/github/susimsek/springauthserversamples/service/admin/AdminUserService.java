@@ -45,8 +45,13 @@ public class AdminUserService {
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public UserView createUser(
-            String username, String password, boolean enabled, Set<String> roles) {
+            String username,
+            String password,
+            boolean enabled,
+            Set<String> roles,
+            String currentUsername) {
         validateUser(username, password);
+        assertRoleAssignmentAllowed(roles, currentUsername);
         if (userRepository.findByUsername(username).isPresent()) {
             throw ApiException.conflict(
                     "username", "admin_user_duplicate_username", "Username is already registered");
@@ -306,7 +311,13 @@ public class AdminUserService {
                         .map(AuthorityEntity::getName)
                         .sorted()
                         .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        return new AdminGroupDTO(group.getId(), group.getName(), roles, userCount);
+        return new AdminGroupDTO(
+                group.getId(),
+                group.getName(),
+                groupPath(group),
+                group.getParent() == null ? null : group.getParent().getId(),
+                roles,
+                userCount);
     }
 
     private Page<AdminGroupDTO> groupViews(Page<GroupEntity> groups, Pageable pageable) {
@@ -333,6 +344,16 @@ public class AdminUserService {
 
     private static Set<String> requestedRoleNames(Set<String> roles) {
         return roles == null || roles.isEmpty() ? Set.of(AuthoritiesConstants.USER) : roles;
+    }
+
+    private static String groupPath(GroupEntity group) {
+        java.util.Deque<String> names = new java.util.ArrayDeque<>();
+        GroupEntity current = group;
+        while (current != null) {
+            names.addFirst(current.getName());
+            current = current.getParent();
+        }
+        return String.join(" / ", names);
     }
 
     private static void validateUser(String username, String password) {

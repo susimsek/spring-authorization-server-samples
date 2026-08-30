@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import java.util.HashSet;
@@ -30,6 +31,10 @@ public class GroupEntity {
 
     @Column(name = "name", nullable = false, unique = true, length = 100)
     private String name;
+
+    @ManyToOne
+    @JoinColumn(name = "parent_id")
+    private GroupEntity parent;
 
     @ManyToMany
     @JoinTable(

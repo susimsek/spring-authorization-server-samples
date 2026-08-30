@@ -50,7 +50,6 @@ export function ConsentDetail({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [showRevoke, setShowRevoke] = useState(false);
-  const tr = locale === "tr";
 
   const load = useCallback(async () => {
     if (!accessToken || !clientId || !username) {
@@ -88,7 +87,7 @@ export function ConsentDetail({
       alerts.addError(dictionary.admin.resources.operationError);
       return;
     }
-    alerts.addAlert(tr ? "İzin geri alındı." : "Consent revoked.");
+    alerts.addAlert(dictionary.admin.resources.consentRevoked);
     router.replace(`/${locale}/admin/consents`);
   };
 
@@ -108,12 +107,8 @@ export function ConsentDetail({
         ]}
       />
       <ViewHeader
-        title={tr ? "İzin ayrıntıları" : "Consent details"}
-        description={
-          tr
-            ? "Kullanıcı tarafından istemciye verilmiş OAuth 2.0 / OpenID Connect izinlerini görüntüleyin."
-            : "Inspect OAuth 2.0 / OpenID Connect permissions granted by the user to this client."
-        }
+        title={dictionary.admin.resources.consentDetails}
+        description={dictionary.admin.resources.consentDescription}
         actions={
           access?.manageConsents ? (
             <Button variant="outline-danger" onClick={() => setShowRevoke(true)}>
@@ -160,7 +155,7 @@ export function ConsentDetail({
             </dd>
             <dt className="col-md-3">{dictionary.admin.resources.created}</dt>
             <dd className="col-md-9">{new Date(consent.createdAt).toLocaleString(locale)}</dd>
-            <dt className="col-md-3">{tr ? "Güncellendi" : "Updated"}</dt>
+            <dt className="col-md-3">{dictionary.admin.resources.updated}</dt>
             <dd className="col-md-9">{new Date(consent.updatedAt).toLocaleString(locale)}</dd>
           </dl>
         </Card.Body>

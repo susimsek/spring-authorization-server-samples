@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import type { Locale } from "@/i18n/config";
+import { getDictionary } from "@/i18n/get-dictionary";
 import { adminRequest, registerAdminTokenHandlers } from "@/lib/admin-api";
 
 import { type AdminAccess, useAdminAuth } from "./AdminAuthProvider";
@@ -60,19 +61,6 @@ export function AdminAuthGuard({
     );
   }, [beginAuthorization, locale]);
 
-  const restoreSession = useCallback(() => {
-    if (bootstrapStarted.current) return;
-    bootstrapStarted.current = true;
-    // Tokens intentionally remain in memory. After a reload, probe the browser SSO
-    // session without showing the login page; the callback retries interactively only
-    // when the Authorization Server reports that no SSO session is available.
-    void beginAuthorization(locale, `${window.location.pathname}${window.location.search}`, {
-      prompt: "none",
-    }).catch(() => {
-      bootstrapStarted.current = false;
-    });
-  }, [beginAuthorization, locale]);
-
   useEffect(() => {
     if (!accessToken || isAuthorizationCallback) return;
 
@@ -101,7 +89,10 @@ export function AdminAuthGuard({
     if (!initialized || isLoggingOut || isAuthorizationCallback) return;
 
     if (!accessToken) {
-      restoreSession();
+      // A normal authorization request reuses the server's browser SSO session when it
+      // exists, and displays the login page only when it does not. A separate silent
+      // probe would start a second authorization transaction.
+      startLogin();
       return;
     }
     bootstrapStarted.current = false;
@@ -157,7 +148,6 @@ export function AdminAuthGuard({
     isLoggingOut,
     locale,
     refreshAccessToken,
-    restoreSession,
     router,
     startLogin,
     setAccess,
@@ -170,7 +160,7 @@ export function AdminAuthGuard({
     return (
       <div className="min-vh-100 d-flex align-items-center justify-content-center bg-body-tertiary">
         <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
+          <span className="visually-hidden">{getDictionary(locale).admin.common.loading}</span>
         </div>
       </div>
     );

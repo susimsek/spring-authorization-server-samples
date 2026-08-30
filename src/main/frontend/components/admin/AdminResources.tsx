@@ -105,28 +105,38 @@ function AdminResourcesContent({
   );
   const {
     clientId,
+    clearFilters,
     page,
     query,
     setClientId,
     setPage,
     setQuery,
     setSize,
+    setSort,
     setStatus,
     setUsername,
     setScope,
     size,
+    sort,
     status,
     username,
     scope,
   } = useAdminTableState(
     20,
     resource === "users" || resource === "keys" || resource === "sessions",
+    resource === "sessions"
+      ? "lastAccessTime,desc"
+      : resource === "consents"
+        ? "id.principalName,asc"
+        : resource === "keys"
+          ? "createdAt,desc"
+          : "username,asc",
   );
 
   useEffect(() => {
     if (!accessToken) return;
     adminRequest<PageData<User | Session | Consent | Key>>(accessToken, {
-      url: `/api/admin/${resource}?q=${encodeURIComponent(query)}&page=${page}&size=${size}${resource === "users" ? `&enabled=${status}` : resource === "keys" ? `&active=${status}` : resource === "sessions" ? `&status=${status || "active"}&clientId=${encodeURIComponent(clientId)}` : resource === "consents" ? `&clientId=${encodeURIComponent(clientId)}&username=${encodeURIComponent(username)}&scope=${encodeURIComponent(scope)}` : ""}`,
+      url: `/api/admin/${resource}?q=${encodeURIComponent(query)}&page=${page}&size=${size}&sort=${encodeURIComponent(sort)}${resource === "users" ? `&enabled=${status}` : resource === "keys" ? `&active=${status}` : resource === "sessions" ? `&status=${status || "active"}&clientId=${encodeURIComponent(clientId)}` : resource === "consents" ? `&clientId=${encodeURIComponent(clientId)}&username=${encodeURIComponent(username)}&scope=${encodeURIComponent(scope)}` : ""}`,
     })
       .then((response) => {
         if (response.status >= 300) throw new Error();
@@ -137,7 +147,51 @@ function AdminResourcesContent({
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [accessToken, clientId, scope, username, page, query, reloadVersion, resource, size, status]);
+  }, [
+    accessToken,
+    clientId,
+    scope,
+    username,
+    page,
+    query,
+    reloadVersion,
+    resource,
+    size,
+    sort,
+    status,
+  ]);
+
+  const activeFilters = [
+    query && { label: copy.search, value: query, onRemove: () => setQuery("") },
+    status && {
+      label: copy.status,
+      value: status === "true" ? copy.active : status === "false" ? copy.passive : status,
+      onRemove: () => setStatus(""),
+    },
+    clientId && { label: copy.client, value: clientId, onRemove: () => setClientId("") },
+    username && { label: copy.user, value: username, onRemove: () => setUsername("") },
+    scope && { label: copy.scope, value: scope, onRemove: () => setScope("") },
+  ].filter(Boolean) as { label: string; value: string; onRemove: () => void }[];
+  const sortOptions =
+    resource === "sessions"
+      ? [
+          { value: "lastAccessTime,desc", label: copy.newest },
+          { value: "lastAccessTime,asc", label: copy.oldest },
+        ]
+      : resource === "consents"
+        ? [
+            { value: "id.principalName,asc", label: `${copy.user} · ${copy.ascending}` },
+            { value: "id.principalName,desc", label: `${copy.user} · ${copy.descending}` },
+          ]
+        : resource === "keys"
+          ? [
+              { value: "createdAt,desc", label: copy.newest },
+              { value: "createdAt,asc", label: copy.oldest },
+            ]
+          : [
+              { value: "username,asc", label: `${copy.username} · ${copy.ascending}` },
+              { value: "username,desc", label: `${copy.username} · ${copy.descending}` },
+            ];
 
   const request = async <T,>(
     url: string,
@@ -209,6 +263,15 @@ function AdminResourcesContent({
         key={query}
         query={query}
         searchLabel={copy.search}
+        sort={{ label: copy.sort, value: sort, options: sortOptions, onChange: setSort }}
+        activeFilters={activeFilters}
+        clearFiltersLabel={copy.clearFilters}
+        onClearFilters={() => {
+          setLoading(true);
+          clearFilters();
+        }}
+        resultCount={totalElements}
+        recordsLabel={copy.records}
         onQueryChange={(value) => {
           setLoading(true);
           setQuery(value);
@@ -217,9 +280,9 @@ function AdminResourcesContent({
         {resource === "sessions" && (
           <>
             <Form.Control
-              aria-label="Client ID"
+              aria-label={copy.clientId}
               className="admin-resource-filter-control"
-              placeholder="Client ID"
+              placeholder={copy.clientId}
               value={clientId}
               onChange={(event) => {
                 setLoading(true);
@@ -227,7 +290,7 @@ function AdminResourcesContent({
               }}
             />
             <Form.Select
-              aria-label="Session status"
+              aria-label={copy.sessionStatus}
               className="admin-resource-filter-control"
               value={status || "active"}
               onChange={(event) => {
@@ -235,18 +298,18 @@ function AdminResourcesContent({
                 setStatus(event.target.value);
               }}
             >
-              <option value="active">Active</option>
-              <option value="expired">Expired</option>
-              <option value="all">All</option>
+              <option value="active">{copy.active}</option>
+              <option value="expired">{copy.expired}</option>
+              <option value="all">{copy.all}</option>
             </Form.Select>
           </>
         )}
         {resource === "consents" && (
           <>
             <Form.Control
-              aria-label="Client ID"
+              aria-label={copy.clientId}
               className="admin-resource-filter-control"
-              placeholder="Client ID"
+              placeholder={copy.clientId}
               value={clientId}
               onChange={(event) => {
                 setLoading(true);
@@ -254,7 +317,7 @@ function AdminResourcesContent({
               }}
             />
             <Form.Control
-              aria-label="Username"
+              aria-label={copy.user}
               className="admin-resource-filter-control"
               placeholder={copy.user}
               value={username}
@@ -264,9 +327,9 @@ function AdminResourcesContent({
               }}
             />
             <Form.Control
-              aria-label="Scope"
+              aria-label={copy.grantedScopes}
               className="admin-resource-filter-control"
-              placeholder="Scope"
+              placeholder={copy.grantedScopes}
               value={scope}
               onChange={(event) => {
                 setLoading(true);
@@ -502,7 +565,7 @@ function SessionsTable({
     <>
       <thead>
         <tr>
-          <th>Session ID</th>
+          <th>{copy.sessionId}</th>
           <th>{copy.user}</th>
           <th>{copy.created}</th>
           <th>{copy.lastActive}</th>
@@ -516,7 +579,7 @@ function SessionsTable({
           const expired = !session.active;
           return (
             <tr key={session.id}>
-              <td className="font-monospace small" data-label="Session ID">
+              <td className="font-monospace small" data-label={copy.sessionId}>
                 <Button
                   variant="link"
                   className="font-monospace p-0 text-decoration-none"
@@ -528,7 +591,7 @@ function SessionsTable({
               <td data-label={copy.user}>
                 <div className="fw-medium">{session.username ?? "-"}</div>
                 <Badge bg={expired ? "secondary" : "success"}>
-                  {expired ? "Expired" : "Active"}
+                  {expired ? copy.expired : copy.active}
                 </Badge>
               </td>
               <td data-label={copy.created}>{date(session.createdAt)}</td>
@@ -536,7 +599,7 @@ function SessionsTable({
               <td data-label={copy.expires}>{date(session.expiresAt)}</td>
               <td data-label={copy.authorizations}>{session.authorizationCount}</td>
               <td className="text-end">
-                <RowActions label="Session actions">
+                <RowActions label={copy.sessionActions}>
                   <Dropdown.Item onClick={() => void showDetail(session.id)}>
                     View details
                   </Dropdown.Item>
@@ -597,7 +660,7 @@ function SessionsTable({
         centered
       >
         <Modal.Header closeButton>
-          <Modal.Title>Session details</Modal.Title>
+          <Modal.Title>{copy.sessionDetails}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {detailLoading && !detail ? (
@@ -605,7 +668,7 @@ function SessionsTable({
           ) : detail ? (
             <div className="d-grid gap-4">
               <dl className="row mb-0">
-                <dt className="col-sm-4">Session ID</dt>
+                <dt className="col-sm-4">{copy.sessionId}</dt>
                 <dd className="col-sm-8 font-monospace text-break">{detail.session.id}</dd>
                 <dt className="col-sm-4">{copy.user}</dt>
                 <dd className="col-sm-8">{detail.session.username ?? "-"}</dd>
@@ -619,16 +682,16 @@ function SessionsTable({
               <div>
                 <h3 className="h6">{copy.authorizations}</h3>
                 {detail.authorizations.length === 0 ? (
-                  <div className="text-body-secondary">No authorizations</div>
+                  <div className="text-body-secondary">{copy.noAuthorizations}</div>
                 ) : (
                   <div className="table-responsive">
                     <table className="table table-sm align-middle mb-0">
                       <thead>
                         <tr>
-                          <th>Client</th>
-                          <th>Grant type</th>
-                          <th>Scopes</th>
-                          <th>Access token expires</th>
+                          <th>{copy.client}</th>
+                          <th>{copy.grantType}</th>
+                          <th>{copy.grantedScopes}</th>
+                          <th>{copy.accessTokenExpires}</th>
                         </tr>
                       </thead>
                       <tbody>

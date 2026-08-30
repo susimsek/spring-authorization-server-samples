@@ -75,7 +75,6 @@ export function EntityRelatedData({
   const [error, setError] = useState(false);
   const [version, setVersion] = useState(0);
   const copy = dictionary.admin.resources;
-  const tr = locale === "tr";
 
   useEffect(() => {
     if (!accessToken) return;
@@ -103,7 +102,7 @@ export function EntityRelatedData({
       alerts.addError(copy.operationError);
       return;
     }
-    alerts.addAlert(tr ? "Oturum sonlandırıldı." : "Session terminated.");
+    alerts.addAlert(copy.sessionTerminated);
     setLoading(true);
     setVersion((current) => current + 1);
   };
@@ -118,7 +117,7 @@ export function EntityRelatedData({
       alerts.addError(copy.operationError);
       return;
     }
-    alerts.addAlert(tr ? "İzin geri alındı." : "Consent revoked.");
+    alerts.addAlert(copy.consentRevoked);
     setLoading(true);
     setVersion((current) => current + 1);
   };
@@ -128,7 +127,7 @@ export function EntityRelatedData({
     return (
       <ErrorState
         message={copy.operationError}
-        retryLabel={tr ? "Tekrar dene" : "Retry"}
+        retryLabel={dictionary.admin.common.retry}
         onRetry={() => {
           setError(false);
           setLoading(true);
@@ -249,7 +248,7 @@ export function EntityRelatedData({
                       className="btn btn-sm btn-outline-secondary"
                       href={`/${locale}/admin/consents/${encodeConsentRouteKey(consent.clientId, consent.principalName)}`}
                     >
-                      {tr ? "Ayrıntılar" : "Details"}
+                      {copy.details}
                     </Link>
                     {canManage && (
                       <Button
@@ -273,10 +272,10 @@ export function EntityRelatedData({
         <>
           <thead>
             <tr>
-              <th>{tr ? "Zaman" : "Time"}</th>
-              <th>{tr ? "İşlem" : "Action"}</th>
-              <th>{tr ? "Aktör" : "Actor"}</th>
-              <th>{tr ? "Hedef" : "Target"}</th>
+              <th>{copy.time}</th>
+              <th>{copy.action}</th>
+              <th>{copy.actor}</th>
+              <th>{copy.target}</th>
             </tr>
           </thead>
           <tbody>

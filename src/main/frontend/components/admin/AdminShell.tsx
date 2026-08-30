@@ -37,7 +37,7 @@ type Props = {
 
 export function AdminShell({ locale, dictionary, children }: Props) {
   const pathname = usePathname();
-  const { access, logout, username } = useAdminAuth();
+  const { access, idTokenParsed, logout, tokenParsed, username } = useAdminAuth();
   const [navigationOpen, setNavigationOpen] = useState(false);
   const items = [
     ["", dictionary.admin.nav.dashboard, faGaugeHigh, true],
@@ -62,7 +62,7 @@ export function AdminShell({ locale, dictionary, children }: Props) {
               <Button
                 variant="link"
                 className="admin-menu-toggle d-lg-none me-2"
-                aria-label="Toggle navigation"
+                aria-label={dictionary.admin.common.toggleNavigation}
                 aria-expanded={navigationOpen}
                 onClick={() => setNavigationOpen((current) => !current)}
               >
@@ -85,9 +85,11 @@ export function AdminShell({ locale, dictionary, children }: Props) {
               <ThemeSwitcher dictionary={dictionary} />
               <ConsoleUserMenu
                 username={username ?? "…"}
+                avatarSrc={idTokenParsed?.picture ?? tokenParsed?.picture}
                 accountHref={`/${locale}/account/personal-info`}
                 accountLabel={dictionary.account.product}
                 logoutLabel={dictionary.admin.common.logout}
+                signedInAsLabel={dictionary.admin.common.signedInAs}
                 onLogout={() => {
                   void logout(locale);
                 }}
@@ -101,7 +103,7 @@ export function AdminShell({ locale, dictionary, children }: Props) {
             <button
               type="button"
               className="admin-sidebar-backdrop d-lg-none"
-              aria-label="Close navigation"
+              aria-label={dictionary.admin.common.closeNavigation}
               onClick={() => setNavigationOpen(false)}
             />
           )}

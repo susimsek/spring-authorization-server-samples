@@ -87,6 +87,21 @@ describe("AdminResources", () => {
     );
   });
 
+  it("uses the session entity property when requesting the default sort", async () => {
+    mockAdminRequest.mockResolvedValue({ status: 200, data: page([]) } as never);
+
+    render(<AdminResources copy={dictionary.admin.resources} resource="sessions" />);
+
+    await waitFor(() =>
+      expect(mockAdminRequest).toHaveBeenCalledWith(
+        "token",
+        expect.objectContaining({
+          url: "/api/admin/sessions?q=&page=0&size=20&sort=lastAccessTime%2Cdesc&status=active&clientId=",
+        }),
+      ),
+    );
+  });
+
   it("manages session, consent, and key resource actions", async () => {
     const resources = {
       sessions: {

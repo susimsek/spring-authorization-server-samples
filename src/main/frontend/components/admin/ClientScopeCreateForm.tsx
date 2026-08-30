@@ -72,9 +72,9 @@ export function ClientScopeCreateForm({
   };
 
   return (
-    <Card className="admin-panel-card">
+    <Card className="admin-panel-card admin-create-card">
       <Card.Body>
-        <Form noValidate onSubmit={handleSubmit(submit)}>
+        <Form className="admin-create-form" noValidate onSubmit={handleSubmit(submit)}>
           <Form.Group className="mb-3" controlId="client-scope-name">
             <Form.Label>{copy.name}</Form.Label>
             <Form.Control
@@ -110,7 +110,7 @@ export function ClientScopeCreateForm({
               {errors.description?.message}
             </Form.Control.Feedback>
           </Form.Group>
-          <div className="d-flex gap-2">
+          <div className="admin-create-actions">
             <Button
               variant="outline-secondary"
               onClick={() => router.push(`/${locale}/admin/client-scopes`)}

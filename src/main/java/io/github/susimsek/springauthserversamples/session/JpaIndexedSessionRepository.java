@@ -24,8 +24,6 @@ import org.springframework.util.Assert;
 
 public class JpaIndexedSessionRepository implements FindByIndexNameSessionRepository<JpaSession> {
 
-    public static final String DEFAULT_CLEANUP_CRON = "0 * * * * *";
-
     private final UserSessionRepository sessionRepository;
     private final JpaSessionMapper sessionMapper;
     private final TransactionTemplate transactionTemplate;
@@ -166,11 +164,10 @@ public class JpaIndexedSessionRepository implements FindByIndexNameSessionReposi
     }
 
     private Optional<UserSessionEntity> findEntityForSave(JpaSession session) {
-        Optional<UserSessionEntity> current = sessionRepository.findBySessionId(session.getId());
-        if (current.isPresent() || session.getOriginalId().equals(session.getId())) {
-            return current;
+        if (!session.getOriginalId().equals(session.getId())) {
+            return sessionRepository.findBySessionId(session.getOriginalId());
         }
-        return sessionRepository.findBySessionId(session.getOriginalId());
+        return sessionRepository.findBySessionId(session.getId());
     }
 
     private JpaSession toSession(UserSessionEntity entity) {

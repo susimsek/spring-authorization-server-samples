@@ -55,7 +55,6 @@ export function RoleDetail({
   const { page, query, setPage, setQuery, setSize, size } = useAdminTableState();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const tr = locale === "tr";
 
   const load = useCallback(async () => {
     if (!accessToken) return;
@@ -112,10 +111,10 @@ export function RoleDetail({
       data: { userId: selectedUser.id },
     });
     if (response.status >= 300) {
-      alerts.addError(tr ? "Rol atanamadı." : "Role assignment failed.");
+      alerts.addError(dictionary.admin.roles.assignmentSaveError);
       return;
     }
-    alerts.addAlert(tr ? "Rol kullanıcıya atandı." : "Role assigned to user.");
+    alerts.addAlert(dictionary.admin.roles.assignmentSaved);
     setSelectedUser(null);
     setUserQuery("");
     setSuggestions([]);
@@ -129,10 +128,10 @@ export function RoleDetail({
       method: "DELETE",
     });
     if (response.status >= 300) {
-      alerts.addError(tr ? "Rol kaldırılamadı." : "Could not remove role.");
+      alerts.addError(dictionary.admin.roles.assignmentRemoveError);
       return;
     }
-    alerts.addAlert(tr ? "Rol kullanıcıdan kaldırıldı." : "Role removed from user.");
+    alerts.addAlert(dictionary.admin.roles.assignmentRemoved);
     await load();
   };
 
@@ -141,7 +140,7 @@ export function RoleDetail({
     return (
       <ErrorState
         message={dictionary.admin.roles.operationError}
-        retryLabel={tr ? "Tekrar dene" : "Retry"}
+        retryLabel={dictionary.admin.roles.retry}
         onRetry={() => void load()}
       />
     );
@@ -159,15 +158,15 @@ export function RoleDetail({
         <div>
           <h1 className="h3 mb-1 font-monospace">{detail.name}</h1>
           <div className="text-body-secondary">
-            {detail.userCount} {tr ? "atanmış kullanıcı" : "assigned users"}
+            {detail.userCount} {dictionary.admin.roles.assignedUsers}
           </div>
         </div>
-        {detail.protectedRole && <Badge bg="secondary">{tr ? "Korumalı" : "Protected"}</Badge>}
+        {detail.protectedRole && <Badge bg="secondary">{dictionary.admin.roles.protected}</Badge>}
       </div>
 
       <Card className="admin-panel-card">
         <Card.Body>
-          <h2 className="h5">{tr ? "Kullanıcı ata" : "Assign user"}</h2>
+          <h2 className="h5">{dictionary.admin.roles.assignUser}</h2>
           <div className="d-flex flex-wrap align-items-start gap-2">
             <div className="position-relative flex-grow-1" style={{ maxWidth: "28rem" }}>
               <Form.Control
@@ -175,8 +174,8 @@ export function RoleDetail({
                 aria-autocomplete="list"
                 aria-controls="role-user-suggestions"
                 aria-expanded={suggestions.length > 0}
-                aria-label={tr ? "Kullanıcı ara" : "Search users"}
-                placeholder={tr ? "Kullanıcı adıyla ara…" : "Search by username…"}
+                aria-label={dictionary.admin.roles.searchUsers}
+                placeholder={dictionary.admin.roles.searchUsersPlaceholder}
                 role="combobox"
                 value={selectedUser?.username ?? userQuery}
                 onChange={(event) => {
@@ -191,7 +190,7 @@ export function RoleDetail({
                   animation="border"
                   size="sm"
                   className="position-absolute end-0 top-0 mt-2 me-2"
-                  aria-label={tr ? "Kullanıcılar aranıyor" : "Searching users"}
+                  aria-label={dictionary.admin.roles.searchingUsers}
                 />
               )}
               {!selectedUser && suggestions.length > 0 && (
@@ -224,26 +223,24 @@ export function RoleDetail({
             </div>
             <Button disabled={!selectedUser} onClick={() => void assign()}>
               <AdminActionIcon action="assign" />
-              {tr ? "Ata" : "Assign"}
+              {dictionary.admin.roles.assign}
             </Button>
           </div>
           <Form.Text className="text-body-secondary">
-            {tr
-              ? "En az 2 karakter yazın. Sonuçlar sunucudan sayfalı olarak aranır."
-              : "Type at least 2 characters. Results are searched server-side and paged."}
+            {dictionary.admin.roles.searchUsersHelp}
           </Form.Text>
         </Card.Body>
       </Card>
 
       <ResourceFilters
         query={query}
-        searchLabel={tr ? "Atanmış kullanıcıları ara" : "Search assigned users"}
+        searchLabel={dictionary.admin.roles.searchAssignedUsers}
         onQueryChange={setQuery}
       />
 
       <DataTable
         isEmpty={detail.users.content.length === 0}
-        emptyMessage={tr ? "Bu role atanmış kullanıcı yok." : "No users are assigned to this role."}
+        emptyMessage={dictionary.admin.roles.noAssignedUsers}
         footer={
           detail.users.totalElements > 0 ? (
             <PaginationControls
@@ -295,7 +292,7 @@ export function RoleDetail({
               <td className="text-end">
                 <Button size="sm" variant="outline-danger" onClick={() => void remove(user)}>
                   <AdminActionIcon action="remove" />
-                  {tr ? "Rolü kaldır" : "Remove role"}
+                  {dictionary.admin.roles.remove}
                 </Button>
               </td>
             </tr>

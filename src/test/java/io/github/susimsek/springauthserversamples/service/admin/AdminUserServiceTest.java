@@ -72,20 +72,34 @@ class AdminUserServiceTest {
 
     @Test
     void createUserRejectsBlankUsername() {
-        assertThatThrownBy(() -> service().createUser(" ", "password-123", true, Set.of()))
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .createUser(
+                                                " ",
+                                                "password-123",
+                                                true,
+                                                Set.of(),
+                                                "administrator"))
                 .isInstanceOf(ApiException.class)
                 .hasMessage("Username is required");
     }
 
     @Test
     void createUserRejectsShortPassword() {
-        assertThatThrownBy(() -> service().createUser("alice", "short", true, Set.of()))
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .createUser(
+                                                "alice", "short", true, Set.of(), "administrator"))
                 .isInstanceOf(ApiException.class)
                 .hasMessage("Password must be at least 8 characters");
     }
 
     @Test
     void createsUserWithEncodedPasswordAndDefaultRole() {
+        UserEntity administrator = user(1L, "administrator", AuthoritiesConstants.ADMIN);
+        when(userRepository.findByUsername("administrator")).thenReturn(Optional.of(administrator));
         when(userRepository.findByUsername("alice")).thenReturn(Optional.empty());
         when(authorityRepository.findByNameIn(Set.of(AuthoritiesConstants.USER)))
                 .thenReturn(List.of(authority(1L, AuthoritiesConstants.USER)));
@@ -99,7 +113,7 @@ class AdminUserServiceTest {
                         });
 
         AdminUserService.UserView created =
-                service().createUser("alice", "password-123", true, Set.of());
+                service().createUser("alice", "password-123", true, Set.of(), "administrator");
 
         assertThat(created.username()).isEqualTo("alice");
         assertThat(created.enabled()).isTrue();
@@ -110,16 +124,28 @@ class AdminUserServiceTest {
 
     @Test
     void createUserRejectsDuplicateUsername() {
+        UserEntity administrator = user(2L, "administrator", AuthoritiesConstants.ADMIN);
+        when(userRepository.findByUsername("administrator")).thenReturn(Optional.of(administrator));
         when(userRepository.findByUsername("alice"))
                 .thenReturn(Optional.of(user(1L, "alice", AuthoritiesConstants.USER)));
 
-        assertThatThrownBy(() -> service().createUser("alice", "password-123", true, Set.of()))
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .createUser(
+                                                "alice",
+                                                "password-123",
+                                                true,
+                                                Set.of(),
+                                                "administrator"))
                 .isInstanceOf(ApiException.class)
                 .hasMessage("Username is already registered");
     }
 
     @Test
     void createUserRejectsUnknownRole() {
+        UserEntity administrator = user(1L, "administrator", AuthoritiesConstants.ADMIN);
+        when(userRepository.findByUsername("administrator")).thenReturn(Optional.of(administrator));
         when(userRepository.findByUsername("alice")).thenReturn(Optional.empty());
         when(authorityRepository.findByNameIn(Set.of("ROLE_UNKNOWN"))).thenReturn(List.of());
 
@@ -130,9 +156,28 @@ class AdminUserServiceTest {
                                                 "alice",
                                                 "password-123",
                                                 true,
-                                                Set.of("ROLE_UNKNOWN")))
+                                                Set.of("ROLE_UNKNOWN"),
+                                                "administrator"))
                 .isInstanceOf(ApiException.class)
                 .hasMessage("One or more roles are invalid");
+    }
+
+    @Test
+    void userManagerCannotCreateUserWithAnUnassignedRole() {
+        UserEntity manager = user(6L, "manager", "ROLE_USER_MANAGER");
+        when(userRepository.findByUsername("manager")).thenReturn(Optional.of(manager));
+
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .createUser(
+                                                "alice",
+                                                "password-123",
+                                                true,
+                                                Set.of(AuthoritiesConstants.ADMIN),
+                                                "manager"))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("You can only assign roles you already have");
     }
 
     @Test
@@ -486,7 +531,13 @@ class AdminUserServiceTest {
 
         assertThat(result.getContent())
                 .containsExactly(
-                        new AdminGroupDTO(7L, "finance", Set.of(AuthoritiesConstants.USER), 1));
+                        new AdminGroupDTO(
+                                7L,
+                                "finance",
+                                "finance",
+                                null,
+                                Set.of(AuthoritiesConstants.USER),
+                                1));
     }
 
     private AdminUserService service() {

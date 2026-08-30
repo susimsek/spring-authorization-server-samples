@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
@@ -13,10 +14,10 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
 
   return (
     <>
-      <div className="admin-page-header">
-        <h1>{dictionary.admin.dashboard.title}</h1>
-        <p>{dictionary.admin.dashboard.subtitle}</p>
-      </div>
+      <AdminPageHeader
+        title={dictionary.admin.dashboard.title}
+        description={dictionary.admin.dashboard.subtitle}
+      />
 
       <AdminDashboard dictionary={dictionary} />
     </>

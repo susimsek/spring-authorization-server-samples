@@ -94,14 +94,16 @@ class AdminIdentityControllerTest {
                 new AdminUserRequest("alice", "password123", true, Set.of("ROLE_USER"));
         when(adminUserService.users("ali", true, pageable)).thenReturn(page);
         when(adminUserService.user(1L, "admin")).thenReturn(userView());
-        when(adminUserService.createUser("alice", "password123", true, Set.of("ROLE_USER")))
+        when(adminUserService.createUser(
+                        "alice", "password123", true, Set.of("ROLE_USER"), "admin"))
                 .thenReturn(userView());
         when(adminUserService.updateUser(1L, "alice", true, Set.of("ROLE_USER"), "admin"))
                 .thenReturn(userView());
 
         assertThat(controller.users("ali", true, pageable)).isSameAs(page);
         assertThat(controller.user(1L, authentication)).isEqualTo(userView());
-        assertThat(controller.createUser(request).getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(controller.createUser(request, authentication).getStatusCode())
+                .isEqualTo(HttpStatus.CREATED);
         assertThat(controller.updateUser(1L, request, authentication)).isEqualTo(userView());
         assertThat(controller.changePassword(1L, request, authentication).getStatusCode())
                 .isEqualTo(HttpStatus.NO_CONTENT);

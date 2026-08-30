@@ -67,7 +67,7 @@ export function ConsentForm({ dictionary }: ConsentFormProps) {
         {!failed && !consent && (
           <div className="d-flex justify-content-center py-4">
             <Spinner animation="border" role="status">
-              <span className="visually-hidden">Loading</span>
+              <span className="visually-hidden">{dictionary.consent.loading}</span>
             </Spinner>
           </div>
         )}

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Alert, Spinner } from "react-bootstrap";
 
 import type { Locale } from "@/i18n/config";
+import { getDictionary } from "@/i18n/get-dictionary";
 
 import { useAdminAuth } from "./AdminAuthProvider";
 
@@ -30,7 +31,7 @@ function clearAuthorizationResponseFromUrl() {
 
 export function AdminAuthorizationCallback({ locale }: { locale: Locale }) {
   const router = useRouter();
-  const { beginAuthorization, completeAuthorization, retryAuthorization } = useAdminAuth();
+  const { completeAuthorization } = useAdminAuth();
   const [failed, setFailed] = useState(false);
   const completed = useRef(false);
 
@@ -41,28 +42,18 @@ export function AdminAuthorizationCallback({ locale }: { locale: Locale }) {
     const { code, state, error } = readAuthorizationResponse();
     clearAuthorizationResponseFromUrl();
 
-    if (error) {
-      void retryAuthorization(locale, state, error).catch(() => setFailed(true));
-      return;
-    }
-
-    const recover = async () => {
-      clearAuthorizationResponseFromUrl();
-      await beginAuthorization(locale, `/${locale}/admin`, { prompt: "none" });
-    };
-
-    if (!code || !state) {
-      void recover().catch(() => setFailed(true));
+    if (error || !code || !state) {
+      queueMicrotask(() => setFailed(true));
       return;
     }
 
     void completeAuthorization(locale, code, state)
       .then((returnTo) => router.replace(returnTo))
-      .catch(() => recover().catch(() => setFailed(true)));
-  }, [beginAuthorization, completeAuthorization, locale, retryAuthorization, router]);
+      .catch(() => setFailed(true));
+  }, [completeAuthorization, locale, router]);
 
   if (failed) {
-    return <Alert variant="danger">The administration session could not be established.</Alert>;
+    return <Alert variant="danger">{getDictionary(locale).admin.common.authorizationCallbackError}</Alert>;
   }
 
   return (

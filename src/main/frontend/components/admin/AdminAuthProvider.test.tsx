@@ -53,6 +53,25 @@ function storeTransaction(state: string, returnTo = "/en/admin") {
   );
 }
 
+function storeTokens(overrides: Partial<Record<string, unknown>> = {}) {
+  localStorage.setItem(
+    "AUTH_CONSOLE_TOKEN:admin",
+    JSON.stringify({
+      accessToken: jwt({
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + 60,
+        sid: "s1",
+        sub: "u1",
+      }),
+      expiresAt: Date.now() + 60_000,
+      idToken: jwt({ sub: "u1" }),
+      refreshToken: "refresh",
+      version: 1,
+      ...overrides,
+    }),
+  );
+}
+
 function renderProvider() {
   return render(
     <StoreProvider>
@@ -95,7 +114,33 @@ describe("AdminAuthProvider", () => {
     expect(mockPost).not.toHaveBeenCalled();
   });
 
-  it("does not restore tokens from browser storage after a page remount", async () => {
+  it("hydrates Redux and its refresh-token state from browser storage", async () => {
+    storeTokens();
+    mockPost.mockResolvedValueOnce({
+      data: {
+        access_token: jwt({
+          iat: Math.floor(Date.now() / 1000),
+          exp: Math.floor(Date.now() / 1000) + 60,
+          sid: "s1",
+          sub: "u1",
+        }),
+        expires_in: 60,
+      },
+    });
+    renderProvider();
+
+    await waitFor(() => expect(auth.authenticated).toBe(true));
+    expect(auth.initialized).toBe(true);
+    expect(auth.accessToken).not.toBeNull();
+    await expect(auth.refreshAccessToken(-1)).resolves.not.toBeNull();
+    expect(mockPost).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(localStorage.getItem("AUTH_CONSOLE_TOKEN:admin") ?? "{}")).toMatchObject({
+      refreshToken: "refresh",
+    });
+  });
+
+  it("ignores malformed persisted token state", async () => {
+    localStorage.setItem("AUTH_CONSOLE_TOKEN:admin", "not-json");
     renderProvider();
 
     await waitFor(() => expect(auth.initialized).toBe(true));
@@ -178,7 +223,9 @@ describe("AdminAuthProvider", () => {
     });
     expect(auth.accessToken).not.toBeNull();
     expect(auth.expiresAt).toEqual(expect.any(Number));
-    expect(sessionStorage.getItem("AUTH_CONSOLE_TOKEN:admin")).toBeNull();
+    expect(JSON.parse(localStorage.getItem("AUTH_CONSOLE_TOKEN:admin") ?? "{}")).toMatchObject({
+      refreshToken: "refresh",
+    });
     expect(sessionStorage.getItem("AUTH_ADMIN_RETURN_TO")).toBeNull();
 
     await act(async () => {
@@ -186,11 +233,15 @@ describe("AdminAuthProvider", () => {
     });
     expect(auth.accessToken).not.toBeNull();
     expect(mockPost).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(localStorage.getItem("AUTH_CONSOLE_TOKEN:admin") ?? "{}")).toMatchObject({
+      refreshToken: "refresh2",
+    });
   });
 
   it("keeps a still-valid token after a transient refresh failure and revokes on logout", async () => {
     renderProvider();
     storeTransaction("state");
+    localStorage.setItem("AUTH_CONSOLE_TOKEN:account", "another-console-token");
     mockPost
       .mockResolvedValueOnce({
         data: {
@@ -215,6 +266,8 @@ describe("AdminAuthProvider", () => {
 
     expect(auth.accessToken).toBeNull();
     expect(auth.isLoggingOut).toBe(true);
+    expect(localStorage.getItem("AUTH_CONSOLE_TOKEN:admin")).toBeNull();
+    expect(localStorage.getItem("AUTH_CONSOLE_TOKEN:account")).toBeNull();
   });
 
   it("allows access state to be updated by guards", async () => {

@@ -33,12 +33,15 @@ export function ClientsTable({ locale, dictionary }: { locale: Locale; dictionar
   const [error, setError] = useState(false);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
-  const { query, page, setPage, setQuery, setSize, size } = useAdminTableState();
+  const { clearFilters, page, query, setPage, setQuery, setSize, setSort, size, sort } =
+    useAdminTableState(20, false, "clientId,asc");
   useEffect(() => {
     if (!accessToken) return;
     adminRequest<{ content: AdminClient[]; totalPages: number; totalElements: number }>(
       accessToken,
-      { url: `/api/admin/clients?q=${encodeURIComponent(query)}&page=${page}&size=${size}` },
+      {
+        url: `/api/admin/clients?q=${encodeURIComponent(query)}&page=${page}&size=${size}&sort=${encodeURIComponent(sort)}`,
+      },
     )
       .then((r) => {
         if (r.status >= 300) throw new Error();
@@ -49,7 +52,7 @@ export function ClientsTable({ locale, dictionary }: { locale: Locale; dictionar
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [accessToken, page, query, size]);
+  }, [accessToken, page, query, size, sort]);
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={dictionary.admin.clients.loadError} />;
   return (
@@ -58,6 +61,44 @@ export function ClientsTable({ locale, dictionary }: { locale: Locale; dictionar
         key={query}
         query={query}
         searchLabel={dictionary.admin.clients.search}
+        sort={{
+          label: dictionary.admin.resources.sort,
+          value: sort,
+          options: [
+            {
+              value: "clientId,asc",
+              label: `${dictionary.admin.clients.clientId} · ${dictionary.admin.resources.ascending}`,
+            },
+            {
+              value: "clientId,desc",
+              label: `${dictionary.admin.clients.clientId} · ${dictionary.admin.resources.descending}`,
+            },
+            {
+              value: "clientName,asc",
+              label: `${dictionary.admin.clients.clientName} · ${dictionary.admin.resources.ascending}`,
+            },
+            {
+              value: "clientName,desc",
+              label: `${dictionary.admin.clients.clientName} · ${dictionary.admin.resources.descending}`,
+            },
+          ],
+          onChange: setSort,
+        }}
+        activeFilters={
+          query
+            ? [
+                {
+                  label: dictionary.admin.resources.search,
+                  value: query,
+                  onRemove: () => setQuery(""),
+                },
+              ]
+            : []
+        }
+        clearFiltersLabel={dictionary.admin.resources.clearFilters}
+        onClearFilters={clearFilters}
+        resultCount={totalElements}
+        recordsLabel={dictionary.admin.resources.records}
         onQueryChange={(v) => {
           setLoading(true);
           setQuery(v);
@@ -141,7 +182,7 @@ export function ClientsTable({ locale, dictionary }: { locale: Locale; dictionar
                 </Badge>
               </td>
               <td className="text-end">
-                <RowActions label={`${c.clientName} actions`}>
+                <RowActions label={`${c.clientName} ${dictionary.admin.common.actions}`}>
                   <Dropdown.Item
                     as={Link}
                     href={`/${locale}/admin/clients/${encodeURIComponent(c.id)}/settings`}

@@ -22,7 +22,14 @@ import { ResourceFilters } from "./ResourceFilters";
 import { useAdminTableState } from "./useAdminTableState";
 
 type User = { id: number; username: string; enabled: boolean };
-type Group = { id: number; name: string; roles: string[]; userCount: number };
+type Group = {
+  id: number;
+  name: string;
+  parentId: number | null;
+  path: string;
+  roles: string[];
+  userCount: number;
+};
 type PageData<T> = { content: T[]; totalPages: number; totalElements: number };
 type Role = { name: string };
 
@@ -44,6 +51,7 @@ export function GroupDetail({
   const [group, setGroup] = useState<Group | null>(null);
   const groupFormInitialized = useRef(false);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [members, setMembers] = useState<User[]>([]);
   const [memberTotalPages, setMemberTotalPages] = useState(0);
   const [memberTotalElements, setMemberTotalElements] = useState(0);
@@ -64,6 +72,7 @@ export function GroupDetail({
   } = useAdminTableState();
   const groupSettingsSchema = z.object({
     name: z.string().trim().min(1, dictionary.admin.common.validation.required).max(100),
+    parentId: z.string(),
   });
   const {
     register: registerGroupSettings,
@@ -72,18 +81,19 @@ export function GroupDetail({
     formState: { errors: groupSettingsErrors, isDirty: isGroupSettingsDirty },
   } = useForm<z.infer<typeof groupSettingsSchema>>({
     resolver: zodResolver(groupSettingsSchema),
-    defaultValues: { name: "" },
+    defaultValues: { name: "", parentId: "" },
   });
 
   const load = useCallback(async () => {
     if (!accessToken) return;
     setLoading(true);
     try {
-      const [groupResponse, rolesResponse, membersResponse] = await Promise.all([
+      const [groupResponse, rolesResponse, groupsResponse, membersResponse] = await Promise.all([
         adminRequest<Group>(accessToken, {
           url: `/api/admin/groups/${encodeURIComponent(groupId)}`,
         }),
         adminRequest<PageData<Role>>(accessToken, { url: "/api/admin/roles?page=0&size=100" }),
+        adminRequest<PageData<Group>>(accessToken, { url: "/api/admin/groups?page=0&size=100" }),
         adminRequest<PageData<User>>(accessToken, {
           url: `/api/admin/groups/${encodeURIComponent(groupId)}/users?q=${encodeURIComponent(memberQuery)}&page=${memberPage}&size=${memberSize}`,
         }),
@@ -91,16 +101,21 @@ export function GroupDetail({
       if (
         groupResponse.status >= 300 ||
         rolesResponse.status >= 300 ||
+        groupsResponse.status >= 300 ||
         membersResponse.status >= 300
       ) {
         throw new Error();
       }
       setGroup(groupResponse.data);
       if (!groupFormInitialized.current) {
-        resetGroupSettings({ name: groupResponse.data.name });
+        resetGroupSettings({
+          name: groupResponse.data.name,
+          parentId: groupResponse.data.parentId?.toString() ?? "",
+        });
         groupFormInitialized.current = true;
       }
       setRoles(rolesResponse.data.content);
+      setGroups(groupsResponse.data.content);
       setSelectedRoles(groupResponse.data.roles);
       setMembers(membersResponse.data.content);
       setMemberTotalPages(membersResponse.data.totalPages);
@@ -154,18 +169,21 @@ export function GroupDetail({
     }
   };
 
-  const saveSettings = async ({ name }: z.infer<typeof groupSettingsSchema>) => {
+  const saveSettings = async ({ name, parentId }: z.infer<typeof groupSettingsSchema>) => {
     if (!accessToken) return;
     setSaving(true);
     try {
       const response = await adminRequest<Group>(accessToken, {
         url: `/api/admin/groups/${encodeURIComponent(groupId)}`,
         method: "PUT",
-        data: { name },
+        data: { name, parentId: parentId ? Number(parentId) : null },
       });
       if (response.status >= 300) throw new Error();
       setGroup(response.data);
-      resetGroupSettings({ name: response.data.name });
+      resetGroupSettings({
+        name: response.data.name,
+        parentId: response.data.parentId?.toString() ?? "",
+      });
       alerts.addAlert(copy.groupUpdated);
     } catch {
       alerts.addError(copy.operationError);
@@ -218,7 +236,11 @@ export function GroupDetail({
   if (loading && !group) return <LoadingState />;
   if (error || !group)
     return (
-      <ErrorState message={copy.operationError} onRetry={() => void load()} retryLabel="Retry" />
+      <ErrorState
+        message={copy.operationError}
+        onRetry={() => void load()}
+        retryLabel={dictionary.admin.common.retry}
+      />
     );
 
   return (
@@ -249,6 +271,20 @@ export function GroupDetail({
               <Form.Control.Feedback type="invalid">
                 {groupSettingsErrors.name?.message}
               </Form.Control.Feedback>
+            </Form.Group>
+            <Form.Group className="mb-3" controlId="group-parent">
+              <Form.Label>{copy.parent}</Form.Label>
+              <Form.Select {...registerGroupSettings("parentId")}>
+                <option value="">{copy.rootGroup}</option>
+                {groups
+                  .filter((candidate) => candidate.id !== group.id)
+                  .map((candidate) => (
+                    <option key={candidate.id} value={candidate.id}>
+                      {candidate.path}
+                    </option>
+                  ))}
+              </Form.Select>
+              <Form.Text>{copy.parentHelp}</Form.Text>
             </Form.Group>
             <Button disabled={saving || !isGroupSettingsDirty} type="submit">
               <AdminActionIcon action="save" />

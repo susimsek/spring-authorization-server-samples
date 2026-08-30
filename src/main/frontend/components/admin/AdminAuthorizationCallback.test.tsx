@@ -12,25 +12,22 @@ const mockUseAdminAuth = useAdminAuth as jest.Mock;
 
 describe("AdminAuthorizationCallback", () => {
   const replace = jest.fn();
-  const beginAuthorization = jest.fn();
   const completeAuthorization = jest.fn();
 
   beforeEach(() => {
     replace.mockReset();
-    beginAuthorization.mockReset();
     completeAuthorization.mockReset();
     window.history.replaceState({}, "", "/en/admin/callback");
     mockRouter.mockReturnValue({ replace });
-    mockUseAdminAuth.mockReturnValue({ beginAuthorization, completeAuthorization });
+    mockUseAdminAuth.mockReturnValue({ completeAuthorization });
   });
 
-  it("restarts authorization for an incomplete response", async () => {
-    beginAuthorization.mockResolvedValue(undefined);
+  it("shows an error for an incomplete response instead of starting another transaction", async () => {
     render(<AdminAuthorizationCallback locale="en" />);
 
-    await waitFor(() =>
-      expect(beginAuthorization).toHaveBeenCalledWith("en", "/en/admin", { prompt: "none" }),
-    );
+    expect(
+      await screen.findByText("The administration session could not be established."),
+    ).toBeVisible();
     expect(completeAuthorization).not.toHaveBeenCalled();
   });
 
@@ -43,14 +40,11 @@ describe("AdminAuthorizationCallback", () => {
     expect(replace).toHaveBeenCalledWith("/en/admin/clients");
   });
 
-  it("shows an error when recovery fails", async () => {
+  it("shows an error when the token exchange fails", async () => {
     window.history.replaceState({}, "", "/tr/admin/callback#code=code&state=state");
     completeAuthorization.mockRejectedValue(new Error("invalid token"));
-    beginAuthorization.mockRejectedValue(new Error("authorization failed"));
     render(<AdminAuthorizationCallback locale="tr" />);
 
-    expect(
-      await screen.findByText("The administration session could not be established."),
-    ).toBeVisible();
+    expect(await screen.findByText("Yönetim oturumu oluşturulamadı.")).toBeVisible();
   });
 });

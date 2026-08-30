@@ -9,4 +9,5 @@ public record AdminGroupRequestDTO(
         @NotBlank(message = "{app.api.problem.violation.required}")
                 @Size(max = 100, message = "{app.api.problem.violation.max_length}")
                 @Schema(example = "finance-operators")
-                String name) {}
+                String name,
+        @Schema(example = "1", nullable = true) Long parentId) {}

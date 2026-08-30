@@ -16,6 +16,7 @@ import java.util.Base64;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -65,7 +66,8 @@ public class AuthorizationServerConfig {
             HttpSecurity http,
             OAuth2TokenGenerator<OAuth2Token> tokenGenerator,
             RegisteredClientRepository registeredClientRepository,
-            SecurityContextRepository securityContextRepository) {
+            @Qualifier("authorizationServerSecurityContextRepository")
+                    SecurityContextRepository securityContextRepository) {
         OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
                 new OAuth2AuthorizationServerConfigurer();
 

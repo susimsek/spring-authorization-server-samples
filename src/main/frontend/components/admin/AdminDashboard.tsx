@@ -100,14 +100,14 @@ export function AdminDashboard({ dictionary }: { dictionary: Dictionary }) {
             <div className="card-body">
               <div className="d-flex align-items-center gap-2 fw-semibold mb-3">
                 <FontAwesomeIcon icon={faHeartPulse} />
-                {params.lang === "tr" ? "Sunucu durumu" : "Server health"}
+                {dictionary.admin.dashboard.serverHealth}
               </div>
               <div className="d-flex align-items-center gap-2 mb-2">
                 <span className={`badge ${health === "UP" ? "text-bg-success" : "text-bg-danger"}`}>
                   {health}
                 </span>
                 <span className="small text-body-secondary">
-                  {params.lang === "tr" ? "Readiness probe" : "Readiness probe"}
+                  {dictionary.admin.dashboard.readinessProbe}
                 </span>
               </div>
               <div className="small text-body-secondary text-break">
@@ -117,7 +117,7 @@ export function AdminDashboard({ dictionary }: { dictionary: Dictionary }) {
                 className="btn btn-sm btn-outline-secondary mt-3"
                 href={`/${params.lang}/admin/server-info`}
               >
-                {params.lang === "tr" ? "Sunucu bilgisini aç" : "Open server info"}
+                {dictionary.admin.dashboard.openServerInfo}
               </Link>
             </div>
           </div>
@@ -127,7 +127,7 @@ export function AdminDashboard({ dictionary }: { dictionary: Dictionary }) {
             <div className="card-body">
               <div className="d-flex align-items-center gap-2 fw-semibold mb-3">
                 <FontAwesomeIcon icon={faKey} />
-                {params.lang === "tr" ? "Aktif imzalama anahtarı" : "Active signing key"}
+                {dictionary.admin.dashboard.activeSigningKey}
               </div>
               {serverInfo?.activeSigningKey ? (
                 <>
@@ -147,7 +147,7 @@ export function AdminDashboard({ dictionary }: { dictionary: Dictionary }) {
                 className="btn btn-sm btn-outline-secondary mt-3"
                 href={`/${params.lang}/admin/keys`}
               >
-                {params.lang === "tr" ? "Anahtarları yönet" : "Manage keys"}
+                {dictionary.admin.dashboard.manageKeys}
               </Link>
             </div>
           </div>
@@ -159,16 +159,14 @@ export function AdminDashboard({ dictionary }: { dictionary: Dictionary }) {
           <div>
             <div className="d-flex align-items-center gap-2 fw-semibold">
               <FontAwesomeIcon icon={faClockRotateLeft} />
-              {params.lang === "tr" ? "Son olaylar" : "Recent events"}
+              {dictionary.admin.dashboard.recentEvents}
             </div>
             <div className="small text-body-secondary">
-              {params.lang === "tr"
-                ? "En son yönetim aktiviteleri"
-                : "Latest administration activity"}
+              {dictionary.admin.dashboard.recentActivity}
             </div>
           </div>
           <Link className="btn btn-sm btn-outline-secondary" href={`/${params.lang}/admin/events`}>
-            {params.lang === "tr" ? "Tümünü görüntüle" : "View all"}
+            {dictionary.admin.dashboard.viewAll}
           </Link>
         </div>
         <div className="list-group list-group-flush">

@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import { Alert, Spinner } from "react-bootstrap";
 
 import type { Locale } from "@/i18n/config";
+import { getDictionary } from "@/i18n/get-dictionary";
 
 import { useAccountAuth } from "./AccountAuthProvider";
 
 export function AccountAuthorizationCallback({ locale }: { locale: Locale }) {
   const router = useRouter();
-  const { beginAuthorization, completeAuthorization, retryAuthorization } = useAccountAuth();
+  const { completeAuthorization } = useAccountAuth();
   const [failed, setFailed] = useState(false);
   const completed = useRef(false);
 
@@ -25,27 +26,19 @@ export function AccountAuthorizationCallback({ locale }: { locale: Locale }) {
     const error = hash.get("error") ?? query.get("error");
     window.history.replaceState(window.history.state, "", window.location.pathname);
 
-    if (error) {
-      void retryAuthorization(locale, state, error).catch(() => setFailed(true));
-      return;
-    }
-
-    const recover = async () => {
-      window.history.replaceState(window.history.state, "", window.location.pathname);
-      await beginAuthorization(locale, `/${locale}/account/personal-info`, { prompt: "none" });
-    };
-
-    if (!code || !state) {
-      void recover().catch(() => setFailed(true));
+    if (error || !code || !state) {
+      queueMicrotask(() => setFailed(true));
       return;
     }
 
     void completeAuthorization(locale, code, state)
       .then((returnTo) => router.replace(returnTo))
-      .catch(() => recover().catch(() => setFailed(true)));
-  }, [beginAuthorization, completeAuthorization, locale, retryAuthorization, router]);
+      .catch(() => setFailed(true));
+  }, [completeAuthorization, locale, router]);
 
-  if (failed) return <Alert variant="danger">The account session could not be established.</Alert>;
+  if (failed) {
+    return <Alert variant="danger">{getDictionary(locale).account.common.authorizationCallbackError}</Alert>;
+  }
   return (
     <div className="min-vh-100 d-flex align-items-center justify-content-center bg-body-tertiary">
       <Spinner />

@@ -4,6 +4,7 @@ import io.github.susimsek.springauthserversamples.security.LocalizedAccessDenied
 import io.github.susimsek.springauthserversamples.security.LocalizedAuthenticationEntryPoint;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -48,13 +49,19 @@ public class SecurityConfig {
     @Bean
     @Order(3)
     SecurityFilterChain defaultSecurityFilterChain(
-            HttpSecurity http, SecurityContextRepository securityContextRepository) {
+            HttpSecurity http,
+            @Qualifier("browserSecurityContextRepository")
+                    SecurityContextRepository securityContextRepository) {
         http.securityContext(
                         securityContext ->
                                 securityContext
                                         .securityContextRepository(securityContextRepository)
                                         .requireExplicitSave(false))
                 .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(
+                        sessionManagement ->
+                                sessionManagement.sessionFixation(
+                                        sessionFixation -> sessionFixation.changeSessionId()))
                 .authorizeHttpRequests(
                         authorize ->
                                 authorize
@@ -92,7 +99,12 @@ public class SecurityConfig {
                                                 localizedAuthenticationEntryPoint,
                                                 NON_HTML_REQUEST_MATCHER)
                                         .accessDeniedHandler(localizedAccessDeniedHandler))
-                .formLogin(formLogin -> formLogin.loginPage("/login").permitAll());
+                .formLogin(
+                        formLogin ->
+                                formLogin
+                                        .loginPage("/login")
+                                        .securityContextRepository(securityContextRepository)
+                                        .permitAll());
 
         http.oauth2ResourceServer(resourceServer -> resourceServer.jwt(Customizer.withDefaults()));
 
@@ -100,9 +112,15 @@ public class SecurityConfig {
     }
 
     @Bean
-    SecurityContextRepository securityContextRepository() {
+    SecurityContextRepository browserSecurityContextRepository() {
         return new DelegatingSecurityContextRepository(
                 new RequestAttributeSecurityContextRepository(),
                 new HttpSessionSecurityContextRepository());
+    }
+
+    @Bean
+    SecurityContextRepository authorizationServerSecurityContextRepository(
+            @Qualifier("browserSecurityContextRepository") SecurityContextRepository delegate) {
+        return new ReadOnlySecurityContextRepository(delegate);
     }
 }

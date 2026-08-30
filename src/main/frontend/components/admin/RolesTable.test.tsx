@@ -13,12 +13,15 @@ jest.mock("./AdminAuthProvider", () => ({
 }));
 jest.mock("./useAdminTableState", () => ({
   useAdminTableState: () => ({
+    clearFilters: jest.fn(),
     page: 0,
     query: "",
+    sort: "name,asc",
     size: 10,
     setPage: jest.fn(),
     setQuery: jest.fn(),
     setSize: jest.fn(),
+    setSort: jest.fn(),
   }),
 }));
 
@@ -50,7 +53,7 @@ describe("RolesTable", () => {
       screen.getAllByRole("button", { name: dictionary.admin.roles.delete })[2],
     ).not.toBeDisabled();
     expect(mockAdminRequest).toHaveBeenCalledWith("token", {
-      url: "/api/admin/roles?q=&page=0&size=10",
+      url: "/api/admin/roles?q=&page=0&size=10&sort=name%2Casc",
     });
   });
 
@@ -59,7 +62,7 @@ describe("RolesTable", () => {
     render(<RolesTable dictionary={dictionary} />);
     await waitFor(() =>
       expect(mockAdminRequest).toHaveBeenCalledWith("token", {
-        url: "/api/admin/roles?q=&page=0&size=10",
+        url: "/api/admin/roles?q=&page=0&size=10&sort=name%2Casc",
       }),
     );
     expect(screen.getByRole("link", { name: dictionary.admin.roles.create })).toHaveAttribute(

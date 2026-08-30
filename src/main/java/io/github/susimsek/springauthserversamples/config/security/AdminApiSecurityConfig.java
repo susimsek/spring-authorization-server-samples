@@ -71,10 +71,15 @@ public class AdminApiSecurityConfig {
                                                 "ROLE_ADMIN",
                                                 "ROLE_USER_VIEWER",
                                                 "ROLE_USER_MANAGER")
+                                        .requestMatchers(HttpMethod.GET, "/api/admin/events")
+                                        .hasAnyAuthority(
+                                                "ROLE_ADMIN",
+                                                "ROLE_USER_VIEWER",
+                                                "ROLE_USER_MANAGER")
                                         .requestMatchers(HttpMethod.PUT, "/api/admin/users/**")
                                         .hasAnyAuthority("ROLE_ADMIN", "ROLE_USER_MANAGER")
                                         .requestMatchers(HttpMethod.POST, "/api/admin/users")
-                                        .hasAuthority("ROLE_ADMIN")
+                                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_USER_MANAGER")
                                         .requestMatchers(HttpMethod.DELETE, "/api/admin/users/**")
                                         .hasAnyAuthority("ROLE_ADMIN", "ROLE_USER_MANAGER")
                                         .requestMatchers(HttpMethod.GET, "/api/admin/roles")

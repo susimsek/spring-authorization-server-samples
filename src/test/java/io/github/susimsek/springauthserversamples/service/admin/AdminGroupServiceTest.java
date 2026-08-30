@@ -1,6 +1,7 @@
 package io.github.susimsek.springauthserversamples.service.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -8,6 +9,7 @@ import static org.mockito.Mockito.when;
 import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
 import io.github.susimsek.springauthserversamples.domain.GroupEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupRolesRequestDTO;
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
 import io.github.susimsek.springauthserversamples.repository.GroupRepository;
@@ -61,6 +63,40 @@ class AdminGroupServiceTest {
 
         verify(userAccessInvalidationService).invalidate("alice");
         verify(userAccessInvalidationService).invalidate("bob");
+    }
+
+    @Test
+    void updateRolesInvalidatesMembersOfNestedGroups() {
+        GroupEntity parent = group(7L, "finance");
+        GroupEntity child = group(8L, "operations");
+        child.setParent(parent);
+        UserEntity parentMember = user(3L, "alice");
+        UserEntity childMember = user(4L, "bob");
+        when(groupRepository.findById(7L)).thenReturn(Optional.of(parent));
+        when(groupRepository.findByParentId(7L)).thenReturn(List.of(child));
+        when(groupRepository.findByParentId(8L)).thenReturn(List.of());
+        when(authorityRepository.findByNameIn(Set.of("ROLE_USER_VIEWER")))
+                .thenReturn(List.of(authority("ROLE_USER_VIEWER")));
+        when(userRepository.findAllByGroupsId(7L)).thenReturn(List.of(parentMember));
+        when(userRepository.findAllByGroupsId(8L)).thenReturn(List.of(childMember));
+        when(userRepository.countByGroupsId(7L)).thenReturn(1L);
+
+        service().updateRoles(7L, new AdminGroupRolesRequestDTO(Set.of("ROLE_USER_VIEWER")));
+
+        verify(userAccessInvalidationService).invalidate("alice");
+        verify(userAccessInvalidationService).invalidate("bob");
+    }
+
+    @Test
+    void updateRejectsMovingGroupIntoItsDescendant() {
+        GroupEntity parent = group(7L, "finance");
+        GroupEntity child = group(8L, "operations");
+        child.setParent(parent);
+        when(groupRepository.findById(7L)).thenReturn(Optional.of(parent));
+        when(groupRepository.findById(8L)).thenReturn(Optional.of(child));
+
+        assertThatThrownBy(() -> service().update(7L, new AdminGroupRequestDTO("finance", 8L)))
+                .hasMessageContaining("descendant");
     }
 
     @Test

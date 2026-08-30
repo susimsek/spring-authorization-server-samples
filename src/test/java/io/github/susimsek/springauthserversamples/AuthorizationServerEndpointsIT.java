@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.github.susimsek.springauthserversamples.repository.UserSessionRepository;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -37,6 +38,8 @@ class AuthorizationServerEndpointsIT {
     @Autowired private RegisteredClientRepository registeredClientRepository;
 
     @Autowired private OAuth2AuthorizationConsentService authorizationConsentService;
+
+    @Autowired private UserSessionRepository userSessionRepository;
 
     @Test
     void discoveryAndJwkEndpointsArePublic() throws Exception {
@@ -215,6 +218,7 @@ class AuthorizationServerEndpointsIT {
         MvcResult tokenResult =
                 mockMvc.perform(
                                 post("/oauth2/token")
+                                        .cookie(sessionCookie)
                                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                                         .param("client_id", "admin-console")
                                         .param("code", authorizationCode)
@@ -239,9 +243,41 @@ class AuthorizationServerEndpointsIT {
                 .andExpect(jsonPath("$.username").value("admin"))
                 .andExpect(jsonPath("$.access.manageClients").value(true));
 
+        mockMvc.perform(get("/oidc/session-status").cookie(sessionCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.authenticated").value(true));
+
+        String accountCodeVerifier = "account-console-code-verifier-012345678901234567890123456789";
+        MvcResult accountAuthorizationResult =
+                mockMvc.perform(
+                                get("/oauth2/authorize")
+                                        .cookie(sessionCookie)
+                                        .accept(MediaType.TEXT_HTML)
+                                        .queryParam("response_type", "code")
+                                        .queryParam("client_id", "account-console")
+                                        .queryParam("scope", "openid profile account-api")
+                                        .queryParam(
+                                                "redirect_uri",
+                                                "http://localhost:9090/en/account/callback")
+                                        .queryParam(
+                                                "code_challenge",
+                                                codeChallenge(accountCodeVerifier))
+                                        .queryParam("code_challenge_method", "S256")
+                                        .queryParam("state", "account-console-state"))
+                        .andExpect(status().is3xxRedirection())
+                        .andReturn();
+
+        URI accountCallbackUri =
+                URI.create(accountAuthorizationResult.getResponse().getRedirectedUrl());
+        assertThat(accountCallbackUri.getPath()).isEqualTo("/en/account/callback");
+        assertThat(accountCallbackUri.getQuery())
+                .contains("code=", "state=account-console-state")
+                .doesNotContain("error=");
+
         MvcResult refreshResult =
                 mockMvc.perform(
                                 post("/oauth2/token")
+                                        .cookie(sessionCookie)
                                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                                         .param("client_id", "admin-console")
                                         .param("grant_type", "refresh_token")
@@ -272,6 +308,46 @@ class AuthorizationServerEndpointsIT {
                                 .param("grant_type", "refresh_token")
                                 .param("refresh_token", rotatedRefreshToken))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void accountConsoleReusesTheAdminBrowserSession() throws Exception {
+        MvcResult loginResult =
+                mockMvc.perform(
+                                post("/login")
+                                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                        .param("username", "admin")
+                                        .param("password", "admin"))
+                        .andExpect(status().is3xxRedirection())
+                        .andReturn();
+        var sessionCookie = loginResult.getResponse().getCookie("SESSION");
+        assertThat(sessionCookie).isNotNull();
+
+        String codeVerifier = "account-console-code-verifier-012345678901234567890123456789";
+        MvcResult result =
+                mockMvc.perform(
+                                get("/oauth2/authorize")
+                                        .cookie(sessionCookie)
+                                        .accept(MediaType.TEXT_HTML)
+                                        .queryParam("response_type", "code")
+                                        .queryParam("client_id", "account-console")
+                                        .queryParam("scope", "openid profile account-api")
+                                        .queryParam(
+                                                "redirect_uri",
+                                                "http://localhost:9090/en/account/callback")
+                                        .queryParam("code_challenge", codeChallenge(codeVerifier))
+                                        .queryParam("code_challenge_method", "S256")
+                                        .queryParam("nonce", "account-console-nonce")
+                                        .queryParam("prompt", "none")
+                                        .queryParam("state", "account-console-state"))
+                        .andExpect(status().is3xxRedirection())
+                        .andReturn();
+
+        URI callbackUri = URI.create(result.getResponse().getRedirectedUrl());
+        assertThat(callbackUri.getPath()).isEqualTo("/en/account/callback");
+        assertThat(callbackUri.getQuery())
+                .contains("code=", "state=account-console-state")
+                .doesNotContain("error=");
     }
 
     @Test
@@ -406,6 +482,157 @@ class AuthorizationServerEndpointsIT {
                 "shared-sso-account-state",
                 "shared-sso-account-nonce",
                 "shared-sso-account-verifier-0123456789012345678901234567890");
+    }
+
+    @Test
+    void consoleLoginKeepsOneBrowserSessionAcrossAdminAndAccountAuthorization() throws Exception {
+        long sessionsBeforeLogin = activeSessionCount("admin");
+        String adminVerifier = "browser-admin-verifier-0123456789012345678901234567890123456789";
+
+        MvcResult unauthenticatedAuthorization =
+                mockMvc.perform(
+                                consoleAuthorizationRequest(
+                                        "admin-console",
+                                        "openid profile admin-api",
+                                        "http://localhost:9090/en/admin/callback",
+                                        adminVerifier,
+                                        "browser-admin-state",
+                                        "browser-admin-nonce"))
+                        .andExpect(status().is3xxRedirection())
+                        .andReturn();
+        var preLoginSession = unauthenticatedAuthorization.getResponse().getCookie("SESSION");
+        assertThat(preLoginSession).isNotNull();
+        assertThat(unauthenticatedAuthorization.getResponse().getRedirectedUrl())
+                .contains("/login");
+
+        MvcResult loginResult =
+                mockMvc.perform(
+                                post("/login")
+                                        .cookie(preLoginSession)
+                                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                        .param("username", "admin")
+                                        .param("password", "admin"))
+                        .andExpect(status().is3xxRedirection())
+                        .andReturn();
+        var authenticatedSession = loginResult.getResponse().getCookie("SESSION");
+        assertThat(authenticatedSession).isNotNull();
+        assertThat(authenticatedSession.getValue()).isNotEqualTo(preLoginSession.getValue());
+        assertThat(activeSessionCount("admin")).isEqualTo(sessionsBeforeLogin + 1);
+
+        MvcResult adminAuthorization =
+                mockMvc.perform(
+                                consoleAuthorizationRequest(
+                                                "admin-console",
+                                                "openid profile admin-api",
+                                                "http://localhost:9090/en/admin/callback",
+                                                adminVerifier,
+                                                "browser-admin-state",
+                                                "browser-admin-nonce")
+                                        .cookie(authenticatedSession))
+                        .andExpect(status().is3xxRedirection())
+                        .andReturn();
+        URI adminCallback = URI.create(adminAuthorization.getResponse().getRedirectedUrl());
+        assertThat(adminCallback.getPath()).isEqualTo("/en/admin/callback");
+        String adminCode =
+                UriComponentsBuilder.fromUri(adminCallback)
+                        .build()
+                        .getQueryParams()
+                        .getFirst("code");
+        MvcResult adminTokenResult =
+                mockMvc.perform(
+                                post("/oauth2/token")
+                                        .cookie(authenticatedSession)
+                                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                        .param("client_id", "admin-console")
+                                        .param("grant_type", "authorization_code")
+                                        .param("code", adminCode)
+                                        .param("code_verifier", adminVerifier)
+                                        .param(
+                                                "redirect_uri",
+                                                "http://localhost:9090/en/admin/callback"))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.refresh_token").isNotEmpty())
+                        .andReturn();
+        String adminRefreshToken =
+                JSON_MAPPER
+                        .readTree(adminTokenResult.getResponse().getContentAsString())
+                        .get("refresh_token")
+                        .asText();
+        assertThat(activeSessionCount("admin")).isEqualTo(sessionsBeforeLogin + 1);
+
+        String accountVerifier =
+                "browser-account-verifier-0123456789012345678901234567890123456789";
+        MvcResult accountAuthorization =
+                mockMvc.perform(
+                                consoleAuthorizationRequest(
+                                                "account-console",
+                                                "openid profile account-api",
+                                                "http://localhost:9090/en/account/callback",
+                                                accountVerifier,
+                                                "browser-account-state",
+                                                "browser-account-nonce")
+                                        .cookie(authenticatedSession))
+                        .andExpect(status().is3xxRedirection())
+                        .andReturn();
+        URI accountCallback = URI.create(accountAuthorization.getResponse().getRedirectedUrl());
+        assertThat(accountCallback.getPath()).isEqualTo("/en/account/callback");
+        String accountCode =
+                UriComponentsBuilder.fromUri(accountCallback)
+                        .build()
+                        .getQueryParams()
+                        .getFirst("code");
+        MvcResult accountTokenResult =
+                mockMvc.perform(
+                                post("/oauth2/token")
+                                        .cookie(authenticatedSession)
+                                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                        .param("client_id", "account-console")
+                                        .param("grant_type", "authorization_code")
+                                        .param("code", accountCode)
+                                        .param("code_verifier", accountVerifier)
+                                        .param(
+                                                "redirect_uri",
+                                                "http://localhost:9090/en/account/callback"))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.refresh_token").isNotEmpty())
+                        .andReturn();
+        String accountRefreshToken =
+                JSON_MAPPER
+                        .readTree(accountTokenResult.getResponse().getContentAsString())
+                        .get("refresh_token")
+                        .asText();
+        assertThat(accountRefreshToken).isNotEqualTo(adminRefreshToken);
+        mockMvc.perform(get("/oidc/session-status").cookie(authenticatedSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.authenticated").value(true));
+        assertThat(activeSessionCount("admin")).isEqualTo(sessionsBeforeLogin + 1);
+    }
+
+    private long activeSessionCount(String username) {
+        return userSessionRepository
+                .findAllByPrincipalNameAndExpiryTimeAfter(username, System.currentTimeMillis())
+                .size();
+    }
+
+    private static org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
+            consoleAuthorizationRequest(
+                    String clientId,
+                    String scope,
+                    String redirectUri,
+                    String codeVerifier,
+                    String state,
+                    String nonce)
+                    throws NoSuchAlgorithmException {
+        return get("/oauth2/authorize")
+                .accept(MediaType.TEXT_HTML)
+                .queryParam("response_type", "code")
+                .queryParam("client_id", clientId)
+                .queryParam("scope", scope)
+                .queryParam("redirect_uri", redirectUri)
+                .queryParam("code_challenge", codeChallenge(codeVerifier))
+                .queryParam("code_challenge_method", "S256")
+                .queryParam("state", state)
+                .queryParam("nonce", nonce);
     }
 
     private void assertConsoleAuthorizationRedirectsWithoutLogin(

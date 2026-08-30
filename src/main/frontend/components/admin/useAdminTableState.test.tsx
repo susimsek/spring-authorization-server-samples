@@ -79,4 +79,21 @@ describe("useAdminTableState", () => {
       scope: "profile",
     });
   });
+
+  it("persists sort choices and clears every filter back to the default sort", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/en/admin/users?q=alice&status=true&sort=username,desc&page=2",
+    );
+    const { result } = renderHook(() => useAdminTableState(20, true, "username,asc"));
+
+    act(() => result.current.clearFilters());
+
+    expect(window.location.search).toBe("");
+    expect(result.current.sort).toBe("username,asc");
+
+    act(() => result.current.setSort("username,desc"));
+    expect(new URLSearchParams(window.location.search).get("sort")).toBe("username,desc");
+  });
 });

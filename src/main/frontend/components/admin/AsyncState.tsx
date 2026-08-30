@@ -1,9 +1,18 @@
 import type { ReactNode } from "react";
 import { Alert, Button } from "react-bootstrap";
+import { useParams } from "next/navigation";
+
+import { getDictionary } from "@/i18n/get-dictionary";
+
+function useAdminCopy() {
+  const params = useParams<{ lang: string }>();
+  return getDictionary(params.lang === "tr" ? "tr" : "en").admin.common;
+}
 
 export function LoadingState() {
+  const copy = useAdminCopy();
   return (
-    <div className="console-skeleton" role="status" aria-label="Loading">
+    <div className="console-skeleton" role="status" aria-label={copy.loading}>
       <div className="console-skeleton-title" />
       <div className="console-skeleton-toolbar" />
       {Array.from({ length: 5 }).map((_, index) => (
@@ -14,8 +23,13 @@ export function LoadingState() {
 }
 
 export function DetailLoadingState() {
+  const copy = useAdminCopy();
   return (
-    <div className="console-skeleton console-skeleton-detail" role="status" aria-label="Loading">
+    <div
+      className="console-skeleton console-skeleton-detail"
+      role="status"
+      aria-label={copy.loading}
+    >
       <div className="console-skeleton-title" />
       <div className="console-skeleton-detail-line" />
       <div className="console-skeleton-detail-card" />
@@ -27,12 +41,13 @@ export function DetailLoadingState() {
 export function ErrorState({
   message,
   onRetry,
-  retryLabel = "Retry",
+  retryLabel,
 }: {
   message: string;
   onRetry?: () => void;
   retryLabel?: string;
 }) {
+  const copy = useAdminCopy();
   return (
     <Alert
       variant="danger"
@@ -41,7 +56,7 @@ export function ErrorState({
       <span>{message}</span>
       {onRetry && (
         <Button size="sm" variant="outline-danger" onClick={onRetry}>
-          {retryLabel}
+          {retryLabel ?? copy.retry}
         </Button>
       )}
     </Alert>

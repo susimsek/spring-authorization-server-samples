@@ -7,5 +7,7 @@ import java.util.Set;
 public record AdminGroupDTO(
         @Schema(example = "1") Long id,
         @Schema(example = "finance-operators") String name,
+        @Schema(example = "Finance / Finance operators") String path,
+        @Schema(example = "2", nullable = true) Long parentId,
         @Schema(example = "[\"ROLE_USER_VIEWER\", \"ROLE_CLIENT_VIEWER\"]") Set<String> roles,
         @Schema(example = "3") long userCount) {}

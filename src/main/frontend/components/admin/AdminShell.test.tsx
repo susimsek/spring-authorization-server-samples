@@ -28,21 +28,25 @@ jest.mock("./AdminAuthProvider", () => ({
       viewConsents: true,
       viewKeys: true,
     },
+    idTokenParsed: { picture: "/avatars/admin?v=1" },
     logout: mockLogout,
+    tokenParsed: null,
     username: "admin",
   }),
 }));
 jest.mock("@/components/auth/ConsoleUserMenu", () => ({
   ConsoleUserMenu: ({
     username,
+    avatarSrc,
     logoutLabel,
     onLogout,
   }: {
     username: string;
+    avatarSrc?: string | null;
     logoutLabel: string;
     onLogout: () => void;
   }) => (
-    <div>
+    <div data-avatar-src={avatarSrc}>
       <span>{username}</span>
       <button onClick={onLogout}>{logoutLabel}</button>
     </div>
@@ -127,6 +131,10 @@ describe("AdminShell", () => {
     expect(screen.getByText(dictionary.admin.nav.clients)).toBeVisible();
     expect(screen.getByText(dictionary.admin.nav.users)).toBeVisible();
     expect(screen.queryByText(dictionary.admin.nav.dashboard)).toBeVisible();
+    expect(screen.getByText("admin").parentElement).toHaveAttribute(
+      "data-avatar-src",
+      "/avatars/admin?v=1",
+    );
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.logout }));
     await waitFor(() => expect(mockLogout).toHaveBeenCalled());
   });

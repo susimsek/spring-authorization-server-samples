@@ -68,12 +68,8 @@ public class SessionConfig {
             SessionProperties sessionProperties,
             ApplicationProperties applicationProperties) {
         Duration timeout = sessionProperties.getTimeout();
-        if (timeout != null) {
-            sessionRepository.setDefaultMaxInactiveInterval(timeout);
-        } else {
-            sessionRepository.setDefaultMaxInactiveInterval(
-                    MapSession.DEFAULT_MAX_INACTIVE_INTERVAL);
-        }
+        sessionRepository.setDefaultMaxInactiveInterval(
+                timeout != null ? timeout : MapSession.DEFAULT_MAX_INACTIVE_INTERVAL);
         return new SessionCleanupScheduler(
                 sessionRepository, taskScheduler, applicationProperties.session().cleanupCron());
     }

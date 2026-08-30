@@ -12,15 +12,17 @@ export function ConsoleUserMenu({
   accountHref,
   accountLabel,
   logoutLabel,
+  signedInAsLabel,
   onLogout,
-  avatarSrc = "/account/avatar",
+  avatarSrc,
 }: {
   username: string;
   accountHref: string;
   accountLabel: string;
   logoutLabel: string;
+  signedInAsLabel: string;
   onLogout: () => void;
-  avatarSrc?: string;
+  avatarSrc?: string | null;
 }) {
   const [avatarFailed, setAvatarFailed] = useState(false);
   const initial = username.trim().charAt(0).toUpperCase() || "?";
@@ -33,7 +35,7 @@ export function ConsoleUserMenu({
         aria-label={username}
       >
         <span className="console-user-avatar" aria-hidden="true">
-          {!avatarFailed && (
+          {avatarSrc && !avatarFailed && (
             <Image
               src={avatarSrc}
               alt=""
@@ -50,7 +52,7 @@ export function ConsoleUserMenu({
       </Dropdown.Toggle>
       <Dropdown.Menu className="console-user-menu shadow-sm">
         <div className="px-3 py-2 border-bottom">
-          <div className="small text-body-secondary">Signed in as</div>
+          <div className="small text-body-secondary">{signedInAsLabel}</div>
           <div className="fw-semibold text-truncate">{username}</div>
         </div>
         <Dropdown.Item as={Link} href={accountHref}>

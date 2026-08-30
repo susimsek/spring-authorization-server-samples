@@ -206,7 +206,9 @@ describe("admin shared components", () => {
     expect(screen.getByText("authorization_code")).toBeVisible();
     expect(screen.getByText("openid")).toBeVisible();
     expect(screen.getByText(`PKCE ${dictionary.admin.common.off}`)).toBeVisible();
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "20" } });
+    fireEvent.change(screen.getByLabelText(dictionary.admin.resources.rowsPerPage), {
+      target: { value: "20" },
+    });
   });
 
   it("handles client loading errors and empty filtered results", async () => {

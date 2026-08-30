@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
+import io.github.susimsek.springauthserversamples.domain.GroupEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
@@ -47,6 +48,23 @@ class DomainUserDetailsServiceTest {
         var userDetails = new DomainUserDetailsService(userRepository).loadUserByUsername("admin");
 
         assertThat(userDetails.isEnabled()).isFalse();
+    }
+
+    @Test
+    void inheritsAuthoritiesFromParentGroups() {
+        GroupEntity parent = new GroupEntity();
+        parent.setAuthorities(Set.of(new AuthorityEntity(1L, AuthoritiesConstants.ADMIN)));
+        GroupEntity child = new GroupEntity();
+        child.setParent(parent);
+        UserEntity user = user(true, AuthoritiesConstants.USER);
+        user.setGroups(Set.of(child));
+        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(user));
+
+        var userDetails = new DomainUserDetailsService(userRepository).loadUserByUsername("admin");
+
+        assertThat(userDetails.getAuthorities())
+                .extracting(Object::toString)
+                .containsExactlyInAnyOrder(AuthoritiesConstants.ADMIN, AuthoritiesConstants.USER);
     }
 
     @Test

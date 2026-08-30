@@ -274,7 +274,7 @@ curl http://localhost:9090/actuator/health/readiness
 - Keep the Authorization Server filter chain scoped to authorization endpoints; do not collapse multiple chains into `anyRequest`.
 - Preserve the current split between HTML login redirects and non-HTML localized OAuth2 error responses.
 - Keep console authentication aligned with the Keycloak JavaScript adapter model: use Authorization Code + PKCE, refresh only when the access token is near expiry (or explicitly forced), and invoke the OIDC logout endpoint with the ID-token hint and registered post-logout URI.
-- Do not persist console access, ID, or refresh tokens in browser storage. The Spring Session-backed server session supplies browser SSO; OAuth authorization and token records remain in `oauth2_authorization`.
+- Persist each console's access, ID, and refresh token set in its namespaced browser `localStorage` record so a browser reload can hydrate Redux before the next API request. Replace that record atomically after every successful authorization-code or refresh-token exchange and remove it on logout or permanent refresh failure. OAuth authorization and token records remain in `oauth2_authorization`.
 
 ### Database and Liquibase
 

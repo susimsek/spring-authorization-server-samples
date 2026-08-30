@@ -11,6 +11,10 @@ const mockPush = jest.fn();
 const mockRefresh = jest.fn();
 const mockAdminRequest = adminRequest as jest.MockedFunction<typeof adminRequest>;
 
+function rolePage(...roles: { name: string }[]) {
+  return { content: roles };
+}
+
 jest.mock("@/lib/admin-api", () => ({ adminRequest: jest.fn() }));
 jest.mock("./AdminAuthProvider", () => ({
   useAdminAuth: () => ({ accessToken: "token" }),
@@ -29,8 +33,8 @@ describe("UserForm", () => {
 
   it("loads available roles and creates a user", async () => {
     mockAdminRequest.mockImplementation(async (_token, config) => {
-      if (config.url === "/api/admin/roles")
-        return { status: 200, data: [{ name: "ROLE_USER" }] } as never;
+      if (config.url === "/api/admin/roles?page=0&size=100")
+        return { status: 200, data: rolePage({ name: "ROLE_USER" }) } as never;
       return { status: 201, data: { id: 1, username: "ada" } } as never;
     });
 
@@ -50,7 +54,8 @@ describe("UserForm", () => {
 
   it("shows the avatar validation message before uploading an unsupported file", async () => {
     mockAdminRequest.mockImplementation(async (_token, config) => {
-      if (config.url === "/api/admin/roles") return { status: 200, data: [] } as never;
+      if (config.url === "/api/admin/roles?page=0&size=100")
+        return { status: 200, data: rolePage() } as never;
       return {
         status: 200,
         data: {
@@ -76,8 +81,11 @@ describe("UserForm", () => {
 
   it("loads an existing user, toggles roles, updates the password, and removes the avatar", async () => {
     mockAdminRequest.mockImplementation(async (_token, config) => {
-      if (config.url === "/api/admin/roles") {
-        return { status: 200, data: [{ name: "ROLE_USER" }, { name: "ROLE_ADMIN" }] } as never;
+      if (config.url === "/api/admin/roles?page=0&size=100") {
+        return {
+          status: 200,
+          data: rolePage({ name: "ROLE_USER" }, { name: "ROLE_ADMIN" }),
+        } as never;
       }
       if (config.url === "/api/admin/users/7") {
         return {
@@ -137,7 +145,10 @@ describe("UserForm", () => {
   });
 
   it("validates required password and roles on create", async () => {
-    mockAdminRequest.mockResolvedValue({ status: 200, data: [{ name: "ROLE_USER" }] } as never);
+    mockAdminRequest.mockResolvedValue({
+      status: 200,
+      data: rolePage({ name: "ROLE_USER" }),
+    } as never);
     render(<UserForm dictionary={dictionary} locale="en" />);
     await screen.findAllByRole("checkbox");
     fireEvent.change(document.querySelector('input[name="username"]')!, {
@@ -163,7 +174,8 @@ describe("UserForm", () => {
     });
     Object.assign(globalThis, { createImageBitmap: createImageBitmapMock });
     mockAdminRequest.mockImplementation(async (_token, config) => {
-      if (config.url === "/api/admin/roles") return { status: 200, data: [] } as never;
+      if (config.url === "/api/admin/roles?page=0&size=100")
+        return { status: 200, data: rolePage() } as never;
       if (config.url === "/api/admin/users/8") {
         return {
           status: 200,
@@ -192,8 +204,8 @@ describe("UserForm", () => {
 
   it("maps duplicate username and password API violations", async () => {
     mockAdminRequest.mockImplementation(async (_token, config) => {
-      if (config.url === "/api/admin/roles")
-        return { status: 200, data: [{ name: "ROLE_USER" }] } as never;
+      if (config.url === "/api/admin/roles?page=0&size=100")
+        return { status: 200, data: rolePage({ name: "ROLE_USER" }) } as never;
       return {
         status: 400,
         data: {
@@ -226,7 +238,8 @@ describe("UserForm", () => {
         .mockRejectedValueOnce(new Error("invalid image")),
     });
     mockAdminRequest.mockImplementation(async (_token, config) => {
-      if (config.url === "/api/admin/roles") return { status: 200, data: [] } as never;
+      if (config.url === "/api/admin/roles?page=0&size=100")
+        return { status: 200, data: rolePage() } as never;
       return {
         status: 200,
         data: { id: 9, username: "ada", enabled: true, authorities: [], avatarUrl: null },
@@ -244,8 +257,8 @@ describe("UserForm", () => {
   it("maps avatar and password operation failures", async () => {
     mockAdminRequest.mockImplementation(async (_token, config) => {
       const url = config.url ?? "";
-      if (url === "/api/admin/roles")
-        return { status: 200, data: [{ name: "ROLE_USER" }] } as never;
+      if (url === "/api/admin/roles?page=0&size=100")
+        return { status: 200, data: rolePage({ name: "ROLE_USER" }) } as never;
       if (url === "/api/admin/users/10") {
         return {
           status: 200,
@@ -288,8 +301,8 @@ describe("UserForm", () => {
     view.unmount();
     mockAdminRequest.mockImplementation(async (_token, config) => {
       const url = config.url ?? "";
-      if (url === "/api/admin/roles")
-        return { status: 200, data: [{ name: "ROLE_USER" }] } as never;
+      if (url === "/api/admin/roles?page=0&size=100")
+        return { status: 200, data: rolePage({ name: "ROLE_USER" }) } as never;
       if (url === "/api/admin/users/10") {
         return {
           status: 200,

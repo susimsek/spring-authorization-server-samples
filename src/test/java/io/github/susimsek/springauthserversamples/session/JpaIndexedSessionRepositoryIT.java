@@ -51,17 +51,18 @@ class JpaIndexedSessionRepositoryIT {
 
     @Test
     void findsSessionsByPrincipalAndPersistsSessionIdChanges() {
+        String username = "session-id-rotation-user";
         JpaSession session = sessionRepository.createSession();
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(
                 new UsernamePasswordAuthenticationToken(
-                        "admin", "N/A", AuthorityUtils.createAuthorityList("ROLE_ADMIN")));
+                        username, "N/A", AuthorityUtils.createAuthorityList("ROLE_ADMIN")));
         session.setAttribute("SPRING_SECURITY_CONTEXT", context);
         sessionRepository.save(session);
 
         assertThat(
                         sessionRepository.findByIndexNameAndIndexValue(
-                                JpaIndexedSessionRepository.PRINCIPAL_NAME_INDEX_NAME, "admin"))
+                                JpaIndexedSessionRepository.PRINCIPAL_NAME_INDEX_NAME, username))
                 .containsKey(session.getId());
 
         JpaSession reloaded = sessionRepository.findById(session.getId());
@@ -72,6 +73,10 @@ class JpaIndexedSessionRepositoryIT {
 
         assertThat(sessionRepository.findById(originalId)).isNull();
         assertThat(sessionRepository.findById(changedId)).isNotNull();
+        assertThat(
+                        sessionRepository.findByIndexNameAndIndexValue(
+                                JpaIndexedSessionRepository.PRINCIPAL_NAME_INDEX_NAME, username))
+                .containsOnlyKeys(changedId);
         assertThat(
                         sessionRepository
                                 .findById(changedId)
