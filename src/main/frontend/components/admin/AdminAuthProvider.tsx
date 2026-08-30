@@ -10,10 +10,7 @@ import { setAdminAccess, setConsoleUsername, type AdminAccess } from "@/store/au
 type AdminAuthRuntime = {
   refreshAccessToken: (minValidity?: number) => Promise<string | null>;
   logout: (locale: Locale) => Promise<void>;
-  beginAuthorization: (
-    locale: Locale,
-    returnTo: string,
-  ) => Promise<void>;
+  beginAuthorization: (locale: Locale, returnTo: string) => Promise<void>;
   completeAuthorization: (locale: Locale, code: string, state: string) => Promise<string>;
 };
 
@@ -49,12 +46,10 @@ const ADMIN_AUTH_CONFIG = {
 const AdminAuthRuntimeContext = createContext<AdminAuthRuntime | null>(null);
 
 export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
-  const {
-    refreshAccessToken,
-    logout,
-    beginAuthorization,
-    completeAuthorization,
-  } = useConsoleAuth(ADMIN_AUTH_CONFIG, "admin");
+  const { refreshAccessToken, logout, beginAuthorization, completeAuthorization } = useConsoleAuth(
+    ADMIN_AUTH_CONFIG,
+    "admin",
+  );
 
   const runtime = useMemo(
     () => ({

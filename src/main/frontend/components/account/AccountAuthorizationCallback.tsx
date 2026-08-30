@@ -37,7 +37,11 @@ export function AccountAuthorizationCallback({ locale }: { locale: Locale }) {
   }, [completeAuthorization, locale, router]);
 
   if (failed) {
-    return <Alert variant="danger">{getDictionary(locale).account.common.authorizationCallbackError}</Alert>;
+    return (
+      <Alert variant="danger">
+        {getDictionary(locale).account.common.authorizationCallbackError}
+      </Alert>
+    );
   }
   return (
     <div className="min-vh-100 d-flex align-items-center justify-content-center bg-body-tertiary">

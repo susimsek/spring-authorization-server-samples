@@ -10,10 +10,7 @@ import { setConsoleUsername } from "@/store/auth-slice";
 type AccountAuthRuntime = {
   refreshAccessToken: (minValidity?: number) => Promise<string | null>;
   logout: (locale: Locale) => Promise<void>;
-  beginAuthorization: (
-    locale: Locale,
-    returnTo: string,
-  ) => Promise<void>;
+  beginAuthorization: (locale: Locale, returnTo: string) => Promise<void>;
   completeAuthorization: (locale: Locale, code: string, state: string) => Promise<string>;
 };
 
@@ -45,12 +42,10 @@ const ACCOUNT_AUTH_CONFIG = {
 const AccountAuthRuntimeContext = createContext<AccountAuthRuntime | null>(null);
 
 export function AccountAuthProvider({ children }: { children: React.ReactNode }) {
-  const {
-    refreshAccessToken,
-    logout,
-    beginAuthorization,
-    completeAuthorization,
-  } = useConsoleAuth(ACCOUNT_AUTH_CONFIG, "account");
+  const { refreshAccessToken, logout, beginAuthorization, completeAuthorization } = useConsoleAuth(
+    ACCOUNT_AUTH_CONFIG,
+    "account",
+  );
 
   const runtime = useMemo(
     () => ({

@@ -53,7 +53,11 @@ export function AdminAuthorizationCallback({ locale }: { locale: Locale }) {
   }, [completeAuthorization, locale, router]);
 
   if (failed) {
-    return <Alert variant="danger">{getDictionary(locale).admin.common.authorizationCallbackError}</Alert>;
+    return (
+      <Alert variant="danger">
+        {getDictionary(locale).admin.common.authorizationCallbackError}
+      </Alert>
+    );
   }
 
   return (
