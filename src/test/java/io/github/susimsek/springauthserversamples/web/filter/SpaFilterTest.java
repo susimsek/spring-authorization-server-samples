@@ -113,6 +113,23 @@ class SpaFilterTest {
     }
 
     @Test
+    void forwardsHeadRequestUsedBySpaLinkPrefetch() throws Exception {
+        Resource resource = mock(Resource.class);
+
+        when(request.getMethod()).thenReturn("HEAD");
+        when(request.getRequestURI()).thenReturn("/en/admin/sessions/");
+        when(resourceLoader.getResource("classpath:/static/en/admin/sessions/index.html"))
+                .thenReturn(resource);
+        when(resource.exists()).thenReturn(true);
+        when(request.getRequestDispatcher("/en/admin/sessions/index.html")).thenReturn(dispatcher);
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(dispatcher).forward(request, response);
+        verify(filterChain, never()).doFilter(request, response);
+    }
+
+    @Test
     void continuesChainWhenNoLocalizedStaticPageExists() throws Exception {
         Resource english = mock(Resource.class);
         Resource turkish = mock(Resource.class);

@@ -6,6 +6,7 @@ import { Badge, Button } from "react-bootstrap";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
+import type { PageResponse } from "@/lib/api-types";
 import { encodeConsentRouteKey } from "@/lib/consent-route";
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import { useAdminAuth } from "./AdminAuthProvider";
@@ -15,13 +16,6 @@ import { ErrorState, LoadingState } from "./AsyncState";
 import { PaginationControls } from "./PaginationControls";
 
 export type RelatedResource = "sessions" | "consents" | "events";
-
-type PageData<T> = {
-  content: T[];
-  number: number;
-  totalPages: number;
-  totalElements: number;
-};
 
 type Session = {
   id: string;
@@ -78,7 +72,7 @@ export function EntityRelatedData({
 
   useEffect(() => {
     if (!accessToken) return;
-    adminRequest<PageData<Session | Consent | Event>>(accessToken, {
+    adminRequest<PageResponse<Session | Consent | Event>>(accessToken, {
       url: `${url}?page=${page}&size=${size}`,
     })
       .then((response) => {

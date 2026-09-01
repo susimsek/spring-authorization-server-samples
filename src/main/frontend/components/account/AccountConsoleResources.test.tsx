@@ -2,12 +2,17 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 
 import dictionary from "@/i18n/dictionaries/en.json";
 import { accountRequest } from "@/lib/account-api";
+import { StoreProvider } from "@/store/StoreProvider";
 
 import { AccountApplications } from "./AccountApplications";
 import { AccountSessions } from "./AccountSessions";
 
 const mockAccountRequest = accountRequest as jest.MockedFunction<typeof accountRequest>;
 const mockLogout = jest.fn();
+
+function renderWithStore(component: React.ReactNode) {
+  return render(<StoreProvider>{component}</StoreProvider>);
+}
 
 jest.mock("@/lib/account-api", () => ({ accountRequest: jest.fn() }));
 jest.mock("./AccountAuthProvider", () => ({
@@ -61,7 +66,7 @@ describe("Account console resources", () => {
       return { status: 204, data: null } as never;
     });
 
-    render(<AccountSessions dictionary={dictionary} />);
+    renderWithStore(<AccountSessions dictionary={dictionary} />);
 
     expect(await screen.findByText("Account Console")).toBeVisible();
     expect(screen.getByText("Mobile App")).toBeVisible();
@@ -106,7 +111,7 @@ describe("Account console resources", () => {
       return { status: 204, data: null } as never;
     });
 
-    render(<AccountApplications dictionary={dictionary} />);
+    renderWithStore(<AccountApplications dictionary={dictionary} />);
 
     expect(await screen.findByText("Web Client")).toBeVisible();
     expect(screen.getByText("openid")).toBeVisible();

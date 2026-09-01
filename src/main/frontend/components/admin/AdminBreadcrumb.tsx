@@ -12,7 +12,8 @@ export type AdminBreadcrumbItem = {
 
 export function AdminBreadcrumb({ items }: { items: AdminBreadcrumbItem[] }) {
   const params = useParams<{ lang: string }>();
-  const breadcrumbLabel = getDictionary(params.lang === "tr" ? "tr" : "en").admin.common.breadcrumb;
+  const breadcrumbLabel = getDictionary(params?.lang === "tr" ? "tr" : "en").admin.common
+    .breadcrumb;
   if (items.length === 0) return null;
   return (
     <nav className="admin-breadcrumb" aria-label={breadcrumbLabel}>

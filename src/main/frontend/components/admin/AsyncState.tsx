@@ -6,7 +6,7 @@ import { getDictionary } from "@/i18n/get-dictionary";
 
 function useAdminCopy() {
   const params = useParams<{ lang: string }>();
-  return getDictionary(params.lang === "tr" ? "tr" : "en").admin.common;
+  return getDictionary(params?.lang === "tr" ? "tr" : "en").admin.common;
 }
 
 export function LoadingState() {

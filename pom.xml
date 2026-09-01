@@ -218,6 +218,16 @@
 							<arguments>pnpm build</arguments>
 						</configuration>
 					</execution>
+					<execution>
+						<id>pnpm-unit-test</id>
+						<phase>test</phase>
+						<goals>
+							<goal>corepack</goal>
+						</goals>
+						<configuration>
+							<arguments>pnpm test:unit --runInBand</arguments>
+						</configuration>
+					</execution>
 				</executions>
 			</plugin>
 			<plugin>

@@ -1,35 +1,28 @@
 "use client";
 
-import axios from "axios";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import type { Locale } from "@/i18n/config";
 import { accountRequest, registerAccountTokenHandlers } from "@/lib/account-api";
+import {
+  isCanceledRequest,
+  useConsoleSessionLifecycle,
+} from "@/components/auth/useConsoleSessionLifecycle";
 import { useAccountAuth } from "./AccountAuthProvider";
 
 type Profile = { username: string };
 
-function isCanceledRequest(error: unknown) {
-  return (
-    axios.isCancel(error) ||
-    (error instanceof DOMException && error.name === "AbortError") ||
-    (typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      error.code === "ERR_CANCELED")
-  );
-}
-
 export function AccountAuthGuard({
   locale,
   children,
+  callbackContent,
 }: {
   locale: Locale;
   children: React.ReactNode;
+  callbackContent?: React.ReactNode;
 }) {
   const [authorized, setAuthorized] = useState(false);
-  const bootstrapStarted = useRef(false);
   const pathname = usePathname();
   const router = useRouter();
   const {
@@ -43,38 +36,15 @@ export function AccountAuthGuard({
   } = useAccountAuth();
   const callback = pathname.replace(/\/+$/, "").endsWith("/callback");
 
-  const startLogin = useCallback(() => {
-    if (bootstrapStarted.current) return;
-    bootstrapStarted.current = true;
-    // Equivalent to Keycloak init({ onLoad: "login-required" }).
-    void beginAuthorization(locale, `${window.location.pathname}${window.location.search}`).catch(
-      () => {
-        bootstrapStarted.current = false;
-      },
-    );
-  }, [beginAuthorization, locale]);
-
-  useEffect(() => {
-    if (!accessToken || callback) return;
-    registerAccountTokenHandlers({
-      refresh: refreshAccessToken,
-      unauthorized: startLogin,
-    });
-    return () => registerAccountTokenHandlers(undefined);
-  }, [accessToken, callback, refreshAccessToken, startLogin]);
-
-  useEffect(() => {
-    if (!expiresAt || callback) return;
-    const timer = window.setTimeout(
-      () => {
-        void refreshAccessToken().then((token) => {
-          if (!token) startLogin();
-        });
-      },
-      Math.max(expiresAt - Date.now() - 30_000, 0),
-    );
-    return () => window.clearTimeout(timer);
-  }, [callback, expiresAt, refreshAccessToken, startLogin]);
+  const startLogin = useConsoleSessionLifecycle({
+    accessToken,
+    beginAuthorization,
+    expiresAt,
+    isAuthorizationCallback: callback,
+    locale,
+    refreshAccessToken,
+    registerTokenHandlers: registerAccountTokenHandlers,
+  });
 
   useEffect(() => {
     if (!initialized || isLoggingOut || callback) return;
@@ -82,8 +52,6 @@ export function AccountAuthGuard({
       startLogin();
       return;
     }
-    bootstrapStarted.current = false;
-
     const controller = new AbortController();
     accountRequest<Profile>(accessToken, { url: "/api/account/profile", signal: controller.signal })
       .then((response) => {
@@ -113,7 +81,7 @@ export function AccountAuthGuard({
     setUsername,
   ]);
 
-  if (callback) return children;
+  if (callback) return callbackContent ?? children;
   if (!initialized || !authorized || !accessToken) {
     return (
       <div className="min-vh-100 d-flex align-items-center justify-content-center bg-body-tertiary">

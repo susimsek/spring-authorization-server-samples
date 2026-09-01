@@ -58,7 +58,7 @@ describe("admin API", () => {
     expect(refresh).toHaveBeenCalledTimes(1);
     expect(setAuthorization).toHaveBeenCalledWith("Authorization", "Bearer renewed-token");
     expect(mockAxios.request).toHaveBeenCalledWith(
-      expect.objectContaining({ _adminRetried: true }),
+      expect.objectContaining({ _consoleRetried: true }),
     );
     expect(unauthorized).not.toHaveBeenCalled();
   });
@@ -71,7 +71,7 @@ describe("admin API", () => {
     const response = { status: 401, config: { _adminRetried: false, headers: { set: jest.fn() } } };
 
     await interceptor(response);
-    await interceptor({ ...response, config: { ...response.config, _adminRetried: true } });
+    await interceptor({ ...response, config: { ...response.config, _consoleRetried: true } });
 
     expect(unauthorized).toHaveBeenCalledTimes(1);
     expect(refresh).toHaveBeenCalledTimes(1);

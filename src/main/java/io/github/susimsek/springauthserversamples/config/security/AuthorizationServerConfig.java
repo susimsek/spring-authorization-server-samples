@@ -77,6 +77,9 @@ public class AuthorizationServerConfig {
                                 securityContext
                                         .securityContextRepository(securityContextRepository)
                                         .requireExplicitSave(false))
+                .sessionManagement(
+                        sessionManagement ->
+                                sessionManagement.requireExplicitAuthenticationStrategy(true))
                 .with(
                         authorizationServerConfigurer,
                         authorizationServer ->

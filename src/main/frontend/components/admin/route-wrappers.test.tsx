@@ -8,6 +8,7 @@ import { UserEntityRoute } from "./UserEntityRoute";
 let pathname = "/en/admin/clients/client-1/settings";
 
 jest.mock("next/navigation", () => ({
+  useParams: () => ({ lang: "en" }),
   usePathname: () => pathname,
 }));
 jest.mock("./ClientDetail", () => ({

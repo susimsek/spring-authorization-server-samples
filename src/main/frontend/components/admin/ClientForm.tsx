@@ -10,6 +10,7 @@ import { z } from "zod";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
+import type { PageResponse } from "@/lib/api-types";
 import { problemErrorCode, problemViolations } from "@/lib/problem-detail";
 
 import { useAdminAuth } from "./AdminAuthProvider";
@@ -201,7 +202,7 @@ export function ClientForm({
 
   useEffect(() => {
     if (mode !== "create" || !accessToken) return;
-    adminRequest<{ content: ClientScopeOption[] }>(accessToken, {
+    adminRequest<PageResponse<ClientScopeOption>>(accessToken, {
       url: "/api/admin/client-scopes?page=0&size=100",
     })
       .then((response) => {

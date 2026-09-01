@@ -3,6 +3,7 @@ import { renderToString } from "react-dom/server";
 const pathname = { value: "/en/admin/clients" };
 
 jest.mock("next/navigation", () => ({
+  useParams: () => ({ lang: "en" }),
   usePathname: () => pathname.value,
 }));
 

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Badge, Form, Offcanvas } from "react-bootstrap";
 import { useParams } from "next/navigation";
 import { adminRequest } from "@/lib/admin-api";
+import type { PageResponse } from "@/lib/api-types";
 import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
 import { DataTable } from "@/components/admin/DataTable";
 import { ResourceFilters } from "@/components/admin/ResourceFilters";
@@ -20,12 +21,11 @@ export type Event = {
   targetId: string;
   occurredAt: string;
 };
-type Page<T> = { content: T[]; totalElements: number; totalPages: number };
 
 export default function AdminEventsPage() {
   const { accessToken } = useAdminAuth();
   const params = useParams<{ lang: string }>();
-  const dictionary = getDictionary(params.lang === "tr" ? "tr" : "en");
+  const dictionary = getDictionary(params?.lang === "tr" ? "tr" : "en");
   const copy = dictionary.admin.events;
   const [events, setEvents] = useState<Event[]>([]);
   const [selected, setSelected] = useState<Event | null>(null);
@@ -65,7 +65,7 @@ export default function AdminEventsPage() {
     if (targetId.trim()) search.set("targetId", targetId.trim());
     if (from) search.set("from", new Date(`${from}T00:00:00`).toISOString());
     if (to) search.set("to", new Date(`${to}T23:59:59.999`).toISOString());
-    adminRequest<Page<Event>>(accessToken, {
+    adminRequest<PageResponse<Event>>(accessToken, {
       url: `/api/admin/events?${search}`,
     }).then((r) => {
       if (r.status < 300) {

@@ -11,13 +11,13 @@ import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
+import type { PageResponse } from "@/lib/api-types";
 import { problemErrorCode, problemViolations } from "@/lib/problem-detail";
 
 import { useAdminAuth } from "./AdminAuthProvider";
 import { AdminActionIcon } from "./AdminActionIcon";
 
 type Group = { id: number; name: string; path: string };
-type GroupPage = { content: Group[] };
 
 export function GroupCreateForm({
   dictionary,
@@ -48,7 +48,7 @@ export function GroupCreateForm({
 
   useEffect(() => {
     if (!accessToken) return;
-    adminRequest<GroupPage>(accessToken, { url: "/api/admin/groups?page=0&size=100" })
+    adminRequest<PageResponse<Group>>(accessToken, { url: "/api/admin/groups?page=0&size=100" })
       .then((response) => setGroups(response.status < 300 ? response.data.content : []))
       .catch(() => setGroups([]));
   }, [accessToken]);

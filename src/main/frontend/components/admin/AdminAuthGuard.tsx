@@ -1,12 +1,15 @@
 "use client";
 
-import axios from "axios";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import type { Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { adminRequest, registerAdminTokenHandlers } from "@/lib/admin-api";
+import {
+  isCanceledRequest,
+  useConsoleSessionLifecycle,
+} from "@/components/auth/useConsoleSessionLifecycle";
 
 import { type AdminAccess, useAdminAuth } from "./AdminAuthProvider";
 
@@ -16,26 +19,16 @@ type AdminWhoAmI = {
   access: AdminAccess;
 };
 
-function isCanceledRequest(error: unknown) {
-  return (
-    axios.isCancel(error) ||
-    (error instanceof DOMException && error.name === "AbortError") ||
-    (typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      error.code === "ERR_CANCELED")
-  );
-}
-
 export function AdminAuthGuard({
   locale,
   children,
+  callbackContent,
 }: {
   locale: Locale;
   children: React.ReactNode;
+  callbackContent?: React.ReactNode;
 }) {
   const [authorized, setAuthorized] = useState(false);
-  const bootstrapStarted = useRef(false);
   const pathname = usePathname();
   const router = useRouter();
   const {
@@ -50,40 +43,15 @@ export function AdminAuthGuard({
   } = useAdminAuth();
   const isAuthorizationCallback = pathname.replace(/\/+$/, "").endsWith("/callback");
 
-  const startLogin = useCallback(() => {
-    if (bootstrapStarted.current) return;
-    bootstrapStarted.current = true;
-    // Equivalent to Keycloak init({ onLoad: "login-required" }).
-    void beginAuthorization(locale, `${window.location.pathname}${window.location.search}`).catch(
-      () => {
-        bootstrapStarted.current = false;
-      },
-    );
-  }, [beginAuthorization, locale]);
-
-  useEffect(() => {
-    if (!accessToken || isAuthorizationCallback) return;
-
-    registerAdminTokenHandlers({
-      refresh: refreshAccessToken,
-      unauthorized: startLogin,
-    });
-
-    return () => registerAdminTokenHandlers(undefined);
-  }, [accessToken, isAuthorizationCallback, refreshAccessToken, startLogin]);
-
-  useEffect(() => {
-    if (!expiresAt || isAuthorizationCallback) return;
-
-    const renewIn = Math.max(expiresAt - Date.now() - 30_000, 0);
-    const timer = window.setTimeout(() => {
-      void refreshAccessToken().then((token) => {
-        if (!token) startLogin();
-      });
-    }, renewIn);
-
-    return () => window.clearTimeout(timer);
-  }, [expiresAt, isAuthorizationCallback, refreshAccessToken, startLogin]);
+  const startLogin = useConsoleSessionLifecycle({
+    accessToken,
+    beginAuthorization,
+    expiresAt,
+    isAuthorizationCallback,
+    locale,
+    refreshAccessToken,
+    registerTokenHandlers: registerAdminTokenHandlers,
+  });
 
   useEffect(() => {
     if (!initialized || isLoggingOut || isAuthorizationCallback) return;
@@ -95,8 +63,6 @@ export function AdminAuthGuard({
       startLogin();
       return;
     }
-    bootstrapStarted.current = false;
-
     const controller = new AbortController();
 
     adminRequest<AdminWhoAmI>(accessToken, {
@@ -154,7 +120,7 @@ export function AdminAuthGuard({
     setUsername,
   ]);
 
-  if (isAuthorizationCallback) return children;
+  if (isAuthorizationCallback) return callbackContent ?? children;
 
   if (!initialized || !authorized || !accessToken) {
     return (

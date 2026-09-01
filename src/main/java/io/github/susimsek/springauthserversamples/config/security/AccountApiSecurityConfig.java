@@ -37,7 +37,9 @@ public class AccountApiSecurityConfig {
                                 securityContext.securityContextRepository(
                                         new NullSecurityContextRepository()))
                 .sessionManagement(
-                        session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                        session ->
+                                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                                        .sessionFixation(sessionFixation -> sessionFixation.none()))
                 .authorizeHttpRequests(
                         authorize -> authorize.anyRequest().hasAuthority("SCOPE_account-api"))
                 .oauth2ResourceServer(

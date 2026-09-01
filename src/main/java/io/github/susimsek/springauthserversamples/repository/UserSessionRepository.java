@@ -1,6 +1,7 @@
 package io.github.susimsek.springauthserversamples.repository;
 
 import io.github.susimsek.springauthserversamples.domain.UserSessionEntity;
+import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -8,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,11 +19,13 @@ public interface UserSessionRepository extends JpaRepository<UserSessionEntity, 
     @EntityGraph(attributePaths = "attributes")
     Optional<UserSessionEntity> findBySessionId(String sessionId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from UserSessionEntity s where s.primaryId = :primaryId")
+    Optional<UserSessionEntity> findByPrimaryIdForUpdate(@Param("primaryId") String primaryId);
+
     @EntityGraph(attributePaths = "attributes")
     List<UserSessionEntity> findAllByPrincipalNameAndExpiryTimeAfter(
             String principalName, long expiryTime);
-
-    List<UserSessionEntity> findAllByExpiryTimeAfter(long expiryTime);
 
     long countByExpiryTimeAfter(long expiryTime);
 

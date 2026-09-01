@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
+import type { PageResponse } from "@/lib/api-types";
 import { useAdminAuth } from "./AdminAuthProvider";
 import { AdminActionIcon } from "./AdminActionIcon";
 import { PaginationControls } from "./PaginationControls";
@@ -37,12 +38,9 @@ export function ClientsTable({ locale, dictionary }: { locale: Locale; dictionar
     useAdminTableState(20, false, "clientId,asc");
   useEffect(() => {
     if (!accessToken) return;
-    adminRequest<{ content: AdminClient[]; totalPages: number; totalElements: number }>(
-      accessToken,
-      {
-        url: `/api/admin/clients?q=${encodeURIComponent(query)}&page=${page}&size=${size}&sort=${encodeURIComponent(sort)}`,
-      },
-    )
+    adminRequest<PageResponse<AdminClient>>(accessToken, {
+      url: `/api/admin/clients?q=${encodeURIComponent(query)}&page=${page}&size=${size}&sort=${encodeURIComponent(sort)}`,
+    })
       .then((r) => {
         if (r.status >= 300) throw new Error();
         setClients(r.data.content);

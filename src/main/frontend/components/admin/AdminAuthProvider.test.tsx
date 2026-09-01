@@ -43,7 +43,6 @@ function storeTransaction(state: string, returnTo = "/en/admin") {
     `ADMIN_OIDC_TRANSACTION:${state}`,
     JSON.stringify({
       codeVerifier: "verifier",
-      createdAt: Date.now(),
       expires: Date.now() + 60 * 60 * 1000,
       nonce: "nonce",
       redirectUri: "http://localhost/en/admin/callback",
@@ -173,7 +172,7 @@ describe("AdminAuthProvider", () => {
   it("rejects missing and invalid authorization transactions", async () => {
     renderProvider();
 
-    await expect(auth.completeAuthorization("en", "code", "state")).rejects.toThrow(
+    await expect(auth.completeAuthorization("code", "state")).rejects.toThrow(
       "Missing authorization transaction",
     );
     storeTransaction("expected");
@@ -181,7 +180,7 @@ describe("AdminAuthProvider", () => {
     invalid.state = "different";
     localStorage.setItem("ADMIN_OIDC_TRANSACTION:expected", JSON.stringify(invalid));
 
-    await expect(auth.completeAuthorization("en", "code", "expected")).rejects.toThrow(
+    await expect(auth.completeAuthorization("code", "expected")).rejects.toThrow(
       "Missing authorization transaction",
     );
   });
@@ -219,7 +218,7 @@ describe("AdminAuthProvider", () => {
       });
 
     await act(async () => {
-      await expect(auth.completeAuthorization("en", "code", "state")).resolves.toBe("/en/admin");
+      await expect(auth.completeAuthorization("code", "state")).resolves.toBe("/en/admin");
     });
     expect(auth.accessToken).not.toBeNull();
     expect(auth.expiresAt).toEqual(expect.any(Number));
@@ -242,6 +241,7 @@ describe("AdminAuthProvider", () => {
     renderProvider();
     storeTransaction("state");
     localStorage.setItem("AUTH_CONSOLE_TOKEN:account", "another-console-token");
+    localStorage.setItem("ACCOUNT_OIDC_TRANSACTION:pending", "pending-transaction");
     mockPost
       .mockResolvedValueOnce({
         data: {
@@ -260,7 +260,7 @@ describe("AdminAuthProvider", () => {
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({});
 
-    await act(async () => auth.completeAuthorization("en", "code", "state"));
+    await act(async () => auth.completeAuthorization("code", "state"));
     await act(async () => expect(auth.refreshAccessToken(-1)).resolves.not.toBeNull());
     await act(async () => auth.logout("en"));
 
@@ -268,6 +268,7 @@ describe("AdminAuthProvider", () => {
     expect(auth.isLoggingOut).toBe(true);
     expect(localStorage.getItem("AUTH_CONSOLE_TOKEN:admin")).toBeNull();
     expect(localStorage.getItem("AUTH_CONSOLE_TOKEN:account")).toBeNull();
+    expect(localStorage.getItem("ACCOUNT_OIDC_TRANSACTION:pending")).toBeNull();
   });
 
   it("allows access state to be updated by guards", async () => {

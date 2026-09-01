@@ -53,6 +53,9 @@ class JpaIndexedSessionRepositoryTest {
                 .when(userSessionRepository.findBySessionId(anyString()))
                 .thenAnswer(invocation -> store.findBySessionId(invocation.getArgument(0)));
         lenient()
+                .when(userSessionRepository.findByPrimaryIdForUpdate(anyString()))
+                .thenAnswer(invocation -> store.findByPrimaryId(invocation.getArgument(0)));
+        lenient()
                 .when(
                         userSessionRepository.findAllByPrincipalNameAndExpiryTimeAfter(
                                 anyString(), anyLong()))
@@ -80,7 +83,7 @@ class JpaIndexedSessionRepositoryTest {
         repository.save(session);
 
         assertThat(store.findBySessionId(session.getId()).orElseThrow().getPrimaryId())
-                .isEqualTo(session.getId());
+                .isNotEqualTo(session.getId());
 
         JpaSession reloaded = repository.findById(session.getId());
 
@@ -101,6 +104,9 @@ class JpaIndexedSessionRepositoryTest {
         session.setAttribute("alpha", "one");
         repository.save(session);
 
+        final String primaryId =
+                store.findBySessionId(session.getId()).orElseThrow().getPrimaryId();
+
         JpaSession reloaded = repository.findById(session.getId());
         reloaded.setAttribute("alpha", "two");
         reloaded.setAttribute("beta", "three");
@@ -114,6 +120,8 @@ class JpaIndexedSessionRepositoryTest {
         assertThat(repository.findById(changedId)).isNotNull();
         assertThat(repository.findById(changedId).<String>getAttribute("alpha")).isEqualTo("two");
         assertThat((Object) repository.findById(changedId).getAttribute("beta")).isNull();
+        assertThat(store.findBySessionId(changedId).orElseThrow().getPrimaryId())
+                .isEqualTo(primaryId);
     }
 
     @Test
@@ -189,6 +197,41 @@ class JpaIndexedSessionRepositoryTest {
                 .isEqualTo(Long.MAX_VALUE);
     }
 
+    @Test
+    void staleSaveDoesNotRestorePreviousSessionId() {
+        JpaSession session = repository.createSession();
+        session.setAttribute("alpha", "one");
+        repository.save(session);
+
+        String originalId = session.getId();
+        JpaSession staleRequest = repository.findById(originalId);
+        JpaSession loginRequest = repository.findById(originalId);
+
+        final String authenticatedId = loginRequest.changeSessionId();
+        loginRequest.setAttribute("SPRING_SECURITY_CONTEXT", securityContext("admin"));
+        repository.save(loginRequest);
+
+        staleRequest.setAttribute("late-attribute", "preserved");
+        repository.save(staleRequest);
+
+        assertThat(repository.findById(originalId)).isNull();
+        assertThat(repository.findById(authenticatedId)).isNotNull();
+        assertThat(repository.findById(authenticatedId).<String>getAttribute("late-attribute"))
+                .isEqualTo("preserved");
+        assertThat(
+                        repository
+                                .findById(authenticatedId)
+                                .<SecurityContext>getAttribute("SPRING_SECURITY_CONTEXT")
+                                .getAuthentication()
+                                .getName())
+                .isEqualTo("admin");
+        assertThat(
+                        repository.findByIndexNameAndIndexValue(
+                                FindByIndexNameSessionRepository.PRINCIPAL_NAME_INDEX_NAME,
+                                "admin"))
+                .containsOnlyKeys(authenticatedId);
+    }
+
     private static SecurityContext securityContext(String username) {
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(
@@ -218,6 +261,10 @@ class JpaIndexedSessionRepositoryTest {
 
         private Optional<UserSessionEntity> findBySessionId(String sessionId) {
             return Optional.ofNullable(bySessionId.get(sessionId)).map(this::copyOf);
+        }
+
+        private Optional<UserSessionEntity> findByPrimaryId(String primaryId) {
+            return Optional.ofNullable(byPrimaryId.get(primaryId)).map(this::copyOf);
         }
 
         private List<UserSessionEntity> findAllByPrincipalNameAndExpiryTimeAfter(

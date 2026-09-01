@@ -60,8 +60,11 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(
                         sessionManagement ->
-                                sessionManagement.sessionFixation(
-                                        sessionFixation -> sessionFixation.changeSessionId()))
+                                sessionManagement
+                                        .requireExplicitAuthenticationStrategy(true)
+                                        .sessionFixation(
+                                                sessionFixation ->
+                                                        sessionFixation.changeSessionId()))
                 .authorizeHttpRequests(
                         authorize ->
                                 authorize
@@ -119,8 +122,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    SecurityContextRepository authorizationServerSecurityContextRepository(
-            @Qualifier("browserSecurityContextRepository") SecurityContextRepository delegate) {
-        return new ReadOnlySecurityContextRepository(delegate);
+    SecurityContextRepository authorizationServerSecurityContextRepository() {
+        return new AuthorizationServerSecurityContextRepository();
     }
 }

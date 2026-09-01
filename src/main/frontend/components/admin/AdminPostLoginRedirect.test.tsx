@@ -5,6 +5,7 @@ import { AdminPostLoginRedirect } from "./AdminPostLoginRedirect";
 const replace = jest.fn();
 
 jest.mock("next/navigation", () => ({
+  useParams: () => ({ lang: "en" }),
   useRouter: () => ({ replace }),
 }));
 

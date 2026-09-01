@@ -2,8 +2,6 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "@fortawesome/fontawesome-svg-core/styles.css";
 import "./styles.css";
 
-import { AdminAuthProvider } from "@/components/admin/AdminAuthProvider";
-import { AccountAuthProvider } from "@/components/account/AccountAuthProvider";
 import { StoreProvider } from "@/store/StoreProvider";
 import { ThemeManager } from "@/components/auth/ThemeManager";
 
@@ -16,9 +14,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <StoreProvider>
           <ThemeManager />
-          <AdminAuthProvider>
-            <AccountAuthProvider>{children}</AccountAuthProvider>
-          </AdminAuthProvider>
+          {children}
         </StoreProvider>
       </body>
     </html>

@@ -27,6 +27,7 @@ jest.mock("@/lib/account-api", () => ({
   registerAccountTokenHandlers: jest.fn(),
 }));
 jest.mock("next/navigation", () => ({
+  useParams: () => ({ lang: "en" }),
   usePathname: () => pathname,
   useRouter: () => ({ replace: jest.fn() }),
 }));

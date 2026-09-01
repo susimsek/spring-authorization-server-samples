@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Button, Card, Col, Form, Row } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -10,28 +10,28 @@ import { DetailLoadingState, ErrorState } from "@/components/admin/AsyncState";
 import { ReadOnlyMetadata } from "@/components/admin/ReadOnlyMetadata";
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import type { Dictionary } from "@/i18n/get-dictionary";
-import { accountRequest } from "@/lib/account-api";
 import { problemViolations } from "@/lib/problem-detail";
+import {
+  type AccountApiError,
+  useGetAccountProfileQuery,
+  useUpdateAccountProfileMutation,
+} from "@/store/account-api-slice";
 
 import { useAccountAuth } from "./AccountAuthProvider";
 
-type Profile = {
-  username: string;
-  firstName: string | null;
-  lastName: string | null;
-  email: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
 type Values = { firstName: string; lastName: string; email: string };
 
 export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
   const { accessToken } = useAccountAuth();
   const alerts = useConsoleAlerts();
   const copy = dictionary.account;
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
+  const {
+    data: profile,
+    isError,
+    isLoading,
+    refetch,
+  } = useGetAccountProfileQuery({ accessToken: accessToken ?? "" }, { skip: !accessToken });
+  const [updateProfile] = useUpdateAccountProfileMutation();
   const schema = z.object({
     firstName: z.string().trim().max(100, copy.validation.max100),
     lastName: z.string().trim().max(100, copy.validation.max100),
@@ -54,48 +54,33 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
     defaultValues: { firstName: "", lastName: "", email: "" },
   });
 
-  const applyProfile = useCallback(
-    (value: Profile) => {
-      setProfile(value);
-      reset({
-        firstName: value.firstName ?? "",
-        lastName: value.lastName ?? "",
-        email: value.email ?? "",
-      });
-    },
-    [reset],
-  );
-
-  const load = useCallback(async () => {
-    if (!accessToken) return;
-    setLoading(true);
-    const response = await accountRequest<Profile>(accessToken, { url: "/api/account/profile" });
-    if (response.status < 300) {
-      applyProfile(response.data);
-      setFailed(false);
-    } else setFailed(true);
-    setLoading(false);
-  }, [accessToken, applyProfile]);
-
   useEffect(() => {
-    const timer = window.setTimeout(() => void load(), 0);
-    return () => window.clearTimeout(timer);
-  }, [load]);
+    if (profile) {
+      reset({
+        firstName: profile.firstName ?? "",
+        lastName: profile.lastName ?? "",
+        email: profile.email ?? "",
+      });
+    }
+  }, [profile, reset]);
 
   const submit = handleSubmit(async (values) => {
     if (!accessToken) return;
-    setFailed(false);
-    const response = await accountRequest<Profile>(accessToken, {
-      method: "PUT",
-      url: "/api/account/profile",
-      data: {
+    try {
+      const updated = await updateProfile({
+        accessToken,
         firstName: values.firstName.trim(),
         lastName: values.lastName.trim(),
         email: values.email.trim(),
-      },
-    });
-    if (response.status >= 300) {
-      const violations = problemViolations(response.data);
+      }).unwrap();
+      reset({
+        firstName: updated.firstName ?? "",
+        lastName: updated.lastName ?? "",
+        email: updated.email ?? "",
+      });
+      alerts.addAlert(copy.profile.saved);
+    } catch (error) {
+      const violations = problemViolations((error as AccountApiError).data);
       let firstInvalid: keyof Values | undefined;
       violations.forEach(({ field }) => {
         if (field === "firstName" || field === "lastName" || field === "email") {
@@ -104,20 +89,17 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
         }
       });
       if (firstInvalid) setFocus(firstInvalid);
-      setFailed(true);
-      return;
+      alerts.addError(copy.common.operationError);
     }
-    applyProfile(response.data);
-    alerts.addAlert(copy.profile.saved);
   });
 
-  if (loading) return <DetailLoadingState />;
-  if (failed && !profile)
+  if (isLoading) return <DetailLoadingState />;
+  if (isError && !profile)
     return (
       <ErrorState
         message={copy.common.operationError}
         retryLabel={copy.common.retry}
-        onRetry={() => void load()}
+        onRetry={() => void refetch()}
       />
     );
   if (!profile) return null;

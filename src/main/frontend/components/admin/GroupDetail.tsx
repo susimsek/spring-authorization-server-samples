@@ -11,6 +11,7 @@ import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
+import type { PageResponse } from "@/lib/api-types";
 
 import { useAdminAuth } from "./AdminAuthProvider";
 import { AdminActionIcon } from "./AdminActionIcon";
@@ -30,7 +31,6 @@ type Group = {
   roles: string[];
   userCount: number;
 };
-type PageData<T> = { content: T[]; totalPages: number; totalElements: number };
 type Role = { name: string };
 
 export function GroupDetail({
@@ -92,9 +92,11 @@ export function GroupDetail({
         adminRequest<Group>(accessToken, {
           url: `/api/admin/groups/${encodeURIComponent(groupId)}`,
         }),
-        adminRequest<PageData<Role>>(accessToken, { url: "/api/admin/roles?page=0&size=100" }),
-        adminRequest<PageData<Group>>(accessToken, { url: "/api/admin/groups?page=0&size=100" }),
-        adminRequest<PageData<User>>(accessToken, {
+        adminRequest<PageResponse<Role>>(accessToken, { url: "/api/admin/roles?page=0&size=100" }),
+        adminRequest<PageResponse<Group>>(accessToken, {
+          url: "/api/admin/groups?page=0&size=100",
+        }),
+        adminRequest<PageResponse<User>>(accessToken, {
           url: `/api/admin/groups/${encodeURIComponent(groupId)}/users?q=${encodeURIComponent(memberQuery)}&page=${memberPage}&size=${memberSize}`,
         }),
       ]);
@@ -137,7 +139,7 @@ export function GroupDetail({
     if (!accessToken || userQuery.trim().length < 2 || selectedUser) return;
     const controller = new AbortController();
     const timeout = window.setTimeout(() => {
-      adminRequest<PageData<User>>(accessToken, {
+      adminRequest<PageResponse<User>>(accessToken, {
         url: `/api/admin/groups/${encodeURIComponent(groupId)}/available-users?q=${encodeURIComponent(userQuery.trim())}&page=0&size=10`,
         signal: controller.signal,
       })

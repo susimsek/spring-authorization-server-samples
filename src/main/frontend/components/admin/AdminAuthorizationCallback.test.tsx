@@ -4,7 +4,10 @@ import { useRouter } from "next/navigation";
 import { AdminAuthorizationCallback } from "./AdminAuthorizationCallback";
 import { useAdminAuth } from "./AdminAuthProvider";
 
-jest.mock("next/navigation", () => ({ useRouter: jest.fn() }));
+jest.mock("next/navigation", () => ({
+  useParams: () => ({ lang: "en" }),
+  useRouter: jest.fn(),
+}));
 jest.mock("./AdminAuthProvider", () => ({ useAdminAuth: jest.fn() }));
 
 const mockRouter = useRouter as jest.Mock;
@@ -36,7 +39,7 @@ describe("AdminAuthorizationCallback", () => {
     completeAuthorization.mockResolvedValue("/en/admin/clients");
     render(<AdminAuthorizationCallback locale="en" />);
 
-    await waitFor(() => expect(completeAuthorization).toHaveBeenCalledWith("en", "code", "state"));
+    await waitFor(() => expect(completeAuthorization).toHaveBeenCalledWith("code", "state"));
     expect(replace).toHaveBeenCalledWith("/en/admin/clients");
   });
 

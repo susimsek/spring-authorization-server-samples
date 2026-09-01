@@ -20,9 +20,9 @@ These instructions apply to `src/main/frontend/**` and supplement the repository
 | Format check         | `pnpm format:check`                       |
 | Type check           | `pnpm typecheck`                          |
 | Lint                 | `pnpm lint`                               |
-| Unit/component tests | `pnpm test`                               |
+| Unit/component tests | `pnpm test:unit`                          |
 | Production build     | `pnpm build`                              |
-| Cypress E2E tests    | `pnpm cypress:run`                        |
+| Cypress E2E tests    | `pnpm test:e2e`                           |
 
 ## Project Structure
 
@@ -54,8 +54,8 @@ These instructions apply to `src/main/frontend/**` and supplement the repository
 ## Authentication
 
 - The frontend is a Next.js static export served by Spring Boot. Spring Security continues to process `POST /login`; CSRF is intentionally disabled in this sample.
-- Keep console authentication in `lib/console-auth.ts` aligned with the Keycloak JavaScript adapter model: Authorization Code + PKCE, in-memory tokens only, single-flight refresh near expiry, one retry after a 401, and OIDC logout with an ID-token hint and registered post-logout URI.
-- Do not persist access, ID, or refresh tokens in browser storage. Browser SSO is supplied by the server-side Spring Session.
+- Keep console authentication in `lib/console-auth.ts` aligned with the project's Keycloak-style model: Authorization Code + PKCE, namespaced console token records, single-flight refresh near expiry, one retry after a 401, and OIDC logout with an ID-token hint and registered post-logout URI.
+- Persist each console's access, ID, and refresh token set only in its namespaced `localStorage` record. Browser SSO remains supplied by the server-side Spring Session; never copy a token set from one console to the other.
 - Use `adminRequest` for Administration Console APIs and `accountRequest` for Account Console APIs. Do not add parallel Axios clients, custom bearer-token handling, or a second console authentication flow.
 - Console routes are localized under `/en/admin/`, `/tr/admin/`, `/en/account/`, and `/tr/account/`. Callback routes must remain aligned with registered-client redirect URIs.
 
@@ -84,7 +84,7 @@ These instructions apply to `src/main/frontend/**` and supplement the repository
 ## Common Mistakes to Avoid
 
 - Replacing the shared Keycloak-style OIDC adapter with a custom token flow.
-- Storing browser tokens in local storage, session storage, IndexedDB, or cookies managed by the frontend.
+- Sharing or copying Admin and Account token records, or storing tokens outside the shared console-auth adapter.
 - Adding a second HTTP client or manually attaching bearer tokens outside `adminRequest`, `accountRequest`, and the shared adapter.
 - Using local component state instead of React Hook Form + Zod for editable form models.
 - Fetching complete pageable resources to implement client-side pagination.

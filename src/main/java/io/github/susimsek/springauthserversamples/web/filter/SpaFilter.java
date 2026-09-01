@@ -201,7 +201,8 @@ public class SpaFilter extends OncePerRequestFilter {
     }
 
     private static boolean isSpaRouteCandidate(HttpServletRequest request, String path) {
-        if (!"GET".equalsIgnoreCase(request.getMethod())) {
+        String method = request.getMethod();
+        if (!"GET".equalsIgnoreCase(method) && !"HEAD".equalsIgnoreCase(method)) {
             return false;
         }
         if (!StringUtils.hasText(path) || path.contains("..") || path.indexOf('\\') >= 0) {

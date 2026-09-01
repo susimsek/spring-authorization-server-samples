@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
+import type { PageResponse } from "@/lib/api-types";
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 
 import { useAdminAuth } from "./AdminAuthProvider";
@@ -19,17 +20,11 @@ import { ResourceFilters } from "./ResourceFilters";
 import { useAdminTableState } from "./useAdminTableState";
 
 type RoleUser = { id: number; username: string; enabled: boolean };
-type PageData<T> = {
-  content: T[];
-  number: number;
-  totalPages: number;
-  totalElements: number;
-};
 type RoleDetailData = {
   name: string;
   userCount: number;
   protectedRole: boolean;
-  users: PageData<RoleUser>;
+  users: PageResponse<RoleUser>;
 };
 
 export function RoleDetail({
@@ -87,7 +82,7 @@ export function RoleDetail({
     const controller = new AbortController();
     const timeout = window.setTimeout(() => {
       setSearchingUsers(true);
-      adminRequest<PageData<RoleUser>>(accessToken, {
+      adminRequest<PageResponse<RoleUser>>(accessToken, {
         url: `/api/admin/roles/${encodeURIComponent(actualName)}/available-users?q=${encodeURIComponent(userQuery.trim())}&page=0&size=10`,
         signal: controller.signal,
       })

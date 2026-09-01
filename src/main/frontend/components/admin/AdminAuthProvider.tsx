@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useMemo } from "react";
 
 import type { Locale } from "@/i18n/config";
-import { type JwtPayload, useConsoleAuth } from "@/lib/console-auth";
+import { CONSOLE_TRANSACTION_KEYS, type JwtPayload, useConsoleAuth } from "@/lib/console-auth";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { setAdminAccess, setConsoleUsername, type AdminAccess } from "@/store/auth-slice";
 
@@ -11,7 +11,7 @@ type AdminAuthRuntime = {
   refreshAccessToken: (minValidity?: number) => Promise<string | null>;
   logout: (locale: Locale) => Promise<void>;
   beginAuthorization: (locale: Locale, returnTo: string) => Promise<void>;
-  completeAuthorization: (locale: Locale, code: string, state: string) => Promise<string>;
+  completeAuthorization: (code: string, state: string) => Promise<string>;
 };
 
 type AdminAuthValue = AdminAuthRuntime & {
@@ -21,7 +21,6 @@ type AdminAuthValue = AdminAuthRuntime & {
   isLoggingOut: boolean;
   authenticated: boolean;
   initialized: boolean;
-  sessionId: string | null;
   subject: string | null;
   tokenParsed: JwtPayload | null;
   idTokenParsed: JwtPayload | null;
@@ -37,7 +36,7 @@ export type { AdminAccess } from "@/store/auth-slice";
 const ADMIN_AUTH_CONFIG = {
   clientId: "admin-console",
   scope: "profile admin-api",
-  transactionKey: "ADMIN_OIDC_TRANSACTION",
+  transactionKey: CONSOLE_TRANSACTION_KEYS.admin,
   postLoginReturnToKey: "AUTH_ADMIN_RETURN_TO",
   redirectPath: (locale: Locale) => `/${locale}/admin/callback`,
   postLogoutRedirectPath: (locale: Locale) => `/${locale}/admin/`,

@@ -5,246 +5,28 @@ import { useCallback, useEffect, useRef } from "react";
 
 import type { Locale } from "@/i18n/config";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { codeChallenge, decodeJwt, ensureOpenIdScope, randomValue } from "./console-auth-crypto";
 import {
-  applyConsoleToken,
-  clearConsoleAuth,
-  setConsoleInitialized,
-  type ConsoleKind,
-} from "@/store/auth-slice";
+  clearStoredTransactions,
+  readAndRemoveTransaction,
+  readStoredTokens,
+  removeAllStoredTokens,
+  removeStoredTokens,
+  storeTokens,
+  storeTransaction,
+} from "./console-auth-storage";
+import type {
+  AuthorizationTransaction,
+  ConsoleAuthConfig,
+  ConsoleKind,
+  ConsoleTokenResponse,
+} from "./console-auth-types";
+import { applyConsoleToken, clearConsoleAuth, setConsoleInitialized } from "@/store/auth-slice";
 
-export type ConsoleTokenResponse = {
-  access_token: string;
-  expires_in: number;
-  refresh_token?: string;
-  id_token?: string;
-};
-
-export type JwtPayload = {
-  exp?: number;
-  iat?: number;
-  nonce?: string;
-  picture?: string;
-  sid?: string;
-  sub?: string;
-  preferred_username?: string;
-  realm_access?: { roles?: string[] };
-  resource_access?: Record<string, { roles?: string[] }>;
-};
-
-type AuthorizationTransaction = {
-  codeVerifier: string;
-  createdAt: number;
-  expires: number;
-  nonce: string;
-  redirectUri: string;
-  returnTo: string;
-  state: string;
-};
-
-type ConsoleAuthConfig = {
-  clientId: string;
-  scope: string;
-  transactionKey: string;
-  redirectPath: (locale: Locale) => string;
-  postLogoutRedirectPath: (locale: Locale) => string;
-  postLoginReturnToKey?: string;
-};
+export { CONSOLE_TRANSACTION_KEYS } from "./console-auth-storage";
+export type { ConsoleTokenResponse, JwtPayload } from "./console-auth-types";
 
 const CALLBACK_TTL_MS = 5 * 60 * 1000;
-const TOKEN_STORAGE_PREFIX = "AUTH_CONSOLE_TOKEN";
-const CONSOLE_KINDS: ConsoleKind[] = ["admin", "account"];
-
-type StoredConsoleTokens = {
-  accessToken: string;
-  expiresAt: number;
-  idToken: string | null;
-  refreshToken: string | null;
-  version: 1;
-};
-
-function base64Url(bytes: Uint8Array) {
-  let value = "";
-  bytes.forEach((byte) => {
-    value += String.fromCharCode(byte);
-  });
-  return btoa(value).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
-}
-
-function randomValue() {
-  const bytes = new Uint8Array(32);
-  crypto.getRandomValues(bytes);
-  return base64Url(bytes);
-}
-
-async function codeChallenge(codeVerifier: string) {
-  const bytes = new TextEncoder().encode(codeVerifier);
-  return base64Url(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)));
-}
-
-function decodeJwt(token: string | undefined): JwtPayload | null {
-  if (!token) return null;
-  try {
-    const [, encodedPayload] = token.split(".");
-    if (!encodedPayload) return null;
-    const padded = encodedPayload
-      .replaceAll("-", "+")
-      .replaceAll("_", "/")
-      .padEnd(Math.ceil(encodedPayload.length / 4) * 4, "=");
-    return JSON.parse(atob(padded)) as JwtPayload;
-  } catch {
-    return null;
-  }
-}
-
-function ensureOpenIdScope(scope: string) {
-  const values = scope.split(/\s+/).filter(Boolean);
-  if (!values.includes("openid")) values.unshift("openid");
-  return values.join(" ");
-}
-
-function callbackKey(config: ConsoleAuthConfig, state: string) {
-  return `${config.transactionKey}:${state}`;
-}
-
-function cookieRead(key: string) {
-  const name = `${encodeURIComponent(key)}=`;
-  const value = document.cookie
-    .split("; ")
-    .find((entry) => entry.startsWith(name))
-    ?.slice(name.length);
-  if (!value) return null;
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return null;
-  }
-}
-
-function cookieWrite(key: string, value: string, expires: number) {
-  document.cookie = `${encodeURIComponent(key)}=${encodeURIComponent(value)}; expires=${new Date(expires).toUTCString()}; path=/; SameSite=Lax`;
-}
-
-function cookieRemove(key: string) {
-  document.cookie = `${encodeURIComponent(key)}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax`;
-}
-
-function storeTransaction(config: ConsoleAuthConfig, transaction: AuthorizationTransaction) {
-  const key = callbackKey(config, transaction.state);
-  const value = JSON.stringify(transaction);
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    cookieWrite(key, value, transaction.expires);
-  }
-}
-
-function readAndRemoveTransaction(config: ConsoleAuthConfig, state: string) {
-  const key = callbackKey(config, state);
-  let value: string | null = null;
-  try {
-    value = localStorage.getItem(key);
-    localStorage.removeItem(key);
-  } catch {
-    value = cookieRead(key);
-    cookieRemove(key);
-  }
-  if (!value) {
-    value = cookieRead(key);
-    cookieRemove(key);
-  }
-  if (!value) return null;
-  try {
-    const parsed = JSON.parse(value) as AuthorizationTransaction;
-    if (!isTransaction(parsed) || parsed.expires < Date.now() || parsed.state !== state)
-      return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function clearStoredTransactions(config: ConsoleAuthConfig) {
-  const prefix = `${config.transactionKey}:`;
-  try {
-    Object.keys(localStorage)
-      .filter((key) => key.startsWith(prefix))
-      .forEach((key) => localStorage.removeItem(key));
-  } catch {
-    // Cookie fallback entries are state keyed and removed when consumed.
-  }
-  if (config.postLoginReturnToKey) sessionStorage.removeItem(config.postLoginReturnToKey);
-}
-
-function tokenStorageKey(consoleKind: ConsoleKind) {
-  return `${TOKEN_STORAGE_PREFIX}:${consoleKind}`;
-}
-
-function isStoredConsoleTokens(value: unknown): value is StoredConsoleTokens {
-  if (!value || typeof value !== "object") return false;
-  const tokens = value as Partial<StoredConsoleTokens>;
-  return (
-    tokens.version === 1 &&
-    typeof tokens.accessToken === "string" &&
-    tokens.accessToken.length > 0 &&
-    typeof tokens.expiresAt === "number" &&
-    Number.isFinite(tokens.expiresAt) &&
-    (tokens.idToken === null || typeof tokens.idToken === "string") &&
-    (tokens.refreshToken === null || typeof tokens.refreshToken === "string")
-  );
-}
-
-function readStoredTokens(consoleKind: ConsoleKind) {
-  try {
-    const value = localStorage.getItem(tokenStorageKey(consoleKind));
-    if (!value) return null;
-    const tokens = JSON.parse(value) as unknown;
-    if (isStoredConsoleTokens(tokens)) return tokens;
-  } catch {
-    // Treat unavailable or malformed browser storage as an unauthenticated session.
-  }
-  return null;
-}
-
-function storeTokens(consoleKind: ConsoleKind, tokens: StoredConsoleTokens) {
-  try {
-    localStorage.setItem(tokenStorageKey(consoleKind), JSON.stringify(tokens));
-  } catch {
-    // The running console keeps working when storage is unavailable.
-  }
-}
-
-function removeStoredTokens(consoleKind: ConsoleKind) {
-  try {
-    localStorage.removeItem(tokenStorageKey(consoleKind));
-  } catch {
-    // Nothing else is required when browser storage is unavailable.
-  }
-}
-
-function removeAllStoredTokens() {
-  CONSOLE_KINDS.forEach(removeStoredTokens);
-}
-
-function isTransaction(value: unknown): value is AuthorizationTransaction {
-  if (!value || typeof value !== "object") return false;
-  const transaction = value as Partial<AuthorizationTransaction>;
-  return (
-    typeof transaction.codeVerifier === "string" &&
-    transaction.codeVerifier.length > 0 &&
-    typeof transaction.createdAt === "number" &&
-    Number.isFinite(transaction.createdAt) &&
-    typeof transaction.expires === "number" &&
-    Number.isFinite(transaction.expires) &&
-    typeof transaction.nonce === "string" &&
-    transaction.nonce.length > 0 &&
-    typeof transaction.redirectUri === "string" &&
-    transaction.redirectUri.length > 0 &&
-    typeof transaction.returnTo === "string" &&
-    transaction.returnTo.startsWith("/") &&
-    typeof transaction.state === "string" &&
-    transaction.state.length > 0
-  );
-}
 
 function isPermanentRefreshFailure(error: unknown) {
   return (
@@ -261,7 +43,6 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
     expiresAt,
     authenticated,
     initialized,
-    sessionId,
     subject,
     tokenParsed,
     idTokenParsed,
@@ -347,16 +128,14 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
           accessToken: token.access_token,
           idToken: nextIdToken,
           expiresAt: nextExpiresAt,
-          sessionId: accessPayload?.sid ?? null,
           subject: accessPayload?.sub ?? null,
           tokenParsed: accessPayload,
           idTokenParsed: idPayload,
           refreshTokenParsed: refreshPayload,
         }),
       );
-      releaseAuthorization();
     },
-    [clearAuthentication, consoleKind, dispatch, releaseAuthorization],
+    [clearAuthentication, consoleKind, dispatch],
   );
 
   useEffect(() => {
@@ -389,7 +168,6 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
           }),
           {
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            withCredentials: true,
           },
         )
         .then((response) => {
@@ -446,7 +224,6 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
         const redirectUri = `${window.location.origin}${config.redirectPath(locale)}`;
         const transaction: AuthorizationTransaction = {
           codeVerifier,
-          createdAt: Date.now(),
           expires: Date.now() + CALLBACK_TTL_MS,
           nonce,
           redirectUri,
@@ -487,7 +264,7 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
   );
 
   const completeAuthorization = useCallback(
-    async (_locale: Locale, code: string, state: string) => {
+    async (code: string, state: string) => {
       const transaction = readAndRemoveTransaction(config, state);
       if (!transaction) {
         clearTransactionState();
@@ -508,7 +285,6 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
           }),
           {
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            withCredentials: true,
           },
         );
         if (generation !== tokenGeneration.current) {
@@ -527,7 +303,7 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
   const logout = useCallback(
     async (locale: Locale) => {
       const idTokenHint = idTokenRef.current;
-      clearStoredTransactions(config);
+      clearStoredTransactions();
       clearAuthentication(true, false);
       // OIDC logout ends the shared browser session. Clear both console token sets so a later
       // navigation cannot hydrate a token issued before that shared logout.
@@ -544,7 +320,7 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
         client_id: config.clientId,
         post_logout_redirect_uri: postLogoutRedirectUri,
       });
-      if (idTokenHint) parameters.set("id_token_hint", idTokenHint);
+      parameters.set("id_token_hint", idTokenHint);
 
       const logoutUrl = new URL("/connect/logout", window.location.origin);
       logoutUrl.search = parameters.toString();
@@ -559,7 +335,6 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
     expiresAt,
     authenticated,
     initialized,
-    sessionId,
     subject,
     tokenParsed,
     idTokenParsed,

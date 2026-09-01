@@ -4,18 +4,15 @@ import {
   setAdminAccess,
   setConsoleUsername,
 } from "./auth-slice";
-import { setLocale } from "./i18n-slice";
 import { makeStore } from "./store";
 import { setTheme } from "./theme-slice";
 
 describe("Redux application store", () => {
-  it("manages i18n and theme centrally", () => {
+  it("manages theme centrally", () => {
     const store = makeStore();
 
-    store.dispatch(setLocale("tr"));
     store.dispatch(setTheme("dark"));
 
-    expect(store.getState().i18n).toEqual({ locale: "tr" });
     expect(store.getState().theme).toEqual({ value: "dark" });
   });
 
@@ -28,7 +25,6 @@ describe("Redux application store", () => {
         accessToken: "admin-access",
         idToken: "admin-id",
         expiresAt: 123,
-        sessionId: "sid-admin",
         subject: "admin",
         tokenParsed: { sub: "admin", sid: "sid-admin" },
         idTokenParsed: { sub: "admin" },
@@ -57,7 +53,6 @@ describe("Redux application store", () => {
       accessToken: "admin-access",
       idToken: "admin-id",
       authenticated: true,
-      sessionId: "sid-admin",
       username: "administrator",
       access: { viewClients: true },
     });

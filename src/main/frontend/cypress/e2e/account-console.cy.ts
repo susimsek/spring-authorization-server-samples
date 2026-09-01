@@ -67,9 +67,14 @@ describe("account console", () => {
     cy.contains("a", /Applications|Uygulamalar/).click();
     cy.location("pathname").should("match", /^\/(en|tr)\/account\/applications\/?$/);
 
+    cy.get("@token.all").then((exchangesBeforeReload) => {
+      cy.wrap(exchangesBeforeReload.length).as("exchangesBeforeReload");
+    });
     cy.reload();
-    cy.wait("@token", { timeout: 20_000 }).its("response.statusCode").should("eq", 200);
     cy.wait("@profile", { timeout: 20_000 }).its("response.statusCode").should("eq", 200);
+    cy.get("@token.all").then((exchangesAfterReload) => {
+      cy.get<number>("@exchangesBeforeReload").should("eq", exchangesAfterReload.length);
+    });
     cy.location("search", { timeout: 20_000 }).should("eq", "");
     cy.location("hash").should("eq", "");
     cy.get(".account-sidebar", { timeout: 20_000 }).should("be.visible");

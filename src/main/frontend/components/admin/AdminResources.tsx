@@ -8,6 +8,7 @@ import { Badge, Button, Dropdown, Form, Modal } from "react-bootstrap";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
+import type { PageResponse } from "@/lib/api-types";
 import { encodeConsentRouteKey } from "@/lib/consent-route";
 
 import { useAdminAuth } from "./AdminAuthProvider";
@@ -70,7 +71,6 @@ type Key = {
 
 type Resource = "users" | "sessions" | "consents" | "keys";
 type Copy = Dictionary["admin"]["resources"];
-type PageData<T> = { content: T[]; number: number; totalPages: number; totalElements: number };
 
 export function AdminResources({
   resource,
@@ -135,7 +135,7 @@ function AdminResourcesContent({
 
   useEffect(() => {
     if (!accessToken) return;
-    adminRequest<PageData<User | Session | Consent | Key>>(accessToken, {
+    adminRequest<PageResponse<User | Session | Consent | Key>>(accessToken, {
       url: `/api/admin/${resource}?q=${encodeURIComponent(query)}&page=${page}&size=${size}&sort=${encodeURIComponent(sort)}${resource === "users" ? `&enabled=${status}` : resource === "keys" ? `&active=${status}` : resource === "sessions" ? `&status=${status || "active"}&clientId=${encodeURIComponent(clientId)}` : resource === "consents" ? `&clientId=${encodeURIComponent(clientId)}&username=${encodeURIComponent(username)}&scope=${encodeURIComponent(scope)}` : ""}`,
     })
       .then((response) => {

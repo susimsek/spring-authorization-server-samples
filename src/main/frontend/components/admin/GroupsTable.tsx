@@ -7,6 +7,7 @@ import { Button } from "react-bootstrap";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
+import type { PageResponse } from "@/lib/api-types";
 
 import { useAdminAuth } from "./AdminAuthProvider";
 import { AdminActionIcon } from "./AdminActionIcon";
@@ -18,7 +19,6 @@ import { ResourceFilters } from "./ResourceFilters";
 import { useAdminTableState } from "./useAdminTableState";
 
 type Group = { id: number; name: string; path: string; roles: string[]; userCount: number };
-type GroupPage = { content: Group[]; totalPages: number; totalElements: number };
 
 export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
   const { accessToken } = useAdminAuth();
@@ -38,7 +38,7 @@ export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
 
   useEffect(() => {
     if (!accessToken) return;
-    adminRequest<GroupPage>(accessToken, {
+    adminRequest<PageResponse<Group>>(accessToken, {
       url: `/api/admin/groups?q=${encodeURIComponent(query)}&page=${page}&size=${size}&sort=${encodeURIComponent(sort)}`,
     })
       .then((response) => {

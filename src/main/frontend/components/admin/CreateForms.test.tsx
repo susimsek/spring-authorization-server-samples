@@ -18,6 +18,7 @@ jest.mock("@/components/auth/ConsoleAlerts", () => ({
   useConsoleAlerts: () => ({ addError: jest.fn() }),
 }));
 jest.mock("next/navigation", () => ({
+  useParams: () => ({ lang: "en" }),
   useRouter: () => ({ push: mockPush }),
 }));
 

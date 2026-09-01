@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.session.DelegatingIndexResolver;
@@ -55,7 +56,7 @@ public class JpaIndexedSessionRepository implements FindByIndexNameSessionReposi
     public JpaSession createSession() {
         MapSession delegate = new MapSession();
         delegate.setMaxInactiveInterval(defaultMaxInactiveInterval);
-        JpaSession session = new JpaSession(delegate, this, true);
+        JpaSession session = new JpaSession(delegate, UUID.randomUUID().toString(), this, true);
         if (flushMode == FlushMode.IMMEDIATE) {
             save(session);
         }
@@ -152,6 +153,7 @@ public class JpaIndexedSessionRepository implements FindByIndexNameSessionReposi
 
     private void saveInTransaction(JpaSession session) {
         UserSessionEntity entity = findEntityForSave(session).orElseGet(UserSessionEntity::new);
+        entity.setPrimaryId(session.getPrimaryKey());
         sessionMapper.updateEntity(
                 entity,
                 session,
@@ -164,10 +166,9 @@ public class JpaIndexedSessionRepository implements FindByIndexNameSessionReposi
     }
 
     private Optional<UserSessionEntity> findEntityForSave(JpaSession session) {
-        if (!session.getOriginalId().equals(session.getId())) {
-            return sessionRepository.findBySessionId(session.getOriginalId());
-        }
-        return sessionRepository.findBySessionId(session.getId());
+        return session.isNew()
+                ? Optional.empty()
+                : sessionRepository.findByPrimaryIdForUpdate(session.getPrimaryKey());
     }
 
     private JpaSession toSession(UserSessionEntity entity) {

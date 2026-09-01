@@ -100,19 +100,22 @@ describe("admin login", () => {
     });
 
     cy.get(".console-user-toggle").click();
-    cy.contains(".console-user-menu a", /Logout|Çıkış/).click();
+    cy.contains(".console-user-menu .dropdown-item", /Sign out|Çıkış/).click();
     cy.get('input[name="username"]', { timeout: 20_000 }).should("be.visible");
     cy.window().then((window) => {
       expect(window.localStorage.getItem("AUTH_CONSOLE_TOKEN:admin")).to.equal(null);
       expect(window.localStorage.getItem("AUTH_CONSOLE_TOKEN:account")).to.equal(null);
     });
-    cy.request("/oidc/session-status").its("body.authenticated").should("eq", false);
+    cy.request({ url: "/oidc/session-status", failOnStatusCode: false })
+      .its("status")
+      .should("eq", 401);
   });
 
-  it("recovers from a callback without a saved authorization transaction", () => {
+  it("rejects a callback without a saved authorization transaction", () => {
     cy.visit("/en/admin/callback#code=stale-code&state=stale-state");
 
-    cy.location("pathname", { timeout: 20_000 }).should("not.eq", "/en/admin/callback");
-    cy.contains("The administration session could not be established.").should("not.exist");
+    cy.location("pathname").should("eq", "/en/admin/callback");
+    cy.location("hash").should("eq", "");
+    cy.contains("The administration session could not be established.").should("be.visible");
   });
 });

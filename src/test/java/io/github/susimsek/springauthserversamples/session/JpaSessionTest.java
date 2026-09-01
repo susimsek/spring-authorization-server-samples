@@ -20,7 +20,7 @@ class JpaSessionTest {
     @Test
     void mutatingOperationsTrackDeltaAndRequestFlushes() {
         MapSession delegate = new MapSession();
-        JpaSession session = new JpaSession(delegate, repository, true);
+        JpaSession session = new JpaSession(delegate, "primary-id", repository, true);
         Instant lastAccessedTime = Instant.now().minusSeconds(30);
         Duration maxInactiveInterval = Duration.ofMinutes(10);
 
@@ -43,7 +43,7 @@ class JpaSessionTest {
     void getAttributeDelegatesReadTrackingAndMarkPersistedResetsState() {
         MapSession delegate = new MapSession();
         delegate.setAttribute("alpha", "one");
-        JpaSession session = new JpaSession(delegate, repository, true);
+        JpaSession session = new JpaSession(delegate, "primary-id", repository, true);
 
         assertThat(session.<String>getAttribute("alpha")).isEqualTo("one");
         verify(repository).attributeRead(session, "alpha", "one");

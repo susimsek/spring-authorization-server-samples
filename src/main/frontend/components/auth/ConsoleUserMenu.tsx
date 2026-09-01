@@ -3,7 +3,6 @@
 import { faRightFromBracket, faUser } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Image from "next/image";
-import Link from "next/link";
 import { useState } from "react";
 import { Dropdown } from "react-bootstrap";
 
@@ -55,7 +54,7 @@ export function ConsoleUserMenu({
           <div className="small text-body-secondary">{signedInAsLabel}</div>
           <div className="fw-semibold text-truncate">{username}</div>
         </div>
-        <Dropdown.Item as={Link} href={accountHref}>
+        <Dropdown.Item href={accountHref}>
           <FontAwesomeIcon icon={faUser} className="me-2" />
           {accountLabel}
         </Dropdown.Item>

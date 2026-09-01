@@ -11,18 +11,26 @@ const navigation = {
 };
 
 jest.mock("next/navigation", () => ({
+  useParams: () => ({ lang: "en" }),
   usePathname: () => navigation.pathname,
   useRouter: () => ({ push: navigation.push }),
   useSearchParams: () => navigation.searchParams,
 }));
 
-jest.mock("axios", () => ({
-  __esModule: true,
-  default: {
-    get: jest.fn(),
-    isCancel: jest.fn(),
-  },
-}));
+jest.mock("axios", () => {
+  const client = {
+    interceptors: { response: { use: jest.fn() } },
+    request: jest.fn(),
+  };
+  return {
+    __esModule: true,
+    default: {
+      create: jest.fn(() => client),
+      get: jest.fn(),
+      isCancel: jest.fn(),
+    },
+  };
+});
 
 import { AuthLayout } from "./AuthLayout";
 import { ConsentForm } from "./ConsentForm";

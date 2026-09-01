@@ -11,6 +11,7 @@ import { AdminShell } from "./AdminShell";
 const mockLogout = jest.fn().mockResolvedValue(undefined);
 
 jest.mock("next/navigation", () => ({
+  useParams: () => ({ lang: "en" }),
   usePathname: () => "/en/admin/clients/detail",
 }));
 jest.mock("next/link", () => ({ children, href, ...props }: React.ComponentProps<"a">) => (

@@ -10,7 +10,7 @@ import { getDictionary } from "@/i18n/get-dictionary";
 
 export function RowActions({ label, children }: { label?: string; children: ReactNode }) {
   const params = useParams<{ lang: string }>();
-  const defaultLabel = getDictionary(params.lang === "tr" ? "tr" : "en").admin.common.actions;
+  const defaultLabel = getDictionary(params?.lang === "tr" ? "tr" : "en").admin.common.actions;
   return (
     <Dropdown align="end">
       <Dropdown.Toggle

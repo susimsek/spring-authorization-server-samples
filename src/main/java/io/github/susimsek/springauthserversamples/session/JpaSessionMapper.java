@@ -34,7 +34,7 @@ public final class JpaSessionMapper {
                 .forEach(
                         (attributeName, bytes) ->
                                 delegate.setAttribute(attributeName, deserializeAttribute(bytes)));
-        return new JpaSession(delegate, repository, false);
+        return new JpaSession(delegate, entity.getPrimaryId(), repository, false);
     }
 
     void updateEntity(
@@ -42,17 +42,19 @@ public final class JpaSessionMapper {
             JpaSession session,
             String principalName,
             boolean replaceAttributes) {
-        if (entity.getPrimaryId() == null) {
-            entity.setPrimaryId(session.getId());
-        }
-
         MapSession delegate = session.getDelegate();
-        entity.setSessionId(session.getId());
-        entity.setCreationTime(delegate.getCreationTime().toEpochMilli());
-        entity.setLastAccessTime(delegate.getLastAccessedTime().toEpochMilli());
-        entity.setMaxInactiveInterval((int) delegate.getMaxInactiveInterval().getSeconds());
-        entity.setExpiryTime(expiryTime(delegate));
-        entity.setPrincipalName(principalName);
+        boolean staleSessionId =
+                entity.getSessionId() != null
+                        && session.getId().equals(session.getOriginalId())
+                        && !entity.getSessionId().equals(session.getOriginalId());
+        if (!staleSessionId) {
+            entity.setSessionId(session.getId());
+            entity.setCreationTime(delegate.getCreationTime().toEpochMilli());
+            entity.setLastAccessTime(delegate.getLastAccessedTime().toEpochMilli());
+            entity.setMaxInactiveInterval((int) delegate.getMaxInactiveInterval().getSeconds());
+            entity.setExpiryTime(expiryTime(delegate));
+            entity.setPrincipalName(principalName);
+        }
 
         if (replaceAttributes) {
             entity.getAttributes().clear();

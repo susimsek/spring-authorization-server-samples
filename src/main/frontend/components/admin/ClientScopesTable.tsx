@@ -11,6 +11,7 @@ import { z } from "zod";
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
+import type { PageResponse } from "@/lib/api-types";
 
 import { useAdminAuth } from "./AdminAuthProvider";
 import { AdminActionIcon } from "./AdminActionIcon";
@@ -30,13 +31,6 @@ export type ClientScope = {
   description: string | null;
   createdAt: string;
   updatedAt: string;
-};
-
-type PageData<T> = {
-  content: T[];
-  number: number;
-  totalPages: number;
-  totalElements: number;
 };
 
 type Values = { name: string; displayName: string; description: string };
@@ -79,7 +73,7 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
 
   useEffect(() => {
     if (!accessToken) return;
-    adminRequest<PageData<ClientScope>>(accessToken, {
+    adminRequest<PageResponse<ClientScope>>(accessToken, {
       url: `/api/admin/client-scopes?q=${encodeURIComponent(query)}&page=${page}&size=${size}&sort=${encodeURIComponent(sort)}`,
     })
       .then((response) => {

@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
+import type { PageResponse } from "@/lib/api-types";
 import { useAdminAuth } from "./AdminAuthProvider";
 
 type Dashboard = { clients: number; users: number; sessions: number; consents: number };
@@ -33,7 +34,6 @@ type Event = {
   targetId: string;
   occurredAt: string;
 };
-type Page<T> = { content: T[] };
 export function AdminDashboard({ dictionary }: { dictionary: Dictionary }) {
   const { accessToken } = useAdminAuth();
   const params = useParams<{ lang: string }>();
@@ -46,7 +46,7 @@ export function AdminDashboard({ dictionary }: { dictionary: Dictionary }) {
     const c = new AbortController();
     Promise.all([
       adminRequest<Dashboard>(accessToken, { url: "/api/admin/dashboard", signal: c.signal }),
-      adminRequest<Page<Event>>(accessToken, {
+      adminRequest<PageResponse<Event>>(accessToken, {
         url: "/api/admin/events?size=6&sort=occurredAt,desc",
         signal: c.signal,
       }),

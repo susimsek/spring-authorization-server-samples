@@ -14,6 +14,7 @@ jest.mock("./AdminAuthProvider", () => ({
   useAdminAuth: () => ({ accessToken: "token" }),
 }));
 jest.mock("next/navigation", () => ({
+  useParams: () => ({ lang: "en" }),
   useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
 }));
 
@@ -132,8 +133,8 @@ describe("ClientForm", () => {
     fireEvent.change(document.querySelector('input[name="clientName"]')!, {
       target: { value: "Mobile client" },
     });
-    advanceCreateStep("Devam");
-    advanceCreateStep("Devam");
+    advanceCreateStep();
+    advanceCreateStep();
     fireEvent.change(document.querySelector('textarea[name="redirectUris"]')!, {
       target: { value: "https://app.example/callback" },
     });

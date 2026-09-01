@@ -6,6 +6,7 @@ import { Badge, Button, Card, Form, ListGroup } from "react-bootstrap";
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
+import type { PageResponse } from "@/lib/api-types";
 
 import { AdminActionIcon } from "./AdminActionIcon";
 import { ErrorState, LoadingState } from "./AsyncState";
@@ -13,7 +14,6 @@ import { DataTable } from "./DataTable";
 import { useAdminAuth } from "./AdminAuthProvider";
 
 type Group = { id: number; name: string; roles: string[]; userCount: number };
-type GroupPage = { content: Group[] };
 
 export function UserGroups({ dictionary, userId }: { dictionary: Dictionary; userId: string }) {
   const { access, accessToken } = useAdminAuth();
@@ -32,7 +32,7 @@ export function UserGroups({ dictionary, userId }: { dictionary: Dictionary; use
     if (!accessToken) return;
     setLoading(true);
     try {
-      const response = await adminRequest<GroupPage>(accessToken, {
+      const response = await adminRequest<PageResponse<Group>>(accessToken, {
         url: `/api/admin/users/${encodeURIComponent(userId)}/groups?page=0&size=100`,
       });
       if (response.status >= 300) throw new Error();
@@ -56,7 +56,7 @@ export function UserGroups({ dictionary, userId }: { dictionary: Dictionary; use
     }
     const controller = new AbortController();
     const timeout = window.setTimeout(() => {
-      adminRequest<GroupPage>(accessToken, {
+      adminRequest<PageResponse<Group>>(accessToken, {
         url: `/api/admin/groups?q=${encodeURIComponent(query.trim())}&page=0&size=10`,
         signal: controller.signal,
       })

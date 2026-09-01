@@ -30,6 +30,7 @@ jest.mock("@/lib/admin-api", () => ({
   registerAdminTokenHandlers: jest.fn(),
 }));
 jest.mock("next/navigation", () => ({
+  useParams: () => ({ lang: "en" }),
   usePathname: () => pathname,
   useRouter: () => ({ replace: mockReplace }),
 }));

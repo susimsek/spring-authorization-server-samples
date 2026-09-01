@@ -17,7 +17,7 @@ const ConsoleAlertsContext = createContext<ConsoleAlertsApi | null>(null);
 
 export function ConsoleAlertsProvider({ children }: { children: React.ReactNode }) {
   const params = useParams<{ lang: string }>();
-  const closeLabel = getDictionary(params.lang === "tr" ? "tr" : "en").admin.common.close;
+  const closeLabel = getDictionary(params?.lang === "tr" ? "tr" : "en").admin.common.close;
   const [alerts, setAlerts] = useState<ConsoleAlert[]>([]);
   const nextId = useRef(0);
   const addAlert = useCallback((message: string, variant: AlertVariant = "success") => {

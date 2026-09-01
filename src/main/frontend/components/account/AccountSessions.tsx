@@ -7,11 +7,17 @@ import {
   faShieldHalved,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { Badge, Button, Card } from "react-bootstrap";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
-import { accountRequest } from "@/lib/account-api";
+import {
+  type AccountSession,
+  useGetAccountSessionsQuery,
+  useRemoveAccountSessionMutation,
+  useRemoveAllAccountSessionsMutation,
+  useRemoveOtherAccountSessionsMutation,
+} from "@/store/account-api-slice";
 import { DetailLoadingState, EmptyState, ErrorState } from "@/components/admin/AsyncState";
 import { ConfirmModal } from "@/components/admin/ConfirmModal";
 import { PaginationControls } from "@/components/admin/PaginationControls";
@@ -19,93 +25,56 @@ import { useAdminTableState } from "@/components/admin/useAdminTableState";
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import { useAccountAuth } from "./AccountAuthProvider";
 
-type SessionClient = { clientId: string; clientName: string };
-type Session = {
-  id: string;
-  createdAt: string;
-  lastAccessedAt: string;
-  expiresAt: string;
-  current: boolean;
-  clients: SessionClient[];
-};
-
 type PendingAction =
-  { type: "single"; session: Session } | { type: "others" } | { type: "all" } | null;
-type SessionPage = { content: Session[]; totalPages: number; totalElements: number };
+  { type: "single"; session: AccountSession } | { type: "others" } | { type: "all" } | null;
 
 export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
   const { accessToken, logout } = useAccountAuth();
   const alerts = useConsoleAlerts();
   const copy = dictionary.account;
-  const [items, setItems] = useState<Session[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
   const [pending, setPending] = useState<PendingAction>(null);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
-  const [refresh, setRefresh] = useState(0);
   const { page, size, setPage, setSize } = useAdminTableState();
-
-  const load = useCallback(async () => {
-    if (!accessToken) return;
-    setLoading(true);
-    const response = await accountRequest<SessionPage>(accessToken, {
-      url: `/api/account/sessions?page=${page}&size=${size}`,
-    });
-    if (response.status < 300) {
-      setItems(response.data.content);
-      setTotalPages(response.data.totalPages);
-      setTotalElements(response.data.totalElements);
-      setFailed(false);
-    } else {
-      setFailed(true);
-    }
-    setLoading(false);
-  }, [accessToken, page, size]);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => void load(), 0);
-    return () => window.clearTimeout(timer);
-  }, [load, refresh]);
+  const { data, isError, isLoading, refetch } = useGetAccountSessionsQuery(
+    { accessToken: accessToken ?? "", page, size },
+    { skip: !accessToken },
+  );
+  const [removeSession] = useRemoveAccountSessionMutation();
+  const [removeOtherSessions] = useRemoveOtherAccountSessionsMutation();
+  const [removeAllSessions] = useRemoveAllAccountSessionsMutation();
+  const items = data?.content ?? [];
+  const totalPages = data?.totalPages ?? 0;
+  const totalElements = data?.totalElements ?? 0;
 
   const remove = async (id: string) => {
     if (!accessToken) return;
-    const response = await accountRequest(accessToken, {
-      method: "DELETE",
-      url: `/api/account/sessions/${encodeURIComponent(id)}`,
-    });
-    if (response.status < 300) {
-      setLoading(true);
+    try {
+      await removeSession({ accessToken, id }).unwrap();
       if (items.length === 1 && page > 0) setPage(page - 1);
-      else setRefresh((current) => current + 1);
       alerts.addAlert(copy.sessions.signOut);
-    } else alerts.addError(copy.common.operationError);
+    } catch {
+      alerts.addError(copy.common.operationError);
+    }
   };
 
   const removeOthers = async () => {
     if (!accessToken) return;
-    const response = await accountRequest(accessToken, {
-      method: "DELETE",
-      url: "/api/account/sessions/others",
-    });
-    if (response.status < 300) {
-      setLoading(true);
+    try {
+      await removeOtherSessions({ accessToken }).unwrap();
       if (items.length === 1 && page > 0) setPage(page - 1);
-      else setRefresh((current) => current + 1);
       alerts.addAlert(copy.sessions.signOutOthers);
-    } else alerts.addError(copy.common.operationError);
+    } catch {
+      alerts.addError(copy.common.operationError);
+    }
   };
 
   const removeAll = async () => {
     if (!accessToken) return;
-    const response = await accountRequest(accessToken, {
-      method: "DELETE",
-      url: "/api/account/sessions",
-    });
-    if (response.status < 300) {
-      setItems([]);
+    try {
+      await removeAllSessions({ accessToken }).unwrap();
       await logout(document.documentElement.lang === "tr" ? "tr" : "en");
-    } else alerts.addError(copy.common.operationError);
+    } catch {
+      alerts.addError(copy.common.operationError);
+    }
   };
 
   const confirm = async () => {
@@ -130,13 +99,13 @@ export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
         ? copy.sessions.signOutOthers
         : copy.sessions.signOut;
 
-  if (loading) return <DetailLoadingState />;
-  if (failed)
+  if (isLoading) return <DetailLoadingState />;
+  if (isError)
     return (
       <ErrorState
         message={copy.common.operationError}
         retryLabel={copy.common.retry}
-        onRetry={() => void load()}
+        onRetry={() => void refetch()}
       />
     );
 

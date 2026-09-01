@@ -11,6 +11,7 @@ import { z } from "zod";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
+import type { PageResponse } from "@/lib/api-types";
 import { problemErrorCode, problemViolations } from "@/lib/problem-detail";
 
 import { useAdminAuth } from "./AdminAuthProvider";
@@ -33,7 +34,6 @@ type User = {
   updatedAt: string;
 };
 type Role = { name: string };
-type RolePage = { content: Role[] };
 type UserFormValues = { username: string; password: string; enabled: boolean; roles: string[] };
 
 const USER_DETAIL_TABS = [
@@ -124,7 +124,7 @@ export function UserForm({
 
   useEffect(() => {
     if (!accessToken) return;
-    adminRequest<RolePage>(accessToken, { url: "/api/admin/roles?page=0&size=100" })
+    adminRequest<PageResponse<Role>>(accessToken, { url: "/api/admin/roles?page=0&size=100" })
       .then((response) => {
         if (response.status >= 300) throw new Error();
         setAvailableRoles(response.data.content);

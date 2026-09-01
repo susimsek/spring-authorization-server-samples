@@ -2,11 +2,15 @@
 
 import { faCube, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { Badge, Button, Card } from "react-bootstrap";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
-import { accountRequest } from "@/lib/account-api";
+import {
+  type AccountApplication,
+  useGetAccountApplicationsQuery,
+  useRevokeAccountApplicationMutation,
+} from "@/store/account-api-slice";
 import { DetailLoadingState, EmptyState, ErrorState } from "@/components/admin/AsyncState";
 import { ConfirmModal } from "@/components/admin/ConfirmModal";
 import { PaginationControls } from "@/components/admin/PaginationControls";
@@ -14,71 +18,39 @@ import { useAdminTableState } from "@/components/admin/useAdminTableState";
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import { useAccountAuth } from "./AccountAuthProvider";
 
-type Application = {
-  clientId: string;
-  clientName: string;
-  scopes: string[];
-  createdAt: string;
-  updatedAt: string;
-};
-type ApplicationPage = { content: Application[]; totalPages: number; totalElements: number };
-
 export function AccountApplications({ dictionary }: { dictionary: Dictionary }) {
   const { accessToken } = useAccountAuth();
   const alerts = useConsoleAlerts();
   const copy = dictionary.account;
-  const [items, setItems] = useState<Application[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
-  const [pending, setPending] = useState<Application | null>(null);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
-  const [refresh, setRefresh] = useState(0);
+  const [pending, setPending] = useState<AccountApplication | null>(null);
   const { page, size, setPage, setSize } = useAdminTableState();
+  const { data, isError, isLoading, refetch } = useGetAccountApplicationsQuery(
+    { accessToken: accessToken ?? "", page, size },
+    { skip: !accessToken },
+  );
+  const [revokeApplication] = useRevokeAccountApplicationMutation();
+  const items = data?.content ?? [];
+  const totalPages = data?.totalPages ?? 0;
+  const totalElements = data?.totalElements ?? 0;
 
-  const load = useCallback(async () => {
+  const revoke = async (application: AccountApplication) => {
     if (!accessToken) return;
-    setLoading(true);
-    const response = await accountRequest<ApplicationPage>(accessToken, {
-      url: `/api/account/applications?page=${page}&size=${size}`,
-    });
-    if (response.status < 300) {
-      setItems(response.data.content);
-      setTotalPages(response.data.totalPages);
-      setTotalElements(response.data.totalElements);
-      setFailed(false);
-    } else {
-      setFailed(true);
-    }
-    setLoading(false);
-  }, [accessToken, page, size]);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => void load(), 0);
-    return () => window.clearTimeout(timer);
-  }, [load, refresh]);
-
-  const revoke = async (application: Application) => {
-    if (!accessToken) return;
-    const response = await accountRequest(accessToken, {
-      method: "DELETE",
-      url: `/api/account/applications/${encodeURIComponent(application.clientId)}`,
-    });
-    if (response.status < 300) {
-      setLoading(true);
+    try {
+      await revokeApplication({ accessToken, clientId: application.clientId }).unwrap();
       if (items.length === 1 && page > 0) setPage(page - 1);
-      else setRefresh((current) => current + 1);
       alerts.addAlert(copy.applications.revoke);
-    } else alerts.addError(copy.common.operationError);
+    } catch {
+      alerts.addError(copy.common.operationError);
+    }
   };
 
-  if (loading) return <DetailLoadingState />;
-  if (failed)
+  if (isLoading) return <DetailLoadingState />;
+  if (isError)
     return (
       <ErrorState
         message={copy.common.operationError}
         retryLabel={copy.common.retry}
-        onRetry={() => void load()}
+        onRetry={() => void refetch()}
       />
     );
 

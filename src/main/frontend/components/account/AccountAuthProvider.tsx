@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useMemo } from "react";
 
 import type { Locale } from "@/i18n/config";
-import { type JwtPayload, useConsoleAuth } from "@/lib/console-auth";
+import { CONSOLE_TRANSACTION_KEYS, type JwtPayload, useConsoleAuth } from "@/lib/console-auth";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { setConsoleUsername } from "@/store/auth-slice";
 
@@ -11,7 +11,7 @@ type AccountAuthRuntime = {
   refreshAccessToken: (minValidity?: number) => Promise<string | null>;
   logout: (locale: Locale) => Promise<void>;
   beginAuthorization: (locale: Locale, returnTo: string) => Promise<void>;
-  completeAuthorization: (locale: Locale, code: string, state: string) => Promise<string>;
+  completeAuthorization: (code: string, state: string) => Promise<string>;
 };
 
 type AccountAuthValue = AccountAuthRuntime & {
@@ -21,7 +21,6 @@ type AccountAuthValue = AccountAuthRuntime & {
   isLoggingOut: boolean;
   authenticated: boolean;
   initialized: boolean;
-  sessionId: string | null;
   subject: string | null;
   tokenParsed: JwtPayload | null;
   idTokenParsed: JwtPayload | null;
@@ -33,8 +32,7 @@ type AccountAuthValue = AccountAuthRuntime & {
 const ACCOUNT_AUTH_CONFIG = {
   clientId: "account-console",
   scope: "profile account-api",
-  transactionKey: "ACCOUNT_OIDC_TRANSACTION",
-  postLoginReturnToKey: "AUTH_ACCOUNT_RETURN_TO",
+  transactionKey: CONSOLE_TRANSACTION_KEYS.account,
   redirectPath: (locale: Locale) => `/${locale}/account/callback`,
   postLogoutRedirectPath: (locale: Locale) => `/${locale}/account/`,
 };

@@ -20,6 +20,7 @@ jest.mock("./AdminAuthProvider", () => ({
   useAdminAuth: () => ({ accessToken: "token" }),
 }));
 jest.mock("next/navigation", () => ({
+  useParams: () => ({ lang: "en" }),
   useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
 }));
 jest.mock("next/image", () => ({ src, alt }: { src: string; alt: string }) => (

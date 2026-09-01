@@ -17,6 +17,7 @@ import java.util.Base64;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsent;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
@@ -558,7 +559,24 @@ class AuthorizationServerEndpointsIT {
                         .readTree(adminTokenResult.getResponse().getContentAsString())
                         .get("refresh_token")
                         .asText();
+        String adminAccessToken =
+                JSON_MAPPER
+                        .readTree(adminTokenResult.getResponse().getContentAsString())
+                        .get("access_token")
+                        .asText();
+        assertThat(adminTokenResult.getResponse().getCookie("SESSION")).isNull();
         assertThat(activeSessionCount("admin")).isEqualTo(sessionsBeforeLogin + 1);
+
+        MvcResult adminApiResult =
+                mockMvc.perform(
+                                get("/api/admin/dashboard")
+                                        .cookie(authenticatedSession)
+                                        .header(
+                                                HttpHeaders.AUTHORIZATION,
+                                                "Bearer " + adminAccessToken))
+                        .andExpect(status().isOk())
+                        .andReturn();
+        assertThat(adminApiResult.getResponse().getCookie("SESSION")).isNull();
 
         String accountVerifier =
                 "browser-account-verifier-0123456789012345678901234567890123456789";
@@ -601,7 +619,24 @@ class AuthorizationServerEndpointsIT {
                         .readTree(accountTokenResult.getResponse().getContentAsString())
                         .get("refresh_token")
                         .asText();
+        String accountAccessToken =
+                JSON_MAPPER
+                        .readTree(accountTokenResult.getResponse().getContentAsString())
+                        .get("access_token")
+                        .asText();
+        assertThat(accountTokenResult.getResponse().getCookie("SESSION")).isNull();
         assertThat(accountRefreshToken).isNotEqualTo(adminRefreshToken);
+
+        MvcResult accountApiResult =
+                mockMvc.perform(
+                                get("/api/account/profile")
+                                        .cookie(authenticatedSession)
+                                        .header(
+                                                HttpHeaders.AUTHORIZATION,
+                                                "Bearer " + accountAccessToken))
+                        .andExpect(status().isOk())
+                        .andReturn();
+        assertThat(accountApiResult.getResponse().getCookie("SESSION")).isNull();
         mockMvc.perform(get("/oidc/session-status").cookie(authenticatedSession))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.authenticated").value(true));

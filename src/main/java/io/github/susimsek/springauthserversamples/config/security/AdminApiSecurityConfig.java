@@ -43,7 +43,9 @@ public class AdminApiSecurityConfig {
                                 securityContext.securityContextRepository(
                                         new NullSecurityContextRepository()))
                 .sessionManagement(
-                        session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                        session ->
+                                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                                        .sessionFixation(sessionFixation -> sessionFixation.none()))
                 .authorizeHttpRequests(
                         authorize ->
                                 authorize

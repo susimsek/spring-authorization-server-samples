@@ -12,12 +12,18 @@ public final class JpaSession implements Session {
 
     private final MapSession delegate;
     private final JpaIndexedSessionRepository repository;
+    private final String primaryKey;
     private final Map<String, Object> delta = new LinkedHashMap<>();
     private String originalId;
     private boolean isNew;
 
-    JpaSession(MapSession delegate, JpaIndexedSessionRepository repository, boolean isNew) {
+    JpaSession(
+            MapSession delegate,
+            String primaryKey,
+            JpaIndexedSessionRepository repository,
+            boolean isNew) {
         this.delegate = delegate;
+        this.primaryKey = primaryKey;
         this.repository = repository;
         this.originalId = delegate.getId();
         this.isNew = isNew;
@@ -25,6 +31,10 @@ public final class JpaSession implements Session {
 
     String getOriginalId() {
         return originalId;
+    }
+
+    String getPrimaryKey() {
+        return primaryKey;
     }
 
     boolean isNew() {

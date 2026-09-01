@@ -10,8 +10,8 @@ import { z } from "zod";
 
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import type { Dictionary } from "@/i18n/get-dictionary";
-import { accountRequest } from "@/lib/account-api";
 import { problemViolations } from "@/lib/problem-detail";
+import { type AccountApiError, useUpdateAccountPasswordMutation } from "@/store/account-api-slice";
 
 import { useAccountAuth } from "./AccountAuthProvider";
 
@@ -22,6 +22,7 @@ export function AccountPasswordForm({ dictionary }: { dictionary: Dictionary }) 
   const alerts = useConsoleAlerts();
   const copy = dictionary.account;
   const [failed, setFailed] = useState(false);
+  const [updatePassword] = useUpdateAccountPasswordMutation();
   const schema = z
     .object({
       currentPassword: z.string().min(1, copy.validation.required).max(200, copy.validation.max200),
@@ -60,14 +61,13 @@ export function AccountPasswordForm({ dictionary }: { dictionary: Dictionary }) 
   const submit = handleSubmit(async ({ currentPassword, newPassword }) => {
     if (!accessToken) return;
     setFailed(false);
-    const response = await accountRequest(accessToken, {
-      method: "PUT",
-      url: "/api/account/password",
-      data: { currentPassword, newPassword },
-    });
-    if (response.status >= 300) {
+    try {
+      await updatePassword({ accessToken, currentPassword, newPassword }).unwrap();
+      reset();
+      alerts.addAlert(copy.security.saved);
+    } catch (error) {
       let firstInvalid: "currentPassword" | "newPassword" | undefined;
-      problemViolations(response.data).forEach(({ field }) => {
+      problemViolations((error as AccountApiError).data).forEach(({ field }) => {
         if (field === "currentPassword") {
           firstInvalid ??= "currentPassword";
           setError("currentPassword", { message: copy.validation.currentPassword });
@@ -79,10 +79,7 @@ export function AccountPasswordForm({ dictionary }: { dictionary: Dictionary }) 
       });
       if (firstInvalid) setFocus(firstInvalid);
       setFailed(true);
-      return;
     }
-    reset();
-    alerts.addAlert(copy.security.saved);
   });
 
   return (

@@ -1,6 +1,6 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
-import type { JwtPayload } from "@/lib/console-auth";
+import type { ConsoleKind, JwtPayload } from "@/lib/console-auth-types";
 
 export type AdminAccess = {
   viewClients: boolean;
@@ -17,7 +17,7 @@ export type AdminAccess = {
   manageKeys: boolean;
 };
 
-export type ConsoleKind = "admin" | "account";
+export type { ConsoleKind } from "@/lib/console-auth-types";
 
 export type ConsoleAuthState = {
   accessToken: string | null;
@@ -26,7 +26,6 @@ export type ConsoleAuthState = {
   isLoggingOut: boolean;
   authenticated: boolean;
   initialized: boolean;
-  sessionId: string | null;
   subject: string | null;
   tokenParsed: JwtPayload | null;
   idTokenParsed: JwtPayload | null;
@@ -46,7 +45,6 @@ const emptyConsole = (): ConsoleAuthState => ({
   isLoggingOut: false,
   authenticated: false,
   initialized: false,
-  sessionId: null,
   subject: null,
   tokenParsed: null,
   idTokenParsed: null,
@@ -64,7 +62,6 @@ type ApplyTokenPayload = {
   accessToken: string;
   idToken: string | null;
   expiresAt: number;
-  sessionId: string | null;
   subject: string | null;
   tokenParsed: JwtPayload | null;
   idTokenParsed: JwtPayload | null;
@@ -82,7 +79,6 @@ const authSlice = createSlice({
       target.expiresAt = action.payload.expiresAt;
       target.authenticated = true;
       target.initialized = true;
-      target.sessionId = action.payload.sessionId;
       target.subject = action.payload.subject;
       target.tokenParsed = action.payload.tokenParsed;
       target.idTokenParsed = action.payload.idTokenParsed;

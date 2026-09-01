@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { AdminAuthGuard } from "@/components/admin/AdminAuthGuard";
+import { AdminAuthProvider } from "@/components/admin/AdminAuthProvider";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
@@ -18,10 +19,12 @@ export default async function AdminLayout({
   const locale: Locale = lang;
 
   return (
-    <AdminAuthGuard locale={locale}>
-      <AdminShell locale={locale} dictionary={getDictionary(locale)}>
-        {children}
-      </AdminShell>
-    </AdminAuthGuard>
+    <AdminAuthProvider>
+      <AdminAuthGuard locale={locale} callbackContent={children}>
+        <AdminShell locale={locale} dictionary={getDictionary(locale)}>
+          {children}
+        </AdminShell>
+      </AdminAuthGuard>
+    </AdminAuthProvider>
   );
 }
