@@ -1,5 +1,6 @@
 package io.github.susimsek.springauthserversamples.service.admin;
 
+import io.github.susimsek.springauthserversamples.dto.admin.AdminDashboardDTO;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationConsentRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
@@ -19,13 +20,11 @@ public class AdminDashboardService {
     private final AuthorizationConsentRepository authorizationConsentRepository;
 
     @Transactional(readOnly = true)
-    public DashboardView dashboard() {
-        return new DashboardView(
+    public AdminDashboardDTO dashboard() {
+        return new AdminDashboardDTO(
                 clientRepository.count(),
                 userRepository.count(),
                 userSessionRepository.countByExpiryTimeAfter(Instant.now().toEpochMilli()),
                 authorizationConsentRepository.count());
     }
-
-    public record DashboardView(long clients, long users, long sessions, long consents) {}
 }

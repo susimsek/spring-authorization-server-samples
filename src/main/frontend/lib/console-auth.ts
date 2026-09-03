@@ -312,7 +312,7 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
       const postLogoutRedirectUri = `${window.location.origin}${config.postLogoutRedirectPath(locale)}`;
       if (!idTokenHint) {
         await axios.post("/logout").catch(() => undefined);
-        window.location.replace(`${window.location.origin}/${locale}/login?logout`);
+        window.location.replace(`${window.location.origin}/login?logout`);
         return;
       }
 

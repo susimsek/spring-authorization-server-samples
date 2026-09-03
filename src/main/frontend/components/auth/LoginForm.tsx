@@ -2,7 +2,8 @@
 
 import { faArrowRight, faUser } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams } from "@/routing/navigation";
+import Link from "@/routing/Link";
 import { Suspense, type FormEvent } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -10,11 +11,13 @@ import { z } from "zod";
 import { Alert, Button, Card, Form, InputGroup, Stack } from "react-bootstrap";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
+import type { Locale } from "@/i18n/config";
 
 import { PasswordField } from "./PasswordField";
 
 type LoginFormProps = {
   dictionary: Dictionary;
+  locale?: Locale;
 };
 
 export function LoginForm({ dictionary }: LoginFormProps) {
@@ -83,6 +86,10 @@ export function LoginForm({ dictionary }: LoginFormProps) {
           {errors.password && (
             <div className="invalid-feedback d-block">{errors.password.message}</div>
           )}
+
+          <div className="text-end mb-3">
+            <Link href={`/forgot-password`}>{dictionary.login.forgotPassword}</Link>
+          </div>
 
           <Button type="submit" size="lg" className="w-100">
             <span className="me-2">{dictionary.login.submit}</span>

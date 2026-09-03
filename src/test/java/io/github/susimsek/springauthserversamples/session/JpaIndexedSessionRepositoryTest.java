@@ -7,6 +7,8 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 
+import io.github.susimsek.springauthserversamples.config.security.SecurityJsonMapper;
+import io.github.susimsek.springauthserversamples.config.session.SessionConfig;
 import io.github.susimsek.springauthserversamples.domain.UserSessionEntity;
 import io.github.susimsek.springauthserversamples.repository.UserSessionRepository;
 import java.time.Duration;
@@ -47,7 +49,13 @@ class JpaIndexedSessionRepositoryTest {
     void setUp() {
         repository =
                 new JpaIndexedSessionRepository(
-                        userSessionRepository, new NoOpTransactionManager());
+                        userSessionRepository,
+                        new NoOpTransactionManager(),
+                        new JpaSessionMapper(
+                                new SessionConfig()
+                                        .springSessionConversionService(
+                                                new SecurityJsonMapper(
+                                                        getClass().getClassLoader()))));
 
         lenient()
                 .when(userSessionRepository.findBySessionId(anyString()))

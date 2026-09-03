@@ -17,12 +17,13 @@ Cypress.Commands.add("loginAdmin", (locale: "en" | "tr" = "en") => {
       const password = String(adminPassword);
 
       cy.session([username, locale], () => {
-        cy.visit(`/${locale}/admin/`);
+        cy.setCookie("locale", locale);
+        cy.visit(`/admin/`);
         cy.get('input[name="username"]', { timeout: 15_000 }).should("be.visible").type(username);
         cy.get('input[name="password"]').type(password, { log: false });
         cy.get('button[type="submit"]').click();
         cy.get(".admin-sidebar", { timeout: 20_000 }).should("be.visible");
-        cy.url().should("include", `/${locale}/admin`);
+        cy.url().should("include", `/admin`);
       });
     },
   );
@@ -30,7 +31,7 @@ Cypress.Commands.add("loginAdmin", (locale: "en" | "tr" = "en") => {
 
 Cypress.Commands.add("visitAdmin", (path = "", locale: "en" | "tr" = "en") => {
   cy.loginAdmin(locale);
-  cy.visit(`/${locale}/admin${path}`);
+  cy.visit(`/admin${path}`);
   cy.get(".admin-sidebar", { timeout: 20_000 }).should("be.visible");
 });
 
@@ -48,7 +49,8 @@ declare global {
 Cypress.Commands.add("loginAccount", (locale: "en" | "tr" = "en") => {
   cy.env(["adminUsername", "adminPassword"], { log: false }).then(
     ({ adminUsername, adminPassword }) => {
-      cy.visit(`/${locale}/account/`);
+      cy.setCookie("locale", locale);
+      cy.visit(`/account/`);
       cy.get('input[name="username"]', { timeout: 15_000 }).then(($input) => {
         if ($input.length) {
           cy.wrap($input).type(String(adminUsername));
@@ -63,6 +65,6 @@ Cypress.Commands.add("loginAccount", (locale: "en" | "tr" = "en") => {
 
 Cypress.Commands.add("visitAccount", (path = "", locale: "en" | "tr" = "en") => {
   cy.loginAccount(locale);
-  cy.visit(`/${locale}/account${path}`);
+  cy.visit(`/account${path}`);
   cy.get(".account-sidebar", { timeout: 20_000 }).should("be.visible");
 });

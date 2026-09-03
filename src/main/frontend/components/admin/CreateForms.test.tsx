@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-import dictionary from "@/i18n/dictionaries/en.json";
+import dictionary from "@/locales/en/common.json";
 import { adminRequest } from "@/lib/admin-api";
 
 import { ClientScopeCreateForm } from "./ClientScopeCreateForm";
@@ -17,7 +17,7 @@ jest.mock("./AdminAuthProvider", () => ({
 jest.mock("@/components/auth/ConsoleAlerts", () => ({
   useConsoleAlerts: () => ({ addError: jest.fn() }),
 }));
-jest.mock("next/navigation", () => ({
+jest.mock("@/routing/navigation", () => ({
   useParams: () => ({ lang: "en" }),
   useRouter: () => ({ push: mockPush }),
 }));
@@ -49,7 +49,7 @@ describe("dedicated administration creation forms", () => {
         data: { name: "finance-operators", parentId: null },
       }),
     );
-    expect(mockPush).toHaveBeenCalledWith("/en/admin/groups/7");
+    expect(mockPush).toHaveBeenCalledWith("/admin/groups/7");
   });
 
   it("validates and creates a role from its dedicated page", async () => {
@@ -69,7 +69,7 @@ describe("dedicated administration creation forms", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.roles.create }));
 
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/en/admin/roles/ROLE_AUDITOR"));
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/admin/roles/ROLE_AUDITOR"));
   });
 
   it("creates a client scope and returns to the catalogue", async () => {
@@ -88,6 +88,6 @@ describe("dedicated administration creation forms", () => {
         data: { name: "invoice.read", displayName: "", description: "" },
       }),
     );
-    expect(mockPush).toHaveBeenCalledWith("/en/admin/client-scopes");
+    expect(mockPush).toHaveBeenCalledWith("/admin/client-scopes");
   });
 });

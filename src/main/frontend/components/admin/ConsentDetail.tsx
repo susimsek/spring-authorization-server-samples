@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Badge, Button, Card } from "react-bootstrap";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import Link from "@/routing/Link";
+import { useRouter } from "@/routing/navigation";
 
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import type { Locale } from "@/i18n/config";
@@ -37,12 +37,10 @@ export function ConsentDetail({
   dictionary: Dictionary;
   routeKey: string;
 }) {
-  const pathname = usePathname();
   const router = useRouter();
   const { access, accessToken } = useAdminAuth();
   const alerts = useConsoleAlerts();
-  const actualKey =
-    routeKey === "_" ? (pathname.split("/").filter(Boolean).at(-1) ?? "") : routeKey;
+  const actualKey = routeKey;
   const identity = decodeConsentRouteKey(actualKey);
   const clientId = identity?.clientId ?? null;
   const username = identity?.username ?? null;
@@ -88,7 +86,7 @@ export function ConsentDetail({
       return;
     }
     alerts.addAlert(dictionary.admin.resources.consentRevoked);
-    router.replace(`/${locale}/admin/consents`);
+    router.replace(`/admin/consents`);
   };
 
   if (loading && !consent) return <DetailLoadingState />;
@@ -102,7 +100,7 @@ export function ConsentDetail({
     <div className="d-grid gap-4">
       <AdminBreadcrumb
         items={[
-          { label: dictionary.admin.nav.consents, href: `/${locale}/admin/consents` },
+          { label: dictionary.admin.nav.consents, href: `/admin/consents` },
           { label: `${consent.principalName} · ${consent.clientName}` },
         ]}
       />
@@ -125,18 +123,14 @@ export function ConsentDetail({
             <dt className="col-md-3">{dictionary.admin.resources.user}</dt>
             <dd className="col-md-9">
               {consent.userId ? (
-                <Link href={`/${locale}/admin/users/${consent.userId}/details`}>
-                  {consent.principalName}
-                </Link>
+                <Link href={`/admin/users/${consent.userId}/details`}>{consent.principalName}</Link>
               ) : (
                 consent.principalName
               )}
             </dd>
             <dt className="col-md-3">{dictionary.admin.resources.client}</dt>
             <dd className="col-md-9">
-              <Link
-                href={`/${locale}/admin/clients/${encodeURIComponent(consent.clientId)}/settings`}
-              >
+              <Link href={`/admin/clients/${encodeURIComponent(consent.clientId)}/settings`}>
                 {consent.clientName}
               </Link>
               <div className="small text-body-secondary font-monospace text-break">

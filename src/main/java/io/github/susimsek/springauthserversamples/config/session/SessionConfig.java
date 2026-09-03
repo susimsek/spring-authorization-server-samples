@@ -33,7 +33,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 public class SessionConfig {
 
     @Bean("springSessionConversionService")
-    ConversionService springSessionConversionService(SecurityJsonMapper securityJsonMapper) {
+    public ConversionService springSessionConversionService(SecurityJsonMapper securityJsonMapper) {
         GenericConversionService conversionService = new GenericConversionService();
         conversionService.addConverter(
                 Object.class,

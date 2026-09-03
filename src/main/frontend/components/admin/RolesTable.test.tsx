@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-import dictionary from "@/i18n/dictionaries/en.json";
+import dictionary from "@/locales/en/common.json";
 import { adminRequest } from "@/lib/admin-api";
 
 import { RolesTable } from "./RolesTable";
@@ -65,10 +65,9 @@ describe("RolesTable", () => {
         url: "/api/admin/roles?q=&page=0&size=10&sort=name%2Casc",
       }),
     );
-    expect(screen.getByRole("link", { name: dictionary.admin.roles.create })).toHaveAttribute(
-      "href",
-      "/en/admin/roles/new",
-    );
+    expect(
+      await screen.findByRole("link", { name: dictionary.admin.roles.create }),
+    ).toHaveAttribute("href", "/admin/roles/new");
   });
 
   it("deletes a role after confirmation", async () => {

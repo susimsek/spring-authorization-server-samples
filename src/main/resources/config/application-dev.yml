@@ -1,4 +1,10 @@
 spring:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: false
   devtools:
     restart:
       enabled: true
@@ -15,8 +21,12 @@ spring:
       hibernate.format_sql: true
   liquibase:
     contexts: dev
+  thymeleaf:
+    cache: false
 
 app:
+  mail:
+    base-url: http://127.0.0.1:9090
   cache:
     caffeine:
       ttl: PT1H

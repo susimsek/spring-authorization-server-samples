@@ -3,9 +3,13 @@ package io.github.susimsek.springauthserversamples.service.admin;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationEntity;
 import io.github.susimsek.springauthserversamples.domain.RegisteredClientEntity;
 import io.github.susimsek.springauthserversamples.domain.UserSessionEntity;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminAuthorizationDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminSessionDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminSessionDetailDTO;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.repository.UserSessionRepository;
+import io.github.susimsek.springauthserversamples.service.SessionInvalidationService;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.time.Instant;
 import java.util.List;
@@ -25,16 +29,10 @@ public class AdminSessionService {
     private final AuthorizationRepository authorizationRepository;
     private final ClientRepository clientRepository;
     private final AdminAuditEventService adminAuditEventService;
+    private final SessionInvalidationService sessionInvalidationService;
 
     @Transactional(readOnly = true)
-    public Page<SessionView> sessions(String query, Pageable pageable) {
-        return mapSessions(
-                userSessionRepository.findActiveSessions(
-                        Instant.now().toEpochMilli(), AdminSearch.normalize(query), pageable));
-    }
-
-    @Transactional(readOnly = true)
-    public Page<SessionView> sessions(
+    public Page<AdminSessionDTO> sessions(
             String query, String clientId, String status, Pageable pageable) {
         long now = Instant.now().toEpochMilli();
         String normalizedQuery = AdminSearch.normalize(query);
@@ -59,7 +57,7 @@ public class AdminSessionService {
     }
 
     @Transactional(readOnly = true)
-    public SessionDetailView session(String sessionId, String currentUsername) {
+    public AdminSessionDetailDTO session(String sessionId, String currentUsername) {
         UserSessionEntity session =
                 userSessionRepository
                         .findBySessionId(sessionId)
@@ -78,12 +76,12 @@ public class AdminSessionService {
                         .collect(
                                 java.util.stream.Collectors.toMap(
                                         client -> client.getId(), client -> client));
-        List<AuthorizationView> authorizationViews =
+        List<AdminAuthorizationDTO> authorizationViews =
                 authorizations.stream()
                         .map(
                                 authorization -> {
                                     var client = clients.get(authorization.getRegisteredClientId());
-                                    return new AuthorizationView(
+                                    return new AdminAuthorizationDTO(
                                             authorization.getId(),
                                             client == null
                                                     ? authorization.getRegisteredClientId()
@@ -99,11 +97,12 @@ public class AdminSessionService {
                                 })
                         .toList();
         Map<String, Long> counts = Map.of(sessionId, (long) authorizationViews.size());
-        return new SessionDetailView(sessionView(session, counts), authorizationViews);
+        return new AdminSessionDetailDTO(sessionView(session, counts), authorizationViews);
     }
 
     @Transactional(readOnly = true)
-    public Page<SessionView> userSessions(Long userId, String currentUsername, Pageable pageable) {
+    public Page<AdminSessionDTO> userSessions(
+            Long userId, String currentUsername, Pageable pageable) {
         String username =
                 adminUserService.requireManageableUser(userId, currentUsername).getUsername();
         return mapSessions(
@@ -112,7 +111,7 @@ public class AdminSessionService {
     }
 
     @Transactional(readOnly = true)
-    public Page<SessionView> clientSessions(String clientId, Pageable pageable) {
+    public Page<AdminSessionDTO> clientSessions(String clientId, Pageable pageable) {
         if (!clientRepository.existsById(clientId)) {
             throw ApiException.notFound("Client not found");
         }
@@ -126,7 +125,7 @@ public class AdminSessionService {
                         Instant.now().toEpochMilli(), sessionIds, pageable));
     }
 
-    private Page<SessionView> mapSessions(Page<UserSessionEntity> sessions) {
+    private Page<AdminSessionDTO> mapSessions(Page<UserSessionEntity> sessions) {
         List<String> sessionIds =
                 sessions.getContent().stream().map(UserSessionEntity::getSessionId).toList();
         Map<String, Long> authorizationCounts =
@@ -149,16 +148,14 @@ public class AdminSessionService {
                         .findBySessionId(sessionId)
                         .orElseThrow(() -> ApiException.notFound("Session not found"));
         adminUserService.assertCanManageUsername(session.getPrincipalName(), currentUsername);
-        userSessionRepository.deleteBySessionId(sessionId);
-        authorizationRepository.deleteBySessionId(sessionId);
+        sessionInvalidationService.invalidateSession(sessionId);
         adminAuditEventService.record("session.deleted", "session", sessionId);
     }
 
     @Transactional
     public void deleteUserSessions(String username, String currentUsername) {
         adminUserService.assertCanManageUsername(username, currentUsername);
-        userSessionRepository.deleteByPrincipalName(username);
-        authorizationRepository.deleteByPrincipalName(username);
+        sessionInvalidationService.invalidatePrincipal(username);
         adminAuditEventService.record("user.sessions.deleted", "user", username);
     }
 
@@ -183,9 +180,9 @@ public class AdminSessionService {
                 .toList();
     }
 
-    private static SessionView sessionView(
+    private static AdminSessionDTO sessionView(
             UserSessionEntity session, Map<String, Long> authorizationCounts) {
-        return new SessionView(
+        return new AdminSessionDTO(
                 session.getSessionId(),
                 session.getPrincipalName(),
                 Instant.ofEpochMilli(session.getCreationTime()),
@@ -194,35 +191,4 @@ public class AdminSessionService {
                 authorizationCounts.getOrDefault(session.getSessionId(), 0L),
                 session.getExpiryTime() > Instant.now().toEpochMilli());
     }
-
-    public record SessionView(
-            String id,
-            String username,
-            Instant createdAt,
-            Instant lastAccessedAt,
-            Instant expiresAt,
-            long authorizationCount,
-            boolean active) {
-        public SessionView(
-                String id,
-                String username,
-                Instant createdAt,
-                Instant lastAccessedAt,
-                Instant expiresAt,
-                long authorizationCount) {
-            this(id, username, createdAt, lastAccessedAt, expiresAt, authorizationCount, true);
-        }
-    }
-
-    public record AuthorizationView(
-            String id,
-            String clientId,
-            String clientName,
-            String grantType,
-            List<String> scopes,
-            Instant accessTokenIssuedAt,
-            Instant accessTokenExpiresAt,
-            Instant refreshTokenExpiresAt) {}
-
-    public record SessionDetailView(SessionView session, List<AuthorizationView> authorizations) {}
 }

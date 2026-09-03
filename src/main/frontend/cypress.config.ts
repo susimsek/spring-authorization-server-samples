@@ -18,6 +18,8 @@ export default defineConfig({
   env: {
     adminUsername: process.env.E2E_ADMIN_USERNAME ?? "admin",
     adminPassword: process.env.E2E_ADMIN_PASSWORD ?? "admin",
+    userUsername: process.env.E2E_USER_USERNAME ?? "user",
+    userPassword: process.env.E2E_USER_PASSWORD ?? "user",
   },
   retries: { runMode: 1, openMode: 0 },
   screenshotOnRunFailure: true,

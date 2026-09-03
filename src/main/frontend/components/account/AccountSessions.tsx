@@ -11,11 +11,12 @@ import { useState } from "react";
 import { Badge, Button, Card } from "react-bootstrap";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
+import { useLocale } from "@/i18n/client";
+import { useDateTimeFormatter } from "@/i18n/useDateTimeFormatter";
 import {
   type AccountSession,
   useGetAccountSessionsQuery,
   useRemoveAccountSessionMutation,
-  useRemoveAllAccountSessionsMutation,
   useRemoveOtherAccountSessionsMutation,
 } from "@/store/account-api-slice";
 import { DetailLoadingState, EmptyState, ErrorState } from "@/components/admin/AsyncState";
@@ -29,6 +30,8 @@ type PendingAction =
   { type: "single"; session: AccountSession } | { type: "others" } | { type: "all" } | null;
 
 export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
+  const locale = useLocale();
+  const formatDateTime = useDateTimeFormatter();
   const { accessToken, logout } = useAccountAuth();
   const alerts = useConsoleAlerts();
   const copy = dictionary.account;
@@ -40,7 +43,6 @@ export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
   );
   const [removeSession] = useRemoveAccountSessionMutation();
   const [removeOtherSessions] = useRemoveOtherAccountSessionsMutation();
-  const [removeAllSessions] = useRemoveAllAccountSessionsMutation();
   const items = data?.content ?? [];
   const totalPages = data?.totalPages ?? 0;
   const totalElements = data?.totalElements ?? 0;
@@ -70,8 +72,10 @@ export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
   const removeAll = async () => {
     if (!accessToken) return;
     try {
-      await removeAllSessions({ accessToken }).unwrap();
-      await logout(document.documentElement.lang === "tr" ? "tr" : "en");
+      // Keep the current authorization alive until OIDC logout consumes its ID-token hint.
+      // Deleting the current authorization first makes the end-session request invalid.
+      await removeOtherSessions({ accessToken }).unwrap();
+      await logout(locale);
     } catch {
       alerts.addError(copy.common.operationError);
     }
@@ -165,14 +169,13 @@ export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
                     <div className="account-session-meta">
                       <span>
                         <FontAwesomeIcon icon={faClock} />
-                        {copy.sessions.created}: {new Date(session.createdAt).toLocaleString()}
+                        {copy.sessions.created}: {formatDateTime(session.createdAt)}
                       </span>
                       <span>
-                        {copy.sessions.lastAccess}:{" "}
-                        {new Date(session.lastAccessedAt).toLocaleString()}
+                        {copy.sessions.lastAccess}: {formatDateTime(session.lastAccessedAt)}
                       </span>
                       <span>
-                        {copy.sessions.expires}: {new Date(session.expiresAt).toLocaleString()}
+                        {copy.sessions.expires}: {formatDateTime(session.expiresAt)}
                       </span>
                     </div>
                     {session.clients.length > 0 && (

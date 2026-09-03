@@ -20,6 +20,10 @@ spring:
     contexts: prod
 
 app:
+  mail:
+    enabled: ${APP_MAIL_ENABLED:false}
+    from: ${APP_MAIL_FROM:Spring Authorization Server <no-reply@localhost>}
+    base-url: ${APP_MAIL_BASE_URL:${APP_AUTHORIZATION_SERVER_ISSUER:https://spring-authorization-server-samples.local}}
   cache:
     caffeine:
       ttl: PT1H

@@ -1,7 +1,7 @@
 package io.github.susimsek.springauthserversamples.web.admin;
 
+import io.github.susimsek.springauthserversamples.dto.admin.AdminWhoAmIDTO;
 import io.github.susimsek.springauthserversamples.web.ApiController;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -16,13 +16,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminWhoAmIController {
 
     @GetMapping("/whoami")
-    AdminWhoAmIView whoAmI(Authentication authentication) {
+    AdminWhoAmIDTO whoAmI(Authentication authentication) {
         Set<String> authorities =
                 authentication.getAuthorities().stream()
                         .map(authority -> authority.getAuthority())
                         .collect(Collectors.toUnmodifiableSet());
 
-        return new AdminWhoAmIView(
+        return new AdminWhoAmIDTO(
                 authentication.getName(),
                 authorities.stream().sorted().toList(),
                 Map.ofEntries(
@@ -78,7 +78,4 @@ public class AdminWhoAmIController {
         }
         return false;
     }
-
-    record AdminWhoAmIView(
-            String username, List<String> authorities, Map<String, Boolean> access) {}
 }

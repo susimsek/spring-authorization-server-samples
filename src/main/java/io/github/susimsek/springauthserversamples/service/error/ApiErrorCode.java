@@ -1,7 +1,5 @@
 package io.github.susimsek.springauthserversamples.service.error;
 
-import java.util.Locale;
-
 /** Stable business error codes shared by all application REST APIs. */
 public enum ApiErrorCode {
     INVALID_REQUEST("invalid_request", "The request contains an invalid value."),
@@ -48,6 +46,9 @@ public enum ApiErrorCode {
             "client_secret_required",
             "A client secret must be generated before enabling secret authentication."),
     GROUP_DUPLICATE_NAME("group_duplicate_name", "Group name is already registered."),
+    GROUP_HAS_CHILDREN(
+            "group_has_children", "Move or delete child groups before deleting this group."),
+    GROUP_INVALID_PARENT("group_invalid_parent", "The group parent is invalid."),
     GROUP_INVALID_NAME("group_invalid_name", "Group name is required."),
     GROUP_INVALID_ROLES("group_invalid_roles", "One or more roles are invalid."),
     KEY_ROTATION_FAILED("key_rotation_failed", "The signing key could not be rotated."),
@@ -59,6 +60,14 @@ public enum ApiErrorCode {
     ROLE_PROTECTED("role_protected", "This default role cannot be removed."),
     SEARCH_TOO_LONG("search_too_long", "Search query must not exceed 100 characters."),
     USER_DUPLICATE_USERNAME("user_duplicate_username", "Username is already registered."),
+    USER_DUPLICATE_EMAIL("user_duplicate_email", "Email is already registered."),
+    ACTION_EMAIL_REQUIRED("action_email_required", "The user must have an email address."),
+    ACTION_EMAIL_UNAVAILABLE("action_email_unavailable", "Email delivery is not configured."),
+    ACTION_EMAIL_COOLDOWN("action_email_cooldown", "Please wait before sending another email."),
+    ACTION_TOKEN_INVALID("action_token_invalid", "The action token is invalid."),
+    ACTION_TOKEN_EXPIRED("action_token_expired", "The action token has expired."),
+    ACTION_TOKEN_USED("action_token_used", "The action token has already been used."),
+    ACTION_UNSUPPORTED("action_unsupported", "The requested user action is not supported."),
     USER_INVALID_PASSWORD("user_invalid_password", "Password must be at least 8 characters."),
     USER_INVALID_ROLES("user_invalid_roles", "One or more roles are invalid."),
     USER_INVALID_USERNAME("user_invalid_username", "Username is required."),
@@ -86,17 +95,5 @@ public enum ApiErrorCode {
 
     public String type() {
         return "urn:problem:" + value;
-    }
-
-    static ApiErrorCode fromLegacyCode(String code, ApiErrorCode fallback) {
-        if (code == null || code.isBlank()) {
-            return fallback;
-        }
-        String normalized = code.replaceFirst("^(admin|account)_", "").toUpperCase(Locale.ROOT);
-        try {
-            return valueOf(normalized);
-        } catch (IllegalArgumentException exception) {
-            return fallback;
-        }
     }
 }

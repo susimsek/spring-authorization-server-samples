@@ -26,13 +26,13 @@ These instructions apply to `src/main/frontend/**` and supplement the repository
 
 ## Project Structure
 
-- `app`: localized Next.js App Router routes. Administration and Account Console routes live under `app/[lang]/admin` and `app/[lang]/account`.
+- `app`: static SPA entry and explicit OAuth callback entries. `routing/AppRoutes.tsx` owns browser-only Administration, Account and public routes; no locale prefixes or build-time dynamic parameters.
 - `components/admin`: Administration Console UI and shared administrative list/detail/form components.
 - `components/account`: Account Console UI and account-management components.
 - `components/auth`: login, consent, locale, theme, and shared authentication UI.
 - `lib/console-auth.ts`: shared browser OIDC Authorization Code + PKCE, refresh-token, and logout adapter.
 - `lib/admin-api.ts` and `lib/account-api.ts`: authenticated Administration and Account Console API clients.
-- `i18n/dictionaries`: English and Turkish user-facing messages.
+- `locales/en` and `locales/tr`: English and Turkish user-facing messages.
 - `cypress`: browser E2E specifications and support commands.
 
 ## Code Style and Quality Gates
@@ -40,7 +40,7 @@ These instructions apply to `src/main/frontend/**` and supplement the repository
 - Use TypeScript for application code. Do not weaken type safety with unnecessary `any`, unchecked casts, or ignored type errors.
 - Follow `.editorconfig`: LF line endings, final newline, and no trailing whitespace. Do not edit generated build output.
 - Use the repository's configured formatter and ESLint rules. Run `pnpm format:check`, `pnpm typecheck`, and `pnpm lint` after frontend changes.
-- Keep components focused. Put API requests in `lib`, reusable UI primitives in `components`, and route composition in `app`.
+- Keep components focused. Put API requests in `lib`, reusable UI primitives in `components`, and route composition in `routing`.
 - Keep English and Turkish dictionaries aligned when adding or changing user-visible text. Do not hard-code user-facing strings in components when a dictionary key is appropriate.
 
 ## Testing Guidelines
@@ -48,7 +48,7 @@ These instructions apply to `src/main/frontend/**` and supplement the repository
 - Keep Jest tests close to the component or library behavior they cover and use the existing test naming conventions.
 - Test observable behavior: loading, successful state, empty state, validation, failed requests, authorization failures, and mutation feedback where relevant.
 - New or materially changed console flows require component coverage and Cypress E2E coverage for the affected login, refresh/reload, direct deep-link, mutation, error, and logout paths.
-- Keep Cypress route assertions aligned with the current localized route contract.
+- Keep Cypress route assertions aligned with the unprefixed route contract.
 - Run `pnpm build` after changes to routes, static-export configuration, or production rendering behavior.
 
 ## Authentication
@@ -57,7 +57,7 @@ These instructions apply to `src/main/frontend/**` and supplement the repository
 - Keep console authentication in `lib/console-auth.ts` aligned with the project's Keycloak-style model: Authorization Code + PKCE, namespaced console token records, single-flight refresh near expiry, one retry after a 401, and OIDC logout with an ID-token hint and registered post-logout URI.
 - Persist each console's access, ID, and refresh token set only in its namespaced `localStorage` record. Browser SSO remains supplied by the server-side Spring Session; never copy a token set from one console to the other.
 - Use `adminRequest` for Administration Console APIs and `accountRequest` for Account Console APIs. Do not add parallel Axios clients, custom bearer-token handling, or a second console authentication flow.
-- Console routes are localized under `/en/admin/`, `/tr/admin/`, `/en/account/`, and `/tr/account/`. Callback routes must remain aligned with registered-client redirect URIs.
+- Console routes use `/admin/` and `/account/`. Callback routes must remain aligned with registered-client redirect URIs. `next-i18next` manages client locale with `localeInPath: false`: `locale` cookie, browser languages, then English.
 
 ## Development Guidelines
 
@@ -78,7 +78,7 @@ These instructions apply to `src/main/frontend/**` and supplement the repository
 ### Routes and Static Export
 
 - Every new static-export route must update route validation and include SPA fallback test coverage.
-- Add a `generateStaticParams` placeholder when a dynamic route requires it for static export.
+- Do not generate placeholder routes or use `generateStaticParams`. React Router resolves dynamic identifiers at runtime; Spring forwards frontend GET/HEAD HTML navigation to `/index.html`.
 - Keep the login, Administration Console, and Account Console UI in `src/main/frontend`. Do not move application authentication behavior into Next.js.
 
 ## Common Mistakes to Avoid
@@ -88,5 +88,5 @@ These instructions apply to `src/main/frontend/**` and supplement the repository
 - Adding a second HTTP client or manually attaching bearer tokens outside `adminRequest`, `accountRequest`, and the shared adapter.
 - Using local component state instead of React Hook Form + Zod for editable form models.
 - Fetching complete pageable resources to implement client-side pagination.
-- Adding a new localized route without static-export and fallback coverage.
+- Adding a new frontend route without static-export and fallback coverage.
 - Hiding an action in the UI and treating that as an authorization control.

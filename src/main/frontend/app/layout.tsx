@@ -1,9 +1,13 @@
 import "bootstrap/dist/css/bootstrap.min.css";
 import "@fortawesome/fontawesome-svg-core/styles.css";
 import "./styles.css";
+import type { Metadata } from "next";
 
 import { StoreProvider } from "@/store/StoreProvider";
 import { ThemeManager } from "@/components/auth/ThemeManager";
+
+// Keep callback query parameters out of the browser's fallback document title.
+export const metadata: Metadata = { title: "Authorization Server" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (

@@ -1,6 +1,7 @@
 package io.github.susimsek.springauthserversamples.repository;
 
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
+import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -9,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -20,6 +22,17 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Cacheable(cacheNames = USER_BY_USERNAME_CACHE)
     Optional<UserEntity> findByUsername(String username);
 
+    Optional<UserEntity> findByEmailIgnoreCase(String email);
+
+    boolean existsByEmailIgnoreCaseAndIdNot(String email, Long id);
+
+    @Query("select u.id from UserEntity u where u.username = :username")
+    Optional<Long> findIdByUsername(String username);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from UserEntity u where u.id = :id")
+    Optional<UserEntity> findForActionById(Long id);
+
     @EntityGraph(value = "User.withAuthorities")
     Page<UserEntity> findByUsernameContainingIgnoreCase(String username, Pageable pageable);
 
@@ -29,9 +42,6 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     @EntityGraph(value = "User.withAuthorities")
     java.util.List<UserEntity> findAllByUsernameIn(java.util.Collection<String> usernames);
-
-    @EntityGraph(value = "User.withAuthorities")
-    Page<UserEntity> findByAuthoritiesName(String authorityName, Pageable pageable);
 
     @EntityGraph(value = "User.withAuthorities")
     Page<UserEntity> findByAuthoritiesNameAndUsernameContainingIgnoreCase(

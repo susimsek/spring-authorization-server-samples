@@ -7,15 +7,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.susimsek.springauthserversamples.domain.RegisteredClientEntity;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientCreatedDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientRequestDTO;
 import io.github.susimsek.springauthserversamples.mapper.AuthorizationServerMapperSupport;
 import io.github.susimsek.springauthserversamples.mapper.RegisteredClientMapper;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationConsentRepository;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
-import io.github.susimsek.springauthserversamples.web.admin.AdminClientCreatedView;
-import io.github.susimsek.springauthserversamples.web.admin.AdminClientRequest;
-import io.github.susimsek.springauthserversamples.web.admin.AdminClientView;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -49,7 +49,7 @@ class AdminClientServiceTest {
         when(clientRepository.existsByClientId("service-client")).thenReturn(false);
         when(passwordEncoder.encode(any())).thenReturn("encoded-secret");
 
-        AdminClientCreatedView created = service().create(confidentialRequest());
+        AdminClientCreatedDTO created = service().create(confidentialRequest());
 
         assertThat(created.client().clientId()).isEqualTo("service-client");
         assertThat(created.client().clientName()).isEqualTo("Service Client");
@@ -103,7 +103,7 @@ class AdminClientServiceTest {
                 .thenReturn(new PageImpl<>(List.of(entity)));
         when(registeredClientMapper.toObject(entity, mapperSupport)).thenReturn(client);
 
-        AdminClientView result =
+        AdminClientDTO result =
                 service().findAll("  QUERY  ", Pageable.unpaged()).getContent().getFirst();
 
         assertThat(result.clientId()).isEqualTo("query-client");
@@ -123,7 +123,7 @@ class AdminClientServiceTest {
                                 service()
                                         .update(
                                                 "client-id",
-                                                new AdminClientRequest(
+                                                new AdminClientRequestDTO(
                                                         "service-client",
                                                         "Service Client",
                                                         Set.of("none", "client_secret_basic"),
@@ -213,7 +213,7 @@ class AdminClientServiceTest {
                         () ->
                                 service()
                                         .create(
-                                                new AdminClientRequest(
+                                                new AdminClientRequestDTO(
                                                         "service-client",
                                                         "Service Client",
                                                         Set.of("client_secret_basic"),
@@ -236,7 +236,7 @@ class AdminClientServiceTest {
                         () ->
                                 service()
                                         .create(
-                                                new AdminClientRequest(
+                                                new AdminClientRequestDTO(
                                                         "service-client",
                                                         "Service Client",
                                                         Set.of("client_secret_basic"),
@@ -297,8 +297,8 @@ class AdminClientServiceTest {
                 .build();
     }
 
-    private static AdminClientRequest confidentialRequest() {
-        return new AdminClientRequest(
+    private static AdminClientRequestDTO confidentialRequest() {
+        return new AdminClientRequestDTO(
                 "service-client",
                 "Service Client",
                 Set.of("client_secret_basic"),
@@ -313,8 +313,8 @@ class AdminClientServiceTest {
                 null);
     }
 
-    private static AdminClientRequest publicClientRequest(boolean requireProofKey) {
-        return new AdminClientRequest(
+    private static AdminClientRequestDTO publicClientRequest(boolean requireProofKey) {
+        return new AdminClientRequestDTO(
                 "public-client",
                 "Public client",
                 Set.of("none"),

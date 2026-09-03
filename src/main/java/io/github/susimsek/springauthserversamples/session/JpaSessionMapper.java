@@ -4,9 +4,6 @@ import io.github.susimsek.springauthserversamples.domain.UserSessionEntity;
 import java.time.Duration;
 import java.time.Instant;
 import org.springframework.core.convert.ConversionService;
-import org.springframework.core.convert.support.GenericConversionService;
-import org.springframework.core.serializer.support.DeserializingConverter;
-import org.springframework.core.serializer.support.SerializingConverter;
 import org.springframework.session.MapSession;
 import org.springframework.session.Session;
 import org.springframework.util.Assert;
@@ -15,10 +12,6 @@ import org.springframework.util.Assert;
 public final class JpaSessionMapper {
 
     private final ConversionService conversionService;
-
-    JpaSessionMapper() {
-        this(defaultConversionService());
-    }
 
     public JpaSessionMapper(ConversionService conversionService) {
         Assert.notNull(conversionService, "conversionService cannot be null");
@@ -97,12 +90,5 @@ public final class JpaSessionMapper {
             return Long.MAX_VALUE;
         }
         return session.getLastAccessedTime().plus(session.getMaxInactiveInterval()).toEpochMilli();
-    }
-
-    private static ConversionService defaultConversionService() {
-        GenericConversionService conversionService = new GenericConversionService();
-        conversionService.addConverter(Object.class, byte[].class, new SerializingConverter());
-        conversionService.addConverter(byte[].class, Object.class, new DeserializingConverter());
-        return conversionService;
     }
 }

@@ -3,10 +3,8 @@ package io.github.susimsek.springauthserversamples.config.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-import io.github.susimsek.springauthserversamples.domain.AuthorizationEntity;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
 import java.time.Instant;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -20,16 +18,14 @@ class ActiveAuthorizationTokenValidatorTest {
 
     @Test
     void acceptsAnAccessTokenWithAnActiveAuthorization() {
-        when(authorizationRepository.findByAccessTokenValue("access-token"))
-                .thenReturn(Optional.of(new AuthorizationEntity()));
+        when(authorizationRepository.existsByAccessTokenValue("access-token")).thenReturn(true);
 
         assertThat(validator().validate(token()).hasErrors()).isFalse();
     }
 
     @Test
     void rejectsAnAccessTokenAfterItsAuthorizationIsRemoved() {
-        when(authorizationRepository.findByAccessTokenValue("access-token"))
-                .thenReturn(Optional.empty());
+        when(authorizationRepository.existsByAccessTokenValue("access-token")).thenReturn(false);
 
         assertThat(validator().validate(token()).hasErrors()).isTrue();
     }

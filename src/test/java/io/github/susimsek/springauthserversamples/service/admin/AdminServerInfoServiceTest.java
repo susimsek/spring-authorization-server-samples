@@ -22,7 +22,9 @@ class AdminServerInfoServiceTest {
                         new ApplicationProperties.Cache(
                                 new ApplicationProperties.Caffeine(Duration.ofHours(1), 50, 100)),
                         new ApplicationProperties.Session("0 * * * * *"),
-                        new ApplicationProperties.AuthorizationServer("https://issuer.example"));
+                        new ApplicationProperties.AuthorizationServer("https://issuer.example"),
+                        new ApplicationProperties.Mail(
+                                false, "no-reply@localhost", "https://issuer.example"));
         SessionProperties sessionProperties = new SessionProperties();
         sessionProperties.setTimeout(Duration.ofMinutes(30));
         OAuth2KeyRepository keyRepository = mock(OAuth2KeyRepository.class);

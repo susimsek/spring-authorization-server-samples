@@ -11,11 +11,13 @@ import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
 import io.github.susimsek.springauthserversamples.domain.GroupEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminUserDTO;
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
 import io.github.susimsek.springauthserversamples.repository.GroupRepository;
 import io.github.susimsek.springauthserversamples.repository.UserAvatarRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
+import io.github.susimsek.springauthserversamples.service.account.UserActionService;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.time.Instant;
 import java.util.List;
@@ -40,6 +42,7 @@ class AdminUserServiceTest {
     @Mock private UserAccessInvalidationService userAccessInvalidationService;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private AdminAuditEventService adminAuditEventService;
+    @Mock private UserActionService userActionService;
 
     @Test
     void userReturnsMappedViewWithAvatar() {
@@ -50,7 +53,7 @@ class AdminUserServiceTest {
         when(userAvatarRepository.findVersionByUserId(7L))
                 .thenReturn(Optional.of(avatar(7L, "avatar-7", 42L)));
 
-        AdminUserService.UserView view = service().user(7L, "administrator");
+        AdminUserDTO view = service().user(7L, "administrator");
 
         assertThat(view.id()).isEqualTo(7L);
         assertThat(view.username()).isEqualTo("alice");
@@ -112,7 +115,7 @@ class AdminUserServiceTest {
                             return saved;
                         });
 
-        AdminUserService.UserView created =
+        AdminUserDTO created =
                 service().createUser("alice", "password-123", true, Set.of(), "administrator");
 
         assertThat(created.username()).isEqualTo("alice");
@@ -287,7 +290,7 @@ class AdminUserServiceTest {
                 .thenReturn(List.of(adminRole));
         when(userAvatarRepository.findVersionByUserId(5L)).thenReturn(Optional.empty());
 
-        AdminUserService.UserView updated =
+        AdminUserDTO updated =
                 service()
                         .updateUser(
                                 5L,
@@ -450,7 +453,7 @@ class AdminUserServiceTest {
         when(userAvatarRepository.findVersionsByUserIdIn(List.of(7L)))
                 .thenReturn(List.of(avatar(7L, "avatar-1", 42L)));
 
-        AdminUserService.UserView view =
+        AdminUserDTO view =
                 service().users("alice", true, Pageable.unpaged()).getContent().getFirst();
 
         assertThat(view.avatarUrl()).isEqualTo("/avatars/avatar-1?v=42");
@@ -464,7 +467,7 @@ class AdminUserServiceTest {
                 .thenReturn(new PageImpl<>(List.of(user)));
         when(userAvatarRepository.findVersionsByUserIdIn(List.of(7L))).thenReturn(List.of());
 
-        AdminUserService.UserView view =
+        AdminUserDTO view =
                 service().users(" alice ", null, Pageable.unpaged()).getContent().getFirst();
 
         assertThat(view.avatarUrl()).isNull();
@@ -548,7 +551,8 @@ class AdminUserServiceTest {
                 authorityRepository,
                 userAccessInvalidationService,
                 passwordEncoder,
-                adminAuditEventService);
+                adminAuditEventService,
+                userActionService);
     }
 
     private static AuthorityEntity authority(Long id, String role) {

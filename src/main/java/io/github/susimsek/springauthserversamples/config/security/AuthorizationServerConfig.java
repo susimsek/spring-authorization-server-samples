@@ -3,16 +3,14 @@ package io.github.susimsek.springauthserversamples.config.security;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
+import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
 import io.github.susimsek.springauthserversamples.repository.UserAvatarRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.security.AuthorizationEndpointErrorResponseHandler;
 import io.github.susimsek.springauthserversamples.security.LocalizedOAuth2ErrorResponseHandler;
 import io.github.susimsek.springauthserversamples.security.OAuth2KeyJwkSource;
+import io.github.susimsek.springauthserversamples.security.OidcSessionIdentifier;
 import io.github.susimsek.springauthserversamples.service.OAuth2KeyService;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Base64;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +24,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.OAuth2Token;
@@ -46,8 +45,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Configuration(proxyBeanMethods = false)
 @RequiredArgsConstructor
@@ -72,6 +69,7 @@ public class AuthorizationServerConfig {
                 new OAuth2AuthorizationServerConfigurer();
 
         http.securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
+                .csrf(AbstractHttpConfigurer::disable)
                 .securityContext(
                         securityContext ->
                                 securityContext
@@ -99,9 +97,9 @@ public class AuthorizationServerConfig {
                                                 clientAuthentication ->
                                                         clientAuthentication
                                                                 .authenticationConverter(
-                                                                        new AdminConsoleRefreshClientAuthenticationConverter())
+                                                                        new ConsolePublicClientAuthenticationConverter())
                                                                 .authenticationProvider(
-                                                                        new AdminConsoleRefreshClientAuthenticationProvider(
+                                                                        new ConsolePublicClientAuthenticationProvider(
                                                                                 registeredClientRepository))
                                                                 .errorResponseHandler(
                                                                         localizedOAuth2ErrorResponseHandler))
@@ -180,14 +178,14 @@ public class AuthorizationServerConfig {
         jwtGenerator.setJwtCustomizer(jwtTokenCustomizer);
 
         return new DelegatingOAuth2TokenGenerator(
-                jwtGenerator,
-                new OAuth2AccessTokenGenerator(),
-                new AdminConsoleRefreshTokenGenerator());
+                jwtGenerator, new OAuth2AccessTokenGenerator(), new ConsoleRefreshTokenGenerator());
     }
 
     @Bean
     OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer(
-            UserRepository userRepository, UserAvatarRepository userAvatarRepository) {
+            UserRepository userRepository,
+            UserAvatarRepository userAvatarRepository,
+            AuthorizationRepository authorizationRepository) {
         return context -> {
             if (isUserProfileToken(context)) {
                 userRepository
@@ -208,8 +206,21 @@ public class AuthorizationServerConfig {
                                                                         .toEpochMilli()));
             }
 
+            if (isUserEmailToken(context)) {
+                userRepository
+                        .findByUsername(context.getPrincipal().getName())
+                        .ifPresent(
+                                user -> {
+                                    if (user.getEmail() != null) {
+                                        context.getClaims().claim("email", user.getEmail());
+                                        context.getClaims()
+                                                .claim("email_verified", user.isEmailVerified());
+                                    }
+                                });
+            }
+
             if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())
-                    && "admin-console".equals(context.getRegisteredClient().getClientId())) {
+                    && ConsoleClients.ADMIN.equals(context.getRegisteredClient().getClientId())) {
                 context.getClaims()
                         .claim(
                                 "roles",
@@ -220,9 +231,9 @@ public class AuthorizationServerConfig {
             }
 
             if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())
-                    && Set.of("admin-console", "account-console")
-                            .contains(context.getRegisteredClient().getClientId())) {
-                currentSessionId()
+                    && ConsoleClients.ALL.contains(context.getRegisteredClient().getClientId())) {
+                authorizationSessionId(context, authorizationRepository)
+                        .map(OidcSessionIdentifier::fromSessionId)
                         .ifPresent(sessionId -> context.getClaims().claim("sid", sessionId));
             }
         };
@@ -238,23 +249,21 @@ public class AuthorizationServerConfig {
                                 context.getAuthorizationGrantType()));
     }
 
-    private static java.util.Optional<String> currentSessionId() {
-        if (!(RequestContextHolder.getRequestAttributes()
-                instanceof ServletRequestAttributes attributes)) {
+    private static boolean isUserEmailToken(JwtEncodingContext context) {
+        return context.getAuthorizedScopes().contains("email")
+                && (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())
+                        || OidcParameterNames.ID_TOKEN.equals(context.getTokenType().getValue()))
+                && (AuthorizationGrantType.AUTHORIZATION_CODE.equals(
+                                context.getAuthorizationGrantType())
+                        || AuthorizationGrantType.REFRESH_TOKEN.equals(
+                                context.getAuthorizationGrantType()));
+    }
+
+    private static java.util.Optional<String> authorizationSessionId(
+            JwtEncodingContext context, AuthorizationRepository authorizationRepository) {
+        if (context.getAuthorization() == null) {
             return java.util.Optional.empty();
         }
-        var session = attributes.getRequest().getSession(false);
-        if (session == null) {
-            return java.util.Optional.empty();
-        }
-        try {
-            byte[] digest =
-                    MessageDigest.getInstance("SHA-256")
-                            .digest(session.getId().getBytes(StandardCharsets.US_ASCII));
-            return java.util.Optional.of(
-                    Base64.getUrlEncoder().withoutPadding().encodeToString(digest));
-        } catch (NoSuchAlgorithmException ex) {
-            throw new IllegalStateException("SHA-256 is required for OIDC session identifiers", ex);
-        }
+        return authorizationRepository.findSessionIdById(context.getAuthorization().getId());
     }
 }

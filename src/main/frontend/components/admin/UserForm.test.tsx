@@ -2,7 +2,7 @@
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-import dictionary from "@/i18n/dictionaries/en.json";
+import dictionary from "@/locales/en/common.json";
 import { adminRequest } from "@/lib/admin-api";
 
 import { UserForm } from "./UserForm";
@@ -19,7 +19,7 @@ jest.mock("@/lib/admin-api", () => ({ adminRequest: jest.fn() }));
 jest.mock("./AdminAuthProvider", () => ({
   useAdminAuth: () => ({ accessToken: "token" }),
 }));
-jest.mock("next/navigation", () => ({
+jest.mock("@/routing/navigation", () => ({
   useParams: () => ({ lang: "en" }),
   useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
 }));
@@ -49,8 +49,7 @@ describe("UserForm", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.save }));
 
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/en/admin/users"));
-    expect(mockRefresh).toHaveBeenCalled();
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/admin/users"));
   });
 
   it("shows the avatar validation message before uploading an unsupported file", async () => {
@@ -124,7 +123,7 @@ describe("UserForm", () => {
         data: { password: "new-password" },
       }),
     );
-    expect(mockPush).toHaveBeenCalledWith("/en/admin/users/7/credentials");
+    expect(mockPush).toHaveBeenCalledWith("/admin/users/7/credentials");
 
     view.rerender(<UserForm dictionary={dictionary} id="7" locale="en" tab="details" />);
     fireEvent.click(
@@ -210,7 +209,7 @@ describe("UserForm", () => {
       return {
         status: 400,
         data: {
-          errorCode: "admin_user_duplicate_username",
+          errorCode: "user_duplicate_username",
           violations: [{ field: "username" }, { field: "roles" }],
         },
       } as never;

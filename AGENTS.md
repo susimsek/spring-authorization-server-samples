@@ -58,8 +58,8 @@ This repo is a Java 25 + Spring Boot 4.1 sample application for the Authorizatio
 ## Project Structure
 
 - `src/main/frontend`: Next.js App Router + TypeScript login, Administration Console, and Account Console UI built with pnpm, React-Bootstrap, Bootstrap, and Font Awesome. Maven exports it into Spring Boot static resources.
-  - `app/[lang]/admin` and `components/admin`: Administration Console routes and UI.
-  - `app/[lang]/account` and `components/account`: end-user Account Console routes and UI.
+  - `routing/AppRoutes.tsx` and `components/admin`: Administration Console routes and UI.
+  - `routing/AppRoutes.tsx` and `components/account`: end-user Account Console routes and UI.
   - `lib/console-auth.ts`: shared browser OIDC Authorization Code + PKCE, refresh-token, and logout adapter.
 
 - Application root: `src/main/java/io/github/susimsek/springauthserversamples`
@@ -219,7 +219,7 @@ curl http://localhost:9090/actuator/health/readiness
 - Registered OAuth2 clients are stored in `oauth2_registered_client`.
 - Seeded users for local dev: `admin/admin` and `user/user`.
 - Seeded OAuth2 clients for local dev: `demo-client/demo-secret`, `pkce-client/demo-secret`, `admin-console`, and `account-console`.
-- `admin-console` and `account-console` are public browser clients using Authorization Code + PKCE (S256), `refresh_token`, OIDC logout, and non-reused refresh tokens. Their local redirect URIs use `/en|tr/admin/callback` and `/en|tr/account/callback` respectively.
+- `admin-console` and `account-console` are public browser clients using Authorization Code + PKCE (S256), `refresh_token`, OIDC logout, and non-reused refresh tokens. Their local redirect URIs use `/admin/callback` and `/account/callback` respectively.
 - The Admin Console requests `admin-api`; its APIs additionally require the relevant administrative authority. The Account Console requests `account-api`; `admin/admin` and `user/user` can use it.
 - The issuer is configured via `app.authorization-server.issuer`.
 - Client secrets are stored as BCrypt hashes in Liquibase seed data.
@@ -342,4 +342,4 @@ curl http://localhost:9090/actuator/health/readiness
 - Browser authentication state uses Spring Session with the custom JPA-backed `JpaIndexedSessionRepository`.
 - Keep `USER_SESSION` and `USER_SESSION_ATTRIBUTES` aligned with Spring Session JDBC schema semantics.
 - OAuth authorization/token state remains in `oauth2_authorization`; do not duplicate it into session attributes.
-- Session attributes use Spring's Java serialization converters, so update native serialization hints when adding new custom serializable session attribute types.
+- Session attributes use the dedicated Security Jackson JSON mapper through the `springSessionConversionService` bean. Keep JVM and native-image session serialization on this single path, and update native reflection hints when adding new persisted Spring Security session attribute types.

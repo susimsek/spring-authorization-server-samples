@@ -8,7 +8,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 public record ApplicationProperties(
         @DefaultValue Cache cache,
         @DefaultValue Session session,
-        @DefaultValue AuthorizationServer authorizationServer) {
+        @DefaultValue AuthorizationServer authorizationServer,
+        @DefaultValue Mail mail) {
 
     public record Cache(@DefaultValue Caffeine caffeine) {}
 
@@ -20,4 +21,9 @@ public record ApplicationProperties(
     public record Session(@DefaultValue("0 * * * * *") String cleanupCron) {}
 
     public record AuthorizationServer(@DefaultValue("http://127.0.0.1:9090") String issuer) {}
+
+    public record Mail(
+            @DefaultValue("false") boolean enabled,
+            @DefaultValue("Spring Authorization Server <no-reply@localhost>") String from,
+            @DefaultValue("http://127.0.0.1:9090") String baseUrl) {}
 }

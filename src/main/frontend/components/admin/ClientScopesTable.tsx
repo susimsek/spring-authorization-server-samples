@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
+import Link from "@/routing/Link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Form, Modal } from "react-bootstrap";
 import { useForm } from "react-hook-form";
@@ -40,8 +39,6 @@ const EMPTY: Values = { name: "", displayName: "", description: "" };
 export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
   const copy = dictionary.admin.clientScopes;
   const common = dictionary.admin.common;
-  const params = useParams<{ lang: string }>();
-  const locale = params?.lang ?? "en";
   const { access, accessToken } = useAdminAuth();
   const { addAlert, addError } = useConsoleAlerts();
   const [items, setItems] = useState<ClientScope[]>([]);
@@ -171,7 +168,7 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
         }}
       >
         {access?.manageClients && (
-          <Link className="btn btn-primary text-nowrap" href={`/${locale}/admin/client-scopes/new`}>
+          <Link className="btn btn-primary text-nowrap" href={`/admin/client-scopes/new`}>
             <AdminActionIcon action="add" />
             {copy.create}
           </Link>

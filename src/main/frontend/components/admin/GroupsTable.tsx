@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/routing/Link";
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
 import { Button } from "react-bootstrap";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
@@ -22,8 +21,6 @@ type Group = { id: number; name: string; path: string; roles: string[]; userCoun
 
 export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
   const { accessToken } = useAdminAuth();
-  const params = useParams<{ lang: string }>();
-  const lang = params?.lang ?? "en";
   const copy = dictionary.admin.groups;
   const [groups, setGroups] = useState<Group[]>([]);
   const [totalPages, setTotalPages] = useState(0);
@@ -109,7 +106,7 @@ export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
         resultCount={totalElements}
         recordsLabel={dictionary.admin.resources.records}
       >
-        <Link className="btn btn-primary text-nowrap" href={`/${lang}/admin/groups/new`}>
+        <Link className="btn btn-primary text-nowrap" href={`/admin/groups/new`}>
           <AdminActionIcon action="add" />
           {copy.create}
         </Link>
@@ -148,7 +145,7 @@ export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
           {groups.map((group) => (
             <tr key={group.id}>
               <td data-label={copy.name}>
-                <Link className="text-decoration-none" href={`/${lang}/admin/groups/${group.id}`}>
+                <Link className="text-decoration-none" href={`/admin/groups/${group.id}`}>
                   {group.path}
                 </Link>
               </td>

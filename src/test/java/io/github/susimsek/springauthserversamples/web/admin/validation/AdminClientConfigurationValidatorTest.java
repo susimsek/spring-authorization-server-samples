@@ -7,7 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.github.susimsek.springauthserversamples.web.admin.AdminClientRequest;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientRequestDTO;
 import java.time.Duration;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -27,7 +27,7 @@ class AdminClientConfigurationValidatorTest {
         assertThat(validator.isValid(null, context.context)).isTrue();
         assertThat(
                         validator.isValid(
-                                new AdminClientRequest(
+                                new AdminClientRequestDTO(
                                         "client",
                                         "Client",
                                         null,
@@ -236,12 +236,12 @@ class AdminClientConfigurationValidatorTest {
                         "{app.api.problem.violation.selection}");
     }
 
-    private static AdminClientRequest request(
+    private static AdminClientRequestDTO request(
             Set<String> methods,
             Set<String> grants,
             Set<String> redirectUris,
             boolean requireProofKey) {
-        return new AdminClientRequest(
+        return new AdminClientRequestDTO(
                 "client",
                 "Client",
                 methods,

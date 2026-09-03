@@ -2,7 +2,7 @@
 
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-import dictionary from "@/i18n/dictionaries/en.json";
+import dictionary from "@/locales/en/common.json";
 import { adminRequest } from "@/lib/admin-api";
 
 import { AdminDashboard } from "./AdminDashboard";
@@ -46,12 +46,12 @@ jest.mock("./useAdminTableState", () => ({
     setStatus: jest.fn(),
   }),
 }));
-jest.mock("next/navigation", () => ({
-  usePathname: () => "/en/admin/clients/detail",
+jest.mock("@/routing/navigation", () => ({
+  usePathname: () => "/admin/clients/detail",
   useParams: () => ({ lang: "en" }),
   useRouter: () => ({ push: mockPush }),
 }));
-jest.mock("next/link", () => ({ children, href, ...props }: React.ComponentProps<"a">) => (
+jest.mock("@/routing/Link", () => ({ children, href, ...props }: React.ComponentProps<"a">) => (
   <a href={href} {...props}>
     {children}
   </a>
@@ -224,7 +224,7 @@ describe("admin shared components", () => {
     expect(await screen.findByText(dictionary.admin.clients.empty)).toBeVisible();
     expect(screen.getByRole("link", { name: dictionary.admin.clients.create })).toHaveAttribute(
       "href",
-      "/tr/admin/clients/new",
+      "/admin/clients/new",
     );
     fireEvent.change(screen.getByRole("textbox", { name: dictionary.admin.clients.search }), {
       target: { value: "unknown" },

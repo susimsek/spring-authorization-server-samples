@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/routing/navigation";
 import { Button, Card, Form } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -17,7 +17,7 @@ import { AdminActionIcon } from "./AdminActionIcon";
 
 type Role = { name: string };
 
-export function RoleCreateForm({ dictionary, locale }: { dictionary: Dictionary; locale: Locale }) {
+export function RoleCreateForm({ dictionary }: { dictionary: Dictionary; locale: Locale }) {
   const { accessToken } = useAdminAuth();
   const alerts = useConsoleAlerts();
   const router = useRouter();
@@ -60,7 +60,7 @@ export function RoleCreateForm({ dictionary, locale }: { dictionary: Dictionary;
         }
         throw new Error();
       }
-      router.push(`/${locale}/admin/roles/${encodeURIComponent(response.data.name)}`);
+      router.push(`/admin/roles/${encodeURIComponent(response.data.name)}`);
     } catch {
       alerts.addError(copy.operationError);
     }
@@ -84,10 +84,7 @@ export function RoleCreateForm({ dictionary, locale }: { dictionary: Dictionary;
             <Form.Text>{copy.help}</Form.Text>
           </Form.Group>
           <div className="admin-create-actions">
-            <Button
-              variant="outline-secondary"
-              onClick={() => router.push(`/${locale}/admin/roles`)}
-            >
+            <Button variant="outline-secondary" onClick={() => router.push(`/admin/roles`)}>
               {dictionary.admin.common.cancel}
             </Button>
             <Button disabled={isSubmitting} type="submit">

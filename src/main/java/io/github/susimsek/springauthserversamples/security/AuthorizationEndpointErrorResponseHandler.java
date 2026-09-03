@@ -4,7 +4,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
@@ -15,15 +14,11 @@ import org.springframework.security.web.RedirectStrategy;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
-import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.util.UriUtils;
 
 @Component
-@RequiredArgsConstructor
 public class AuthorizationEndpointErrorResponseHandler implements AuthenticationFailureHandler {
-
-    private final LocaleResolver localeResolver;
 
     private final RedirectStrategy redirectStrategy = new DefaultRedirectStrategy();
 
@@ -72,10 +67,9 @@ public class AuthorizationEndpointErrorResponseHandler implements Authentication
     private void redirectToLocalErrorPage(
             HttpServletRequest request, HttpServletResponse response, String errorCode)
             throws IOException {
-        String language = localeResolver.resolveLocale(request).getLanguage();
         String errorUri =
                 UriComponentsBuilder.fromPath("/")
-                        .pathSegment(language, "error")
+                        .pathSegment("auth-error")
                         .queryParam("type", errorCode)
                         .build()
                         .encode()

@@ -5,21 +5,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.Locale;
-import lombok.RequiredArgsConstructor;
 import org.springframework.boot.webmvc.error.ErrorController;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.servlet.LocaleResolver;
 
 @Controller
-@RequiredArgsConstructor
 public class AuthorizationErrorController implements ErrorController {
-
-    private final LocaleResolver localeResolver;
 
     @RequestMapping("/error")
     public String error(HttpServletRequest request, HttpServletResponse response) {
@@ -33,11 +27,7 @@ public class AuthorizationErrorController implements ErrorController {
             errorCode = resolveFallbackErrorCode(statusCode);
         }
 
-        Locale locale = localeResolver.resolveLocale(request);
-        return "redirect:/"
-                + locale.getLanguage()
-                + "/error?type="
-                + URLEncoder.encode(errorCode, StandardCharsets.UTF_8);
+        return "redirect:/auth-error?type=" + URLEncoder.encode(errorCode, StandardCharsets.UTF_8);
     }
 
     private static String resolveOAuthErrorCode(HttpServletRequest request) {

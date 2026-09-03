@@ -15,4 +15,6 @@
 	<include file="db/changelog/changes/007-create-user-avatars.xml"/>
 	<include file="db/changelog/changes/008-create-admin-events.xml"/>
 	<include file="db/changelog/changes/009-add-group-hierarchy.xml"/>
+	<include file="db/changelog/changes/010-add-user-actions.xml"/>
+    <include file="db/changelog/changes/011-unprefix-console-routes.xml"/>
 </databaseChangeLog>

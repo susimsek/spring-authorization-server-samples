@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Badge, Dropdown } from "react-bootstrap";
-import Link from "next/link";
+import Link from "@/routing/Link";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
@@ -27,7 +27,7 @@ export type AdminClient = {
   requireProofKey: boolean;
 };
 
-export function ClientsTable({ locale, dictionary }: { locale: Locale; dictionary: Dictionary }) {
+export function ClientsTable({ dictionary }: { locale: Locale; dictionary: Dictionary }) {
   const { accessToken } = useAdminAuth();
   const [clients, setClients] = useState<AdminClient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -102,7 +102,7 @@ export function ClientsTable({ locale, dictionary }: { locale: Locale; dictionar
           setQuery(v);
         }}
       >
-        <Link href={`/${locale}/admin/clients/new`} className="btn btn-primary text-nowrap">
+        <Link href={`/admin/clients/new`} className="btn btn-primary text-nowrap">
           <AdminActionIcon action="add" />
           {dictionary.admin.clients.create}
         </Link>
@@ -150,7 +150,7 @@ export function ClientsTable({ locale, dictionary }: { locale: Locale; dictionar
               <td>
                 <Link
                   className="fw-semibold text-decoration-none"
-                  href={`/${locale}/admin/clients/${encodeURIComponent(c.id)}/settings`}
+                  href={`/admin/clients/${encodeURIComponent(c.id)}/settings`}
                 >
                   {c.clientName}
                 </Link>
@@ -183,7 +183,7 @@ export function ClientsTable({ locale, dictionary }: { locale: Locale; dictionar
                 <RowActions label={`${c.clientName} ${dictionary.admin.common.actions}`}>
                   <Dropdown.Item
                     as={Link}
-                    href={`/${locale}/admin/clients/${encodeURIComponent(c.id)}/settings`}
+                    href={`/admin/clients/${encodeURIComponent(c.id)}/settings`}
                   >
                     <AdminActionIcon action="edit" />
                     {dictionary.admin.clients.edit}

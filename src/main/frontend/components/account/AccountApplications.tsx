@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Badge, Button, Card } from "react-bootstrap";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
+import { useDateTimeFormatter } from "@/i18n/useDateTimeFormatter";
 import {
   type AccountApplication,
   useGetAccountApplicationsQuery,
@@ -19,6 +20,7 @@ import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import { useAccountAuth } from "./AccountAuthProvider";
 
 export function AccountApplications({ dictionary }: { dictionary: Dictionary }) {
+  const formatDateTime = useDateTimeFormatter();
   const { accessToken } = useAccountAuth();
   const alerts = useConsoleAlerts();
   const copy = dictionary.account;
@@ -93,12 +95,10 @@ export function AccountApplications({ dictionary }: { dictionary: Dictionary }) 
                     </div>
                     <div className="account-session-meta mt-3">
                       <span>
-                        {copy.applications.grantedAt}:{" "}
-                        {new Date(application.createdAt).toLocaleString()}
+                        {copy.applications.grantedAt}: {formatDateTime(application.createdAt)}
                       </span>
                       <span>
-                        {copy.applications.updatedAt}:{" "}
-                        {new Date(application.updatedAt).toLocaleString()}
+                        {copy.applications.updatedAt}: {formatDateTime(application.updatedAt)}
                       </span>
                     </div>
                   </div>

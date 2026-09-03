@@ -1,10 +1,11 @@
+import i18next from "i18next";
 import { render, screen, waitFor } from "@testing-library/react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/routing/navigation";
 
 import { AdminAuthorizationCallback } from "./AdminAuthorizationCallback";
 import { useAdminAuth } from "./AdminAuthProvider";
 
-jest.mock("next/navigation", () => ({
+jest.mock("@/routing/navigation", () => ({
   useParams: () => ({ lang: "en" }),
   useRouter: jest.fn(),
 }));
@@ -20,13 +21,13 @@ describe("AdminAuthorizationCallback", () => {
   beforeEach(() => {
     replace.mockReset();
     completeAuthorization.mockReset();
-    window.history.replaceState({}, "", "/en/admin/callback");
+    window.history.replaceState({}, "", "/admin/callback");
     mockRouter.mockReturnValue({ replace });
     mockUseAdminAuth.mockReturnValue({ completeAuthorization });
   });
 
   it("shows an error for an incomplete response instead of starting another transaction", async () => {
-    render(<AdminAuthorizationCallback locale="en" />);
+    render(<AdminAuthorizationCallback />);
 
     expect(
       await screen.findByText("The administration session could not be established."),
@@ -35,18 +36,19 @@ describe("AdminAuthorizationCallback", () => {
   });
 
   it("completes a valid response and redirects to the saved location", async () => {
-    window.history.replaceState({}, "", "/en/admin/callback#code=code&state=state");
-    completeAuthorization.mockResolvedValue("/en/admin/clients");
-    render(<AdminAuthorizationCallback locale="en" />);
+    window.history.replaceState({}, "", "/admin/callback#code=code&state=state");
+    completeAuthorization.mockResolvedValue("/admin/clients");
+    render(<AdminAuthorizationCallback />);
 
     await waitFor(() => expect(completeAuthorization).toHaveBeenCalledWith("code", "state"));
-    expect(replace).toHaveBeenCalledWith("/en/admin/clients");
+    expect(replace).toHaveBeenCalledWith("/admin/clients");
   });
 
   it("shows an error when the token exchange fails", async () => {
-    window.history.replaceState({}, "", "/tr/admin/callback#code=code&state=state");
+    window.history.replaceState({}, "", "/admin/callback#code=code&state=state");
     completeAuthorization.mockRejectedValue(new Error("invalid token"));
-    render(<AdminAuthorizationCallback locale="tr" />);
+    await i18next.changeLanguage("tr");
+    render(<AdminAuthorizationCallback />);
 
     expect(await screen.findByText("Yönetim oturumu oluşturulamadı.")).toBeVisible();
   });

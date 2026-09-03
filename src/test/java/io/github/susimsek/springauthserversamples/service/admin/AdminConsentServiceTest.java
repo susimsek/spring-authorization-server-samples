@@ -11,6 +11,7 @@ import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentEnt
 import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentId;
 import io.github.susimsek.springauthserversamples.domain.RegisteredClientEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminConsentDTO;
 import io.github.susimsek.springauthserversamples.mapper.AuthorizationServerMapperSupport;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationConsentRepository;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
@@ -68,12 +69,12 @@ class AdminConsentServiceTest {
         when(mapperSupport.readAuthorities("email"))
                 .thenReturn(Set.of(new SimpleGrantedAuthority("email")));
 
-        List<AdminConsentService.ConsentView> result =
-                service().consents("  alice  ", pageable).getContent();
+        List<AdminConsentDTO> result =
+                service().consents("  alice  ", "", "", "", pageable).getContent();
 
         assertThat(result)
                 .containsExactly(
-                        new AdminConsentService.ConsentView(
+                        new AdminConsentDTO(
                                 "client-one",
                                 "Client One",
                                 "alice",
@@ -81,7 +82,7 @@ class AdminConsentServiceTest {
                                 Set.of("openid", "profile"),
                                 java.time.Instant.parse("2026-08-21T00:00:00Z"),
                                 java.time.Instant.parse("2026-08-21T00:00:00Z")),
-                        new AdminConsentService.ConsentView(
+                        new AdminConsentDTO(
                                 "client-two",
                                 "client-two",
                                 "bob",
@@ -106,7 +107,7 @@ class AdminConsentServiceTest {
                         org.mockito.ArgumentMatchers.eq(pageable)))
                 .thenReturn(Page.empty(pageable));
 
-        assertThat(service().consents(null, pageable).getContent()).isEmpty();
+        assertThat(service().consents(null, "", "", "", pageable).getContent()).isEmpty();
 
         verify(authorizationConsentRepository)
                 .findAll(

@@ -11,7 +11,7 @@ const mockRegisterAccountTokenHandlers = registerAccountTokenHandlers as jest.Mo
 const mockBeginAuthorization = jest.fn().mockResolvedValue(undefined);
 const mockRefreshAccessToken = jest.fn().mockResolvedValue("new-token");
 const mockSetUsername = jest.fn();
-let pathname = "/en/account/applications";
+let pathname = "/account/applications";
 let auth = {
   accessToken: "token" as string | null,
   beginAuthorization: mockBeginAuthorization,
@@ -26,7 +26,7 @@ jest.mock("@/lib/account-api", () => ({
   accountRequest: jest.fn(),
   registerAccountTokenHandlers: jest.fn(),
 }));
-jest.mock("next/navigation", () => ({
+jest.mock("@/routing/navigation", () => ({
   useParams: () => ({ lang: "en" }),
   usePathname: () => pathname,
   useRouter: () => ({ replace: jest.fn() }),
@@ -36,7 +36,7 @@ jest.mock("./AccountAuthProvider", () => ({ useAccountAuth: () => auth }));
 describe("AccountAuthGuard", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    pathname = "/en/account/applications";
+    pathname = "/account/applications";
     auth = {
       accessToken: "token",
       beginAuthorization: mockBeginAuthorization,

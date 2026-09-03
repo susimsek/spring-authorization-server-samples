@@ -2,6 +2,8 @@ package io.github.susimsek.springauthserversamples.web.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientRequestDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminUserRequestDTO;
 import io.github.susimsek.springauthserversamples.web.admin.validation.CreateValidation;
 import io.github.susimsek.springauthserversamples.web.admin.validation.UpdateValidation;
 import jakarta.validation.Validation;
@@ -15,8 +17,8 @@ class AdminRequestValidationTest {
 
     @Test
     void rejectsInvalidPublicClientConfiguration() {
-        AdminClientRequest request =
-                new AdminClientRequest(
+        AdminClientRequestDTO request =
+                new AdminClientRequestDTO(
                         "client",
                         "Client",
                         Set.of("none"),
@@ -37,7 +39,7 @@ class AdminRequestValidationTest {
 
     @Test
     void validatesRequiredFieldsWhenCreatingAUser() {
-        AdminUserRequest request = new AdminUserRequest("", "short", null, Set.of());
+        AdminUserRequestDTO request = new AdminUserRequestDTO("", "short", null, Set.of());
 
         assertThat(validator.validate(request, CreateValidation.class))
                 .extracting(violation -> violation.getPropertyPath().toString())
@@ -46,7 +48,8 @@ class AdminRequestValidationTest {
 
     @Test
     void permitsAnEmptyPasswordWhenUpdatingAUser() {
-        AdminUserRequest request = new AdminUserRequest("user", "", true, Set.of("ROLE_USER"));
+        AdminUserRequestDTO request =
+                new AdminUserRequestDTO("user", "", true, Set.of("ROLE_USER"));
 
         assertThat(validator.validate(request, UpdateValidation.class)).isEmpty();
     }

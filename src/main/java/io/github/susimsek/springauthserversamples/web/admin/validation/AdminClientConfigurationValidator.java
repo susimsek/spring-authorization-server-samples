@@ -1,6 +1,6 @@
 package io.github.susimsek.springauthserversamples.web.admin.validation;
 
-import io.github.susimsek.springauthserversamples.web.admin.AdminClientRequest;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientRequestDTO;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 import java.util.Set;
@@ -8,7 +8,7 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 
 public class AdminClientConfigurationValidator
-        implements ConstraintValidator<ValidAdminClientConfiguration, AdminClientRequest> {
+        implements ConstraintValidator<ValidAdminClientConfiguration, AdminClientRequestDTO> {
 
     private static final Set<String> ALLOWED_METHODS =
             Set.of(
@@ -22,7 +22,7 @@ public class AdminClientConfigurationValidator
                     AuthorizationGrantType.CLIENT_CREDENTIALS.getValue());
 
     @Override
-    public boolean isValid(AdminClientRequest request, ConstraintValidatorContext context) {
+    public boolean isValid(AdminClientRequestDTO request, ConstraintValidatorContext context) {
         if (request == null
                 || request.clientAuthenticationMethods() == null
                 || request.authorizationGrantTypes() == null) {

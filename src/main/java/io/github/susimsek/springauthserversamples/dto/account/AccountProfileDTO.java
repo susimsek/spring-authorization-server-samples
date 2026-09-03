@@ -9,5 +9,17 @@ public record AccountProfileDTO(
         @Schema(example = "Ada") String firstName,
         @Schema(example = "Lovelace") String lastName,
         @Schema(example = "ada@example.test") String email,
+        boolean emailVerified,
         Instant createdAt,
-        Instant updatedAt) {}
+        Instant updatedAt) {
+
+    public AccountProfileDTO(
+            String username,
+            String firstName,
+            String lastName,
+            String email,
+            Instant createdAt,
+            Instant updatedAt) {
+        this(username, firstName, lastName, email, false, createdAt, updatedAt);
+    }
+}

@@ -1,9 +1,7 @@
 "use client";
+import { useDictionary } from "@/i18n/client";
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
-import { useParams } from "next/navigation";
-
-import { getDictionary } from "@/i18n/get-dictionary";
 
 type AlertVariant = "success" | "danger" | "warning" | "info";
 type ConsoleAlert = { id: number; message: string; variant: AlertVariant };
@@ -16,8 +14,7 @@ const noopApi: ConsoleAlertsApi = { addAlert: () => undefined, addError: () => u
 const ConsoleAlertsContext = createContext<ConsoleAlertsApi | null>(null);
 
 export function ConsoleAlertsProvider({ children }: { children: React.ReactNode }) {
-  const params = useParams<{ lang: string }>();
-  const closeLabel = getDictionary(params?.lang === "tr" ? "tr" : "en").admin.common.close;
+  const closeLabel = useDictionary().admin.common.close;
   const [alerts, setAlerts] = useState<ConsoleAlert[]>([]);
   const nextId = useRef(0);
   const addAlert = useCallback((message: string, variant: AlertVariant = "success") => {

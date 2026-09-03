@@ -1,14 +1,19 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import i18next from "i18next";
 
-import dictionary from "@/i18n/dictionaries/en.json";
+import dictionary from "@/locales/en/common.json";
 import { accountRequest } from "@/lib/account-api";
 import { StoreProvider } from "@/store/StoreProvider";
 
 import { AccountApplications } from "./AccountApplications";
+import { AccountProfileForm } from "./AccountProfileForm";
 import { AccountSessions } from "./AccountSessions";
 
 const mockAccountRequest = accountRequest as jest.MockedFunction<typeof accountRequest>;
 const mockLogout = jest.fn();
+jest.mock("@/routing/navigation", () => ({
+  usePathname: () => window.location.pathname,
+}));
 
 function renderWithStore(component: React.ReactNode) {
   return render(<StoreProvider>{component}</StoreProvider>);
@@ -29,6 +34,57 @@ jest.mock("@/components/auth/ConsoleAlerts", () => ({
 }));
 
 describe("Account console resources", () => {
+  it.each(["profile", "applications", "sessions"])(
+    "updates %s timestamps when the UI locale changes",
+    async (resource) => {
+      const timestamp = "2026-09-03T13:45:00Z";
+      const data = {
+        username: "admin",
+        firstName: "Admin",
+        lastName: "User",
+        email: "admin@example.test",
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        content: [
+          {
+            id: "session",
+            clientId: "console",
+            clientName: "Console",
+            scopes: ["openid"],
+            clients: [],
+            current: true,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+            lastAccessedAt: timestamp,
+            expiresAt: timestamp,
+          },
+        ],
+        totalElements: 1,
+        totalPages: 1,
+      };
+      mockAccountRequest.mockResolvedValue({ status: 200, data } as never);
+      renderWithStore(
+        resource === "profile" ? (
+          <AccountProfileForm dictionary={dictionary} />
+        ) : resource === "applications" ? (
+          <AccountApplications dictionary={dictionary} />
+        ) : (
+          <AccountSessions dictionary={dictionary} />
+        ),
+      );
+      expect(
+        (await screen.findAllByText(new Date(timestamp).toLocaleString("en"), { exact: false }))
+          .length,
+      ).toBeGreaterThan(0);
+      await act(() => i18next.changeLanguage("tr"));
+      expect(
+        screen.getAllByText(new Date(timestamp).toLocaleString("tr"), { exact: false }).length,
+      ).toBeGreaterThan(0);
+      expect(
+        screen.queryByText(new Date(timestamp).toLocaleString("en"), { exact: false }),
+      ).not.toBeInTheDocument();
+    },
+  );
   beforeEach(() => {
     jest.clearAllMocks();
     document.documentElement.lang = "en";

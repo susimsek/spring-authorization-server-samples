@@ -1,14 +1,15 @@
 package io.github.susimsek.springauthserversamples.service.admin;
 
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientCreatedDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientRequestDTO;
 import io.github.susimsek.springauthserversamples.mapper.AuthorizationServerMapperSupport;
 import io.github.susimsek.springauthserversamples.mapper.RegisteredClientMapper;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationConsentRepository;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
+import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
-import io.github.susimsek.springauthserversamples.web.admin.AdminClientCreatedView;
-import io.github.susimsek.springauthserversamples.web.admin.AdminClientRequest;
-import io.github.susimsek.springauthserversamples.web.admin.AdminClientView;
 import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
@@ -46,7 +47,7 @@ public class AdminClientService {
     private final AdminAuditEventService adminAuditEventService;
 
     @Transactional(readOnly = true)
-    public Page<AdminClientView> findAll(String query, Pageable pageable) {
+    public Page<AdminClientDTO> findAll(String query, Pageable pageable) {
         String searchQuery = AdminSearch.normalize(query);
         return clientRepository
                 .findByClientIdContainingIgnoreCaseOrClientNameContainingIgnoreCase(
@@ -56,7 +57,7 @@ public class AdminClientService {
     }
 
     @Transactional(readOnly = true)
-    public AdminClientView findById(String id) {
+    public AdminClientDTO findById(String id) {
         return clientRepository
                 .findById(id)
                 .map(entity -> registeredClientMapper.toObject(entity, mapperSupport))
@@ -68,12 +69,12 @@ public class AdminClientService {
     @CacheEvict(
             cacheNames = ClientRepository.REGISTERED_CLIENT_BY_CLIENT_ID_CACHE,
             allEntries = true)
-    public AdminClientCreatedView create(AdminClientRequest request) {
+    public AdminClientCreatedDTO create(AdminClientRequestDTO request) {
         validate(request);
         if (clientRepository.existsByClientId(request.clientId())) {
             throw ApiException.conflict(
                     "clientId",
-                    "admin_client_duplicate_client_id",
+                    ApiErrorCode.CLIENT_DUPLICATE_CLIENT_ID,
                     "Client ID is already registered");
         }
 
@@ -91,16 +92,16 @@ public class AdminClientService {
                                 null)
                         .build();
 
-        AdminClientView saved = toView(save(client));
+        AdminClientDTO saved = toView(save(client));
         adminAuditEventService.record("client.created", "client", saved.id());
-        return new AdminClientCreatedView(saved, rawSecret);
+        return new AdminClientCreatedDTO(saved, rawSecret);
     }
 
     @Transactional
     @CacheEvict(
             cacheNames = ClientRepository.REGISTERED_CLIENT_BY_CLIENT_ID_CACHE,
             allEntries = true)
-    public AdminClientView update(String id, AdminClientRequest request) {
+    public AdminClientDTO update(String id, AdminClientRequestDTO request) {
         validate(request);
         RegisteredClient existing = findRequired(id);
         rejectAdminConsoleMutation(existing);
@@ -108,7 +109,7 @@ public class AdminClientService {
                 && clientRepository.existsByClientId(request.clientId())) {
             throw ApiException.conflict(
                     "clientId",
-                    "admin_client_duplicate_client_id",
+                    ApiErrorCode.CLIENT_DUPLICATE_CLIENT_ID,
                     "Client ID is already registered");
         }
 
@@ -122,12 +123,12 @@ public class AdminClientService {
         } else if (existing.getClientSecret() == null) {
             throw ApiException.badRequest(
                     "clientAuthenticationMethods",
-                    "admin_client_secret_required",
+                    ApiErrorCode.CLIENT_SECRET_REQUIRED,
                     "Regenerate a client secret before enabling a secret authentication method");
         }
 
         RegisteredClient updated = apply(builder, request, existing).build();
-        AdminClientView saved = toView(save(updated));
+        AdminClientDTO saved = toView(save(updated));
         adminAuditEventService.record("client.updated", "client", saved.id());
         return saved;
     }
@@ -162,33 +163,35 @@ public class AdminClientService {
         return rawSecret;
     }
 
-    private static void validate(AdminClientRequest request) {
+    private static void validate(AdminClientRequestDTO request) {
         if (request == null) {
             throw ApiException.badRequest(
-                    "admin_client_invalid_request", "Request body is required");
+                    ApiErrorCode.CLIENT_INVALID_REQUEST, "Request body is required");
         }
         if (!hasText(request.clientId())) {
             throw ApiException.badRequest(
-                    "clientId", "admin_client_invalid_client_id", "Client ID is required");
+                    "clientId", ApiErrorCode.CLIENT_INVALID_CLIENT_ID, "Client ID is required");
         }
         if (!hasText(request.clientName())) {
             throw ApiException.badRequest(
-                    "clientName", "admin_client_invalid_client_name", "Client name is required");
+                    "clientName",
+                    ApiErrorCode.CLIENT_INVALID_CLIENT_NAME,
+                    "Client name is required");
         }
         requireNonEmpty(
                 request.clientAuthenticationMethods(),
                 "clientAuthenticationMethods",
-                "admin_client_invalid_authentication_methods",
+                ApiErrorCode.CLIENT_INVALID_AUTHENTICATION_METHODS,
                 "At least one client authentication method is required");
         requireNonEmpty(
                 request.authorizationGrantTypes(),
                 "authorizationGrantTypes",
-                "admin_client_invalid_grant_types",
+                ApiErrorCode.CLIENT_INVALID_GRANT_TYPES,
                 "At least one authorization grant type is required");
         requireNonEmpty(
                 request.scopes(),
                 "scopes",
-                "admin_client_invalid_scopes",
+                ApiErrorCode.CLIENT_INVALID_SCOPES,
                 "At least one scope is required");
 
         Set<String> methods = request.clientAuthenticationMethods();
@@ -199,20 +202,20 @@ public class AdminClientService {
         if (publicClient && methods.size() > 1) {
             throw ApiException.badRequest(
                     "clientAuthenticationMethods",
-                    "admin_client_invalid_authentication_methods",
+                    ApiErrorCode.CLIENT_INVALID_AUTHENTICATION_METHODS,
                     "The 'none' authentication method cannot be combined with other methods");
         }
         if (publicClient && grants.contains(AuthorizationGrantType.CLIENT_CREDENTIALS.getValue())) {
             throw ApiException.badRequest(
                     "authorizationGrantTypes",
-                    "admin_client_invalid_grant_types",
+                    ApiErrorCode.CLIENT_INVALID_GRANT_TYPES,
                     "A public client cannot use the client_credentials grant");
         }
         if (grants.contains(AuthorizationGrantType.AUTHORIZATION_CODE.getValue())
                 && redirectUris.isEmpty()) {
             throw ApiException.badRequest(
                     "redirectUris",
-                    "admin_client_redirect_uri_required",
+                    ApiErrorCode.CLIENT_REDIRECT_URI_REQUIRED,
                     "At least one redirect URI is required for authorization_code");
         }
         if (publicClient
@@ -220,14 +223,14 @@ public class AdminClientService {
                 && !request.requireProofKey()) {
             throw ApiException.badRequest(
                     "authorizationGrantTypes",
-                    "admin_client_pkce_required",
+                    ApiErrorCode.CLIENT_PKCE_REQUIRED,
                     "PKCE must be required for a public authorization_code client");
         }
         if (request.requireProofKey()
                 && !grants.contains(AuthorizationGrantType.AUTHORIZATION_CODE.getValue())) {
             throw ApiException.badRequest(
                     "authorizationGrantTypes",
-                    "admin_client_invalid_pkce",
+                    ApiErrorCode.CLIENT_INVALID_PKCE,
                     "PKCE requires the authorization_code grant");
         }
 
@@ -264,14 +267,14 @@ public class AdminClientService {
     private static void rejectAdminConsoleMutation(RegisteredClient client) {
         if (ADMIN_CONSOLE_CLIENT_ID.equals(client.getClientId())) {
             throw ApiException.badRequest(
-                    "admin_client_protected",
+                    ApiErrorCode.CLIENT_PROTECTED,
                     "The administration console client cannot be changed");
         }
     }
 
     private static RegisteredClient.Builder apply(
             RegisteredClient.Builder builder,
-            AdminClientRequest request,
+            AdminClientRequestDTO request,
             RegisteredClient existing) {
         builder.clientName(request.clientName())
                 .clientAuthenticationMethods(
@@ -309,7 +312,7 @@ public class AdminClientService {
     }
 
     private static ClientSettings buildClientSettings(
-            AdminClientRequest request, RegisteredClient existing) {
+            AdminClientRequestDTO request, RegisteredClient existing) {
         ClientSettings.Builder builder =
                 existing == null
                         ? ClientSettings.builder()
@@ -330,7 +333,7 @@ public class AdminClientService {
     }
 
     private static TokenSettings buildTokenSettings(
-            AdminClientRequest request, RegisteredClient existing) {
+            AdminClientRequestDTO request, RegisteredClient existing) {
         TokenSettings.Builder builder =
                 existing == null
                         ? TokenSettings.builder()
@@ -362,7 +365,7 @@ public class AdminClientService {
                 .build();
     }
 
-    private static boolean requiresSecret(AdminClientRequest request) {
+    private static boolean requiresSecret(AdminClientRequestDTO request) {
         return request.clientAuthenticationMethods().stream()
                 .map(ClientAuthenticationMethod::new)
                 .anyMatch(AdminClientService::isSecretMethod);
@@ -376,7 +379,7 @@ public class AdminClientService {
     private static void validateUri(String field, String label, String value) {
         if (!hasText(value)) {
             throw ApiException.badRequest(
-                    field, "admin_client_invalid_uri", "Empty " + label + " is not allowed");
+                    field, ApiErrorCode.CLIENT_INVALID_URI, "Empty " + label + " is not allowed");
         }
         try {
             URI uri = URI.create(value);
@@ -385,19 +388,19 @@ public class AdminClientService {
             }
         } catch (IllegalArgumentException exception) {
             throw ApiException.badRequest(
-                    field, "admin_client_invalid_uri", "Invalid " + label + ": " + value);
+                    field, ApiErrorCode.CLIENT_INVALID_URI, "Invalid " + label + ": " + value);
         }
     }
 
     private static void validatePositiveDuration(String field, String label, Duration duration) {
         if (duration != null && (duration.isZero() || duration.isNegative())) {
             throw ApiException.badRequest(
-                    field, "admin_client_invalid_ttl", label + " must be greater than zero");
+                    field, ApiErrorCode.CLIENT_INVALID_TTL, label + " must be greater than zero");
         }
     }
 
     private static <T> void requireNonEmpty(
-            Set<T> values, String field, String errorCode, String message) {
+            Set<T> values, String field, ApiErrorCode errorCode, String message) {
         if (values == null || values.isEmpty()) {
             throw ApiException.badRequest(field, errorCode, message);
         }
@@ -416,8 +419,8 @@ public class AdminClientService {
                 + UUID.randomUUID().toString().replace("-", "");
     }
 
-    private static AdminClientView toView(RegisteredClient client) {
-        return new AdminClientView(
+    private static AdminClientDTO toView(RegisteredClient client) {
+        return new AdminClientDTO(
                 client.getId(),
                 client.getClientId(),
                 client.getClientName(),

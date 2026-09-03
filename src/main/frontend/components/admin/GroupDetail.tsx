@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Badge, Button, Card, Form, ListGroup } from "react-bootstrap";
 import { useForm } from "react-hook-form";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "@/routing/navigation";
 import { z } from "zod";
 
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
@@ -34,7 +34,6 @@ type Group = {
 type Role = { name: string };
 
 export function GroupDetail({
-  locale,
   dictionary,
   id,
 }: {
@@ -45,8 +44,7 @@ export function GroupDetail({
   const { accessToken } = useAdminAuth();
   const alerts = useConsoleAlerts();
   const router = useRouter();
-  const pathname = usePathname();
-  const groupId = id === "_" ? (pathname.split("/").filter(Boolean).at(-1) ?? id) : id;
+  const groupId = id;
   const copy = dictionary.admin.groups;
   const [group, setGroup] = useState<Group | null>(null);
   const groupFormInitialized = useRef(false);
@@ -71,7 +69,11 @@ export function GroupDetail({
     size: memberSize,
   } = useAdminTableState();
   const groupSettingsSchema = z.object({
-    name: z.string().trim().min(1, dictionary.admin.common.validation.required).max(100),
+    name: z
+      .string()
+      .trim()
+      .min(1, dictionary.admin.common.validation.required)
+      .max(100, dictionary.admin.common.validation.max100),
     parentId: z.string(),
   });
   const {
@@ -248,7 +250,7 @@ export function GroupDetail({
   return (
     <div className="d-grid gap-4">
       <AdminBreadcrumb
-        items={[{ label: copy.title, href: `/${locale}/admin/groups` }, { label: group.name }]}
+        items={[{ label: copy.title, href: `/admin/groups` }, { label: group.name }]}
       />
       <div className="admin-detail-heading">
         <div>
@@ -395,7 +397,7 @@ export function GroupDetail({
                 <Button
                   className="p-0 text-decoration-none"
                   variant="link"
-                  onClick={() => router.push(`/${locale}/admin/users/${user.id}/details`)}
+                  onClick={() => router.push(`/admin/users/${user.id}/details`)}
                 >
                   {user.username}
                 </Button>

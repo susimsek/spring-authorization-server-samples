@@ -1,6 +1,8 @@
 package io.github.susimsek.springauthserversamples.web.admin;
 
 import io.github.susimsek.springauthserversamples.config.openapi.OpenApiConfig;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientScopeDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientScopeRequestDTO;
 import io.github.susimsek.springauthserversamples.service.admin.AdminClientScopeService;
 import io.github.susimsek.springauthserversamples.web.ApiController;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,7 +41,7 @@ public class AdminClientScopeController {
     @Operation(
             summary = "Search client scopes",
             description = "Returns a paged client-scope list. `size` is capped at 100.")
-    Page<AdminClientScopeService.ClientScopeView> findAll(
+    Page<AdminClientScopeDTO> findAll(
             @RequestParam(defaultValue = "") String q,
             @PageableDefault(size = 20, sort = "name") Pageable pageable) {
         return adminClientScopeService.findAll(q, pageable);
@@ -47,8 +49,8 @@ public class AdminClientScopeController {
 
     @PostMapping
     @Operation(summary = "Create client scope")
-    ResponseEntity<AdminClientScopeService.ClientScopeView> create(
-            @Valid @RequestBody AdminClientScopeRequest request) {
+    ResponseEntity<AdminClientScopeDTO> create(
+            @Valid @RequestBody AdminClientScopeRequestDTO request) {
         var created = adminClientScopeService.create(request);
         return ResponseEntity.created(URI.create("/api/admin/client-scopes/" + created.id()))
                 .body(created);
@@ -56,8 +58,8 @@ public class AdminClientScopeController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update client scope")
-    AdminClientScopeService.ClientScopeView update(
-            @PathVariable String id, @Valid @RequestBody AdminClientScopeRequest request) {
+    AdminClientScopeDTO update(
+            @PathVariable String id, @Valid @RequestBody AdminClientScopeRequestDTO request) {
         return adminClientScopeService.update(id, request);
     }
 

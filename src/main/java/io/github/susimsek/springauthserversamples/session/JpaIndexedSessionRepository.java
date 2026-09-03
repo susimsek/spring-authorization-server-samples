@@ -37,12 +37,6 @@ public class JpaIndexedSessionRepository implements FindByIndexNameSessionReposi
 
     public JpaIndexedSessionRepository(
             UserSessionRepository sessionRepository,
-            PlatformTransactionManager transactionManager) {
-        this(sessionRepository, transactionManager, new JpaSessionMapper());
-    }
-
-    public JpaIndexedSessionRepository(
-            UserSessionRepository sessionRepository,
             PlatformTransactionManager transactionManager,
             JpaSessionMapper sessionMapper) {
         this.sessionRepository = sessionRepository;

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/routing/Link";
 import { Nav } from "react-bootstrap";
 
 export type DetailTab = { key: string; label: string; href?: string };

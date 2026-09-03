@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
+import Link from "@/routing/Link";
 import { Button } from "react-bootstrap";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
@@ -22,8 +21,6 @@ type Role = { name: string };
 
 export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
   const { accessToken } = useAdminAuth();
-  const params = useParams<{ lang: string }>();
-  const lang = params?.lang ?? "en";
   const copy = dictionary.admin.roles;
   const [roles, setRoles] = useState<Role[]>([]);
   const [totalPages, setTotalPages] = useState(0);
@@ -112,7 +109,7 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
         resultCount={totalElements}
         recordsLabel={dictionary.admin.resources.records}
       >
-        <Link className="btn btn-primary text-nowrap" href={`/${lang}/admin/roles/new`}>
+        <Link className="btn btn-primary text-nowrap" href={`/admin/roles/new`}>
           <AdminActionIcon action="add" />
           {copy.create}
         </Link>
@@ -151,7 +148,7 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
               <td className="font-monospace" data-label={copy.name}>
                 <Link
                   className="text-decoration-none"
-                  href={`/${lang}/admin/roles/${encodeURIComponent(role.name)}`}
+                  href={`/admin/roles/${encodeURIComponent(role.name)}`}
                 >
                   {role.name}
                 </Link>

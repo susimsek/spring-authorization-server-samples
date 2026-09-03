@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Badge, Button, Card, Form, ListGroup, Spinner } from "react-bootstrap";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "@/routing/navigation";
 
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
@@ -28,7 +28,6 @@ type RoleDetailData = {
 };
 
 export function RoleDetail({
-  locale,
   dictionary,
   name,
 }: {
@@ -39,9 +38,7 @@ export function RoleDetail({
   const { accessToken } = useAdminAuth();
   const alerts = useConsoleAlerts();
   const router = useRouter();
-  const pathname = usePathname();
-  const actualName =
-    name === "_" ? decodeURIComponent(pathname.split("/").filter(Boolean).at(-1) ?? name) : name;
+  const actualName = name;
   const [detail, setDetail] = useState<RoleDetailData | null>(null);
   const [userQuery, setUserQuery] = useState("");
   const [suggestions, setSuggestions] = useState<RoleUser[]>([]);
@@ -144,7 +141,7 @@ export function RoleDetail({
     <div className="d-grid gap-4">
       <AdminBreadcrumb
         items={[
-          { label: dictionary.admin.roles.title, href: `/${locale}/admin/roles` },
+          { label: dictionary.admin.roles.title, href: `/admin/roles` },
           { label: detail.name },
         ]}
       />
@@ -272,7 +269,7 @@ export function RoleDetail({
                 <Button
                   variant="link"
                   className="p-0 text-decoration-none"
-                  onClick={() => router.push(`/${locale}/admin/users/${user.id}/details`)}
+                  onClick={() => router.push(`/admin/users/${user.id}/details`)}
                 >
                   {user.username}
                 </Button>

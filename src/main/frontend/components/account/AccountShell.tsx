@@ -9,8 +9,8 @@ import {
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Link from "@/routing/Link";
+import { usePathname } from "@/routing/navigation";
 import { useState } from "react";
 import { Button, Container, Nav, Navbar } from "react-bootstrap";
 import { LanguageSwitcher } from "@/components/auth/LanguageSwitcher";
@@ -55,7 +55,7 @@ export function AccountShell({
               </Button>
               <Navbar.Brand
                 as={Link}
-                href={`/${locale}/account/personal-info`}
+                href={`/account/personal-info`}
                 className="admin-brand d-flex align-items-center gap-2 fw-semibold mb-0"
               >
                 <span className="admin-brand-mark">
@@ -70,7 +70,7 @@ export function AccountShell({
               <ConsoleUserMenu
                 username={username ?? "…"}
                 avatarSrc={idTokenParsed?.picture ?? tokenParsed?.picture}
-                accountHref={`/${locale}/account/personal-info`}
+                accountHref={`/account/personal-info`}
                 accountLabel={dictionary.account.nav.personalInfo}
                 logoutLabel={dictionary.account.logout}
                 signedInAsLabel={dictionary.admin.common.signedInAs}
@@ -100,11 +100,11 @@ export function AccountShell({
             </div>
             <Nav className="flex-column px-2 gap-1">
               {items.map(([suffix, label, icon]) => {
-                const href = `/${locale}/account${suffix}`;
+                const href = `/account${suffix}`;
                 const active =
                   pathname.startsWith(href) ||
                   (suffix === "/personal-info" &&
-                    (pathname === `/${locale}/account` || pathname === `/${locale}/account/`));
+                    (pathname === `/account` || pathname === `/account/`));
                 return (
                   <Nav.Link
                     key={href}

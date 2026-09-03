@@ -38,14 +38,14 @@ function jwt(payload: Record<string, unknown>) {
   return `e30.${encoded}.signature`;
 }
 
-function storeTransaction(state: string, returnTo = "/en/admin") {
+function storeTransaction(state: string, returnTo = "/admin") {
   localStorage.setItem(
     `ADMIN_OIDC_TRANSACTION:${state}`,
     JSON.stringify({
       codeVerifier: "verifier",
       expires: Date.now() + 60 * 60 * 1000,
       nonce: "nonce",
-      redirectUri: "http://localhost/en/admin/callback",
+      redirectUri: "http://localhost/admin/callback",
       returnTo,
       state,
     }),
@@ -154,18 +154,18 @@ describe("AdminAuthProvider", () => {
 
     await act(async () => {
       await Promise.all([
-        auth.beginAuthorization("tr", "/tr/admin"),
-        auth.beginAuthorization("tr", "/tr/admin"),
+        auth.beginAuthorization("tr", "/admin"),
+        auth.beginAuthorization("tr", "/admin"),
       ]);
     });
 
-    expect(sessionStorage.getItem("AUTH_ADMIN_RETURN_TO")).toBe("/tr/admin");
+    expect(sessionStorage.getItem("AUTH_ADMIN_RETURN_TO")).toBe("/admin");
     const transactionKey = Object.keys(localStorage).find((key) =>
       key.startsWith("ADMIN_OIDC_TRANSACTION:"),
     );
     expect(transactionKey).toBeDefined();
     expect(JSON.parse(localStorage.getItem(transactionKey ?? "") ?? "{}")).toMatchObject({
-      returnTo: "/tr/admin",
+      returnTo: "/admin",
     });
   });
 
@@ -188,7 +188,7 @@ describe("AdminAuthProvider", () => {
   it("exchanges a code, stores token state, and refreshes it", async () => {
     renderProvider();
     storeTransaction("state");
-    sessionStorage.setItem("AUTH_ADMIN_RETURN_TO", "/en/admin");
+    sessionStorage.setItem("AUTH_ADMIN_RETURN_TO", "/admin");
     mockPost
       .mockResolvedValueOnce({
         data: {
@@ -218,7 +218,7 @@ describe("AdminAuthProvider", () => {
       });
 
     await act(async () => {
-      await expect(auth.completeAuthorization("code", "state")).resolves.toBe("/en/admin");
+      await expect(auth.completeAuthorization("code", "state")).resolves.toBe("/admin");
     });
     expect(auth.accessToken).not.toBeNull();
     expect(auth.expiresAt).toEqual(expect.any(Number));

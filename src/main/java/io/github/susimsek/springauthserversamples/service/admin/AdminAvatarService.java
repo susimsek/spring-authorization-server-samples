@@ -2,7 +2,9 @@ package io.github.susimsek.springauthserversamples.service.admin;
 
 import io.github.susimsek.springauthserversamples.domain.UserAvatarEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminAvatarDTO;
 import io.github.susimsek.springauthserversamples.repository.UserAvatarRepository;
+import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -28,7 +30,7 @@ public class AdminAvatarService {
     private final AdminAuditEventService adminAuditEventService;
 
     @Transactional
-    public AvatarView updateAvatar(Long id, MultipartFile file, String currentUsername) {
+    public AdminAvatarDTO updateAvatar(Long id, MultipartFile file, String currentUsername) {
         UserEntity user = adminUserService.requireManageableUser(id, currentUsername);
         AvatarPayload payload = avatarPayload(file);
         UserAvatarEntity avatar =
@@ -41,7 +43,7 @@ public class AdminAvatarService {
         avatar.setContent(payload.content());
         UserAvatarEntity saved = userAvatarRepository.saveAndFlush(avatar);
         adminAuditEventService.avatarUpdated(id);
-        return new AvatarView(avatarUrl(saved.getPublicId(), saved.getUpdatedAt()));
+        return new AdminAvatarDTO(avatarUrl(saved.getPublicId(), saved.getUpdatedAt()));
     }
 
     @Transactional
@@ -58,11 +60,11 @@ public class AdminAvatarService {
     private static AvatarPayload avatarPayload(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw ApiException.badRequest(
-                    "avatar", "admin_avatar_empty", "Avatar file is required");
+                    "avatar", ApiErrorCode.AVATAR_EMPTY, "Avatar file is required");
         }
         if (file.getSize() > 2 * 1024 * 1024) {
             throw ApiException.badRequest(
-                    "avatar", "admin_avatar_too_large", "Avatar must not exceed 2 MiB");
+                    "avatar", ApiErrorCode.AVATAR_TOO_LARGE, "Avatar must not exceed 2 MiB");
         }
         try {
             byte[] content = file.getBytes();
@@ -70,13 +72,13 @@ public class AdminAvatarService {
             if (contentType == null) {
                 throw ApiException.badRequest(
                         "avatar",
-                        "admin_avatar_invalid_type",
+                        ApiErrorCode.AVATAR_INVALID_TYPE,
                         "Avatar must be a JPEG or PNG image");
             }
             return new AvatarPayload(content, contentType);
         } catch (IOException exception) {
             throw ApiException.badRequest(
-                    "avatar", "admin_avatar_unreadable", "Avatar could not be read");
+                    "avatar", ApiErrorCode.AVATAR_UNREADABLE, "Avatar could not be read");
         }
     }
 
@@ -100,7 +102,7 @@ public class AdminAvatarService {
                         || (long) width * height > MAX_AVATAR_PIXELS) {
                     throw ApiException.badRequest(
                             "avatar",
-                            "admin_avatar_dimensions",
+                            ApiErrorCode.AVATAR_DIMENSIONS,
                             "Avatar dimensions must not exceed 4 megapixels");
                 }
                 return switch (reader.getFormatName().toLowerCase(java.util.Locale.ROOT)) {
@@ -117,6 +119,4 @@ public class AdminAvatarService {
     }
 
     private record AvatarPayload(byte[] content, String contentType) {}
-
-    public record AvatarView(String avatarUrl) {}
 }

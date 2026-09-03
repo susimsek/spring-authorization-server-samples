@@ -18,5 +18,13 @@ class NativeRuntimeHintsTest {
                 .accepts(hints);
         assertThat(RuntimeHintsPredicates.resource().forResource("i18n/messages_tr.properties"))
                 .accepts(hints);
+        assertThat(
+                        RuntimeHintsPredicates.resource()
+                                .forResource("templates/mail/emailVerification.html"))
+                .accepts(hints);
+        assertThat(
+                        RuntimeHintsPredicates.resource()
+                                .forResource("templates/mail/passwordReset.html"))
+                .accepts(hints);
     }
 }

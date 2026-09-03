@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -51,7 +52,9 @@ class ApiExceptionHandlerTest {
         var problem =
                 handler.handleApiException(
                         ApiException.badRequest(
-                                "username", "admin_user_invalid_username", "Username is required"),
+                                "username",
+                                ApiErrorCode.USER_INVALID_USERNAME,
+                                "Username is required"),
                         request);
 
         assertThat(problem.getTitle()).isEqualTo("API isteği başarısız");
@@ -69,7 +72,7 @@ class ApiExceptionHandlerTest {
         var problem =
                 handler(new StaticMessageSource())
                         .handleApiException(
-                                ApiException.forbidden("admin_access_denied", "Access denied"));
+                                ApiException.forbidden(ApiErrorCode.FORBIDDEN, "Access denied"));
 
         assertThat(problem.getStatus()).isEqualTo(403);
         assertThat(problem.getDetail()).isEqualTo("You are not allowed to perform this operation.");

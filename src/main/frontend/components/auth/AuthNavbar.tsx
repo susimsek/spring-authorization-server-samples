@@ -19,10 +19,7 @@ export function AuthNavbar({ locale, dictionary }: AuthNavbarProps) {
   return (
     <Navbar className="auth-navbar bg-body border-bottom">
       <Container>
-        <Navbar.Brand
-          href={`/${locale}/login`}
-          className="d-flex align-items-center gap-2 fw-semibold"
-        >
+        <Navbar.Brand href={`/login`} className="d-flex align-items-center gap-2 fw-semibold">
           <span className="text-primary">
             <FontAwesomeIcon icon={faShieldHalved} />
           </span>

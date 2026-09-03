@@ -2,6 +2,7 @@ package io.github.susimsek.springauthserversamples.service.admin;
 
 import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentEntity;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentId;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminConsentDTO;
 import io.github.susimsek.springauthserversamples.mapper.AuthorizationServerMapperSupport;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationConsentRepository;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
@@ -9,7 +10,6 @@ import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.util.Map;
-import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -29,7 +29,7 @@ public class AdminConsentService {
     private final AdminAuditEventService adminAuditEventService;
 
     @Transactional(readOnly = true)
-    public Page<ConsentView> consents(
+    public Page<AdminConsentDTO> consents(
             String query, String clientId, String username, String scope, Pageable pageable) {
         String search = AdminSearch.normalize(query);
         String client = AdminSearch.normalize(clientId);
@@ -93,12 +93,7 @@ public class AdminConsentService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ConsentView> consents(String query, Pageable pageable) {
-        return consents(query, "", "", "", pageable);
-    }
-
-    @Transactional(readOnly = true)
-    public ConsentView consent(String clientId, String username) {
+    public AdminConsentDTO consent(String clientId, String username) {
         AuthorizationConsentEntity consent =
                 authorizationConsentRepository
                         .findByIdRegisteredClientIdAndIdPrincipalName(clientId, username)
@@ -112,7 +107,7 @@ public class AdminConsentService {
         return consentView(consent, clientNames, userIds(java.util.List.of(consent)));
     }
 
-    private Page<ConsentView> toConsentViews(Page<AuthorizationConsentEntity> consents) {
+    private Page<AdminConsentDTO> toConsentViews(Page<AuthorizationConsentEntity> consents) {
         Map<String, String> clientNames =
                 clientRepository
                         .findAllById(
@@ -143,7 +138,7 @@ public class AdminConsentService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ConsentView> clientConsents(String clientId, Pageable pageable) {
+    public Page<AdminConsentDTO> clientConsents(String clientId, Pageable pageable) {
         if (!clientRepository.existsById(clientId)) {
             throw ApiException.notFound("Client not found");
         }
@@ -160,7 +155,8 @@ public class AdminConsentService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ConsentView> userConsents(Long userId, String currentUsername, Pageable pageable) {
+    public Page<AdminConsentDTO> userConsents(
+            Long userId, String currentUsername, Pageable pageable) {
         String username =
                 adminUserService.requireManageableUser(userId, currentUsername).getUsername();
         Page<AuthorizationConsentEntity> consents =
@@ -193,12 +189,12 @@ public class AdminConsentService {
         adminAuditEventService.record("consent.revoked", "consent", clientId + ":" + username);
     }
 
-    private ConsentView consentView(
+    private AdminConsentDTO consentView(
             AuthorizationConsentEntity consent,
             Map<String, String> clientNames,
             Map<String, Long> userIds) {
         String clientId = consent.getId().getRegisteredClientId();
-        return new ConsentView(
+        return new AdminConsentDTO(
                 clientId,
                 clientNames.getOrDefault(clientId, clientId),
                 consent.getId().getPrincipalName(),
@@ -209,13 +205,4 @@ public class AdminConsentService {
                 consent.getCreatedAt(),
                 consent.getUpdatedAt());
     }
-
-    public record ConsentView(
-            String clientId,
-            String clientName,
-            String principalName,
-            Long userId,
-            Set<String> authorities,
-            java.time.Instant createdAt,
-            java.time.Instant updatedAt) {}
 }

@@ -1,5 +1,5 @@
 const signInAdmin = () => {
-  cy.visit("/en/admin/");
+  cy.visit("/admin/");
 
   cy.env(["adminUsername", "adminPassword"], { log: false }).then(
     ({ adminUsername, adminPassword }) => {
@@ -11,7 +11,7 @@ const signInAdmin = () => {
     },
   );
 
-  cy.location("pathname", { timeout: 20_000 }).should("match", /^\/en\/admin\/?$/);
+  cy.location("pathname", { timeout: 20_000 }).should("match", /^\/admin\/?$/);
   cy.contains("h1", "Dashboard", { timeout: 20_000 }).should("be.visible");
   cy.get(".admin-sidebar").should("exist");
 };
@@ -31,14 +31,14 @@ describe("admin console", () => {
 
     cy.get('button[type="submit"]').click();
 
-    cy.location("pathname", { timeout: 20_000 }).should("match", /^\/(en|tr)\/admin\/?$/);
+    cy.location("pathname", { timeout: 20_000 }).should("match", /^\/admin\/?$/);
     cy.location("search").should("eq", "");
     cy.location("hash").should("eq", "");
     cy.get(".admin-sidebar", { timeout: 20_000 }).should("be.visible");
 
     cy.reload();
 
-    cy.location("pathname", { timeout: 20_000 }).should("match", /^\/(en|tr)\/admin\/?$/);
+    cy.location("pathname", { timeout: 20_000 }).should("match", /^\/admin\/?$/);
     cy.location("search").should("eq", "");
     cy.location("hash").should("eq", "");
     cy.get(".admin-sidebar", { timeout: 20_000 }).should("be.visible");
@@ -61,10 +61,7 @@ describe("admin console", () => {
 
     pages.forEach(([path, label]) => {
       cy.contains(".admin-sidebar a", label).click();
-      cy.location("pathname", { timeout: 15_000 }).should(
-        "match",
-        new RegExp(`^/en/admin${path}/?$`),
-      );
+      cy.location("pathname", { timeout: 15_000 }).should("match", new RegExp(`^/admin${path}/?$`));
       cy.contains("h1", label, { timeout: 15_000 }).should("be.visible");
     });
   });
@@ -74,13 +71,15 @@ describe("admin console", () => {
 
     cy.contains(".admin-sidebar a", "Clients").click();
     cy.contains("a", "Create client").click();
-    cy.location("pathname").should("match", /^\/en\/admin\/clients\/new\/?$/);
+    cy.location("pathname").should("match", /^\/admin\/clients\/new\/?$/);
+    cy.contains("button", "Next").click();
+    cy.contains("button", "Next").click();
     cy.get('button[type="submit"]').click();
     cy.get(".invalid-feedback:visible").should("have.length.greaterThan", 0);
 
     cy.contains(".admin-sidebar a", "Users").click();
     cy.contains("a", "Create user").click();
-    cy.location("pathname").should("match", /^\/en\/admin\/users\/new\/?$/);
+    cy.location("pathname").should("match", /^\/admin\/users\/new\/?$/);
     cy.get('input[name="username"]').clear();
     cy.get('input[name="password"]').clear();
     cy.get('button[type="submit"]').click();
@@ -92,20 +91,22 @@ describe("admin console", () => {
 
     cy.contains(".admin-sidebar a", "Clients").click();
     cy.get("tbody tr", { timeout: 15_000 }).first().find("td").first().find("a").click();
-    cy.location("pathname").should("match", /^\/en\/admin\/clients\/[^/]+\/settings\/?$/);
+    cy.location("pathname").should("match", /^\/admin\/clients\/[^/]+\/settings\/?$/);
 
     cy.contains(".admin-sidebar a", "Users").click();
-    cy.get("tbody tr", { timeout: 15_000 }).first().contains("a", "Edit").click();
-    cy.location("pathname").should("match", /^\/en\/admin\/users\/[^/]+\/details\/?$/);
+    cy.get("tbody tr", { timeout: 15_000 }).first().find('button[aria-label$=" actions"]').click();
+    cy.get(".dropdown-menu.show").contains("a", "Edit").click();
+    cy.location("pathname").should("match", /^\/admin\/users\/[^/]+\/details\/?$/);
     cy.contains("Created at", { timeout: 15_000 }).should("be.visible");
     cy.contains("Updated at", { timeout: 15_000 }).should("be.visible");
   });
 
-  it("recovers from a callback without a saved authorization transaction", () => {
-    cy.visit("/en/admin/callback#code=stale-code&state=stale-state");
+  it("rejects a callback without a saved authorization transaction", () => {
+    cy.visit("/admin/callback#code=stale-code&state=stale-state");
 
-    cy.location("pathname", { timeout: 20_000 }).should("not.eq", "/en/admin/callback");
-    cy.contains("The administration session could not be established.").should("not.exist");
+    cy.location("pathname", { timeout: 20_000 }).should("eq", "/admin/callback");
+    cy.location("hash").should("eq", "");
+    cy.contains("The administration session could not be established.").should("be.visible");
   });
 
   it("opens and closes the responsive navigation", () => {

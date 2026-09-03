@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Alert, Button, Card, Form } from "react-bootstrap";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/routing/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
@@ -27,6 +27,8 @@ import { UserGroups } from "./UserGroups";
 type User = {
   id: number;
   username: string;
+  email: string | null;
+  emailVerified: boolean;
   enabled: boolean;
   avatarUrl: string | null;
   authorities: string[];
@@ -34,7 +36,14 @@ type User = {
   updatedAt: string;
 };
 type Role = { name: string };
-type UserFormValues = { username: string; password: string; enabled: boolean; roles: string[] };
+type UserFormValues = {
+  username: string;
+  email: string;
+  emailVerified: boolean;
+  password: string;
+  enabled: boolean;
+  roles: string[];
+};
 
 const USER_DETAIL_TABS = [
   "details",
@@ -70,6 +79,20 @@ export function UserForm({
   const [showAvatarDeleteConfirm, setShowAvatarDeleteConfirm] = useState(false);
   const [loading, setLoading] = useState(editing);
   const [saving, setSaving] = useState(false);
+  const actionForm = useForm<{
+    action: "VERIFY_EMAIL" | "UPDATE_PASSWORD";
+    lifespan: "1800" | "3600" | "43200" | "86400";
+  }>({
+    resolver: zodResolver(
+      z.object({
+        action: z.enum(["VERIFY_EMAIL", "UPDATE_PASSWORD"]),
+        lifespan: z.enum(["1800", "3600", "43200", "86400"]),
+      }),
+    ),
+    defaultValues: { action: "UPDATE_PASSWORD", lifespan: "43200" },
+  });
+  const [actionError, setActionError] = useState(false);
+  const [actionSent, setActionSent] = useState(false);
   const [error, setError] = useState(false);
   const activeTab = USER_DETAIL_TABS.includes(tab as (typeof USER_DETAIL_TABS)[number])
     ? tab
@@ -77,6 +100,12 @@ export function UserForm({
   const validation = dictionary.admin.common.validation;
   const schema = z.object({
     username: z.string().trim().min(1, validation.required).max(100, validation.max100),
+    email: z
+      .string()
+      .trim()
+      .max(200, validation.max200)
+      .refine((value) => value === "" || z.email().safeParse(value).success, validation.email),
+    emailVerified: z.boolean(),
     password: editing
       ? z
           .string()
@@ -98,7 +127,14 @@ export function UserForm({
   } = useForm<UserFormValues>({
     resolver: zodResolver(schema),
     mode: "onBlur",
-    defaultValues: { username: "", password: "", enabled: true, roles: ["ROLE_USER"] },
+    defaultValues: {
+      username: "",
+      email: "",
+      emailVerified: false,
+      password: "",
+      enabled: true,
+      roles: ["ROLE_USER"],
+    },
   });
   const enabled = useWatch({ control, name: "enabled", defaultValue: true });
   const roles = useWatch({ control, name: "roles", defaultValue: ["ROLE_USER"] });
@@ -110,6 +146,8 @@ export function UserForm({
         if (response.status >= 300) throw new Error();
         reset({
           username: response.data.username,
+          email: response.data.email ?? "",
+          emailVerified: response.data.emailVerified ?? false,
           password: "",
           enabled: response.data.enabled,
           roles: response.data.authorities,
@@ -204,6 +242,23 @@ export function UserForm({
     }
   };
 
+  const sendActionEmail = actionForm.handleSubmit(async ({ action, lifespan }) => {
+    if (!accessToken || !id) return;
+    setActionSent(false);
+    setActionError(false);
+    try {
+      const response = await adminRequest(accessToken, {
+        url: `/api/admin/users/${encodeURIComponent(id)}/execute-actions-email?lifespan=${encodeURIComponent(lifespan)}`,
+        method: "PUT",
+        data: [action],
+      });
+      if (response.status >= 300) throw new Error();
+      setActionSent(true);
+    } catch {
+      setActionError(true);
+    }
+  });
+
   const submit = async (values: UserFormValues) => {
     if (!accessToken) return;
     setSaving(true);
@@ -214,6 +269,8 @@ export function UserForm({
         method: editing ? "PUT" : "POST",
         data: {
           username: values.username,
+          email: values.email.trim() || null,
+          emailVerified: values.emailVerified,
           password: editing ? undefined : values.password,
           enabled: values.enabled,
           roles: values.roles,
@@ -223,13 +280,15 @@ export function UserForm({
         const errorCode = problemErrorCode(response.data);
         problemViolations(response.data).forEach(({ field }) => {
           const message =
-            errorCode === "admin_user_duplicate_username"
+            errorCode === "user_duplicate_username"
               ? validation.usernameDuplicate
-              : field === "password"
-                ? validation.password
-                : field === "roles"
-                  ? validation.roles
-                  : validation.required;
+              : errorCode === "user_duplicate_email"
+                ? validation.emailDuplicate
+                : field === "password"
+                  ? validation.password
+                  : field === "roles"
+                    ? validation.roles
+                    : validation.required;
           setFieldError(field as keyof UserFormValues, { message });
         });
         throw new Error();
@@ -247,12 +306,7 @@ export function UserForm({
           throw new Error();
         }
       }
-      router.push(
-        editing && id
-          ? `/${locale}/admin/users/${encodeURIComponent(id)}/${tab}`
-          : `/${locale}/admin/users`,
-      );
-      router.refresh();
+      router.push(editing && id ? `/admin/users/${encodeURIComponent(id)}/${tab}` : `/admin/users`);
     } catch {
       setError(true);
     } finally {
@@ -262,7 +316,7 @@ export function UserForm({
 
   if (loading) return <LoadingState />;
   if (editing && error) return <ErrorState message={copy.notFound} />;
-  const userBaseUrl = `/${locale}/admin/users/${encodeURIComponent(id ?? "")}`;
+  const userBaseUrl = `/admin/users/${encodeURIComponent(id ?? "")}`;
   const userTabs = [
     { key: "details", label: copy.details, href: `${userBaseUrl}/details` },
     {
@@ -281,10 +335,7 @@ export function UserForm({
       {editing && (
         <div className="admin-user-detail-header">
           <AdminBreadcrumb
-            items={[
-              { label: copy.users, href: `/${locale}/admin/users` },
-              { label: getValues("username") },
-            ]}
+            items={[{ label: copy.users, href: `/admin/users` }, { label: getValues("username") }]}
           />
           <div className="admin-detail-heading">
             <div>
@@ -306,6 +357,17 @@ export function UserForm({
                 <Form.Control isInvalid={Boolean(errors.username)} {...register("username")} />
                 <Form.Control.Feedback type="invalid">
                   {errors.username?.message}
+                </Form.Control.Feedback>
+              </Form.Group>
+              <Form.Group>
+                <Form.Label>{copy.email}</Form.Label>
+                <Form.Control
+                  type="email"
+                  isInvalid={Boolean(errors.email)}
+                  {...register("email")}
+                />
+                <Form.Control.Feedback type="invalid">
+                  {errors.email?.message}
                 </Form.Control.Feedback>
               </Form.Group>
               <Form.Check
@@ -410,6 +472,18 @@ export function UserForm({
                   {errors.username?.message}
                 </Form.Control.Feedback>
               </Form.Group>
+              <Form.Group>
+                <Form.Label>{copy.email}</Form.Label>
+                <Form.Control
+                  type="email"
+                  isInvalid={Boolean(errors.email)}
+                  {...register("email")}
+                />
+                <Form.Control.Feedback type="invalid">
+                  {errors.email?.message}
+                </Form.Control.Feedback>
+              </Form.Group>
+              <Form.Check type="switch" label={copy.emailVerified} {...register("emailVerified")} />
               <Form.Check
                 type="switch"
                 label={copy.enabled}
@@ -431,25 +505,65 @@ export function UserForm({
         )}
 
         {editing && activeTab === "credentials" && (
-          <Card className="admin-panel-card">
-            <Card.Body>
-              <h2 className="h5 mb-1">{editing ? copy.resetPassword : copy.password}</h2>
-              <p className="small text-body-secondary mb-3">
-                {editing ? copy.resetPasswordHelp : ""}
-              </p>
-              <Form.Group>
-                <Form.Label>{editing ? copy.newPassword : copy.password}</Form.Label>
-                <Form.Control
-                  type="password"
-                  isInvalid={Boolean(errors.password)}
-                  {...register("password")}
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.password?.message}
-                </Form.Control.Feedback>
-              </Form.Group>
-            </Card.Body>
-          </Card>
+          <div className="d-grid gap-3">
+            <Card className="admin-panel-card">
+              <Card.Body>
+                <h2 className="h5 mb-1">{editing ? copy.resetPassword : copy.password}</h2>
+                <p className="small text-body-secondary mb-3">
+                  {editing ? copy.resetPasswordHelp : ""}
+                </p>
+                <Form.Group>
+                  <Form.Label>{editing ? copy.newPassword : copy.password}</Form.Label>
+                  <Form.Control
+                    type="password"
+                    isInvalid={Boolean(errors.password)}
+                    {...register("password")}
+                  />
+                  <Form.Control.Feedback type="invalid">
+                    {errors.password?.message}
+                  </Form.Control.Feedback>
+                </Form.Group>
+              </Card.Body>
+            </Card>
+            <Card className="admin-panel-card">
+              <Card.Body className="d-grid gap-3">
+                <div>
+                  <h2 className="h5 mb-1">{copy.credentialReset}</h2>
+                  <p className="small text-body-secondary mb-0">{copy.credentialResetHelp}</p>
+                </div>
+                {actionSent && <Alert variant="success">{copy.actionEmailSent}</Alert>}
+                {actionError && <Alert variant="danger">{copy.operationError}</Alert>}
+                <Form.Group>
+                  <Form.Label>{copy.requiredAction}</Form.Label>
+                  <Form.Select {...actionForm.register("action")}>
+                    <option value="UPDATE_PASSWORD">{copy.updatePasswordAction}</option>
+                    <option value="VERIFY_EMAIL">{copy.verifyEmailAction}</option>
+                  </Form.Select>
+                </Form.Group>
+                <Form.Group>
+                  <Form.Label>{copy.actionLifespan}</Form.Label>
+                  <Form.Select {...actionForm.register("lifespan")}>
+                    <option value="1800">{copy.thirtyMinutes}</option>
+                    <option value="3600">{copy.oneHour}</option>
+                    <option value="43200">{copy.twelveHours}</option>
+                    <option value="86400">{copy.oneDay}</option>
+                  </Form.Select>
+                </Form.Group>
+                <div>
+                  <Button
+                    type="button"
+                    variant="outline-primary"
+                    disabled={actionForm.formState.isSubmitting}
+                    onClick={() => void sendActionEmail()}
+                  >
+                    {actionForm.formState.isSubmitting
+                      ? dictionary.admin.common.saving
+                      : copy.sendActionEmail}
+                  </Button>
+                </div>
+              </Card.Body>
+            </Card>
+          </div>
         )}
 
         {editing && activeTab === "roles" && (
@@ -515,7 +629,7 @@ export function UserForm({
             <Button
               type="button"
               variant="outline-secondary"
-              onClick={() => router.push(`/${locale}/admin/users`)}
+              onClick={() => router.push(`/admin/users`)}
             >
               {dictionary.admin.common.cancel}
             </Button>

@@ -1,5 +1,6 @@
 package io.github.susimsek.springauthserversamples.web;
 
+import io.github.susimsek.springauthserversamples.dto.oauth.AuthorizationConsentDTO;
 import java.security.Principal;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
@@ -29,7 +30,7 @@ public class AuthorizationConsentController {
     }
 
     @GetMapping("/api/authorization/consent")
-    ConsentView consent(
+    AuthorizationConsentDTO consent(
             Principal principal,
             @RequestParam(OAuth2ParameterNames.CLIENT_ID) String clientId,
             @RequestParam(OAuth2ParameterNames.SCOPE) String scope,
@@ -72,7 +73,7 @@ public class AuthorizationConsentController {
         String requestUri =
                 StringUtils.hasText(userCode) ? "/oauth2/device_verification" : "/oauth2/authorize";
 
-        return new ConsentView(
+        return new AuthorizationConsentDTO(
                 clientId,
                 state,
                 scopesToApprove,
@@ -81,13 +82,4 @@ public class AuthorizationConsentController {
                 userCode,
                 requestUri);
     }
-
-    record ConsentView(
-            String clientId,
-            String state,
-            Set<String> scopes,
-            Set<String> previouslyApprovedScopes,
-            String principalName,
-            String userCode,
-            String requestUri) {}
 }

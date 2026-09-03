@@ -1,8 +1,10 @@
 "use client";
 
+import { useDateTimeFormatter } from "@/i18n/useDateTimeFormatter";
+
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import Link from "@/routing/Link";
 import { Badge, Button, Dropdown, Form, Modal } from "react-bootstrap";
 
 import type { Locale } from "@/i18n/config";
@@ -245,7 +247,7 @@ function AdminResourcesContent({
         actions={
           <>
             {resource === "users" && access?.manageUsers && locale && (
-              <Link className="btn btn-primary" href={`/${locale}/admin/users/new`}>
+              <Link className="btn btn-primary" href={`/admin/users/new`}>
                 <AdminActionIcon action="add" />
                 {copy.createUser}
               </Link>
@@ -486,7 +488,7 @@ function UsersTable({
                   {locale && (
                     <Dropdown.Item
                       as={Link}
-                      href={`/${locale}/admin/users/${encodeURIComponent(String(user.id))}/details`}
+                      href={`/admin/users/${encodeURIComponent(String(user.id))}/details`}
                     >
                       <AdminActionIcon action="edit" />
                       {copy.edit}
@@ -540,6 +542,7 @@ function SessionsTable({
   canManage: boolean;
   accessToken: string | null;
 }) {
+  const date = useDateTimeFormatter();
   const [sessionAction, setSessionAction] = useState<{
     url: string;
     label: string;
@@ -745,7 +748,7 @@ function ConsentsTable({
   locale?: Locale;
 }) {
   const [consentToRevoke, setConsentToRevoke] = useState<Consent | null>(null);
-  const formatDate = (value: string) => new Date(value).toLocaleString(locale);
+  const formatDate = useDateTimeFormatter();
   return (
     <>
       <thead>
@@ -760,13 +763,13 @@ function ConsentsTable({
       <tbody>
         {items.map((consent) => {
           const detailHref = locale
-            ? `/${locale}/admin/consents/${encodeConsentRouteKey(consent.clientId, consent.principalName)}`
+            ? `/admin/consents/${encodeConsentRouteKey(consent.clientId, consent.principalName)}`
             : undefined;
           return (
             <tr key={`${consent.clientId}-${consent.principalName}`}>
               <td data-label={copy.user}>
                 {locale && consent.userId ? (
-                  <Link href={`/${locale}/admin/users/${consent.userId}/details`}>
+                  <Link href={`/admin/users/${consent.userId}/details`}>
                     {consent.principalName}
                   </Link>
                 ) : (
@@ -776,9 +779,7 @@ function ConsentsTable({
               <td data-label={copy.client}>
                 <div>
                   {locale ? (
-                    <Link
-                      href={`/${locale}/admin/clients/${encodeURIComponent(consent.clientId)}/settings`}
-                    >
+                    <Link href={`/admin/clients/${encodeURIComponent(consent.clientId)}/settings`}>
                       {consent.clientName}
                     </Link>
                   ) : (
@@ -843,6 +844,7 @@ function ConsentsTable({
 }
 
 function KeysTable({ items, copy }: { items: Key[]; copy: Copy }) {
+  const date = useDateTimeFormatter();
   return (
     <>
       <thead>
@@ -880,4 +882,3 @@ type AdminRequest = <T>(
   method: "DELETE" | "POST" | "PUT",
   data?: unknown,
 ) => Promise<T | undefined>;
-const date = (value: string) => new Date(value).toLocaleString();

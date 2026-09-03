@@ -1,16 +1,16 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import axios from "axios";
 
-import dictionary from "@/i18n/dictionaries/en.json";
+import dictionary from "@/locales/en/common.json";
 import { StoreProvider } from "@/store/StoreProvider";
 
 const navigation = {
-  pathname: "/en/login",
+  pathname: "/login",
   push: jest.fn(),
   searchParams: new URLSearchParams(),
 };
 
-jest.mock("next/navigation", () => ({
+jest.mock("@/routing/navigation", () => ({
   useParams: () => ({ lang: "en" }),
   usePathname: () => navigation.pathname,
   useRouter: () => ({ push: navigation.push }),
@@ -77,12 +77,12 @@ function installMatchMedia(matches = false) {
 
 describe("authentication components", () => {
   beforeEach(() => {
-    navigation.pathname = "/en/login";
+    navigation.pathname = "/login";
     navigation.searchParams = new URLSearchParams();
     navigation.push.mockReset();
     mockedAxios.get.mockReset();
     mockedAxios.isCancel.mockReset();
-    window.history.replaceState(null, "", "/en/login");
+    window.history.replaceState(null, "", "/login");
     localStorage.clear();
     document.documentElement.removeAttribute("data-bs-theme");
     installMatchMedia();
@@ -101,7 +101,7 @@ describe("authentication components", () => {
 
     expect(screen.getByRole("link", { name: dictionary.brand.product })).toHaveAttribute(
       "href",
-      "/en/login",
+      "/login",
     );
     expect(screen.getByText(dictionary.login.invalidCredentials)).toBeVisible();
     expect(screen.getByText(dictionary.login.loggedOut)).toBeVisible();
@@ -174,7 +174,7 @@ describe("authentication components", () => {
   it("handles consent request failures and ignores cancellation", async () => {
     mockedAxios.get.mockRejectedValueOnce(new Error("invalid request"));
     mockedAxios.isCancel.mockReturnValue(false);
-    navigation.pathname = "/tr/consent";
+    navigation.pathname = "/consent";
     render(<ConsentForm dictionary={dictionary} />);
 
     expect(await screen.findByText(dictionary.consent.invalidRequest)).toBeVisible();
@@ -200,28 +200,20 @@ describe("authentication components", () => {
     expect(screen.getByText(dictionary.error.types.server_error.description)).toBeVisible();
   });
 
-  it("switches language while preserving the query string and normalizing paths", () => {
-    window.history.replaceState(null, "", "/en/login?continue=%2Fconsole");
-    render(
-      <StoreProvider>
-        <LanguageSwitcher locale="en" label={dictionary.navbar.language} />
-      </StoreProvider>,
-    );
-
+  it("switches language without navigating or changing the URL", () => {
+    window.history.replaceState(null, "", "/admin/users/123?tab=details#profile");
+    render(<LanguageSwitcher locale="en" label={dictionary.navbar.language} />);
     fireEvent.click(screen.getByRole("button", { name: dictionary.navbar.language }));
     fireEvent.click(screen.getByRole("button", { name: "Türkçe" }));
-    expect(document.cookie).toContain("AUTH_LOCALE=tr");
-    expect(navigation.push).toHaveBeenCalledWith("/tr/login?continue=%2Fconsole");
-
-    navigation.pathname = "profile";
-    render(
-      <StoreProvider>
-        <LanguageSwitcher locale="tr" label={dictionary.navbar.language} />
-      </StoreProvider>,
+    expect(document.cookie).toContain("locale=tr");
+    expect(window.location.pathname + window.location.search + window.location.hash).toBe(
+      "/admin/users/123?tab=details#profile",
     );
-    fireEvent.click(screen.getAllByRole("button", { name: dictionary.navbar.language })[1]);
-    fireEvent.click(screen.getAllByRole("button", { name: "English" })[1]);
-    expect(navigation.push).toHaveBeenLastCalledWith("/en/profile?continue=%2Fconsole");
+    expect(navigation.push).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: dictionary.navbar.language }));
+    fireEvent.click(screen.getByRole("button", { name: "English" }));
+    expect(document.cookie).toContain("locale=en");
+    expect(navigation.push).not.toHaveBeenCalled();
   });
 
   it("persists themes, applies system preferences, and cleans up media subscriptions", () => {

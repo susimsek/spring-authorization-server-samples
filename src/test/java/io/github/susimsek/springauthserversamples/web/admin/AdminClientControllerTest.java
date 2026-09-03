@@ -5,6 +5,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientCreatedDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientRequestDTO;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminClientScopeService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminClientService;
@@ -48,7 +51,7 @@ class AdminClientControllerTest {
 
     @Test
     void returnsClientWhenFound() {
-        AdminClientView client = clientView();
+        AdminClientDTO client = clientView();
         when(adminClientService.findById("client-1")).thenReturn(client);
 
         var response = controller.findById("client-1");
@@ -69,8 +72,8 @@ class AdminClientControllerTest {
 
     @Test
     void createsClientWithLocationHeader() {
-        AdminClientRequest request = clientRequest();
-        AdminClientCreatedView created = new AdminClientCreatedView(clientView(), "secret-1");
+        AdminClientRequestDTO request = clientRequest();
+        AdminClientCreatedDTO created = new AdminClientCreatedDTO(clientView(), "secret-1");
         when(adminClientService.create(request)).thenReturn(created);
 
         var response = controller.create(request);
@@ -82,8 +85,8 @@ class AdminClientControllerTest {
 
     @Test
     void updatesClient() {
-        AdminClientRequest request = clientRequest();
-        AdminClientView client = clientView();
+        AdminClientRequestDTO request = clientRequest();
+        AdminClientDTO client = clientView();
         when(adminClientService.update("client-1", request)).thenReturn(client);
 
         var response = controller.update("client-1", request);
@@ -108,8 +111,8 @@ class AdminClientControllerTest {
         assertThat(response.clientSecret()).isEqualTo("new-secret");
     }
 
-    private static AdminClientRequest clientRequest() {
-        return new AdminClientRequest(
+    private static AdminClientRequestDTO clientRequest() {
+        return new AdminClientRequestDTO(
                 "demo-client",
                 "Demo Client",
                 Set.of("client_secret_basic"),
@@ -124,8 +127,8 @@ class AdminClientControllerTest {
                 Duration.ofHours(1));
     }
 
-    private static AdminClientView clientView() {
-        return new AdminClientView(
+    private static AdminClientDTO clientView() {
+        return new AdminClientDTO(
                 "client-1",
                 "demo-client",
                 "Demo Client",

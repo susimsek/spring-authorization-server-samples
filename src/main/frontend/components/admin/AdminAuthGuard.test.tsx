@@ -13,7 +13,7 @@ const mockReplace = jest.fn();
 const mockRefreshAccessToken = jest.fn().mockResolvedValue("new-token");
 const mockSetAccess = jest.fn();
 const mockSetUsername = jest.fn();
-let pathname = "/en/admin";
+let pathname = "/admin";
 let auth = {
   accessToken: "token" as string | null,
   beginAuthorization: mockBeginAuthorization,
@@ -29,7 +29,7 @@ jest.mock("@/lib/admin-api", () => ({
   adminRequest: jest.fn(),
   registerAdminTokenHandlers: jest.fn(),
 }));
-jest.mock("next/navigation", () => ({
+jest.mock("@/routing/navigation", () => ({
   useParams: () => ({ lang: "en" }),
   usePathname: () => pathname,
   useRouter: () => ({ replace: mockReplace }),
@@ -44,7 +44,7 @@ describe("AdminAuthGuard", () => {
       status: 200,
       data: { username: "admin", authorities: ["ROLE_ADMIN"], access: { viewClients: true } },
     } as never);
-    pathname = "/en/admin";
+    pathname = "/admin";
     auth = {
       accessToken: "token",
       beginAuthorization: mockBeginAuthorization,
@@ -58,7 +58,7 @@ describe("AdminAuthGuard", () => {
   });
 
   it("bypasses authorization on the callback route", () => {
-    pathname = "/en/admin/callback/";
+    pathname = "/admin/callback/";
     render(<AdminAuthGuard locale="en">Callback</AdminAuthGuard>);
     expect(screen.getByText("Callback")).toBeVisible();
     expect(mockAdminRequest).not.toHaveBeenCalled();

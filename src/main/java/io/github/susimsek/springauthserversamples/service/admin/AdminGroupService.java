@@ -10,6 +10,7 @@ import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupUserDTO;
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
 import io.github.susimsek.springauthserversamples.repository.GroupRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
+import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -52,7 +53,7 @@ public class AdminGroupService {
         String name = normalizeName(request.name());
         if (groupRepository.existsByName(name)) {
             throw ApiException.conflict(
-                    "name", "group_duplicate_name", "Group name is already registered");
+                    "name", ApiErrorCode.GROUP_DUPLICATE_NAME, "Group name is already registered");
         }
         GroupEntity group = new GroupEntity();
         group.setName(name);
@@ -68,7 +69,7 @@ public class AdminGroupService {
         String name = normalizeName(request.name());
         if (!group.getName().equals(name) && groupRepository.existsByName(name)) {
             throw ApiException.conflict(
-                    "name", "group_duplicate_name", "Group name is already registered");
+                    "name", ApiErrorCode.GROUP_DUPLICATE_NAME, "Group name is already registered");
         }
         group.setName(name);
         group.setParent(resolveParent(request.parentId(), group));
@@ -132,7 +133,8 @@ public class AdminGroupService {
         GroupEntity group = findGroup(id);
         if (groupRepository.existsByParentId(id)) {
             throw ApiException.badRequest(
-                    "group_has_children", "Move or delete child groups before deleting this group");
+                    ApiErrorCode.GROUP_HAS_CHILDREN,
+                    "Move or delete child groups before deleting this group");
         }
         java.util.List<UserEntity> users = userRepository.findAllByGroupsId(id);
         users.forEach(user -> user.getGroups().remove(group));
@@ -164,7 +166,7 @@ public class AdminGroupService {
         var authorities = authorityRepository.findByNameIn(roleNames);
         if (authorities.size() != roleNames.size()) {
             throw ApiException.badRequest(
-                    "roles", "group_invalid_roles", "One or more roles are invalid");
+                    "roles", ApiErrorCode.GROUP_INVALID_ROLES, "One or more roles are invalid");
         }
         return new LinkedHashSet<>(authorities);
     }
@@ -220,7 +222,8 @@ public class AdminGroupService {
     private static String normalizeName(String value) {
         String name = value == null ? "" : value.strip();
         if (name.isEmpty()) {
-            throw ApiException.badRequest("name", "group_invalid_name", "Group name is required");
+            throw ApiException.badRequest(
+                    "name", ApiErrorCode.GROUP_INVALID_NAME, "Group name is required");
         }
         return name;
     }
@@ -231,13 +234,15 @@ public class AdminGroupService {
         }
         if (group != null && parentId.equals(group.getId())) {
             throw ApiException.badRequest(
-                    "parentId", "group_invalid_parent", "A group cannot be its own parent");
+                    "parentId",
+                    ApiErrorCode.GROUP_INVALID_PARENT,
+                    "A group cannot be its own parent");
         }
         GroupEntity parent = findGroup(parentId);
         if (group != null && isDescendant(parent, group.getId())) {
             throw ApiException.badRequest(
                     "parentId",
-                    "group_invalid_parent",
+                    ApiErrorCode.GROUP_INVALID_PARENT,
                     "A group cannot be moved into its descendant");
         }
         return parent;

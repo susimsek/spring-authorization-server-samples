@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { useParams } from "@/routing/navigation";
 
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
@@ -16,12 +16,10 @@ export function ClientEntityRoute({
   locale: Locale;
   dictionary: Dictionary;
 }) {
-  const pathname = usePathname();
-  const parts = pathname.split("/").filter(Boolean);
-  const clientsIndex = parts.indexOf("clients");
-  const id = clientsIndex >= 0 ? decodeURIComponent(parts[clientsIndex + 1] ?? "") : "";
-  const candidate = clientsIndex >= 0 ? parts[clientsIndex + 2] : "";
+  const { id, section: candidate } = useParams<{ id: string; section: string }>();
   const section = candidate && SECTIONS.has(candidate) ? candidate : "settings";
 
-  return <ClientDetail locale={locale} dictionary={dictionary} id={id || null} tab={section} />;
+  return (
+    <ClientDetail key={id} locale={locale} dictionary={dictionary} id={id || null} tab={section} />
+  );
 }

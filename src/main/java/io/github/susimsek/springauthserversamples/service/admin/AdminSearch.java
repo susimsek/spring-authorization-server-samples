@@ -1,5 +1,6 @@
 package io.github.susimsek.springauthserversamples.service.admin;
 
+import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 
 final class AdminSearch {
@@ -12,7 +13,7 @@ final class AdminSearch {
         String normalized = query == null ? "" : query.strip();
         if (normalized.length() > MAX_QUERY_LENGTH) {
             throw ApiException.badRequest(
-                    "admin_search_too_long", "Search query must not exceed 100 characters");
+                    ApiErrorCode.SEARCH_TOO_LONG, "Search query must not exceed 100 characters");
         }
         return normalized;
     }

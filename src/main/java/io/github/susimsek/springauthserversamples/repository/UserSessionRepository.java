@@ -30,13 +30,6 @@ public interface UserSessionRepository extends JpaRepository<UserSessionEntity, 
     long countByExpiryTimeAfter(long expiryTime);
 
     @Query(
-            "select s from UserSessionEntity s where s.principalName is not null and"
-                    + " s.expiryTime > :expiryTime and (:query = '' or"
-                    + " lower(s.principalName) like lower(concat('%', :query, '%')))")
-    Page<UserSessionEntity> findActiveSessions(
-            @Param("expiryTime") long expiryTime, @Param("query") String query, Pageable pageable);
-
-    @Query(
             "select s from UserSessionEntity s where s.principalName is not null and (:status ="
                 + " 'all' or (:status = 'active' and s.expiryTime > :now) or (:status = 'expired'"
                 + " and s.expiryTime <= :now)) and (:query = '' or lower(s.principalName) like"

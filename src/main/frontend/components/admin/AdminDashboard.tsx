@@ -11,9 +11,9 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
+import Link from "@/routing/Link";
 import type { Dictionary } from "@/i18n/get-dictionary";
+import { useLocale } from "@/i18n/client";
 import { adminRequest } from "@/lib/admin-api";
 import type { PageResponse } from "@/lib/api-types";
 import { useAdminAuth } from "./AdminAuthProvider";
@@ -35,8 +35,8 @@ type Event = {
   occurredAt: string;
 };
 export function AdminDashboard({ dictionary }: { dictionary: Dictionary }) {
+  const locale = useLocale();
   const { accessToken } = useAdminAuth();
-  const params = useParams<{ lang: string }>();
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [serverInfo, setServerInfo] = useState<ServerInfo | null>(null);
@@ -113,10 +113,7 @@ export function AdminDashboard({ dictionary }: { dictionary: Dictionary }) {
               <div className="small text-body-secondary text-break">
                 {serverInfo?.issuer ?? "—"}
               </div>
-              <Link
-                className="btn btn-sm btn-outline-secondary mt-3"
-                href={`/${params.lang}/admin/server-info`}
-              >
+              <Link className="btn btn-sm btn-outline-secondary mt-3" href={`/admin/server-info`}>
                 {dictionary.admin.dashboard.openServerInfo}
               </Link>
             </div>
@@ -143,10 +140,7 @@ export function AdminDashboard({ dictionary }: { dictionary: Dictionary }) {
               ) : (
                 <div className="text-body-secondary">—</div>
               )}
-              <Link
-                className="btn btn-sm btn-outline-secondary mt-3"
-                href={`/${params.lang}/admin/keys`}
-              >
+              <Link className="btn btn-sm btn-outline-secondary mt-3" href={`/admin/keys`}>
                 {dictionary.admin.dashboard.manageKeys}
               </Link>
             </div>
@@ -165,7 +159,7 @@ export function AdminDashboard({ dictionary }: { dictionary: Dictionary }) {
               {dictionary.admin.dashboard.recentActivity}
             </div>
           </div>
-          <Link className="btn btn-sm btn-outline-secondary" href={`/${params.lang}/admin/events`}>
+          <Link className="btn btn-sm btn-outline-secondary" href={`/admin/events`}>
             {dictionary.admin.dashboard.viewAll}
           </Link>
         </div>
@@ -181,7 +175,7 @@ export function AdminDashboard({ dictionary }: { dictionary: Dictionary }) {
                 <div className="small text-body-secondary text-truncate">{e.targetId}</div>
               </div>
               <div className="small text-body-secondary text-nowrap">
-                {new Date(e.occurredAt).toLocaleString(params.lang)}
+                {new Date(e.occurredAt).toLocaleString(locale)}
               </div>
             </div>
           ))}

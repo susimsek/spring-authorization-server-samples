@@ -8,5 +8,6 @@ public class NativeRuntimeHints implements RuntimeHintsRegistrar {
     @Override
     public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
         hints.resources().registerPattern("i18n/**");
+        hints.resources().registerPattern("templates/**");
     }
 }

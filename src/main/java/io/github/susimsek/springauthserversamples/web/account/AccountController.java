@@ -6,12 +6,15 @@ import io.github.susimsek.springauthserversamples.dto.account.AccountPasswordReq
 import io.github.susimsek.springauthserversamples.dto.account.AccountProfileDTO;
 import io.github.susimsek.springauthserversamples.dto.account.AccountProfileRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.account.AccountSessionDTO;
-import io.github.susimsek.springauthserversamples.service.account.AccountService;
+import io.github.susimsek.springauthserversamples.service.account.AccountApplicationService;
+import io.github.susimsek.springauthserversamples.service.account.AccountProfileService;
+import io.github.susimsek.springauthserversamples.service.account.AccountSessionService;
 import io.github.susimsek.springauthserversamples.web.ApiController;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +26,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -38,27 +42,36 @@ import org.springframework.web.bind.annotation.RestController;
 @SecurityRequirement(name = OpenApiConfig.ACCOUNT_BEARER)
 public class AccountController {
 
-    private final AccountService accountService;
+    private final AccountProfileService accountProfileService;
+    private final AccountSessionService accountSessionService;
+    private final AccountApplicationService accountApplicationService;
 
     @GetMapping("/profile")
     @Operation(summary = "Read profile")
     AccountProfileDTO profile(Authentication authentication) {
-        return accountService.profile(authentication.getName());
+        return accountProfileService.profile(authentication.getName());
     }
 
     @PutMapping("/profile")
     @Operation(summary = "Update profile")
     AccountProfileDTO updateProfile(
             Authentication authentication, @Valid @RequestBody AccountProfileRequestDTO request) {
-        return accountService.updateProfile(authentication.getName(), request);
+        return accountProfileService.updateProfile(authentication.getName(), request);
     }
 
     @PutMapping("/password")
     @Operation(summary = "Change password")
     ResponseEntity<Void> changePassword(
             Authentication authentication, @Valid @RequestBody AccountPasswordRequestDTO request) {
-        accountService.changePassword(
+        accountProfileService.changePassword(
                 authentication.getName(), request.currentPassword(), request.newPassword());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/send-verify-email")
+    @Operation(summary = "Send an email verification link")
+    ResponseEntity<Void> sendVerifyEmail(Authentication authentication, Locale locale) {
+        accountProfileService.sendVerificationEmail(authentication.getName(), locale);
         return ResponseEntity.noContent().build();
     }
 
@@ -75,7 +88,7 @@ public class AccountController {
                             sort = "lastAccessTime",
                             direction = org.springframework.data.domain.Sort.Direction.DESC)
                     Pageable pageable) {
-        return accountService.sessions(
+        return accountSessionService.sessions(
                 authentication.getName(), jwt.getClaimAsString("sid"), pageable);
     }
 
@@ -83,14 +96,8 @@ public class AccountController {
     @Operation(summary = "Sign out other sessions")
     ResponseEntity<Void> deleteOtherSessions(
             Authentication authentication, @AuthenticationPrincipal Jwt jwt) {
-        accountService.deleteOtherSessions(authentication.getName(), jwt.getClaimAsString("sid"));
-        return ResponseEntity.noContent().build();
-    }
-
-    @DeleteMapping("/sessions")
-    @Operation(summary = "Sign out all sessions")
-    ResponseEntity<Void> deleteAllSessions(Authentication authentication) {
-        accountService.deleteAllSessions(authentication.getName());
+        accountSessionService.deleteOtherSessions(
+                authentication.getName(), jwt.getClaimAsString("sid"));
         return ResponseEntity.noContent().build();
     }
 
@@ -98,7 +105,7 @@ public class AccountController {
     @Operation(summary = "Sign out a session")
     ResponseEntity<Void> deleteSession(
             Authentication authentication, @PathVariable String sessionId) {
-        accountService.deleteSession(authentication.getName(), sessionId);
+        accountSessionService.deleteSession(authentication.getName(), sessionId);
         return ResponseEntity.noContent().build();
     }
 
@@ -111,14 +118,14 @@ public class AccountController {
     Page<AccountApplicationDTO> applications(
             Authentication authentication,
             @PageableDefault(size = 20, sort = "id.registeredClientId") Pageable pageable) {
-        return accountService.applications(authentication.getName(), pageable);
+        return accountApplicationService.applications(authentication.getName(), pageable);
     }
 
     @DeleteMapping("/applications/{clientId}")
     @Operation(summary = "Revoke application consent")
     ResponseEntity<Void> revokeApplication(
             Authentication authentication, @PathVariable String clientId) {
-        accountService.revokeApplication(authentication.getName(), clientId);
+        accountApplicationService.revokeApplication(authentication.getName(), clientId);
         return ResponseEntity.noContent().build();
     }
 }

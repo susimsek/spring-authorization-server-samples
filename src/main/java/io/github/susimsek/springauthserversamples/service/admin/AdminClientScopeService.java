@@ -1,14 +1,16 @@
 package io.github.susimsek.springauthserversamples.service.admin;
 
 import io.github.susimsek.springauthserversamples.domain.ClientScopeEntity;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientScopeAssignmentRequestDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientScopeDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientScopeRequestDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminScopeAssignmentsDTO;
 import io.github.susimsek.springauthserversamples.mapper.AuthorizationServerMapperSupport;
 import io.github.susimsek.springauthserversamples.mapper.RegisteredClientMapper;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientScopeRepository;
+import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
-import io.github.susimsek.springauthserversamples.web.admin.AdminClientScopeAssignmentRequest;
-import io.github.susimsek.springauthserversamples.web.admin.AdminClientScopeRequest;
-import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -33,28 +35,28 @@ public class AdminClientScopeService {
     private final AdminAuditEventService adminAuditEventService;
 
     @Transactional(readOnly = true)
-    public Page<ClientScopeView> findAll(String query, Pageable pageable) {
+    public Page<AdminClientScopeDTO> findAll(String query, Pageable pageable) {
         String q = query == null ? "" : query.trim();
         return clientScopeRepository
                 .findByNameContainingIgnoreCaseOrDisplayNameContainingIgnoreCase(q, q, pageable)
-                .map(ClientScopeView::from);
+                .map(AdminClientScopeService::toDTO);
     }
 
     @Transactional(readOnly = true)
-    public List<ClientScopeView> findAll() {
+    public List<AdminClientScopeDTO> findAll() {
         return clientScopeRepository
                 .findAll(org.springframework.data.domain.Sort.by("name"))
                 .stream()
-                .map(ClientScopeView::from)
+                .map(AdminClientScopeService::toDTO)
                 .toList();
     }
 
     @Transactional
-    public ClientScopeView create(AdminClientScopeRequest request) {
+    public AdminClientScopeDTO create(AdminClientScopeRequestDTO request) {
         String name = normalizeName(request.name());
         if (clientScopeRepository.existsByName(name)) {
             throw ApiException.conflict(
-                    "admin_client_scope_duplicate", "Client scope already exists");
+                    ApiErrorCode.CLIENT_SCOPE_DUPLICATE, "Client scope already exists");
         }
         ClientScopeEntity entity = new ClientScopeEntity();
         entity.setId(UUID.randomUUID().toString());
@@ -63,14 +65,14 @@ public class AdminClientScopeService {
         entity.setDescription(trimToNull(request.description()));
         ClientScopeEntity saved = clientScopeRepository.save(entity);
         adminAuditEventService.record("client-scope.created", "client-scope", saved.getId());
-        return ClientScopeView.from(saved);
+        return toDTO(saved);
     }
 
     @Transactional
     @CacheEvict(
             cacheNames = ClientRepository.REGISTERED_CLIENT_BY_CLIENT_ID_CACHE,
             allEntries = true)
-    public ClientScopeView update(String id, AdminClientScopeRequest request) {
+    public AdminClientScopeDTO update(String id, AdminClientScopeRequestDTO request) {
         ClientScopeEntity entity = required(id);
         String name = normalizeName(request.name());
         clientScopeRepository
@@ -79,7 +81,8 @@ public class AdminClientScopeService {
                 .ifPresent(
                         ignored -> {
                             throw ApiException.conflict(
-                                    "admin_client_scope_duplicate", "Client scope already exists");
+                                    ApiErrorCode.CLIENT_SCOPE_DUPLICATE,
+                                    "Client scope already exists");
                         });
         if (!entity.getName().equals(name)) {
             renameAssignedScope(entity.getName(), name);
@@ -89,7 +92,7 @@ public class AdminClientScopeService {
         entity.setDescription(trimToNull(request.description()));
         ClientScopeEntity saved = clientScopeRepository.save(entity);
         adminAuditEventService.record("client-scope.updated", "client-scope", id);
-        return ClientScopeView.from(saved);
+        return toDTO(saved);
     }
 
     @Transactional
@@ -104,46 +107,46 @@ public class AdminClientScopeService {
                                                 .contains(entity.getName()));
         if (assigned) {
             throw ApiException.badRequest(
-                    "admin_client_scope_assigned", "Assigned client scopes cannot be deleted");
+                    ApiErrorCode.CLIENT_SCOPE_ASSIGNED, "Assigned client scopes cannot be deleted");
         }
         clientScopeRepository.delete(entity);
         adminAuditEventService.record("client-scope.deleted", "client-scope", id);
     }
 
     @Transactional(readOnly = true)
-    public ScopeAssignments assignments(String clientId) {
+    public AdminScopeAssignmentsDTO assignments(String clientId) {
         RegisteredClient client = clientRequired(clientId);
         Set<String> defaults = ClientScopeSettings.defaultScopes(client);
         Set<String> optional = ClientScopeSettings.optionalScopes(client);
-        List<ClientScopeView> scopes = findAll();
-        return new ScopeAssignments(defaults, optional, scopes);
+        List<AdminClientScopeDTO> scopes = findAll();
+        return new AdminScopeAssignmentsDTO(defaults, optional, scopes);
     }
 
     @Transactional
     @CacheEvict(
             cacheNames = ClientRepository.REGISTERED_CLIENT_BY_CLIENT_ID_CACHE,
             allEntries = true)
-    public ScopeAssignments updateAssignments(
-            String clientId, AdminClientScopeAssignmentRequest request) {
+    public AdminScopeAssignmentsDTO updateAssignments(
+            String clientId, AdminClientScopeAssignmentRequestDTO request) {
         Set<String> defaults = normalized(request.defaultScopes());
         Set<String> optional = normalized(request.optionalScopes());
         Set<String> intersection = new LinkedHashSet<>(defaults);
         intersection.retainAll(optional);
         if (!intersection.isEmpty()) {
             throw ApiException.badRequest(
-                    "admin_client_scope_assignment_overlap",
+                    ApiErrorCode.CLIENT_SCOPE_ASSIGNMENT_OVERLAP,
                     "A scope cannot be both default and optional");
         }
         Set<String> union = new LinkedHashSet<>(defaults);
         union.addAll(optional);
         if (union.isEmpty()) {
             throw ApiException.badRequest(
-                    "admin_client_invalid_scopes", "At least one client scope is required");
+                    ApiErrorCode.CLIENT_INVALID_SCOPES, "At least one client scope is required");
         }
         long known = clientScopeRepository.countByNameIn(union);
         if (known != union.size()) {
             throw ApiException.badRequest(
-                    "admin_client_scope_unknown", "One or more client scopes do not exist");
+                    ApiErrorCode.CLIENT_SCOPE_UNKNOWN, "One or more client scopes do not exist");
         }
 
         RegisteredClient existing = clientRequired(clientId);
@@ -159,7 +162,7 @@ public class AdminClientScopeService {
         RegisteredClient updated = builder.build();
         clientRepository.save(registeredClientMapper.toEntity(updated, mapperSupport));
         adminAuditEventService.record("client.scopes.updated", "client", clientId);
-        return new ScopeAssignments(defaults, optional, findAll());
+        return new AdminScopeAssignmentsDTO(defaults, optional, findAll());
     }
 
     private void renameAssignedScope(String oldName, String newName) {
@@ -238,7 +241,7 @@ public class AdminClientScopeService {
                 || name.length() > 100
                 || name.chars().anyMatch(Character::isWhitespace)) {
             throw ApiException.badRequest(
-                    "name", "admin_client_scope_invalid_name", "Client scope name is invalid");
+                    "name", ApiErrorCode.CLIENT_SCOPE_INVALID_NAME, "Client scope name is invalid");
         }
         return name;
     }
@@ -247,26 +250,13 @@ public class AdminClientScopeService {
         return StringUtils.hasText(value) ? value.trim() : null;
     }
 
-    public record ClientScopeView(
-            String id,
-            String name,
-            String displayName,
-            String description,
-            Instant createdAt,
-            Instant updatedAt) {
-        static ClientScopeView from(ClientScopeEntity entity) {
-            return new ClientScopeView(
-                    entity.getId(),
-                    entity.getName(),
-                    entity.getDisplayName(),
-                    entity.getDescription(),
-                    entity.getCreatedAt(),
-                    entity.getUpdatedAt());
-        }
+    private static AdminClientScopeDTO toDTO(ClientScopeEntity entity) {
+        return new AdminClientScopeDTO(
+                entity.getId(),
+                entity.getName(),
+                entity.getDisplayName(),
+                entity.getDescription(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt());
     }
-
-    public record ScopeAssignments(
-            Set<String> defaultScopes,
-            Set<String> optionalScopes,
-            List<ClientScopeView> availableScopes) {}
 }

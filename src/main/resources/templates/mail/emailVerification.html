@@ -1,0 +1,22 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" lang="en">
+  <head>
+    <title th:text="#{mail.verification.subject}">Verify your email address</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  </head>
+  <body>
+    <p th:text="#{mail.verification.greeting(${username})}">Hello,</p>
+    <p th:text="#{mail.verification.text}">Please verify your email address.</p>
+    <p>
+      <a th:href="${actionUrl}" th:text="#{mail.verification.action}">Verify email address</a>
+    </p>
+    <p th:text="#{mail.common.expiry}">This link is valid for a limited time.</p>
+    <p>
+      <span th:text="#{mail.common.ignore}">If you did not request this, you can ignore this email.</span>
+      <br />
+      <span th:text="#{mail.common.regards}">Regards,</span>
+      <br />
+      <em th:text="#{mail.common.signature}">Spring Authorization Server Team</em>
+    </p>
+  </body>
+</html>

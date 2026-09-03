@@ -2,7 +2,7 @@
 
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
-import dictionary from "@/i18n/dictionaries/en.json";
+import dictionary from "@/locales/en/common.json";
 import { adminRequest } from "@/lib/admin-api";
 
 import { ClientDetail } from "./ClientDetail";
@@ -15,11 +15,11 @@ jest.mock("@/lib/admin-api", () => ({ adminRequest: jest.fn() }));
 jest.mock("./AdminAuthProvider", () => ({
   useAdminAuth: () => ({ accessToken: "token", access: { manageClients: true } }),
 }));
-jest.mock("next/navigation", () => ({
+jest.mock("@/routing/navigation", () => ({
   useParams: () => ({ lang: "en" }),
   useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
 }));
-jest.mock("next/link", () => ({ children, href, ...props }: React.ComponentProps<"a">) => (
+jest.mock("@/routing/Link", () => ({ children, href, ...props }: React.ComponentProps<"a">) => (
   <a href={href} {...props}>
     {children}
   </a>
@@ -88,8 +88,7 @@ describe("ClientDetail", () => {
     expect(screen.getByText(dictionary.admin.clients.deleteConfirm)).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.clients.delete })[1]);
 
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/en/admin/clients"));
-    expect(mockRefresh).toHaveBeenCalled();
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/admin/clients"));
   });
 
   it("shows secret and delete errors and renders empty groups", async () => {

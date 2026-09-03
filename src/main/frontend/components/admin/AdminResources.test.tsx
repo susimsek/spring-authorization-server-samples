@@ -1,13 +1,17 @@
 /* eslint-disable @next/next/no-img-element, react/display-name */
 
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import i18next from "i18next";
 
-import dictionary from "@/i18n/dictionaries/en.json";
+import dictionary from "@/locales/en/common.json";
 import { adminRequest } from "@/lib/admin-api";
 
 import { AdminResources } from "./AdminResources";
 
 const mockAdminRequest = adminRequest as jest.MockedFunction<typeof adminRequest>;
+jest.mock("@/routing/navigation", () => ({
+  usePathname: () => window.location.pathname,
+}));
 
 jest.mock("@/lib/admin-api", () => ({ adminRequest: jest.fn() }));
 jest.mock("./AdminAuthProvider", () => ({
@@ -21,7 +25,7 @@ jest.mock("./AdminAuthProvider", () => ({
     },
   }),
 }));
-jest.mock("next/link", () => ({ children, href, ...props }: React.ComponentProps<"a">) => (
+jest.mock("@/routing/Link", () => ({ children, href, ...props }: React.ComponentProps<"a">) => (
   <a href={href} {...props}>
     {children}
   </a>
@@ -38,6 +42,43 @@ const page = (content: unknown[]) => ({
 });
 
 describe("AdminResources", () => {
+  it.each(["sessions", "keys", "consents"] as const)(
+    "updates %s timestamps when the UI locale changes",
+    async (resource) => {
+      const timestamp = "2026-09-03T13:45:00Z";
+      mockAdminRequest.mockResolvedValue({
+        status: 200,
+        data: page([
+          {
+            id: "id",
+            kid: "key",
+            clientId: "client",
+            clientName: "Client",
+            principalName: "admin",
+            authorities: [],
+            username: "admin",
+            active: true,
+            type: "RSA",
+            algorithm: "RS256",
+            authorizationCount: 1,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+            lastAccessedAt: timestamp,
+            expiresAt: timestamp,
+          },
+        ]),
+      } as never);
+      render(<AdminResources copy={dictionary.admin.resources} locale="en" resource={resource} />);
+      expect(
+        (await screen.findAllByText(new Date(timestamp).toLocaleString("en"))).length,
+      ).toBeGreaterThan(0);
+      await act(() => i18next.changeLanguage("tr"));
+      expect(screen.getAllByText(new Date(timestamp).toLocaleString("tr")).length).toBeGreaterThan(
+        0,
+      );
+      expect(screen.queryByText(new Date(timestamp).toLocaleString("en"))).not.toBeInTheDocument();
+    },
+  );
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -59,7 +100,7 @@ describe("AdminResources", () => {
     expect(await screen.findByText("ada")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: dictionary.admin.resources.createUser }),
-    ).toHaveAttribute("href", "/en/admin/users/new");
+    ).toHaveAttribute("href", "/admin/users/new");
 
     fireEvent.click(screen.getByRole("button", { name: "ada actions" }));
     fireEvent.click(screen.getByText(dictionary.admin.resources.disable));

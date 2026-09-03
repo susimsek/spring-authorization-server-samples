@@ -1,6 +1,7 @@
 package io.github.susimsek.springauthserversamples.service.admin;
 
 import io.github.susimsek.springauthserversamples.domain.AdminEventEntity;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminEventDTO;
 import io.github.susimsek.springauthserversamples.repository.AdminEventRepository;
 import java.time.Instant;
 import java.util.UUID;
@@ -32,7 +33,7 @@ public class AdminAuditEventService {
         adminEventRepository.save(event);
     }
 
-    public Page<EventView> events(
+    public Page<AdminEventDTO> events(
             String q,
             String action,
             String targetType,
@@ -89,41 +90,29 @@ public class AdminAuditEventService {
                             return predicate;
                         },
                         pageable)
-                .map(EventView::from);
+                .map(AdminAuditEventService::eventDTO);
     }
 
-    public Page<EventView> events(Pageable pageable) {
-        return events("", "", "", "", null, null, pageable);
-    }
-
-    public Page<EventView> userEvents(Long userId, Pageable pageable) {
+    public Page<AdminEventDTO> userEvents(Long userId, Pageable pageable) {
         return adminEventRepository
                 .findByTargetTypeAndTargetId("user", userId.toString(), pageable)
-                .map(EventView::from);
+                .map(AdminAuditEventService::eventDTO);
     }
 
-    public Page<EventView> clientEvents(String clientId, Pageable pageable) {
+    public Page<AdminEventDTO> clientEvents(String clientId, Pageable pageable) {
         return adminEventRepository
                 .findByTargetTypeAndTargetId("client", clientId, pageable)
-                .map(EventView::from);
+                .map(AdminAuditEventService::eventDTO);
     }
 
-    public record EventView(
-            String id,
-            String actor,
-            String action,
-            String targetType,
-            String targetId,
-            Instant occurredAt) {
-        private static EventView from(AdminEventEntity event) {
-            return new EventView(
-                    event.getId(),
-                    event.getActor(),
-                    event.getAction(),
-                    event.getTargetType(),
-                    event.getTargetId(),
-                    event.getOccurredAt());
-        }
+    private static AdminEventDTO eventDTO(AdminEventEntity event) {
+        return new AdminEventDTO(
+                event.getId(),
+                event.getActor(),
+                event.getAction(),
+                event.getTargetType(),
+                event.getTargetId(),
+                event.getOccurredAt());
     }
 
     public void avatarUpdated(Long userId) {

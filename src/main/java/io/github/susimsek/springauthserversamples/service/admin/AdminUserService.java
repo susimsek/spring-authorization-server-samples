@@ -2,16 +2,21 @@ package io.github.susimsek.springauthserversamples.service.admin;
 
 import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
 import io.github.susimsek.springauthserversamples.domain.GroupEntity;
+import io.github.susimsek.springauthserversamples.domain.UserAction;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminUserDTO;
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
 import io.github.susimsek.springauthserversamples.repository.GroupRepository;
 import io.github.susimsek.springauthserversamples.repository.UserAvatarRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
+import io.github.susimsek.springauthserversamples.service.account.UserActionService;
+import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -34,9 +39,10 @@ public class AdminUserService {
     private final UserAccessInvalidationService userAccessInvalidationService;
     private final PasswordEncoder passwordEncoder;
     private final AdminAuditEventService adminAuditEventService;
+    private final UserActionService userActionService;
 
     @Transactional(readOnly = true)
-    public UserView user(Long id, String currentUsername) {
+    public AdminUserDTO user(Long id, String currentUsername) {
         UserEntity user = findUser(id);
         assertCanManageUser(user, currentUsername);
         return userView(user, avatarUrl(user.getId()));
@@ -44,21 +50,40 @@ public class AdminUserService {
 
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
-    public UserView createUser(
+    public AdminUserDTO createUser(
             String username,
             String password,
             boolean enabled,
             Set<String> roles,
             String currentUsername) {
+        return createUser(username, null, false, password, enabled, roles, currentUsername);
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
+    public AdminUserDTO createUser(
+            String username,
+            String email,
+            boolean emailVerified,
+            String password,
+            boolean enabled,
+            Set<String> roles,
+            String currentUsername) {
         validateUser(username, password);
+        String normalizedEmail = normalizeEmail(email);
+        assertEmailAvailable(normalizedEmail, null);
         assertRoleAssignmentAllowed(roles, currentUsername);
         if (userRepository.findByUsername(username).isPresent()) {
             throw ApiException.conflict(
-                    "username", "admin_user_duplicate_username", "Username is already registered");
+                    "username",
+                    ApiErrorCode.USER_DUPLICATE_USERNAME,
+                    "Username is already registered");
         }
         UserEntity user = new UserEntity();
         user.setUsername(username);
         user.setPassword(passwordEncoder.encode(password));
+        user.setEmail(normalizedEmail);
+        user.setEmailVerified(normalizedEmail != null && emailVerified);
         user.setEnabled(enabled);
         user.setAuthorities(resolveAuthorities(roles));
         UserEntity saved = userRepository.save(user);
@@ -68,24 +93,53 @@ public class AdminUserService {
 
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
-    public UserView updateUser(
+    public AdminUserDTO updateUser(
             Long id, String username, boolean enabled, Set<String> roles, String currentUsername) {
         validateUser(username, null);
+        UserEntity existing = findUser(id);
+        return updateUser(
+                id,
+                username,
+                existing.getEmail(),
+                existing.isEmailVerified(),
+                enabled,
+                roles,
+                currentUsername);
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
+    public AdminUserDTO updateUser(
+            Long id,
+            String username,
+            String email,
+            boolean emailVerified,
+            boolean enabled,
+            Set<String> roles,
+            String currentUsername) {
+        validateUser(username, null);
         UserEntity user = findUser(id);
+        String normalizedEmail = normalizeEmail(email);
+        assertEmailAvailable(normalizedEmail, id);
         assertCanManageUser(user, currentUsername);
         if (!user.getUsername().equals(username)
                 && userRepository.findByUsername(username).isPresent()) {
             throw ApiException.conflict(
-                    "username", "admin_user_duplicate_username", "Username is already registered");
+                    "username",
+                    ApiErrorCode.USER_DUPLICATE_USERNAME,
+                    "Username is already registered");
         }
         if (user.getUsername().equals(currentUsername) && !enabled) {
             throw ApiException.badRequest(
-                    "admin_user_protected", "You cannot disable your own account");
+                    ApiErrorCode.USER_PROTECTED, "You cannot disable your own account");
         }
         assertRoleAssignmentAllowed(roles, currentUsername);
         assertNotLastAdmin(user, requestedRoleNames(roles));
         userAccessInvalidationService.invalidate(user.getUsername());
+        userActionService.invalidateActions(user.getId());
         user.setUsername(username);
+        user.setEmail(normalizedEmail);
+        user.setEmailVerified(normalizedEmail != null && emailVerified);
         user.setEnabled(enabled);
         user.setAuthorities(resolveAuthorities(roles));
         adminAuditEventService.record("user.updated", "user", user.getId().toString());
@@ -98,13 +152,14 @@ public class AdminUserService {
         if (password == null || password.length() < 8) {
             throw ApiException.badRequest(
                     "password",
-                    "admin_user_invalid_password",
+                    ApiErrorCode.USER_INVALID_PASSWORD,
                     "Password must be at least 8 characters");
         }
         UserEntity user = findUser(id);
         assertCanManageUser(user, currentUsername);
         user.setPassword(passwordEncoder.encode(password));
         userAccessInvalidationService.invalidate(user.getUsername());
+        userActionService.invalidateActions(user.getId());
         adminAuditEventService.record("user.password.updated", "user", user.getId().toString());
     }
 
@@ -115,7 +170,7 @@ public class AdminUserService {
         assertCanManageUser(user, currentUsername);
         if (user.getUsername().equals(currentUsername)) {
             throw ApiException.badRequest(
-                    "admin_user_protected", "You cannot delete your own account");
+                    ApiErrorCode.USER_PROTECTED, "You cannot delete your own account");
         }
         assertNotLastAdmin(user, Set.of());
         userAccessInvalidationService.invalidate(user.getUsername());
@@ -124,7 +179,7 @@ public class AdminUserService {
     }
 
     @Transactional(readOnly = true)
-    public Page<UserView> users(String query, Boolean enabled, Pageable pageable) {
+    public Page<AdminUserDTO> users(String query, Boolean enabled, Pageable pageable) {
         String searchQuery = AdminSearch.normalize(query);
         Page<UserEntity> users =
                 enabled == null
@@ -147,7 +202,7 @@ public class AdminUserService {
 
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
-    public UserView assignRole(Long id, String roleName, String currentUsername) {
+    public AdminUserDTO assignRole(Long id, String roleName, String currentUsername) {
         UserEntity user = findUser(id);
         assertCanManageUser(user, currentUsername);
         AuthorityEntity role =
@@ -163,7 +218,7 @@ public class AdminUserService {
 
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
-    public UserView removeRole(Long id, String roleName, String currentUsername) {
+    public AdminUserDTO removeRole(Long id, String roleName, String currentUsername) {
         UserEntity user = findUser(id);
         assertCanManageUser(user, currentUsername);
         Set<String> remaining =
@@ -189,7 +244,7 @@ public class AdminUserService {
         assertCanManageUser(user, currentUsername);
         if (user.getUsername().equals(currentUsername) && !enabled) {
             throw ApiException.badRequest(
-                    "admin_user_protected", "You cannot disable your own account");
+                    ApiErrorCode.USER_PROTECTED, "You cannot disable your own account");
         }
         if (!enabled) {
             assertNotLastAdmin(user, Set.of());
@@ -197,6 +252,17 @@ public class AdminUserService {
         }
         user.setEnabled(enabled);
         adminAuditEventService.record("user.enabled.updated", "user", user.getId().toString());
+    }
+
+    @Transactional
+    public void executeActionsEmail(
+            Long id,
+            UserAction action,
+            Long lifespanSeconds,
+            Locale locale,
+            String currentUsername) {
+        requireManageableUser(id, currentUsername);
+        userActionService.executeActionsEmail(id, action, lifespanSeconds, locale);
     }
 
     @Transactional(readOnly = true)
@@ -228,7 +294,7 @@ public class AdminUserService {
         List<AuthorityEntity> authorities = authorityRepository.findByNameIn(requestedRoles);
         if (authorities.size() != requestedRoles.size()) {
             throw ApiException.badRequest(
-                    "roles", "admin_user_invalid_roles", "One or more roles are invalid");
+                    "roles", ApiErrorCode.USER_INVALID_ROLES, "One or more roles are invalid");
         }
         return Set.copyOf(authorities);
     }
@@ -240,7 +306,7 @@ public class AdminUserService {
         if (!administratorRoles.contains(AuthoritiesConstants.ADMIN)
                 && !administratorRoles.containsAll(requestedRoles)) {
             throw ApiException.forbidden(
-                    "admin_role_escalation", "You can only assign roles you already have");
+                    ApiErrorCode.ROLE_ESCALATION, "You can only assign roles you already have");
         }
     }
 
@@ -250,7 +316,8 @@ public class AdminUserService {
         if (!administratorRoles.contains(AuthoritiesConstants.ADMIN)
                 && authorities(target).contains(AuthoritiesConstants.ADMIN)) {
             throw ApiException.forbidden(
-                    "admin_user_protected", "Only an administrator can manage an administrator");
+                    ApiErrorCode.USER_PROTECTED,
+                    "Only an administrator can manage an administrator");
         }
     }
 
@@ -259,11 +326,11 @@ public class AdminUserService {
                 && !replacementRoles.contains(AuthoritiesConstants.ADMIN)
                 && userRepository.countByAuthoritiesName(AuthoritiesConstants.ADMIN) <= 1) {
             throw ApiException.badRequest(
-                    "admin_last_admin_protected", "The last administrator must be retained");
+                    ApiErrorCode.LAST_ADMIN_PROTECTED, "The last administrator must be retained");
         }
     }
 
-    private List<UserView> userViews(List<UserEntity> users) {
+    private List<AdminUserDTO> userViews(List<UserEntity> users) {
         if (users.isEmpty()) {
             return List.of();
         }
@@ -290,10 +357,12 @@ public class AdminUserService {
                 : "/avatars/" + avatar.getPublicId() + "?v=" + avatar.getUpdatedAt().toEpochMilli();
     }
 
-    private static UserView userView(UserEntity user, String avatarUrl) {
-        return new UserView(
+    private static AdminUserDTO userView(UserEntity user, String avatarUrl) {
+        return new AdminUserDTO(
                 user.getId(),
                 user.getUsername(),
+                user.getEmail(),
+                user.isEmailVerified(),
                 user.isEnabled(),
                 avatarUrl,
                 authorities(user),
@@ -359,22 +428,31 @@ public class AdminUserService {
     private static void validateUser(String username, String password) {
         if (username == null || username.isBlank()) {
             throw ApiException.badRequest(
-                    "username", "admin_user_invalid_username", "Username is required");
+                    "username", ApiErrorCode.USER_INVALID_USERNAME, "Username is required");
         }
         if (password != null && password.length() < 8) {
             throw ApiException.badRequest(
                     "password",
-                    "admin_user_invalid_password",
+                    ApiErrorCode.USER_INVALID_PASSWORD,
                     "Password must be at least 8 characters");
         }
     }
 
-    public record UserView(
-            Long id,
-            String username,
-            boolean enabled,
-            String avatarUrl,
-            Set<String> authorities,
-            java.time.Instant createdAt,
-            java.time.Instant updatedAt) {}
+    private void assertEmailAvailable(String email, Long userId) {
+        if (email == null) {
+            return;
+        }
+        boolean exists =
+                userId == null
+                        ? userRepository.findByEmailIgnoreCase(email).isPresent()
+                        : userRepository.existsByEmailIgnoreCaseAndIdNot(email, userId);
+        if (exists) {
+            throw ApiException.conflict(
+                    "email", ApiErrorCode.USER_DUPLICATE_EMAIL, "Email is already registered");
+        }
+    }
+
+    private static String normalizeEmail(String email) {
+        return email == null || email.isBlank() ? null : email.trim().toLowerCase(Locale.ROOT);
+    }
 }

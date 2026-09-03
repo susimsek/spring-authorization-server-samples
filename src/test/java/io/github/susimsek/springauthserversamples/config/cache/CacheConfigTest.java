@@ -96,6 +96,8 @@ class CacheConfigTest {
                 new ApplicationProperties.Cache(
                         new ApplicationProperties.Caffeine(Duration.ofMinutes(5), 10, 100)),
                 new ApplicationProperties.Session("0 * * * * *"),
-                new ApplicationProperties.AuthorizationServer("https://issuer.example"));
+                new ApplicationProperties.AuthorizationServer("https://issuer.example"),
+                new ApplicationProperties.Mail(
+                        false, "no-reply@localhost", "https://issuer.example"));
     }
 }

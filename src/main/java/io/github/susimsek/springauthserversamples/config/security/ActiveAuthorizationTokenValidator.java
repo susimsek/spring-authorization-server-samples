@@ -17,7 +17,7 @@ final class ActiveAuthorizationTokenValidator implements OAuth2TokenValidator<Jw
 
     @Override
     public OAuth2TokenValidatorResult validate(Jwt token) {
-        return authorizationRepository.findByAccessTokenValue(token.getTokenValue()).isPresent()
+        return authorizationRepository.existsByAccessTokenValue(token.getTokenValue())
                 ? OAuth2TokenValidatorResult.success()
                 : OAuth2TokenValidatorResult.failure(INVALID_TOKEN);
     }

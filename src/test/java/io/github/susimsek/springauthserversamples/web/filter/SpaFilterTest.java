@@ -1,434 +1,139 @@
 package io.github.susimsek.springauthserversamples.web.filter;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.FilterChain;
-import jakarta.servlet.RequestDispatcher;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import java.util.Locale;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.ResourceLoader;
-import org.springframework.web.servlet.LocaleResolver;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 
 class SpaFilterTest {
+    private final SpaFilter filter = new SpaFilter();
+    private final FilterChain chain = mock(FilterChain.class);
 
-    private final LocaleResolver localeResolver = mock(LocaleResolver.class);
-    private final ResourceLoader resourceLoader = mock(ResourceLoader.class);
-    private final HttpServletRequest request = mock(HttpServletRequest.class);
-    private final HttpServletResponse response = mock(HttpServletResponse.class);
-    private final FilterChain filterChain = mock(FilterChain.class);
-    private final RequestDispatcher dispatcher = mock(RequestDispatcher.class);
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "/",
+                "/login",
+                "/login/",
+                "/consent",
+                "/auth-error",
+                "/forgot-password",
+                "/reset-password",
+                "/verify-email",
+                "/admin",
+                "/admin/",
+                "/admin/users/123",
+                "/admin/users/123/credentials",
+                "/admin/clients/abc",
+                "/admin/roles/42",
+                "/admin/future-resource/runtime-id",
+                "/account/personal-info"
+            })
+    void forwardsFrontendNavigationToOneEntry(String path) throws Exception {
+        MockHttpServletRequest request = navigation("GET", path);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+        assertThat(response.getForwardedUrl()).isEqualTo("/index.html");
+        assertThat(response.getRedirectedUrl()).isNull();
+        verifyNoInteractions(chain);
+    }
 
-    private SpaFilter filter;
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "/api/admin/users",
+                "/oauth2/authorize",
+                "/oauth2/token",
+                "/.well-known/openid-configuration",
+                "/actuator/health",
+                "/_next/static/app.js",
+                "/avatars/abc",
+                "/account/avatar",
+                "/account/avatar/file",
+                "/oidc/session-status",
+                "/v3/api-docs",
+                "/swagger-ui/index.html",
+                "/h2-console",
+                "/error",
+                "/logout",
+                "/admin/users/123.json",
+                "/admin/users/123/index.txt",
+                "/admin/file.css",
+                "/admin/../api",
+                "/admin/file\\name",
+                "/favicon.ico",
+                "/unknown-backend",
+                "/en/admin"
+            })
+    void leavesBackendAssetsAndUnknownRootsUntouched(String path) throws Exception {
+        MockHttpServletRequest request = navigation("GET", path);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+        assertThat(response.getForwardedUrl()).isNull();
+        verify(chain).doFilter(request, response);
+    }
 
-    @BeforeEach
-    void setUp() {
-        filter = new SpaFilter(localeResolver, resourceLoader);
-        when(request.getMethod()).thenReturn("GET");
-        when(request.getContextPath()).thenReturn("");
+    @ParameterizedTest
+    @ValueSource(strings = {"POST", "PUT", "PATCH", "DELETE", "OPTIONS"})
+    void neverForwardsMutations(String method) throws Exception {
+        MockHttpServletRequest request = navigation(method, "/login");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+        verify(chain).doFilter(request, response);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/admin/callback", "/account/callback/"})
+    void callbacksUseTheirExplicitStaticEntry(String path) throws Exception {
+        MockHttpServletRequest request = navigation("GET", path);
+        request.setQueryString("code=abc&state=xyz");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+        assertThat(response.getForwardedUrl()).isEqualTo(path.replaceAll("/$", "") + "/index.html");
+        assertThat(request.getQueryString()).isEqualTo("code=abc&state=xyz");
     }
 
     @Test
-    void redirectsLocaleLessRouteToResolvedLocalizedPage() throws Exception {
-        Resource english = mock(Resource.class);
-        Resource turkish = mock(Resource.class);
-
-        when(request.getRequestURI()).thenReturn("/login");
-        when(resourceLoader.getResource("classpath:/static/en/login/index.html"))
-                .thenReturn(english);
-        when(resourceLoader.getResource("classpath:/static/tr/login/index.html"))
-                .thenReturn(turkish);
-        when(english.exists()).thenReturn(true);
-
-        when(localeResolver.resolveLocale(request)).thenReturn(Locale.forLanguageTag("tr"));
-        when(turkish.exists()).thenReturn(true);
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(response).sendRedirect("/tr/login");
-        verify(filterChain, never()).doFilter(request, response);
+    void supportsHeadAndContextPathWithoutRedirecting() throws Exception {
+        MockHttpServletRequest request = navigation("HEAD", "/auth/admin/users/123");
+        request.setContextPath("/auth");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+        assertThat(response.getForwardedUrl()).isEqualTo("/index.html");
     }
 
     @Test
-    void redirectsLocaleLessAdminRouteToLocalizedAdminPage() throws Exception {
-        Resource english = mock(Resource.class);
-        Resource turkish = mock(Resource.class);
-
-        when(request.getRequestURI()).thenReturn("/admin");
-        when(resourceLoader.getResource("classpath:/static/en/admin/index.html"))
-                .thenReturn(english);
-        when(resourceLoader.getResource("classpath:/static/tr/admin/index.html"))
-                .thenReturn(turkish);
-        when(english.exists()).thenReturn(true);
-        when(turkish.exists()).thenReturn(true);
-        when(localeResolver.resolveLocale(request)).thenReturn(Locale.forLanguageTag("tr"));
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(response).sendRedirect("/tr/admin");
-        verify(filterChain, never()).doFilter(request, response);
+    void doesNotForwardJsonOrNonNavigationRequests() throws Exception {
+        for (String accept : new String[] {"application/json", "*/*"}) {
+            MockHttpServletRequest request = new MockHttpServletRequest("GET", "/admin/users/123");
+            request.addHeader("Accept", accept);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(request, response, chain);
+            assertThat(response.getForwardedUrl()).isNull();
+            verify(chain).doFilter(request, response);
+        }
     }
 
     @Test
-    void preservesQueryWhenRedirectingLocaleLessRoute() throws Exception {
-        Resource english = mock(Resource.class);
-        Resource turkish = mock(Resource.class);
-
-        when(request.getRequestURI()).thenReturn("/error");
-        when(request.getQueryString()).thenReturn("type=not_found");
-        when(resourceLoader.getResource("classpath:/static/en/error/index.html"))
-                .thenReturn(english);
-        when(resourceLoader.getResource("classpath:/static/tr/error/index.html"))
-                .thenReturn(turkish);
-        when(english.exists()).thenReturn(true);
-        when(localeResolver.resolveLocale(request)).thenReturn(Locale.forLanguageTag("tr"));
-        when(turkish.exists()).thenReturn(true);
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(response).sendRedirect("/tr/error?type=not_found");
-        verify(filterChain, never()).doFilter(request, response);
+    void ignoresForwardDispatches() throws Exception {
+        MockHttpServletRequest request = navigation("GET", "/admin/users/123");
+        request.setDispatcherType(DispatcherType.FORWARD);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+        verify(chain).doFilter(request, response);
     }
 
-    @Test
-    void forwardsAlreadyLocalizedRouteDirectly() throws Exception {
-        Resource resource = mock(Resource.class);
-
-        when(request.getRequestURI()).thenReturn("/en/login/");
-        when(resourceLoader.getResource("classpath:/static/en/login/index.html"))
-                .thenReturn(resource);
-        when(resource.exists()).thenReturn(true);
-        when(request.getRequestDispatcher("/en/login/index.html")).thenReturn(dispatcher);
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(dispatcher).forward(request, response);
-        verify(localeResolver, never()).resolveLocale(request);
-    }
-
-    @Test
-    void forwardsHeadRequestUsedBySpaLinkPrefetch() throws Exception {
-        Resource resource = mock(Resource.class);
-
-        when(request.getMethod()).thenReturn("HEAD");
-        when(request.getRequestURI()).thenReturn("/en/admin/sessions/");
-        when(resourceLoader.getResource("classpath:/static/en/admin/sessions/index.html"))
-                .thenReturn(resource);
-        when(resource.exists()).thenReturn(true);
-        when(request.getRequestDispatcher("/en/admin/sessions/index.html")).thenReturn(dispatcher);
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(dispatcher).forward(request, response);
-        verify(filterChain, never()).doFilter(request, response);
-    }
-
-    @Test
-    void continuesChainWhenNoLocalizedStaticPageExists() throws Exception {
-        Resource english = mock(Resource.class);
-        Resource turkish = mock(Resource.class);
-
-        when(request.getRequestURI()).thenReturn("/oauth2/authorize");
-        when(resourceLoader.getResource("classpath:/static/en/oauth2/authorize/index.html"))
-                .thenReturn(english);
-        when(resourceLoader.getResource("classpath:/static/tr/oauth2/authorize/index.html"))
-                .thenReturn(turkish);
-        when(english.exists()).thenReturn(false);
-        when(turkish.exists()).thenReturn(false);
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(filterChain).doFilter(request, response);
-        verify(localeResolver, never()).resolveLocale(request);
-    }
-
-    @Test
-    void ignoresStaticAssets() throws Exception {
-        when(request.getRequestURI()).thenReturn("/_next/static/app.js");
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(filterChain).doFilter(request, response);
-    }
-
-    @Test
-    void ignoresNonGetRequests() throws Exception {
-        when(request.getMethod()).thenReturn("POST");
-        when(request.getRequestURI()).thenReturn("/login");
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(filterChain).doFilter(request, response);
-    }
-
-    @Test
-    void ignoresUnsafeOrMalformedPaths() throws Exception {
-        when(request.getRequestURI()).thenReturn("/../admin");
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(filterChain).doFilter(request, response);
-    }
-
-    @Test
-    void continuesChainForMissingLocalizedRoute() throws Exception {
-        Resource resource = mock(Resource.class);
-        when(request.getRequestURI()).thenReturn("/tr/login");
-        when(resourceLoader.getResource("classpath:/static/tr/login/index.html"))
-                .thenReturn(resource);
-        when(resource.exists()).thenReturn(false);
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(filterChain).doFilter(request, response);
-    }
-
-    @Test
-    void continuesChainWhenResolvedLocalePageDisappearsBeforeRedirect() throws Exception {
-        Resource english = mock(Resource.class);
-        Resource turkish = mock(Resource.class);
-        when(request.getRequestURI()).thenReturn("/login");
-        when(resourceLoader.getResource("classpath:/static/en/login/index.html"))
-                .thenReturn(english);
-        when(resourceLoader.getResource("classpath:/static/tr/login/index.html"))
-                .thenReturn(turkish);
-        when(english.exists()).thenReturn(true);
-        when(localeResolver.resolveLocale(request)).thenReturn(Locale.forLanguageTag("tr"));
-        when(turkish.exists()).thenReturn(false);
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(filterChain).doFilter(request, response);
-    }
-
-    @Test
-    void removesContextPathAndNormalizesTrailingSlash() throws Exception {
-        Resource resource = mock(Resource.class);
-        when(request.getContextPath()).thenReturn("/server");
-        when(request.getRequestURI()).thenReturn("/server/en/login/");
-        when(resourceLoader.getResource("classpath:/static/en/login/index.html"))
-                .thenReturn(resource);
-        when(resource.exists()).thenReturn(true);
-        when(request.getRequestDispatcher("/en/login/index.html")).thenReturn(dispatcher);
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(dispatcher).forward(request, response);
-    }
-
-    @Test
-    void forwardsLocalizedDynamicClientRouteToExportedTemplate() throws Exception {
-        Resource exact = mock(Resource.class);
-        Resource template = mock(Resource.class);
-
-        when(request.getRequestURI()).thenReturn("/en/admin/clients/client-123/settings");
-        when(resourceLoader.getResource(
-                        "classpath:/static/en/admin/clients/client-123/settings/index.html"))
-                .thenReturn(exact);
-        when(resourceLoader.getResource("classpath:/static/en/admin/clients/_/settings/index.html"))
-                .thenReturn(template);
-        when(exact.exists()).thenReturn(false);
-        when(template.exists()).thenReturn(true);
-        when(request.getRequestDispatcher("/en/admin/clients/_/settings/index.html"))
-                .thenReturn(dispatcher);
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(dispatcher).forward(request, response);
-        verify(filterChain, never()).doFilter(request, response);
-    }
-
-    @Test
-    void forwardsLocalizedDynamicGroupRouteToExportedTemplate() throws Exception {
-        Resource exact = mock(Resource.class);
-        Resource template = mock(Resource.class);
-
-        when(request.getRequestURI()).thenReturn("/en/admin/groups/42");
-        when(resourceLoader.getResource("classpath:/static/en/admin/groups/42/index.html"))
-                .thenReturn(exact);
-        when(resourceLoader.getResource("classpath:/static/en/admin/groups/_/index.html"))
-                .thenReturn(template);
-        when(exact.exists()).thenReturn(false);
-        when(template.exists()).thenReturn(true);
-        when(request.getRequestDispatcher("/en/admin/groups/_/index.html")).thenReturn(dispatcher);
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(dispatcher).forward(request, response);
-        verify(filterChain, never()).doFilter(request, response);
-    }
-
-    @Test
-    void forwardsDynamicGroupDataRequestToExportedDataTemplate() throws Exception {
-        Resource exact = mock(Resource.class);
-        Resource template = mock(Resource.class);
-
-        when(request.getRequestURI()).thenReturn("/en/admin/groups/42.txt");
-        when(resourceLoader.getResource("classpath:/static/en/admin/groups/42.txt"))
-                .thenReturn(exact);
-        when(resourceLoader.getResource("classpath:/static/en/admin/groups/_/index.txt"))
-                .thenReturn(template);
-        when(exact.exists()).thenReturn(false);
-        when(template.exists()).thenReturn(true);
-        when(request.getRequestDispatcher("/en/admin/groups/_/index.txt")).thenReturn(dispatcher);
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(dispatcher).forward(request, response);
-        verify(filterChain, never()).doFilter(request, response);
-    }
-
-    @Test
-    void forwardsDynamicGroupIndexDataRequestToExportedDataTemplate() throws Exception {
-        Resource exact = mock(Resource.class);
-        Resource template = mock(Resource.class);
-
-        when(request.getRequestURI()).thenReturn("/en/admin/groups/42/index.txt");
-        when(resourceLoader.getResource("classpath:/static/en/admin/groups/42/index.txt"))
-                .thenReturn(exact);
-        when(resourceLoader.getResource("classpath:/static/en/admin/groups/_/index.txt"))
-                .thenReturn(template);
-        when(exact.exists()).thenReturn(false);
-        when(template.exists()).thenReturn(true);
-        when(request.getRequestDispatcher("/en/admin/groups/_/index.txt")).thenReturn(dispatcher);
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(dispatcher).forward(request, response);
-        verify(filterChain, never()).doFilter(request, response);
-    }
-
-    @Test
-    void redirectsLocaleLessDynamicUserRouteAndPreservesEntityPath() throws Exception {
-        Resource englishExact = mock(Resource.class);
-        Resource englishTemplate = mock(Resource.class);
-        Resource turkishExact = mock(Resource.class);
-        Resource turkishTemplate = mock(Resource.class);
-
-        when(request.getRequestURI()).thenReturn("/admin/users/42/sessions");
-        when(resourceLoader.getResource("classpath:/static/en/admin/users/42/sessions/index.html"))
-                .thenReturn(englishExact);
-        when(resourceLoader.getResource("classpath:/static/en/admin/users/_/sessions/index.html"))
-                .thenReturn(englishTemplate);
-        when(resourceLoader.getResource("classpath:/static/tr/admin/users/42/sessions/index.html"))
-                .thenReturn(turkishExact);
-        when(resourceLoader.getResource("classpath:/static/tr/admin/users/_/sessions/index.html"))
-                .thenReturn(turkishTemplate);
-        when(englishExact.exists()).thenReturn(false);
-        when(englishTemplate.exists()).thenReturn(true);
-        when(turkishExact.exists()).thenReturn(false);
-        when(turkishTemplate.exists()).thenReturn(true);
-        when(localeResolver.resolveLocale(request)).thenReturn(Locale.forLanguageTag("tr"));
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(response).sendRedirect("/tr/admin/users/42/sessions");
-        verify(filterChain, never()).doFilter(request, response);
-    }
-
-    @Test
-    void rejectsUnsupportedDynamicAdminSection() throws Exception {
-        Resource resource = mock(Resource.class);
-        when(request.getRequestURI()).thenReturn("/en/admin/clients/client-123/unknown");
-        when(resourceLoader.getResource(
-                        "classpath:/static/en/admin/clients/client-123/unknown/index.html"))
-                .thenReturn(resource);
-        when(resource.exists()).thenReturn(false);
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(filterChain).doFilter(request, response);
-    }
-
-    @Test
-    void forwardsDynamicClientFlightPayloadToExportedTemplate() throws Exception {
-        Resource exact = mock(Resource.class);
-        Resource template = mock(Resource.class);
-
-        when(request.getRequestURI()).thenReturn("/en/admin/clients/client-123/settings/index.txt");
-        when(resourceLoader.getResource(
-                        "classpath:/static/en/admin/clients/client-123/settings/index.txt"))
-                .thenReturn(exact);
-        when(resourceLoader.getResource("classpath:/static/en/admin/clients/_/settings/index.txt"))
-                .thenReturn(template);
-        when(exact.exists()).thenReturn(false);
-        when(template.exists()).thenReturn(true);
-        when(request.getRequestDispatcher("/en/admin/clients/_/settings/index.txt"))
-                .thenReturn(dispatcher);
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(dispatcher).forward(request, response);
-        verify(filterChain, never()).doFilter(request, response);
-    }
-
-    @Test
-    void forwardsDynamicUserFlightTreePayloadToExportedTemplate() throws Exception {
-        Resource exact = mock(Resource.class);
-        Resource template = mock(Resource.class);
-
-        when(request.getRequestURI()).thenReturn("/tr/admin/users/42/sessions/__next._tree.txt");
-        when(resourceLoader.getResource(
-                        "classpath:/static/tr/admin/users/42/sessions/__next._tree.txt"))
-                .thenReturn(exact);
-        when(resourceLoader.getResource(
-                        "classpath:/static/tr/admin/users/_/sessions/__next._tree.txt"))
-                .thenReturn(template);
-        when(exact.exists()).thenReturn(false);
-        when(template.exists()).thenReturn(true);
-        when(request.getRequestDispatcher("/tr/admin/users/_/sessions/__next._tree.txt"))
-                .thenReturn(dispatcher);
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(dispatcher).forward(request, response);
-        verify(filterChain, never()).doFilter(request, response);
-    }
-
-    @Test
-    void forwardsDynamicRoleDetailRouteToExportedTemplate() throws Exception {
-        Resource exact = mock(Resource.class);
-        Resource template = mock(Resource.class);
-
-        when(request.getRequestURI()).thenReturn("/en/admin/roles/ROLE_AUDITOR");
-        when(resourceLoader.getResource("classpath:/static/en/admin/roles/ROLE_AUDITOR/index.html"))
-                .thenReturn(exact);
-        when(resourceLoader.getResource("classpath:/static/en/admin/roles/_/index.html"))
-                .thenReturn(template);
-        when(exact.exists()).thenReturn(false);
-        when(template.exists()).thenReturn(true);
-        when(request.getRequestDispatcher("/en/admin/roles/_/index.html")).thenReturn(dispatcher);
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(dispatcher).forward(request, response);
-        verify(filterChain, never()).doFilter(request, response);
-    }
-
-    @Test
-    void forwardsDynamicConsentDetailRouteToExportedTemplate() throws Exception {
-        Resource exact = mock(Resource.class);
-        Resource template = mock(Resource.class);
-
-        when(request.getRequestURI()).thenReturn("/en/admin/consents/616263");
-        when(resourceLoader.getResource("classpath:/static/en/admin/consents/616263/index.html"))
-                .thenReturn(exact);
-        when(resourceLoader.getResource("classpath:/static/en/admin/consents/_/index.html"))
-                .thenReturn(template);
-        when(exact.exists()).thenReturn(false);
-        when(template.exists()).thenReturn(true);
-        when(request.getRequestDispatcher("/en/admin/consents/_/index.html"))
-                .thenReturn(dispatcher);
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(dispatcher).forward(request, response);
-        verify(filterChain, never()).doFilter(request, response);
+    private static MockHttpServletRequest navigation(String method, String path) {
+        MockHttpServletRequest request = new MockHttpServletRequest(method, path);
+        request.addHeader("Accept", "text/html,application/xhtml+xml");
+        return request;
     }
 }

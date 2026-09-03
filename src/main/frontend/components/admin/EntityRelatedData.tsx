@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import Link from "@/routing/Link";
 import { Badge, Button } from "react-bootstrap";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
@@ -213,7 +213,7 @@ export function EntityRelatedData({
               <tr key={`${consent.clientId}:${consent.principalName}`}>
                 <td data-label={copy.user}>
                   {consent.userId ? (
-                    <Link href={`/${locale}/admin/users/${consent.userId}/details`}>
+                    <Link href={`/admin/users/${consent.userId}/details`}>
                       {consent.principalName}
                     </Link>
                   ) : (
@@ -221,9 +221,7 @@ export function EntityRelatedData({
                   )}
                 </td>
                 <td data-label={copy.client}>
-                  <Link
-                    href={`/${locale}/admin/clients/${encodeURIComponent(consent.clientId)}/settings`}
-                  >
+                  <Link href={`/admin/clients/${encodeURIComponent(consent.clientId)}/settings`}>
                     {consent.clientName}
                   </Link>
                 </td>
@@ -240,7 +238,7 @@ export function EntityRelatedData({
                   <div className="d-flex justify-content-end gap-2 flex-wrap">
                     <Link
                       className="btn btn-sm btn-outline-secondary"
-                      href={`/${locale}/admin/consents/${encodeConsentRouteKey(consent.clientId, consent.principalName)}`}
+                      href={`/admin/consents/${encodeConsentRouteKey(consent.clientId, consent.principalName)}`}
                     >
                       {copy.details}
                     </Link>

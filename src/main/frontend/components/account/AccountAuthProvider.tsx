@@ -31,10 +31,10 @@ type AccountAuthValue = AccountAuthRuntime & {
 
 const ACCOUNT_AUTH_CONFIG = {
   clientId: "account-console",
-  scope: "profile account-api",
+  scope: "profile email account-api",
   transactionKey: CONSOLE_TRANSACTION_KEYS.account,
-  redirectPath: (locale: Locale) => `/${locale}/account/callback`,
-  postLogoutRedirectPath: (locale: Locale) => `/${locale}/account/`,
+  redirectPath: () => `/account/callback`,
+  postLogoutRedirectPath: () => `/account/`,
 };
 
 const AccountAuthRuntimeContext = createContext<AccountAuthRuntime | null>(null);

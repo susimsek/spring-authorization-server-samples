@@ -1,12 +1,9 @@
 import type { ReactNode } from "react";
+import { useDictionary } from "@/i18n/client";
 import { Alert, Button } from "react-bootstrap";
-import { useParams } from "next/navigation";
-
-import { getDictionary } from "@/i18n/get-dictionary";
 
 function useAdminCopy() {
-  const params = useParams<{ lang: string }>();
-  return getDictionary(params?.lang === "tr" ? "tr" : "en").admin.common;
+  return useDictionary().admin.common;
 }
 
 export function LoadingState() {

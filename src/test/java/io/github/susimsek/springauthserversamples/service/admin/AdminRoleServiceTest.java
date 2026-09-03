@@ -9,6 +9,8 @@ import static org.mockito.Mockito.when;
 
 import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminRoleDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminRoleUserDTO;
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
@@ -42,9 +44,7 @@ class AdminRoleServiceTest {
                                 2));
 
         assertThat(service().roles("", pageable).getContent())
-                .containsExactly(
-                        new AdminRoleService.RoleView("ROLE_ADMIN"),
-                        new AdminRoleService.RoleView("ROLE_AUDITOR"));
+                .containsExactly(new AdminRoleDTO("ROLE_ADMIN"), new AdminRoleDTO("ROLE_AUDITOR"));
     }
 
     @Test
@@ -74,9 +74,9 @@ class AdminRoleServiceTest {
                             return role;
                         });
 
-        AdminRoleService.RoleView created = service().createRole("ROLE_AUDITOR");
+        AdminRoleDTO created = service().createRole("ROLE_AUDITOR");
 
-        assertThat(created).isEqualTo(new AdminRoleService.RoleView("ROLE_AUDITOR"));
+        assertThat(created).isEqualTo(new AdminRoleDTO("ROLE_AUDITOR"));
         verify(authorityRepository).save(any(AuthorityEntity.class));
         verify(adminAuditEventService).record("role.created", "role", "ROLE_AUDITOR");
     }
@@ -156,7 +156,7 @@ class AdminRoleServiceTest {
         var result = service().role("ROLE_AUDITOR", "  ali  ", pageable);
 
         assertThat(result.users().getContent())
-                .containsExactly(new AdminRoleService.UserEntityView(10L, "alice", true));
+                .containsExactly(new AdminRoleUserDTO(10L, "alice", true));
         assertThat(result.userCount()).isEqualTo(1L);
     }
 
@@ -172,7 +172,7 @@ class AdminRoleServiceTest {
                 .thenReturn(new PageImpl<>(List.of(bob), pageable, 1));
 
         assertThat(service().availableUsers("ROLE_AUDITOR", " bo ", pageable).getContent())
-                .containsExactly(new AdminRoleService.UserEntityView(11L, "bob", true));
+                .containsExactly(new AdminRoleUserDTO(11L, "bob", true));
     }
 
     private AdminRoleService service() {

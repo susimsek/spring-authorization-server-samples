@@ -7,8 +7,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 public interface AuthorizationConsentRepository
         extends JpaRepository<AuthorizationConsentEntity, AuthorizationConsentId>,
@@ -22,18 +20,8 @@ public interface AuthorizationConsentRepository
 
     long deleteByIdRegisteredClientId(String registeredClientId);
 
-    long deleteByIdPrincipalName(String principalName);
-
-    java.util.List<AuthorizationConsentEntity> findAllByIdPrincipalName(String principalName);
-
     Page<AuthorizationConsentEntity> findByIdRegisteredClientId(
             String registeredClientId, Pageable pageable);
 
     Page<AuthorizationConsentEntity> findByIdPrincipalName(String principalName, Pageable pageable);
-
-    @Query(
-            "select c from AuthorizationConsentEntity c where :query = '' or"
-                    + " lower(c.id.principalName) like lower(concat('%', :query, '%')) or"
-                    + " lower(c.id.registeredClientId) like lower(concat('%', :query, '%'))")
-    Page<AuthorizationConsentEntity> search(@Param("query") String query, Pageable pageable);
 }

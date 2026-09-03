@@ -2,7 +2,7 @@
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-import dictionary from "@/i18n/dictionaries/en.json";
+import dictionary from "@/locales/en/common.json";
 
 import { StoreProvider } from "@/store/StoreProvider";
 
@@ -10,11 +10,11 @@ import { AdminShell } from "./AdminShell";
 
 const mockLogout = jest.fn().mockResolvedValue(undefined);
 
-jest.mock("next/navigation", () => ({
+jest.mock("@/routing/navigation", () => ({
   useParams: () => ({ lang: "en" }),
-  usePathname: () => "/en/admin/clients/detail",
+  usePathname: () => "/admin/clients/detail",
 }));
-jest.mock("next/link", () => ({ children, href, ...props }: React.ComponentProps<"a">) => (
+jest.mock("@/routing/Link", () => ({ children, href, ...props }: React.ComponentProps<"a">) => (
   <a href={href} {...props}>
     {children}
   </a>

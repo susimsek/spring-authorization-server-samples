@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
+import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
 import io.github.susimsek.springauthserversamples.repository.UserAvatarRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.security.AuthorizationEndpointErrorResponseHandler;
@@ -25,6 +26,7 @@ import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
@@ -76,10 +78,13 @@ class AuthorizationServerConfigTest {
         when(avatar.getPublicId()).thenReturn("avatar-id");
         when(avatar.getUpdatedAt()).thenReturn(Instant.parse("2026-01-01T00:00:00Z"));
         UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
+        AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
+        when(authorizationRepository.findSessionIdById("authorization-id"))
+                .thenReturn(Optional.of("browser-session"));
         when(avatarRepository.findVersionByUserId(42L)).thenReturn(Optional.of(avatar));
         JwtClaimsSet.Builder claims = JwtClaimsSet.builder();
 
-        config.jwtTokenCustomizer(userRepository, avatarRepository)
+        config.jwtTokenCustomizer(userRepository, avatarRepository, authorizationRepository)
                 .customize(
                         jwtContext(
                                 claims,
@@ -91,7 +96,11 @@ class AuthorizationServerConfigTest {
         assertThat(claims.build().getClaims())
                 .containsEntry(
                         "picture", "https://issuer.example/avatars/avatar-id?v=1767225600000")
-                .containsEntry("roles", List.of("ROLE_ADMIN", "ROLE_USER"));
+                .containsEntry("roles", List.of("ROLE_ADMIN", "ROLE_USER"))
+                .containsEntry(
+                        "sid",
+                        io.github.susimsek.springauthserversamples.security.OidcSessionIdentifier
+                                .fromSessionId("browser-session"));
         verify(userRepository).findByUsername("admin");
         verify(avatarRepository).findVersionByUserId(42L);
     }
@@ -100,9 +109,10 @@ class AuthorizationServerConfigTest {
     void doesNotQueryAvatarForTokensOutsideUserProfileFlows() {
         UserRepository userRepository = mock(UserRepository.class);
         UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
+        AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
         JwtClaimsSet.Builder claims = JwtClaimsSet.builder();
 
-        config.jwtTokenCustomizer(userRepository, avatarRepository)
+        config.jwtTokenCustomizer(userRepository, avatarRepository, authorizationRepository)
                 .customize(
                         jwtContext(
                                 claims,
@@ -123,20 +133,29 @@ class AuthorizationServerConfigTest {
             AuthorizationGrantType grantType,
             String clientId,
             Set<String> scopes) {
+        RegisteredClient registeredClient =
+                RegisteredClient.withId("client-id")
+                        .clientId(clientId)
+                        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                        .redirectUri("https://client.example/callback")
+                        .build();
+        UsernamePasswordAuthenticationToken principal =
+                new UsernamePasswordAuthenticationToken(
+                        "admin",
+                        "n/a",
+                        List.of(
+                                new SimpleGrantedAuthority("ROLE_USER"),
+                                new SimpleGrantedAuthority("ROLE_ADMIN")));
+        OAuth2Authorization authorization =
+                OAuth2Authorization.withRegisteredClient(registeredClient)
+                        .id("authorization-id")
+                        .principalName("admin")
+                        .authorizationGrantType(grantType)
+                        .build();
         return JwtEncodingContext.with(JwsHeader.with(SignatureAlgorithm.RS256), claims)
-                .registeredClient(
-                        RegisteredClient.withId("client-id")
-                                .clientId(clientId)
-                                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                                .redirectUri("https://client.example/callback")
-                                .build())
-                .principal(
-                        new UsernamePasswordAuthenticationToken(
-                                "admin",
-                                "n/a",
-                                List.of(
-                                        new SimpleGrantedAuthority("ROLE_USER"),
-                                        new SimpleGrantedAuthority("ROLE_ADMIN"))))
+                .registeredClient(registeredClient)
+                .authorization(authorization)
+                .principal(principal)
                 .authorizedScopes(scopes)
                 .tokenType(tokenType)
                 .authorizationGrantType(grantType)
@@ -149,6 +168,8 @@ class AuthorizationServerConfigTest {
                         new ApplicationProperties.Caffeine(
                                 java.time.Duration.ofHours(1), 500, 1000)),
                 new ApplicationProperties.Session("0 * * * * *"),
-                new ApplicationProperties.AuthorizationServer("https://issuer.example"));
+                new ApplicationProperties.AuthorizationServer("https://issuer.example"),
+                new ApplicationProperties.Mail(
+                        false, "no-reply@localhost", "https://issuer.example"));
     }
 }

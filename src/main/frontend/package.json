@@ -27,12 +27,16 @@
     "@reduxjs/toolkit": "2.12.0",
     "axios": "^1.19.0",
     "bootstrap": "5.3.8",
+    "i18next": "^26.4.1",
     "next": "16.3.1",
+    "next-i18next": "16.0.11",
     "react": "19.2.8",
     "react-bootstrap": "2.10.10",
     "react-dom": "19.2.8",
     "react-hook-form": "^7.85.0",
+    "react-i18next": "^17.0.13",
     "react-redux": "9.3.0",
+    "react-router-dom": "7.18.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -42,6 +46,7 @@
     "@types/node": "24.10.1",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
+    "cypress": "15.21.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "16.3.1",
     "jest": "^30.4.2",
@@ -49,7 +54,6 @@
     "jsdom": "^30.0.1",
     "prettier": "3.9.6",
     "ts-node": "^10.9.2",
-    "typescript": "5.9.2",
-    "cypress": "15.21.0"
+    "typescript": "5.9.2"
   }
 }

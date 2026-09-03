@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Alert, Badge, Button, Card, Dropdown } from "react-bootstrap";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/routing/navigation";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
@@ -75,8 +75,7 @@ export function ClientDetail({
       method: "DELETE",
     });
     if (r.status < 300) {
-      router.push(`/${locale}/admin/clients`);
-      router.refresh();
+      router.push(`/admin/clients`);
     } else setError(true);
   };
   const regenerateSecret = async () => {
@@ -94,7 +93,7 @@ export function ClientDetail({
   };
   if (!id || error) return <ErrorState message={dictionary.admin.clients.notFound} />;
   if (!client) return <LoadingState />;
-  const detailUrl = `/${locale}/admin/clients/${encodeURIComponent(client.id)}`;
+  const detailUrl = `/admin/clients/${encodeURIComponent(client.id)}`;
   const copy = dictionary.admin.clients;
   const tabs = [
     { key: "settings", label: copy.settings, href: `${detailUrl}/settings` },
@@ -116,7 +115,7 @@ export function ClientDetail({
     <>
       <AdminBreadcrumb
         items={[
-          { label: dictionary.admin.clients.title, href: `/${locale}/admin/clients` },
+          { label: dictionary.admin.clients.title, href: `/admin/clients` },
           { label: client.clientName },
         ]}
       />

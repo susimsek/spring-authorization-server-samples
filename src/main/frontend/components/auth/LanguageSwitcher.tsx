@@ -2,7 +2,9 @@
 
 import { faGlobe } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { usePathname, useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
+import { useLocale } from "@/i18n/client";
+import { persistLocale } from "@/i18n/locale-cookie";
 import { Dropdown } from "react-bootstrap";
 
 import type { Locale } from "@/i18n/config";
@@ -17,20 +19,13 @@ const languageNames: Record<Locale, string> = {
   tr: "Türkçe",
 };
 
-export function LanguageSwitcher({ locale, label }: LanguageSwitcherProps) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const activeLocale = locale;
+export function LanguageSwitcher({ label }: LanguageSwitcherProps) {
+  const { i18n } = useTranslation("common");
+  const activeLocale = useLocale();
 
   function changeLanguage(nextLocale: Locale) {
-    // Cookie persistence is intentionally a browser-side side effect.
-    // eslint-disable-next-line react-hooks/immutability
-    document.cookie = `AUTH_LOCALE=${nextLocale}; Path=/; Max-Age=31536000; SameSite=Lax`;
-
-    const params = new URLSearchParams(window.location.search);
-    const query = params.size ? `?${params.toString()}` : "";
-    const localizedPath = replaceLocale(pathname, activeLocale, nextLocale);
-    router.push(`${localizedPath}${query}`);
+    persistLocale(nextLocale);
+    void i18n.changeLanguage(nextLocale);
   }
 
   return (
@@ -52,15 +47,4 @@ export function LanguageSwitcher({ locale, label }: LanguageSwitcherProps) {
       </Dropdown.Menu>
     </Dropdown>
   );
-}
-
-function replaceLocale(pathname: string, currentLocale: Locale, nextLocale: Locale) {
-  const currentPrefix = `/${currentLocale}`;
-  if (pathname === currentPrefix) {
-    return `/${nextLocale}`;
-  }
-  if (pathname.startsWith(`${currentPrefix}/`)) {
-    return `/${nextLocale}${pathname.slice(currentPrefix.length)}`;
-  }
-  return `/${nextLocale}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
 }

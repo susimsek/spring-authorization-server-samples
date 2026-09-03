@@ -72,16 +72,23 @@ public class SecurityConfig {
                                         .permitAll()
                                         .requestMatchers("/account/avatar")
                                         .authenticated()
+                                        .requestMatchers("/api/auth/**")
+                                        .permitAll()
                                         .requestMatchers(
                                                 "/admin",
                                                 "/admin/**",
-                                                "/en/admin/**",
-                                                "/tr/admin/**",
                                                 "/",
+                                                "/index.html",
+                                                "/404.html",
+                                                "/account/**",
+                                                "/account",
+                                                "/consent",
+                                                "/auth-error",
+                                                "/forgot-password",
+                                                "/reset-password",
+                                                "/verify-email",
                                                 "/login",
                                                 "/login/**",
-                                                "/en/**",
-                                                "/tr/**",
                                                 "/_next/**",
                                                 "/v3/api-docs/**",
                                                 "/swagger-ui.html",

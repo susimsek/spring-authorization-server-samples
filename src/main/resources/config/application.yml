@@ -7,6 +7,9 @@ spring:
       enabled: true
   session:
     timeout: 30m
+  h2:
+    console:
+      enabled: false
   application:
     name: spring-authorization-server-samples
   web:
@@ -17,6 +20,20 @@ spring:
       max-request-size: 2MB
   messages:
     basename: i18n/messages
+  mail:
+    host: ${SPRING_MAIL_HOST:localhost}
+    port: ${SPRING_MAIL_PORT:1025}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail.smtp:
+        auth: ${SPRING_MAIL_SMTP_AUTH:false}
+        connectiontimeout: ${SPRING_MAIL_SMTP_CONNECTION_TIMEOUT:5000}
+        timeout: ${SPRING_MAIL_SMTP_TIMEOUT:5000}
+        writetimeout: ${SPRING_MAIL_SMTP_WRITE_TIMEOUT:5000}
+        starttls:
+          enable: ${SPRING_MAIL_SMTP_STARTTLS_ENABLE:false}
+          required: ${SPRING_MAIL_SMTP_STARTTLS_REQUIRED:false}
   profiles:
     active: '@spring.profiles.active@'
   docker:
@@ -58,6 +75,9 @@ server:
   shutdown: graceful
 
 management:
+  health:
+    mail:
+      enabled: ${MANAGEMENT_HEALTH_MAIL_ENABLED:false}
   endpoints:
     web:
       exposure:
@@ -69,6 +89,10 @@ management:
       show-details: never
 
 app:
+  mail:
+    enabled: ${APP_MAIL_ENABLED:false}
+    from: ${APP_MAIL_FROM:Spring Authorization Server <no-reply@localhost>}
+    base-url: ${APP_MAIL_BASE_URL:http://127.0.0.1:9090}
   session:
     cleanup-cron: "0 * * * * *"
   authorization-server:

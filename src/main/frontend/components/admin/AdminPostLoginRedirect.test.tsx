@@ -4,7 +4,7 @@ import { AdminPostLoginRedirect } from "./AdminPostLoginRedirect";
 
 const replace = jest.fn();
 
-jest.mock("next/navigation", () => ({
+jest.mock("@/routing/navigation", () => ({
   useParams: () => ({ lang: "en" }),
   useRouter: () => ({ replace }),
 }));
@@ -16,10 +16,10 @@ describe("AdminPostLoginRedirect", () => {
   });
 
   it("redirects to a stored internal location without reloading the document", () => {
-    sessionStorage.setItem("AUTH_ADMIN_RETURN_TO", "/en/admin/clients");
+    sessionStorage.setItem("AUTH_ADMIN_RETURN_TO", "/admin/clients");
     render(<AdminPostLoginRedirect />);
 
-    expect(replace).toHaveBeenCalledWith("/en/admin/clients");
+    expect(replace).toHaveBeenCalledWith("/admin/clients");
     expect(sessionStorage.getItem("AUTH_ADMIN_RETURN_TO")).toBeNull();
   });
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname } from "@/routing/navigation";
 
 type TableState = {
   query: string;
@@ -49,7 +49,7 @@ export function useAdminTableState(defaultSize = 20, includesStatus = false, def
     setParam(params, "to", next.to);
     const search = params.toString();
     window.history.replaceState(
-      null,
+      window.history.state,
       "",
       `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`,
     );

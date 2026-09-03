@@ -1,16 +1,9 @@
 import { render, screen } from "@testing-library/react";
-
-import dictionary from "@/i18n/dictionaries/en.json";
-
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import dictionary from "@/locales/en/common.json";
 import { ClientEntityRoute } from "./ClientEntityRoute";
 import { UserEntityRoute } from "./UserEntityRoute";
 
-let pathname = "/en/admin/clients/client-1/settings";
-
-jest.mock("next/navigation", () => ({
-  useParams: () => ({ lang: "en" }),
-  usePathname: () => pathname,
-}));
 jest.mock("./ClientDetail", () => ({
   ClientDetail: (props: unknown) => <pre>{JSON.stringify(props)}</pre>,
 }));
@@ -18,24 +11,31 @@ jest.mock("./UserForm", () => ({
   UserForm: (props: unknown) => <pre>{JSON.stringify(props)}</pre>,
 }));
 
-describe("admin entity route wrappers", () => {
-  it("reads the client id and section from the dynamic path", () => {
-    pathname = "/en/admin/clients/client-1/credentials";
-    render(<ClientEntityRoute locale="en" dictionary={dictionary} />);
-    expect(screen.getByText(/client-1/)).toHaveTextContent('"id":"client-1"');
-    expect(screen.getByText(/client-1/)).toHaveTextContent('"tab":"credentials"');
-  });
-
-  it("defaults an unknown client section to settings", () => {
-    pathname = "/en/admin/clients/client-2/unknown";
-    render(<ClientEntityRoute locale="en" dictionary={dictionary} />);
-    expect(screen.getByText(/client-2/)).toHaveTextContent('"tab":"settings"');
-  });
-
-  it("reads the user id and section from the dynamic path", () => {
-    pathname = "/en/admin/users/42/sessions";
-    render(<UserEntityRoute locale="en" dictionary={dictionary} />);
-    expect(screen.getByText(/42/)).toHaveTextContent('"id":"42"');
-    expect(screen.getByText(/42/)).toHaveTextContent('"tab":"sessions"');
+describe("runtime entity routing", () => {
+  it.each([
+    ["/admin/clients/abc", "abc", "settings"],
+    ["/admin/clients/client-1/credentials", "client-1", "credentials"],
+    ["/admin/clients/client%20with%20spaces/sessions", "client with spaces", "sessions"],
+    ["/admin/clients/client-2/unknown", "client-2", "settings"],
+    ["/admin/users/123", "123", "details"],
+    ["/admin/users/42/sessions", "42", "sessions"],
+  ])("resolves %s without any build-time parameters", (path, id, tab) => {
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route
+            path="/admin/clients/:id/:section?"
+            element={<ClientEntityRoute locale="en" dictionary={dictionary} />}
+          />
+          <Route
+            path="/admin/users/:id/:section?"
+            element={<UserEntityRoute locale="en" dictionary={dictionary} />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.getByText(new RegExp('"id":"' + id + '"'))).toHaveTextContent(
+      '"tab":"' + tab + '"',
+    );
   });
 });

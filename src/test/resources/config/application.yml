@@ -26,6 +26,9 @@ spring:
       hibernate.jdbc.time_zone: UTC
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.xml
+  mail:
+    host: localhost
+    port: 1025
 
 server:
   port: 0

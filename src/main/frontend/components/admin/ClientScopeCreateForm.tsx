@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/routing/navigation";
 import { Button, Card, Form } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -17,13 +17,7 @@ import { AdminActionIcon } from "./AdminActionIcon";
 
 type Values = { name: string; displayName: string; description: string };
 
-export function ClientScopeCreateForm({
-  dictionary,
-  locale,
-}: {
-  dictionary: Dictionary;
-  locale: Locale;
-}) {
+export function ClientScopeCreateForm({ dictionary }: { dictionary: Dictionary; locale: Locale }) {
   const { accessToken } = useAdminAuth();
   const alerts = useConsoleAlerts();
   const router = useRouter();
@@ -65,7 +59,7 @@ export function ClientScopeCreateForm({
         }
         throw new Error();
       }
-      router.push(`/${locale}/admin/client-scopes`);
+      router.push(`/admin/client-scopes`);
     } catch {
       alerts.addError(copy.operationError);
     }
@@ -111,10 +105,7 @@ export function ClientScopeCreateForm({
             </Form.Control.Feedback>
           </Form.Group>
           <div className="admin-create-actions">
-            <Button
-              variant="outline-secondary"
-              onClick={() => router.push(`/${locale}/admin/client-scopes`)}
-            >
+            <Button variant="outline-secondary" onClick={() => router.push(`/admin/client-scopes`)}>
               {common.cancel}
             </Button>
             <Button disabled={isSubmitting} type="submit">

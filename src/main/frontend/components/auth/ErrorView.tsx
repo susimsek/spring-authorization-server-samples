@@ -1,6 +1,6 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams } from "@/routing/navigation";
 import { Suspense } from "react";
 import { Card } from "react-bootstrap";
 

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-import dictionary from "@/i18n/dictionaries/en.json";
+import dictionary from "@/locales/en/common.json";
 import { adminRequest } from "@/lib/admin-api";
 
 import { ClientForm } from "./ClientForm";
@@ -13,7 +13,7 @@ jest.mock("@/lib/admin-api", () => ({ adminRequest: jest.fn() }));
 jest.mock("./AdminAuthProvider", () => ({
   useAdminAuth: () => ({ accessToken: "token" }),
 }));
-jest.mock("next/navigation", () => ({
+jest.mock("@/routing/navigation", () => ({
   useParams: () => ({ lang: "en" }),
   useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
 }));
@@ -60,10 +60,7 @@ describe("ClientForm", () => {
     );
 
     fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.common.close })[1]);
-    await waitFor(() =>
-      expect(mockPush).toHaveBeenCalledWith("/en/admin/clients/client-1/settings"),
-    );
-    expect(mockRefresh).toHaveBeenCalled();
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/admin/clients/client-1/settings"));
   });
 
   it("loads an existing client and saves its edited details", async () => {
@@ -92,9 +89,7 @@ describe("ClientForm", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.save }));
 
-    await waitFor(() =>
-      expect(mockPush).toHaveBeenCalledWith("/en/admin/clients/client-1/settings"),
-    );
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/admin/clients/client-1/settings"));
   });
 
   it("covers capability toggles, switches, cancel, and validation branches", async () => {
@@ -112,7 +107,7 @@ describe("ClientForm", () => {
     fireEvent.click(checkboxes[7]);
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.cancel }));
-    expect(mockPush).toHaveBeenCalledWith("/en/admin/clients");
+    expect(mockPush).toHaveBeenCalledWith("/admin/clients");
 
     advanceCreateStep();
     advanceCreateStep();
@@ -139,10 +134,7 @@ describe("ClientForm", () => {
       target: { value: "https://app.example/callback" },
     });
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.save }));
-    await waitFor(() =>
-      expect(mockPush).toHaveBeenCalledWith("/tr/admin/clients/client-2/settings"),
-    );
-    expect(mockRefresh).toHaveBeenCalled();
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/admin/clients/client-2/settings"));
   });
 
   it("shows edit load errors and maps duplicate client errors", async () => {

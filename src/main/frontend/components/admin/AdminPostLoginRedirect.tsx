@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/routing/navigation";
 
 const ADMIN_RETURN_TO = "AUTH_ADMIN_RETURN_TO";
 

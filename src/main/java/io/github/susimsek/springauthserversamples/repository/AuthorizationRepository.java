@@ -30,6 +30,11 @@ public interface AuthorizationRepository extends JpaRepository<AuthorizationEnti
 
     Optional<AuthorizationEntity> findByAccessTokenValue(String accessTokenValue);
 
+    boolean existsByAccessTokenValue(String accessTokenValue);
+
+    @Query("select a.sessionId from AuthorizationEntity a where a.id = :id")
+    Optional<String> findSessionIdById(@Param("id") String id);
+
     Optional<AuthorizationEntity> findByRefreshTokenValue(String refreshTokenValue);
 
     Optional<AuthorizationEntity> findByOidcIdTokenValue(String oidcIdTokenValue);
@@ -51,8 +56,6 @@ public interface AuthorizationRepository extends JpaRepository<AuthorizationEnti
     List<AuthorizationEntity> findAllBySessionIdInOrderByAccessTokenIssuedAtDesc(
             Collection<String> sessionIds);
 
-    long countByPrincipalName(String principalName);
-
     @Query(
             "select distinct a.sessionId from AuthorizationEntity a where a.registeredClientId ="
                     + " :registeredClientId and a.sessionId is not null")
@@ -66,21 +69,8 @@ public interface AuthorizationRepository extends JpaRepository<AuthorizationEnti
     List<SessionAuthorizationCount> countBySessionIdIn(
             @Param("sessionIds") Collection<String> sessionIds);
 
-    @Query(
-            "select a.principalName as principalName, count(a) as authorizationCount "
-                    + "from AuthorizationEntity a where a.principalName in :principalNames "
-                    + "group by a.principalName")
-    List<AuthorizationCount> countByPrincipalNameIn(
-            @Param("principalNames") Collection<String> principalNames);
-
     long deleteByPrincipalNameAndRegisteredClientId(
             String principalName, String registeredClientId);
-
-    interface AuthorizationCount {
-        String getPrincipalName();
-
-        long getAuthorizationCount();
-    }
 
     interface SessionAuthorizationCount {
         String getSessionId();

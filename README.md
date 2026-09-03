@@ -182,26 +182,26 @@ The schema keeps the JDBC model's session id, creation/last-access timestamps, m
 ## Frontend
 ### Authorization UI localization
 
-The exported Next.js authorization UI supports English and Turkish routes:
+The frontend remains a Next.js static export. React Router resolves runtime paths such as
+`/admin/users/123`, `/admin/clients/abc`, and `/admin/roles/42`; identifiers are never generated at build time.
+Spring's `SpaFilter` forwards only frontend GET/HEAD HTML navigations to `/index.html`.
+API, OAuth, well-known, actuator, assets and real backend endpoints are excluded.
+The two callback pages are explicitly exported at `/admin/callback` and `/account/callback`.
 
-```text
-/en/login
-/tr/login
-```
+All frontend URLs are locale-free, including `/login`, `/consent`, and `/auth-error`.
+`next-i18next` v16 uses `localeInPath: false`, with client-only detection:
 
-`GET /login` remains the Spring Security login entry point. The server resolves the UI locale in this order:
+1. `locale` cookie
+2. Supported browser language (`en` or `tr`)
+3. English fallback
 
-1. `AUTH_LOCALE` cookie set by the Navbar language selector
-2. OIDC `ui_locales` from the saved authorization request
-3. browser `Accept-Language`
-4. English fallback
+The language selector updates the cookie and i18next instance without changing the URL,
+reloading the page, or resetting form input. Translation resources live in
+`src/main/frontend/locales/{en,tr}/common.json`.
+No request-time Next server APIs are used.
 
-The login form always posts to Spring Security's standard `POST /login` endpoint, so OAuth/OIDC saved-request and callback behavior remains unchanged. UI translations live under:
-
-```text
-src/main/frontend/i18n/dictionaries/
-```
-
+The login form still posts to Spring Security's standard `POST /login` endpoint.
+PKCE, refresh-token handling, namespaced console token storage and browser SSO are unchanged.
 
 The login screen is implemented with Next.js App Router + TypeScript and exported as static HTML/CSS/JS. The UI uses React-Bootstrap, Bootstrap, and Font Awesome while Spring Security remains responsible for authentication and session handling.
 
@@ -252,6 +252,33 @@ The application listens on:
 ```text
 localhost:9090
 ```
+
+#### H2 Console (dev only)
+
+Open [http://localhost:9090/h2-console/](http://localhost:9090/h2-console/) after starting the
+application with the `dev` profile. Use:
+
+- Driver Class: `org.h2.Driver`
+- JDBC URL: `jdbc:h2:mem:authserversamples;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE`
+- User Name: `sa`
+- Password: leave empty
+
+Select **Connect**. Use the exact JDBC URL above, not the console's default `jdbc:h2:~/test`.
+This connects to the same in-memory database used by the application; restarting the application
+resets its data. For a read-only check, run `SELECT COUNT(*) FROM OAUTH2_REGISTERED_CLIENT;`.
+
+If `SPRING_DATASOURCE_USERNAME` or `SPRING_DATASOURCE_PASSWORD` is set in your environment,
+those values override the defaults above. To explicitly use the local dev defaults without
+changing your system environment:
+
+```bash
+./mvnw -Pdev spring-boot:run -Dspring-boot.run.arguments="--spring.datasource.username=sa --spring.datasource.password="
+```
+
+The console module is included only by the Maven `dev` profile. The console is disabled by
+default, allows only local connections, and its frame/security exception applies only in
+the Spring `dev` profile (never `prod`). See the
+[Spring Boot H2 Console documentation](https://docs.spring.io/spring-boot/4.1/reference/data/sql.html#data.sql.h2-web-console).
 
 ### Prod (PostgreSQL)
 

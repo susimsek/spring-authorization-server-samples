@@ -40,16 +40,12 @@ public class ApiException extends RuntimeException {
         return field;
     }
 
-    public static ApiException badRequest(String ignoredErrorCode, String message) {
-        return badRequest(null, ignoredErrorCode, message);
+    public static ApiException badRequest(ApiErrorCode errorCode, String message) {
+        return badRequest(null, errorCode, message);
     }
 
-    public static ApiException badRequest(String field, String ignoredErrorCode, String message) {
-        return new ApiException(
-                HttpStatus.BAD_REQUEST,
-                ApiErrorCode.fromLegacyCode(ignoredErrorCode, ApiErrorCode.INVALID_REQUEST),
-                field,
-                message);
+    public static ApiException badRequest(String field, ApiErrorCode errorCode, String message) {
+        return new ApiException(HttpStatus.BAD_REQUEST, errorCode, field, message);
     }
 
     public static ApiException notFound(String message) {
@@ -57,32 +53,20 @@ public class ApiException extends RuntimeException {
                 HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, null, message);
     }
 
-    public static ApiException conflict(String ignoredErrorCode, String message) {
-        return conflict(null, ignoredErrorCode, message);
+    public static ApiException conflict(ApiErrorCode errorCode, String message) {
+        return conflict(null, errorCode, message);
     }
 
-    public static ApiException conflict(String field, String ignoredErrorCode, String message) {
-        return new ApiException(
-                HttpStatus.CONFLICT,
-                ApiErrorCode.fromLegacyCode(ignoredErrorCode, ApiErrorCode.CONFLICT),
-                field,
-                message);
+    public static ApiException conflict(String field, ApiErrorCode errorCode, String message) {
+        return new ApiException(HttpStatus.CONFLICT, errorCode, field, message);
     }
 
-    public static ApiException forbidden(String ignoredErrorCode, String message) {
-        return new ApiException(
-                HttpStatus.FORBIDDEN,
-                ApiErrorCode.fromLegacyCode(ignoredErrorCode, ApiErrorCode.FORBIDDEN),
-                null,
-                message);
+    public static ApiException forbidden(ApiErrorCode errorCode, String message) {
+        return new ApiException(HttpStatus.FORBIDDEN, errorCode, null, message);
     }
 
     public static ApiException serverError(
-            String ignoredErrorCode, String message, Throwable cause) {
-        return new ApiException(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                ApiErrorCode.fromLegacyCode(ignoredErrorCode, ApiErrorCode.INTERNAL_ERROR),
-                message,
-                cause);
+            ApiErrorCode errorCode, String message, Throwable cause) {
+        return new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, errorCode, message, cause);
     }
 }

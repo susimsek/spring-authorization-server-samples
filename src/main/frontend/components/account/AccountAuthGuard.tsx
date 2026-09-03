@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter } from "@/routing/navigation";
 
 import type { Locale } from "@/i18n/config";
 import { accountRequest, registerAccountTokenHandlers } from "@/lib/account-api";
@@ -66,7 +66,7 @@ export function AccountAuthGuard({
       })
       .catch((error: unknown) => {
         if (isCanceledRequest(error)) return;
-        router.replace(`/${locale}/error?type=server_error`);
+        router.replace(`/auth-error?type=server_error`);
       });
     return () => controller.abort();
   }, [

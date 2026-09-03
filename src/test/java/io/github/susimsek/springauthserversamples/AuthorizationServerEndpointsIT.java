@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.github.susimsek.springauthserversamples.repository.UserSessionRepository;
+import jakarta.servlet.http.Cookie;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -16,6 +17,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -41,6 +44,65 @@ class AuthorizationServerEndpointsIT {
     @Autowired private OAuth2AuthorizationConsentService authorizationConsentService;
 
     @Autowired private UserSessionRepository userSessionRepository;
+
+    @ParameterizedTest
+    @CsvSource({"account, tr, en", "account, en, tr", "admin, tr, en", "admin, en, tr"})
+    void resumedAuthorizationPreservesLocaleSelectedOnLogin(
+            String console, String initialLocale, String selectedLocale) throws Exception {
+        String callback = "http://localhost:9090/" + console + "/callback";
+        MvcResult start =
+                mockMvc.perform(
+                                consoleAuthorizationRequest(
+                                                console + "-console",
+                                                "openid profile " + console + "-api",
+                                                callback,
+                                                "locale-code-verifier-012345678901234567890123456789012",
+                                                "locale-state",
+                                                "locale-nonce")
+                                        .cookie(new Cookie("locale", initialLocale))
+                                        .queryParam("ui_locales", initialLocale))
+                        .andExpect(status().is3xxRedirection())
+                        .andReturn();
+        assertThat(start.getResponse().getRedirectedUrl()).contains("/login");
+        Cookie browserSession = start.getResponse().getCookie("SESSION");
+        assertThat(browserSession).isNotNull();
+
+        Cookie selection = new Cookie("locale", selectedLocale);
+        MvcResult login =
+                mockMvc.perform(
+                                post("/login")
+                                        .cookie(browserSession, selection)
+                                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                        .param("username", "admin")
+                                        .param("password", "admin"))
+                        .andExpect(status().is3xxRedirection())
+                        .andReturn();
+        String savedUrl = login.getResponse().getRedirectedUrl();
+        assertThat(savedUrl).contains("ui_locales=" + initialLocale);
+        Cookie authenticatedSession = login.getResponse().getCookie("SESSION");
+        assertThat(authenticatedSession).isNotNull();
+
+        MvcResult resumed =
+                mockMvc.perform(get(URI.create(savedUrl)).cookie(authenticatedSession, selection))
+                        .andExpect(status().is3xxRedirection())
+                        .andReturn();
+        assertThat(resumed.getResponse().getRedirectedUrl()).startsWith(callback).contains("code=");
+        assertThat(resumed.getResponse().getCookie("locale")).isNull();
+    }
+
+    @Test
+    void exportedNotFoundPageIsPublicWithoutExposingConsoleApis() throws Exception {
+        MvcResult page =
+                mockMvc.perform(get("/404.html").accept(MediaType.TEXT_HTML))
+                        .andExpect(status().isOk())
+                        .andReturn();
+        assertThat(page.getResponse().getContentAsString()).contains("/_next/");
+        assertThat(page.getResponse().getForwardedUrl()).isNull();
+        mockMvc.perform(get("/api/admin/users").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/account/profile").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isUnauthorized());
+    }
 
     @Test
     void discoveryAndJwkEndpointsArePublic() throws Exception {
@@ -191,7 +253,7 @@ class AuthorizationServerEndpointsIT {
         assertThat(sessionCookie).isNotNull();
 
         String codeVerifier = "admin-console-code-verifier-0123456789012345678901234567890";
-        String redirectUri = "http://localhost:9090/en/admin/callback";
+        String redirectUri = "http://localhost:9090/admin/callback";
 
         MvcResult result =
                 mockMvc.perform(
@@ -210,7 +272,7 @@ class AuthorizationServerEndpointsIT {
                         .andReturn();
 
         URI callbackUri = URI.create(result.getResponse().getRedirectedUrl());
-        assertThat(callbackUri.getPath()).isEqualTo("/en/admin/callback");
+        assertThat(callbackUri.getPath()).isEqualTo("/admin/callback");
         assertThat(callbackUri.getQuery()).contains("code=");
         assertThat(callbackUri.getQuery()).contains("state=admin-console-state");
 
@@ -259,7 +321,7 @@ class AuthorizationServerEndpointsIT {
                                         .queryParam("scope", "openid profile account-api")
                                         .queryParam(
                                                 "redirect_uri",
-                                                "http://localhost:9090/en/account/callback")
+                                                "http://localhost:9090/account/callback")
                                         .queryParam(
                                                 "code_challenge",
                                                 codeChallenge(accountCodeVerifier))
@@ -270,7 +332,7 @@ class AuthorizationServerEndpointsIT {
 
         URI accountCallbackUri =
                 URI.create(accountAuthorizationResult.getResponse().getRedirectedUrl());
-        assertThat(accountCallbackUri.getPath()).isEqualTo("/en/account/callback");
+        assertThat(accountCallbackUri.getPath()).isEqualTo("/account/callback");
         assertThat(accountCallbackUri.getQuery())
                 .contains("code=", "state=account-console-state")
                 .doesNotContain("error=");
@@ -335,7 +397,7 @@ class AuthorizationServerEndpointsIT {
                                         .queryParam("scope", "openid profile account-api")
                                         .queryParam(
                                                 "redirect_uri",
-                                                "http://localhost:9090/en/account/callback")
+                                                "http://localhost:9090/account/callback")
                                         .queryParam("code_challenge", codeChallenge(codeVerifier))
                                         .queryParam("code_challenge_method", "S256")
                                         .queryParam("nonce", "account-console-nonce")
@@ -345,7 +407,7 @@ class AuthorizationServerEndpointsIT {
                         .andReturn();
 
         URI callbackUri = URI.create(result.getResponse().getRedirectedUrl());
-        assertThat(callbackUri.getPath()).isEqualTo("/en/account/callback");
+        assertThat(callbackUri.getPath()).isEqualTo("/account/callback");
         assertThat(callbackUri.getQuery())
                 .contains("code=", "state=account-console-state")
                 .doesNotContain("error=");
@@ -365,7 +427,7 @@ class AuthorizationServerEndpointsIT {
         assertThat(sessionCookie).isNotNull();
 
         String codeVerifier = "admin-console-logout-verifier-012345678901234567890123456789012";
-        String redirectUri = "http://localhost:9090/en/admin/callback";
+        String redirectUri = "http://localhost:9090/admin/callback";
         MvcResult authorizeResult =
                 mockMvc.perform(
                                 get("/oauth2/authorize")
@@ -406,13 +468,12 @@ class AuthorizationServerEndpointsIT {
                                 .queryParam("client_id", "admin-console")
                                 .queryParam("id_token_hint", idToken)
                                 .queryParam(
-                                        "post_logout_redirect_uri",
-                                        "http://localhost:9090/en/admin/"))
+                                        "post_logout_redirect_uri", "http://localhost:9090/admin/"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(
                         logoutResult ->
                                 assertThat(logoutResult.getResponse().getRedirectedUrl())
-                                        .isEqualTo("http://localhost:9090/en/admin/"));
+                                        .isEqualTo("http://localhost:9090/admin/"));
     }
 
     @Test
@@ -429,7 +490,7 @@ class AuthorizationServerEndpointsIT {
         assertThat(sessionCookie).isNotNull();
 
         String codeVerifier = "admin-console-silent-code-verifier-0123456789012345678901234567890";
-        String redirectUri = "http://localhost:9090/en/admin/callback";
+        String redirectUri = "http://localhost:9090/admin/callback";
 
         MvcResult result =
                 mockMvc.perform(
@@ -449,7 +510,7 @@ class AuthorizationServerEndpointsIT {
                         .andReturn();
 
         URI callbackUri = URI.create(result.getResponse().getRedirectedUrl());
-        assertThat(callbackUri.getPath()).isEqualTo("/en/admin/callback");
+        assertThat(callbackUri.getPath()).isEqualTo("/admin/callback");
         assertThat(callbackUri.getQuery()).contains("code=");
         assertThat(callbackUri.getQuery()).contains("state=reload-state");
     }
@@ -471,7 +532,7 @@ class AuthorizationServerEndpointsIT {
                 sessionCookie,
                 "admin-console",
                 "openid profile admin-api",
-                "http://localhost:9090/en/admin/callback",
+                "http://localhost:9090/admin/callback",
                 "shared-sso-admin-state",
                 "shared-sso-admin-nonce",
                 "shared-sso-admin-verifier-012345678901234567890123456789012");
@@ -479,7 +540,7 @@ class AuthorizationServerEndpointsIT {
                 sessionCookie,
                 "account-console",
                 "openid profile account-api",
-                "http://localhost:9090/en/account/callback",
+                "http://localhost:9090/account/callback",
                 "shared-sso-account-state",
                 "shared-sso-account-nonce",
                 "shared-sso-account-verifier-0123456789012345678901234567890");
@@ -495,7 +556,7 @@ class AuthorizationServerEndpointsIT {
                                 consoleAuthorizationRequest(
                                         "admin-console",
                                         "openid profile admin-api",
-                                        "http://localhost:9090/en/admin/callback",
+                                        "http://localhost:9090/admin/callback",
                                         adminVerifier,
                                         "browser-admin-state",
                                         "browser-admin-nonce"))
@@ -525,7 +586,7 @@ class AuthorizationServerEndpointsIT {
                                 consoleAuthorizationRequest(
                                                 "admin-console",
                                                 "openid profile admin-api",
-                                                "http://localhost:9090/en/admin/callback",
+                                                "http://localhost:9090/admin/callback",
                                                 adminVerifier,
                                                 "browser-admin-state",
                                                 "browser-admin-nonce")
@@ -533,7 +594,7 @@ class AuthorizationServerEndpointsIT {
                         .andExpect(status().is3xxRedirection())
                         .andReturn();
         URI adminCallback = URI.create(adminAuthorization.getResponse().getRedirectedUrl());
-        assertThat(adminCallback.getPath()).isEqualTo("/en/admin/callback");
+        assertThat(adminCallback.getPath()).isEqualTo("/admin/callback");
         String adminCode =
                 UriComponentsBuilder.fromUri(adminCallback)
                         .build()
@@ -550,7 +611,7 @@ class AuthorizationServerEndpointsIT {
                                         .param("code_verifier", adminVerifier)
                                         .param(
                                                 "redirect_uri",
-                                                "http://localhost:9090/en/admin/callback"))
+                                                "http://localhost:9090/admin/callback"))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.refresh_token").isNotEmpty())
                         .andReturn();
@@ -585,7 +646,7 @@ class AuthorizationServerEndpointsIT {
                                 consoleAuthorizationRequest(
                                                 "account-console",
                                                 "openid profile account-api",
-                                                "http://localhost:9090/en/account/callback",
+                                                "http://localhost:9090/account/callback",
                                                 accountVerifier,
                                                 "browser-account-state",
                                                 "browser-account-nonce")
@@ -593,7 +654,7 @@ class AuthorizationServerEndpointsIT {
                         .andExpect(status().is3xxRedirection())
                         .andReturn();
         URI accountCallback = URI.create(accountAuthorization.getResponse().getRedirectedUrl());
-        assertThat(accountCallback.getPath()).isEqualTo("/en/account/callback");
+        assertThat(accountCallback.getPath()).isEqualTo("/account/callback");
         String accountCode =
                 UriComponentsBuilder.fromUri(accountCallback)
                         .build()
@@ -610,7 +671,7 @@ class AuthorizationServerEndpointsIT {
                                         .param("code_verifier", accountVerifier)
                                         .param(
                                                 "redirect_uri",
-                                                "http://localhost:9090/en/account/callback"))
+                                                "http://localhost:9090/account/callback"))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.refresh_token").isNotEmpty())
                         .andReturn();

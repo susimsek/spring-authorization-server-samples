@@ -3,6 +3,7 @@ package io.github.susimsek.springauthserversamples.service.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
+import io.github.susimsek.springauthserversamples.dto.admin.AdminDashboardDTO;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationConsentRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
@@ -28,8 +29,7 @@ class AdminDashboardServiceTest {
                 .thenReturn(4L);
         when(authorizationConsentRepository.count()).thenReturn(5L);
 
-        assertThat(service().dashboard())
-                .isEqualTo(new AdminDashboardService.DashboardView(2L, 3L, 4L, 5L));
+        assertThat(service().dashboard()).isEqualTo(new AdminDashboardDTO(2L, 3L, 4L, 5L));
     }
 
     private AdminDashboardService service() {

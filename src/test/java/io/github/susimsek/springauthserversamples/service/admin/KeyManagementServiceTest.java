@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.susimsek.springauthserversamples.domain.OAuth2KeyEntity;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminKeyDTO;
 import io.github.susimsek.springauthserversamples.repository.OAuth2KeyRepository;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.time.Instant;
@@ -45,10 +46,7 @@ class KeyManagementServiceTest {
         var keys = service().keys(" current ", null, pageable);
 
         assertThat(keys.getContent().getFirst())
-                .extracting(
-                        KeyManagementService.KeyView::id,
-                        KeyManagementService.KeyView::kid,
-                        KeyManagementService.KeyView::active)
+                .extracting(AdminKeyDTO::id, AdminKeyDTO::kid, AdminKeyDTO::active)
                 .containsExactly("key-id", "current-key", true);
         verify(keyRepository).findByKidContainingIgnoreCase("current", pageable);
     }
@@ -65,10 +63,10 @@ class KeyManagementServiceTest {
         assertThat(previousKey.isActive()).isFalse();
         assertThat(result)
                 .extracting(
-                        KeyManagementService.KeyView::type,
-                        KeyManagementService.KeyView::algorithm,
-                        KeyManagementService.KeyView::use,
-                        KeyManagementService.KeyView::active)
+                        AdminKeyDTO::type,
+                        AdminKeyDTO::algorithm,
+                        AdminKeyDTO::use,
+                        AdminKeyDTO::active)
                 .containsExactly("RSA", "RS256", "sig", true);
         verify(keyRepository).save(org.mockito.ArgumentMatchers.any(OAuth2KeyEntity.class));
         verify(auditEventService).record("key.rotated", "key", result.id());

@@ -65,7 +65,7 @@ class SessionConfigTest {
         ConversionService conversionService =
                 config.springSessionConversionService(
                         new SecurityJsonMapper(getClass().getClassLoader()));
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/en/account/");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/account/");
         request.setCookies(new Cookie("locale", "tr"));
         request.setServerName("localhost");
         request.setServerPort(9090);
@@ -77,7 +77,7 @@ class SessionConfigTest {
         assertThat(deserialized)
                 .isInstanceOf(DefaultSavedRequest.class)
                 .extracting(value -> ((DefaultSavedRequest) value).getRedirectUrl())
-                .isEqualTo("http://localhost:9090/en/account/");
+                .isEqualTo("http://localhost:9090/account/");
     }
 
     @Test
@@ -155,7 +155,11 @@ class SessionConfigTest {
     void sessionCleanupSchedulerAppliesConfiguredTimeout() {
         JpaIndexedSessionRepository repository =
                 new JpaIndexedSessionRepository(
-                        mock(UserSessionRepository.class), new NoOpTransactionManager());
+                        mock(UserSessionRepository.class),
+                        new NoOpTransactionManager(),
+                        config.jpaSessionMapper(
+                                config.springSessionConversionService(
+                                        new SecurityJsonMapper(getClass().getClassLoader()))));
         SessionProperties sessionProperties = new SessionProperties();
         sessionProperties.setTimeout(Duration.ofMinutes(5));
 
@@ -170,7 +174,9 @@ class SessionConfigTest {
                                                 Duration.ofHours(1), 500, 1000)),
                                 new ApplicationProperties.Session("-"),
                                 new ApplicationProperties.AuthorizationServer(
-                                        "http://127.0.0.1:9090")));
+                                        "http://127.0.0.1:9090"),
+                                new ApplicationProperties.Mail(
+                                        false, "no-reply@localhost", "http://127.0.0.1:9090")));
 
         assertThat(repository.createSession().getMaxInactiveInterval())
                 .isEqualTo(Duration.ofMinutes(5));
@@ -181,7 +187,11 @@ class SessionConfigTest {
     void sessionCleanupSchedulerFallsBackToDefaultTimeoutWhenUnset() {
         JpaIndexedSessionRepository repository =
                 new JpaIndexedSessionRepository(
-                        mock(UserSessionRepository.class), new NoOpTransactionManager());
+                        mock(UserSessionRepository.class),
+                        new NoOpTransactionManager(),
+                        config.jpaSessionMapper(
+                                config.springSessionConversionService(
+                                        new SecurityJsonMapper(getClass().getClassLoader()))));
 
         config.sessionCleanupScheduler(
                 repository,
@@ -191,7 +201,9 @@ class SessionConfigTest {
                         new ApplicationProperties.Cache(
                                 new ApplicationProperties.Caffeine(Duration.ofHours(1), 500, 1000)),
                         new ApplicationProperties.Session("-"),
-                        new ApplicationProperties.AuthorizationServer("http://127.0.0.1:9090")));
+                        new ApplicationProperties.AuthorizationServer("http://127.0.0.1:9090"),
+                        new ApplicationProperties.Mail(
+                                false, "no-reply@localhost", "http://127.0.0.1:9090")));
 
         assertThat(repository.createSession().getMaxInactiveInterval())
                 .isEqualTo(MapSession.DEFAULT_MAX_INACTIVE_INTERVAL);

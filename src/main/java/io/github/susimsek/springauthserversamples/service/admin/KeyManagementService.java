@@ -5,9 +5,10 @@ import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import io.github.susimsek.springauthserversamples.domain.OAuth2KeyEntity;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminKeyDTO;
 import io.github.susimsek.springauthserversamples.repository.OAuth2KeyRepository;
+import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
-import java.time.Instant;
 import java.util.Base64;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +26,7 @@ public class KeyManagementService {
     private final AdminAuditEventService adminAuditEventService;
 
     @Transactional(readOnly = true)
-    public Page<KeyView> keys(String query, Boolean active, Pageable pageable) {
+    public Page<AdminKeyDTO> keys(String query, Boolean active, Pageable pageable) {
         String searchQuery = AdminSearch.normalize(query);
         Page<OAuth2KeyEntity> keys =
                 active == null
@@ -37,7 +38,7 @@ public class KeyManagementService {
 
     @Transactional
     @CacheEvict(cacheNames = OAuth2KeyRepository.OAUTH2_KEYS_CACHE, allEntries = true)
-    public KeyView rotateKey() {
+    public AdminKeyDTO rotateKey() {
         try {
             oauth2KeyRepository.findAllForRotation().forEach(key -> key.setActive(false));
             String kid = UUID.randomUUID().toString();
@@ -63,12 +64,12 @@ public class KeyManagementService {
             return keyView(saved);
         } catch (Exception ex) {
             throw ApiException.serverError(
-                    "admin_key_rotation_failed", "Could not rotate the signing key", ex);
+                    ApiErrorCode.KEY_ROTATION_FAILED, "Could not rotate the signing key", ex);
         }
     }
 
-    private static KeyView keyView(OAuth2KeyEntity key) {
-        return new KeyView(
+    private static AdminKeyDTO keyView(OAuth2KeyEntity key) {
+        return new AdminKeyDTO(
                 key.getId(),
                 key.getKid(),
                 key.getType(),
@@ -77,13 +78,4 @@ public class KeyManagementService {
                 key.isActive(),
                 key.getCreatedAt());
     }
-
-    public record KeyView(
-            String id,
-            String kid,
-            String type,
-            String algorithm,
-            String use,
-            boolean active,
-            Instant createdAt) {}
 }

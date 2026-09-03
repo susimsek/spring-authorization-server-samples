@@ -15,8 +15,8 @@ import {
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Link from "@/routing/Link";
+import { usePathname } from "@/routing/navigation";
 import { useState } from "react";
 import { Button, Container, Nav, Navbar } from "react-bootstrap";
 
@@ -70,7 +70,7 @@ export function AdminShell({ locale, dictionary, children }: Props) {
               </Button>
               <Navbar.Brand
                 as={Link}
-                href={`/${locale}/admin`}
+                href={`/admin`}
                 className="admin-brand d-flex align-items-center gap-2 fw-semibold mb-0"
               >
                 <span className="admin-brand-mark">
@@ -86,7 +86,7 @@ export function AdminShell({ locale, dictionary, children }: Props) {
               <ConsoleUserMenu
                 username={username ?? "…"}
                 avatarSrc={idTokenParsed?.picture ?? tokenParsed?.picture}
-                accountHref={`/${locale}/account/personal-info`}
+                accountHref={`/account/personal-info`}
                 accountLabel={dictionary.account.product}
                 logoutLabel={dictionary.admin.common.logout}
                 signedInAsLabel={dictionary.admin.common.signedInAs}
@@ -117,7 +117,7 @@ export function AdminShell({ locale, dictionary, children }: Props) {
               {items
                 .filter(([, , , allowed]) => allowed)
                 .map(([suffix, label, icon]) => {
-                  const href = `/${locale}/admin${suffix}`;
+                  const href = `/admin${suffix}`;
                   const active =
                     suffix === ""
                       ? pathname === href || pathname === `${href}/`

@@ -12,11 +12,12 @@ class ApiExceptionTest {
         Throwable cause = new IllegalStateException("boom");
 
         ApiException badRequest =
-                ApiException.badRequest("field", "bad_request", "Invalid request");
+                ApiException.badRequest("field", ApiErrorCode.INVALID_REQUEST, "Invalid request");
         ApiException notFound = ApiException.notFound("Missing");
-        ApiException conflict = ApiException.conflict("conflict", "Duplicate");
-        ApiException forbidden = ApiException.forbidden("forbidden", "Denied");
-        ApiException serverError = ApiException.serverError("server_error", "Broken", cause);
+        ApiException conflict = ApiException.conflict(ApiErrorCode.CONFLICT, "Duplicate");
+        ApiException forbidden = ApiException.forbidden(ApiErrorCode.FORBIDDEN, "Denied");
+        ApiException serverError =
+                ApiException.serverError(ApiErrorCode.INTERNAL_ERROR, "Broken", cause);
 
         assertThat(badRequest.getErrorCode()).isEqualTo(ApiErrorCode.INVALID_REQUEST);
         assertThat(badRequest.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);

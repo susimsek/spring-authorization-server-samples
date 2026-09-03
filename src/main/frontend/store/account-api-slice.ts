@@ -19,6 +19,7 @@ export type AccountProfile = {
   firstName: string | null;
   lastName: string | null;
   email: string | null;
+  emailVerified: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -87,6 +88,12 @@ export const accountApi = createApi({
         config: { method: "PUT", url: "/api/account/password", data },
       }),
     }),
+    sendAccountVerificationEmail: builder.mutation<void, Authenticated>({
+      query: ({ accessToken }) => ({
+        accessToken,
+        config: { method: "POST", url: "/api/account/send-verify-email" },
+      }),
+    }),
     getAccountApplications: builder.query<PageResponse<AccountApplication>, PageQuery>({
       query: ({ accessToken, page, size }) => ({
         accessToken,
@@ -125,13 +132,6 @@ export const accountApi = createApi({
       }),
       invalidatesTags: ["AccountSessions"],
     }),
-    removeAllAccountSessions: builder.mutation<void, Authenticated>({
-      query: ({ accessToken }) => ({
-        accessToken,
-        config: { method: "DELETE", url: "/api/account/sessions" },
-      }),
-      invalidatesTags: ["AccountSessions"],
-    }),
   }),
 });
 
@@ -140,9 +140,9 @@ export const {
   useGetAccountProfileQuery,
   useGetAccountSessionsQuery,
   useRemoveAccountSessionMutation,
-  useRemoveAllAccountSessionsMutation,
   useRemoveOtherAccountSessionsMutation,
   useRevokeAccountApplicationMutation,
+  useSendAccountVerificationEmailMutation,
   useUpdateAccountPasswordMutation,
   useUpdateAccountProfileMutation,
 } = accountApi;

@@ -12,9 +12,13 @@ import static org.mockito.Mockito.when;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationEntity;
 import io.github.susimsek.springauthserversamples.domain.RegisteredClientEntity;
 import io.github.susimsek.springauthserversamples.domain.UserSessionEntity;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminAuthorizationDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminSessionDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminSessionDetailDTO;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.repository.UserSessionRepository;
+import io.github.susimsek.springauthserversamples.service.SessionInvalidationService;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.time.Instant;
 import java.util.List;
@@ -33,24 +37,25 @@ class AdminSessionServiceTest {
     @Mock private AuthorizationRepository authorizationRepository;
     @Mock private ClientRepository clientRepository;
     @Mock private AdminAuditEventService adminAuditEventService;
+    @Mock private SessionInvalidationService sessionInvalidationService;
 
     @Test
     void returnsSessionsWithAuthorizationCounts() {
         UserSessionEntity aliceSession = session("alice-session", "alice", 1_000L);
         UserSessionEntity anonymousSession = session("anonymous-session", null, 2_000L);
         Pageable pageable = Pageable.unpaged();
-        when(userSessionRepository.findActiveSessions(anyLong(), eq("alice"), eq(pageable)))
+        when(userSessionRepository.findSessions(anyLong(), eq("alice"), eq("active"), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(aliceSession, anonymousSession)));
         when(authorizationRepository.countBySessionIdIn(
                         List.of("alice-session", "anonymous-session")))
                 .thenReturn(List.of(authorizationCount("alice-session", 3L)));
 
-        List<AdminSessionService.SessionView> result =
-                service().sessions("  alice  ", pageable).getContent();
+        List<AdminSessionDTO> result =
+                service().sessions("  alice  ", "", "active", pageable).getContent();
 
         assertThat(result)
                 .containsExactly(
-                        new AdminSessionService.SessionView(
+                        new AdminSessionDTO(
                                 "alice-session",
                                 "alice",
                                 Instant.ofEpochMilli(1_000L),
@@ -58,7 +63,7 @@ class AdminSessionServiceTest {
                                 Instant.ofEpochMilli(1_200L),
                                 3L,
                                 false),
-                        new AdminSessionService.SessionView(
+                        new AdminSessionDTO(
                                 "anonymous-session",
                                 null,
                                 Instant.ofEpochMilli(2_000L),
@@ -66,7 +71,8 @@ class AdminSessionServiceTest {
                                 Instant.ofEpochMilli(2_200L),
                                 0L,
                                 false));
-        verify(userSessionRepository).findActiveSessions(anyLong(), eq("alice"), eq(pageable));
+        verify(userSessionRepository)
+                .findSessions(anyLong(), eq("alice"), eq("active"), eq(pageable));
         verify(authorizationRepository)
                 .countBySessionIdIn(List.of("alice-session", "anonymous-session"));
     }
@@ -74,11 +80,11 @@ class AdminSessionServiceTest {
     @Test
     void returnsEmptySessionsWithoutLoadingAuthorizationCounts() {
         Pageable pageable = Pageable.unpaged();
-        when(userSessionRepository.findActiveSessions(anyLong(), eq(""), eq(pageable)))
+        when(userSessionRepository.findSessions(anyLong(), eq(""), eq("active"), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of()));
 
-        assertThat(service().sessions(null, pageable).getContent()).isEmpty();
-        verify(userSessionRepository).findActiveSessions(anyLong(), eq(""), eq(pageable));
+        assertThat(service().sessions(null, "", "active", pageable).getContent()).isEmpty();
+        verify(userSessionRepository).findSessions(anyLong(), eq(""), eq("active"), eq(pageable));
         verifyNoInteractions(authorizationRepository);
     }
 
@@ -92,8 +98,7 @@ class AdminSessionServiceTest {
         service().deleteSession("session-id", "admin");
 
         verify(adminUserService).assertCanManageUsername("user", "admin");
-        verify(userSessionRepository).deleteBySessionId("session-id");
-        verify(authorizationRepository).deleteBySessionId("session-id");
+        verify(sessionInvalidationService).invalidateSession("session-id");
         verify(adminAuditEventService).record("session.deleted", "session", "session-id");
     }
 
@@ -110,10 +115,10 @@ class AdminSessionServiceTest {
         when(clientRepository.findAllById(List.of("client-1", "client-2")))
                 .thenReturn(List.of(firstClient, secondClient));
 
-        AdminSessionService.SessionDetailView detail = service().session("session-id", "admin");
+        AdminSessionDetailDTO detail = service().session("session-id", "admin");
 
         assertThat(detail.authorizations())
-                .extracting(AdminSessionService.AuthorizationView::clientName)
+                .extracting(AdminAuthorizationDTO::clientName)
                 .containsExactly("First Client", "Second Client");
         verify(clientRepository).findAllById(List.of("client-1", "client-2"));
         verify(clientRepository, never()).findById(org.mockito.ArgumentMatchers.anyString());
@@ -136,8 +141,7 @@ class AdminSessionServiceTest {
         service().deleteUserSessions("user", "admin");
 
         verify(adminUserService).assertCanManageUsername("user", "admin");
-        verify(userSessionRepository).deleteByPrincipalName("user");
-        verify(authorizationRepository).deleteByPrincipalName("user");
+        verify(sessionInvalidationService).invalidatePrincipal("user");
         verify(adminAuditEventService).record("user.sessions.deleted", "user", "user");
     }
 
@@ -189,6 +193,7 @@ class AdminSessionServiceTest {
                 userSessionRepository,
                 authorizationRepository,
                 clientRepository,
-                adminAuditEventService);
+                adminAuditEventService,
+                sessionInvalidationService);
     }
 }

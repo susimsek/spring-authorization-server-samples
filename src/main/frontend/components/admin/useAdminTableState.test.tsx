@@ -1,8 +1,8 @@
 import { act, renderHook } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
-const pathname = { value: "/en/admin/clients" };
+const pathname = { value: "/admin/clients" };
 
-jest.mock("next/navigation", () => ({
+jest.mock("@/routing/navigation", () => ({
   useParams: () => ({ lang: "en" }),
   usePathname: () => pathname.value,
 }));
@@ -11,7 +11,7 @@ import { useAdminTableState } from "./useAdminTableState";
 
 describe("useAdminTableState", () => {
   beforeEach(() => {
-    window.history.replaceState(null, "", "/en/admin/clients?q=demo&page=2&size=50&status=active");
+    window.history.replaceState(null, "", "/admin/clients?q=demo&page=2&size=50&status=active");
   });
 
   it("reads state from the URL and writes normalized changes", () => {
@@ -36,7 +36,7 @@ describe("useAdminTableState", () => {
   });
 
   it("falls back to defaults for invalid query values", () => {
-    window.history.replaceState(null, "", "/en/admin/clients?page=-1&size=invalid");
+    window.history.replaceState(null, "", "/admin/clients?page=-1&size=invalid");
 
     const { result } = renderHook(() => useAdminTableState());
 
@@ -44,7 +44,7 @@ describe("useAdminTableState", () => {
   });
 
   it("does not persist status when status filters are disabled", () => {
-    window.history.replaceState(null, "", "/en/admin/clients?q=demo#details");
+    window.history.replaceState(null, "", "/admin/clients?q=demo#details");
 
     const { result } = renderHook(() => useAdminTableState(20, false));
 
@@ -69,7 +69,7 @@ describe("useAdminTableState", () => {
     expect(removeEventListener).toHaveBeenCalledWith("popstate", expect.any(Function));
   });
   it("persists consent-specific username and scope filters in the URL", () => {
-    window.history.replaceState(null, "", "/en/admin/consents");
+    window.history.replaceState(null, "", "/admin/consents");
     const { result } = renderHook(() => useAdminTableState());
 
     act(() => result.current.setUsername("alice"));
@@ -85,7 +85,7 @@ describe("useAdminTableState", () => {
     window.history.replaceState(
       null,
       "",
-      "/en/admin/users?q=alice&status=true&sort=username,desc&page=2",
+      "/admin/users?q=alice&status=true&sort=username,desc&page=2",
     );
     const { result } = renderHook(() => useAdminTableState(20, true, "username,asc"));
 

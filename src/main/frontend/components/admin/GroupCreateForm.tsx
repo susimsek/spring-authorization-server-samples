@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/routing/navigation";
 import { Button, Card, Form } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -19,13 +19,7 @@ import { AdminActionIcon } from "./AdminActionIcon";
 
 type Group = { id: number; name: string; path: string };
 
-export function GroupCreateForm({
-  dictionary,
-  locale,
-}: {
-  dictionary: Dictionary;
-  locale: Locale;
-}) {
+export function GroupCreateForm({ dictionary }: { dictionary: Dictionary; locale: Locale }) {
   const { accessToken } = useAdminAuth();
   const alerts = useConsoleAlerts();
   const router = useRouter();
@@ -73,7 +67,7 @@ export function GroupCreateForm({
         }
         throw new Error();
       }
-      router.push(`/${locale}/admin/groups/${response.data.id}`);
+      router.push(`/admin/groups/${response.data.id}`);
     } catch {
       alerts.addError(copy.operationError);
     }
@@ -109,10 +103,7 @@ export function GroupCreateForm({
             <Form.Text>{copy.parentHelp}</Form.Text>
           </Form.Group>
           <div className="admin-create-actions">
-            <Button
-              variant="outline-secondary"
-              onClick={() => router.push(`/${locale}/admin/groups`)}
-            >
+            <Button variant="outline-secondary" onClick={() => router.push(`/admin/groups`)}>
               {dictionary.admin.common.cancel}
             </Button>
             <Button disabled={isSubmitting} type="submit">

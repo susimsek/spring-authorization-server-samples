@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
-import { Button, Card, Col, Form, Row } from "react-bootstrap";
+import { Badge, Button, Card, Col, Form, Row } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -10,10 +10,12 @@ import { DetailLoadingState, ErrorState } from "@/components/admin/AsyncState";
 import { ReadOnlyMetadata } from "@/components/admin/ReadOnlyMetadata";
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import type { Dictionary } from "@/i18n/get-dictionary";
+import { useDateTimeFormatter } from "@/i18n/useDateTimeFormatter";
 import { problemViolations } from "@/lib/problem-detail";
 import {
   type AccountApiError,
   useGetAccountProfileQuery,
+  useSendAccountVerificationEmailMutation,
   useUpdateAccountProfileMutation,
 } from "@/store/account-api-slice";
 
@@ -22,6 +24,7 @@ import { useAccountAuth } from "./AccountAuthProvider";
 type Values = { firstName: string; lastName: string; email: string };
 
 export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
+  const formatDateTime = useDateTimeFormatter();
   const { accessToken } = useAccountAuth();
   const alerts = useConsoleAlerts();
   const copy = dictionary.account;
@@ -32,6 +35,8 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
     refetch,
   } = useGetAccountProfileQuery({ accessToken: accessToken ?? "" }, { skip: !accessToken });
   const [updateProfile] = useUpdateAccountProfileMutation();
+  const [sendVerificationEmail, { isLoading: verificationSending }] =
+    useSendAccountVerificationEmailMutation();
   const schema = z.object({
     firstName: z.string().trim().max(100, copy.validation.max100),
     lastName: z.string().trim().max(100, copy.validation.max100),
@@ -92,6 +97,16 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
       alerts.addError(copy.common.operationError);
     }
   });
+
+  const requestVerification = async () => {
+    if (!accessToken) return;
+    try {
+      await sendVerificationEmail({ accessToken }).unwrap();
+      alerts.addAlert(copy.profile.verificationSent);
+    } catch {
+      alerts.addError(copy.common.operationError);
+    }
+  };
 
   if (isLoading) return <DetailLoadingState />;
   if (isError && !profile)
@@ -159,6 +174,27 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
                 <Form.Control.Feedback id="email-error" type="invalid">
                   {errors.email?.message}
                 </Form.Control.Feedback>
+                {profile.email && (
+                  <div className="d-flex align-items-center gap-2 mt-2">
+                    <Badge bg={profile.emailVerified ? "success" : "warning"}>
+                      {profile.emailVerified
+                        ? copy.profile.emailVerified
+                        : copy.profile.emailUnverified}
+                    </Badge>
+                    {!profile.emailVerified && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="link"
+                        className="p-0"
+                        disabled={verificationSending}
+                        onClick={() => void requestVerification()}
+                      >
+                        {copy.profile.sendVerification}
+                      </Button>
+                    )}
+                  </div>
+                )}
               </Form.Group>
             </Col>
             <Col xs={12}>
@@ -168,11 +204,11 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
                   items={[
                     {
                       label: copy.profile.createdAt,
-                      value: new Date(profile.createdAt).toLocaleString(),
+                      value: formatDateTime(profile.createdAt),
                     },
                     {
                       label: copy.profile.updatedAt,
-                      value: new Date(profile.updatedAt).toLocaleString(),
+                      value: formatDateTime(profile.updatedAt),
                     },
                   ]}
                 />

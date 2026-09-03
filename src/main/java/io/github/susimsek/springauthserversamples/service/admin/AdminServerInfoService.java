@@ -2,6 +2,8 @@ package io.github.susimsek.springauthserversamples.service.admin;
 
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
 import io.github.susimsek.springauthserversamples.domain.OAuth2KeyEntity;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminServerInfoDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminSigningKeySummaryDTO;
 import io.github.susimsek.springauthserversamples.repository.OAuth2KeyRepository;
 import java.time.Duration;
 import java.util.Comparator;
@@ -20,7 +22,7 @@ public class AdminServerInfoService {
     private final OAuth2KeyRepository oauth2KeyRepository;
 
     @Transactional(readOnly = true)
-    public ServerInfoView serverInfo() {
+    public AdminServerInfoDTO serverInfo() {
         String issuer = applicationProperties.authorizationServer().issuer();
         Duration sessionTimeout = sessionProperties.getTimeout();
 
@@ -29,7 +31,7 @@ public class AdminServerInfoService {
                         .filter(OAuth2KeyEntity::isActive)
                         .max(Comparator.comparing(OAuth2KeyEntity::getCreatedAt));
 
-        return new ServerInfoView(
+        return new AdminServerInfoDTO(
                 issuer,
                 issuer + "/.well-known/openid-configuration",
                 issuer + "/oauth2/authorize",
@@ -40,31 +42,15 @@ public class AdminServerInfoService {
                 issuer + "/userinfo",
                 issuer + "/connect/logout",
                 sessionTimeout == null ? null : sessionTimeout.toString(),
-                activeKey.map(KeySummary::from).orElse(null));
-    }
-
-    public record ServerInfoView(
-            String issuer,
-            String discoveryEndpoint,
-            String authorizationEndpoint,
-            String tokenEndpoint,
-            String introspectionEndpoint,
-            String revocationEndpoint,
-            String jwksEndpoint,
-            String userInfoEndpoint,
-            String endSessionEndpoint,
-            String sessionTimeout,
-            KeySummary activeSigningKey) {}
-
-    public record KeySummary(
-            String kid, String type, String algorithm, String use, java.time.Instant createdAt) {
-        static KeySummary from(OAuth2KeyEntity key) {
-            return new KeySummary(
-                    key.getKid(),
-                    key.getType(),
-                    key.getAlgorithm(),
-                    key.getUse(),
-                    key.getCreatedAt());
-        }
+                activeKey
+                        .map(
+                                key ->
+                                        new AdminSigningKeySummaryDTO(
+                                                key.getKid(),
+                                                key.getType(),
+                                                key.getAlgorithm(),
+                                                key.getUse(),
+                                                key.getCreatedAt()))
+                        .orElse(null));
     }
 }

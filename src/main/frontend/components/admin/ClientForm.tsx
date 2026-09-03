@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Alert, Button, Card, Col, Form, Row } from "react-bootstrap";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/routing/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
@@ -140,7 +140,6 @@ function words(value: string) {
 }
 
 export function ClientForm({
-  locale,
   dictionary,
   mode,
   id,
@@ -337,12 +336,11 @@ export function ClientForm({
           setCreatedSecret(created.clientSecret);
           return;
         }
-        router.push(`/${locale}/admin/clients/${encodeURIComponent(created.client.id)}/settings`);
+        router.push(`/admin/clients/${encodeURIComponent(created.client.id)}/settings`);
       } else {
         const saved = response.data as Detail;
-        router.push(`/${locale}/admin/clients/${encodeURIComponent(saved.id)}/settings`);
+        router.push(`/admin/clients/${encodeURIComponent(saved.id)}/settings`);
       }
-      router.refresh();
     } catch (exception: unknown) {
       setError(true);
       setErrorMessage(
@@ -606,8 +604,8 @@ export function ClientForm({
               ? setStep(step - 1)
               : router.push(
                   embedded && id
-                    ? `/${locale}/admin/clients/${encodeURIComponent(id)}/settings`
-                    : `/${locale}/admin/clients`,
+                    ? `/admin/clients/${encodeURIComponent(id)}/settings`
+                    : `/admin/clients`,
                 )
           }
         >
@@ -630,8 +628,7 @@ export function ClientForm({
         message={dictionary.admin.clients.secretHelp}
         onClose={() => {
           if (createdClientId) {
-            router.push(`/${locale}/admin/clients/${encodeURIComponent(createdClientId)}/settings`);
-            router.refresh();
+            router.push(`/admin/clients/${encodeURIComponent(createdClientId)}/settings`);
           }
         }}
         show={createdSecret !== null}

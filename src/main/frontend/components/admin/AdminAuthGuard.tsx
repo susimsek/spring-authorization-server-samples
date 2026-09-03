@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter } from "@/routing/navigation";
 
 import type { Locale } from "@/i18n/config";
-import { getDictionary } from "@/i18n/get-dictionary";
+import { useDictionary } from "@/i18n/client";
 import { adminRequest, registerAdminTokenHandlers } from "@/lib/admin-api";
 import {
   isCanceledRequest,
@@ -28,6 +28,7 @@ export function AdminAuthGuard({
   children: React.ReactNode;
   callbackContent?: React.ReactNode;
 }) {
+  const dictionary = useDictionary();
   const [authorized, setAuthorized] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -75,7 +76,7 @@ export function AdminAuthGuard({
         if (response.status === 401) return null;
 
         if (response.status === 403) {
-          router.replace(`/${locale}/error?type=access_denied`);
+          router.replace(`/auth-error?type=access_denied`);
           return null;
         }
 
@@ -90,7 +91,7 @@ export function AdminAuthGuard({
 
         const hasAdminAccess = Object.values(admin.access).some(Boolean);
         if (!hasAdminAccess) {
-          router.replace(`/${locale}/error?type=access_denied`);
+          router.replace(`/auth-error?type=access_denied`);
           return;
         }
 
@@ -103,7 +104,7 @@ export function AdminAuthGuard({
         // this as CanceledError/ERR_CANCELED, not DOMException AbortError.
         // Treating it as a server failure caused the Clients/Scopes error page.
         if (isCanceledRequest(error)) return;
-        router.replace(`/${locale}/error?type=server_error`);
+        router.replace(`/auth-error?type=server_error`);
       });
 
     return () => controller.abort();
@@ -126,7 +127,7 @@ export function AdminAuthGuard({
     return (
       <div className="min-vh-100 d-flex align-items-center justify-content-center bg-body-tertiary">
         <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">{getDictionary(locale).admin.common.loading}</span>
+          <span className="visually-hidden">{dictionary.admin.common.loading}</span>
         </div>
       </div>
     );

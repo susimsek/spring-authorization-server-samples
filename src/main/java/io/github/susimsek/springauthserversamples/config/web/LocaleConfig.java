@@ -12,7 +12,7 @@ import org.springframework.web.servlet.i18n.CookieLocaleResolver;
 @Configuration(proxyBeanMethods = false)
 public class LocaleConfig {
 
-    public static final String LOCALE_COOKIE_NAME = "AUTH_LOCALE";
+    public static final String LOCALE_COOKIE_NAME = "locale";
     public static final Set<String> SUPPORTED_LANGUAGES = Set.of("en", "tr");
 
     @Bean

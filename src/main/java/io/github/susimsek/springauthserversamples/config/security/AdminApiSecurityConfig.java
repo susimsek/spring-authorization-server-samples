@@ -11,41 +11,22 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
-import org.springframework.security.oauth2.core.OAuth2Error;
-import org.springframework.security.oauth2.core.OAuth2TokenValidator;
-import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtValidators;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.context.NullSecurityContextRepository;
 
 @Configuration(proxyBeanMethods = false)
 public class AdminApiSecurityConfig {
 
-    private static final String ADMIN_CONSOLE_CLIENT_ID = "admin-console";
-
     @Bean
     @Order(1)
     SecurityFilterChain adminApiSecurityFilterChain(
-            HttpSecurity http, JwtDecoder adminApiJwtDecoder) {
+            HttpSecurity http, JwtDecoder adminApiJwtDecoder) throws Exception {
+        ConsoleApiSecurity.stateless(http);
         http.securityMatcher("/api/admin/**")
-                .csrf(AbstractHttpConfigurer::disable)
-                .securityContext(
-                        securityContext ->
-                                securityContext.securityContextRepository(
-                                        new NullSecurityContextRepository()))
-                .sessionManagement(
-                        session ->
-                                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                                        .sessionFixation(sessionFixation -> sessionFixation.none()))
                 .authorizeHttpRequests(
                         authorize ->
                                 authorize
@@ -114,21 +95,11 @@ public class AdminApiSecurityConfig {
             JWKSource<SecurityContext> jwkSource,
             ApplicationProperties applicationProperties,
             AuthorizationRepository authorizationRepository) {
-        NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSource(jwkSource).build();
-        OAuth2TokenValidator<Jwt> audienceValidator =
-                jwt ->
-                        jwt.getAudience().contains(ADMIN_CONSOLE_CLIENT_ID)
-                                ? OAuth2TokenValidatorResult.success()
-                                : OAuth2TokenValidatorResult.failure(
-                                        new OAuth2Error(
-                                                "invalid_token", "Invalid token audience", null));
-        jwtDecoder.setJwtValidator(
-                new DelegatingOAuth2TokenValidator<>(
-                        JwtValidators.createDefaultWithIssuer(
-                                applicationProperties.authorizationServer().issuer()),
-                        audienceValidator,
-                        new ActiveAuthorizationTokenValidator(authorizationRepository)));
-        return jwtDecoder;
+        return ConsoleJwtDecoderFactory.create(
+                jwkSource,
+                applicationProperties.authorizationServer().issuer(),
+                ConsoleClients.ADMIN,
+                authorizationRepository);
     }
 
     private static JwtAuthenticationConverter jwtAuthenticationConverter() {

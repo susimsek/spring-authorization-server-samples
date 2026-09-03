@@ -1,9 +1,7 @@
 "use client";
+import { useDictionary } from "@/i18n/client";
 
-import Link from "next/link";
-import { useParams } from "next/navigation";
-
-import { getDictionary } from "@/i18n/get-dictionary";
+import Link from "@/routing/Link";
 
 export type AdminBreadcrumbItem = {
   label: string;
@@ -11,9 +9,7 @@ export type AdminBreadcrumbItem = {
 };
 
 export function AdminBreadcrumb({ items }: { items: AdminBreadcrumbItem[] }) {
-  const params = useParams<{ lang: string }>();
-  const breadcrumbLabel = getDictionary(params?.lang === "tr" ? "tr" : "en").admin.common
-    .breadcrumb;
+  const breadcrumbLabel = useDictionary().admin.common.breadcrumb;
   if (items.length === 0) return null;
   return (
     <nav className="admin-breadcrumb" aria-label={breadcrumbLabel}>

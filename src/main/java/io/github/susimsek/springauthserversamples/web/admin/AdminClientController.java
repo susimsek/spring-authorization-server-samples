@@ -1,6 +1,15 @@
 package io.github.susimsek.springauthserversamples.web.admin;
 
 import io.github.susimsek.springauthserversamples.config.openapi.OpenApiConfig;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientCreatedDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientRequestDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientScopeAssignmentRequestDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientSecretDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminConsentDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminEventDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminScopeAssignmentsDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminSessionDTO;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminClientScopeService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminClientService;
@@ -47,7 +56,7 @@ public class AdminClientController {
     @Operation(
             summary = "Search clients",
             description = "Returns a paged client list. `size` is capped at 100.")
-    Page<AdminClientView> findAll(
+    Page<AdminClientDTO> findAll(
             @RequestParam(defaultValue = "") String q,
             @PageableDefault(size = 20, sort = "clientId") Pageable pageable) {
         return adminClientService.findAll(q, pageable);
@@ -57,23 +66,24 @@ public class AdminClientController {
     @Operation(
             summary = "Get client",
             description = "Returns one registered client by its internal identifier.")
-    ResponseEntity<AdminClientView> findById(@PathVariable String id) {
-        AdminClientView client = adminClientService.findById(id);
+    ResponseEntity<AdminClientDTO> findById(@PathVariable String id) {
+        AdminClientDTO client = adminClientService.findById(id);
         return client == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(client);
     }
 
     @PostMapping
     @Operation(summary = "Create client", description = "Creates a registered OAuth2/OIDC client.")
-    ResponseEntity<AdminClientCreatedView> create(@Valid @RequestBody AdminClientRequest request) {
-        AdminClientCreatedView created = adminClientService.create(request);
+    ResponseEntity<AdminClientCreatedDTO> create(
+            @Valid @RequestBody AdminClientRequestDTO request) {
+        AdminClientCreatedDTO created = adminClientService.create(request);
         return ResponseEntity.created(URI.create("/api/admin/clients/" + created.client().id()))
                 .body(created);
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Update client", description = "Updates a registered OAuth2/OIDC client.")
-    AdminClientView update(
-            @PathVariable String id, @Valid @RequestBody AdminClientRequest request) {
+    AdminClientDTO update(
+            @PathVariable String id, @Valid @RequestBody AdminClientRequestDTO request) {
         return adminClientService.update(id, request);
     }
 
@@ -90,21 +100,21 @@ public class AdminClientController {
     @Operation(
             summary = "Regenerate client secret",
             description = "Returns the replacement client secret once.")
-    AdminClientSecretView regenerateSecret(@PathVariable String id) {
-        return new AdminClientSecretView(adminClientService.regenerateSecret(id));
+    AdminClientSecretDTO regenerateSecret(@PathVariable String id) {
+        return new AdminClientSecretDTO(adminClientService.regenerateSecret(id));
     }
 
     @GetMapping("/{id}/scope-assignments")
     @Operation(summary = "Get client scope assignments")
-    AdminClientScopeService.ScopeAssignments scopeAssignments(@PathVariable String id) {
+    AdminScopeAssignmentsDTO scopeAssignments(@PathVariable String id) {
         return adminClientScopeService.assignments(id);
     }
 
     @PutMapping("/{id}/scope-assignments")
     @Operation(summary = "Update client scope assignments")
-    AdminClientScopeService.ScopeAssignments updateScopeAssignments(
+    AdminScopeAssignmentsDTO updateScopeAssignments(
             @PathVariable String id,
-            @Valid @RequestBody AdminClientScopeAssignmentRequest request) {
+            @Valid @RequestBody AdminClientScopeAssignmentRequestDTO request) {
         return adminClientScopeService.updateAssignments(id, request);
     }
 
@@ -112,7 +122,7 @@ public class AdminClientController {
     @Operation(
             summary = "List client sessions",
             description = "Returns browser sessions associated with the client.")
-    Page<AdminSessionService.SessionView> sessions(
+    Page<AdminSessionDTO> sessions(
             @PathVariable String id,
             @PageableDefault(
                             size = 20,
@@ -126,7 +136,7 @@ public class AdminClientController {
     @Operation(
             summary = "List client consents",
             description = "Returns user consents granted to the client.")
-    Page<AdminConsentService.ConsentView> consents(
+    Page<AdminConsentDTO> consents(
             @PathVariable String id,
             @PageableDefault(size = 20, sort = "id.principalName") Pageable pageable) {
         return adminConsentService.clientConsents(id, pageable);
@@ -136,7 +146,7 @@ public class AdminClientController {
     @Operation(
             summary = "List client events",
             description = "Returns administrative audit events for the client.")
-    Page<AdminAuditEventService.EventView> events(
+    Page<AdminEventDTO> events(
             @PathVariable String id,
             @PageableDefault(
                             size = 20,
