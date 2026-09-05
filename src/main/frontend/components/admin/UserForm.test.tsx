@@ -17,7 +17,7 @@ function rolePage(...roles: { name: string }[]) {
 
 jest.mock("@/lib/admin-api", () => ({ adminRequest: jest.fn() }));
 jest.mock("./AdminAuthProvider", () => ({
-  useAdminAuth: () => ({ accessToken: "token" }),
+  useAdminAuth: () => ({ access: { manageUsers: true }, accessToken: "token" }),
 }));
 jest.mock("@/routing/navigation", () => ({
   useParams: () => ({ lang: "en" }),
@@ -45,7 +45,7 @@ describe("UserForm", () => {
       target: { value: "ada" },
     });
     fireEvent.change(document.querySelector('input[name="password"]')!, {
-      target: { value: "password1" },
+      target: { value: "StrongPassword1!" },
     });
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.save }));
 
@@ -144,6 +144,49 @@ describe("UserForm", () => {
     );
   });
 
+  it("updates the enable action and form switch after disabling a user", async () => {
+    mockAdminRequest.mockImplementation(async (_token, config) => {
+      if (config.url === "/api/admin/roles?page=0&size=100") {
+        return { status: 200, data: rolePage({ name: "ROLE_USER" }) } as never;
+      }
+      if (config.url === "/api/admin/users/7/enabled") {
+        return {
+          status: 204,
+          data: undefined,
+        } as never;
+      }
+      return {
+        status: 200,
+        data: {
+          id: 7,
+          username: "ada",
+          enabled: true,
+          authorities: ["ROLE_USER"],
+          avatarUrl: null,
+        },
+      } as never;
+    });
+
+    render(<UserForm dictionary={dictionary} id="7" locale="en" />);
+    expect(
+      await screen.findByRole("button", { name: dictionary.admin.resources.disable }),
+    ).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.resources.disable }));
+
+    await waitFor(() =>
+      expect(mockAdminRequest).toHaveBeenCalledWith("token", {
+        url: "/api/admin/users/7/enabled",
+        method: "PUT",
+        data: { enabled: false },
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: dictionary.admin.resources.enable })).toBeVisible(),
+    );
+    expect(screen.getAllByRole("checkbox")[1]).not.toBeChecked();
+  });
+
   it("validates required password and roles on create", async () => {
     mockAdminRequest.mockResolvedValue({
       status: 200,
@@ -159,7 +202,7 @@ describe("UserForm", () => {
     expect(await screen.findByText(dictionary.admin.common.validation.password)).toBeVisible();
 
     fireEvent.change(document.querySelector('input[name="password"]')!, {
-      target: { value: "password1" },
+      target: { value: "StrongPassword1!" },
     });
     fireEvent.click(screen.getAllByRole("checkbox")[1]);
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.save }));
@@ -221,7 +264,7 @@ describe("UserForm", () => {
     });
     fireEvent.blur(document.querySelector('input[name="username"]')!);
     fireEvent.change(document.querySelector('input[name="password"]')!, {
-      target: { value: "password1" },
+      target: { value: "StrongPassword1!" },
     });
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.save }));
     expect(

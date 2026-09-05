@@ -3,6 +3,7 @@ package io.github.susimsek.springauthserversamples.config.session;
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
 import io.github.susimsek.springauthserversamples.config.security.SecurityJsonMapper;
 import io.github.susimsek.springauthserversamples.repository.UserSessionRepository;
+import io.github.susimsek.springauthserversamples.service.LoginSettingsService;
 import io.github.susimsek.springauthserversamples.session.JpaIndexedSessionRepository;
 import io.github.susimsek.springauthserversamples.session.JpaSessionMapper;
 import java.io.IOException;
@@ -66,12 +67,27 @@ public class SessionConfig {
             JpaIndexedSessionRepository sessionRepository,
             TaskScheduler taskScheduler,
             SessionProperties sessionProperties,
-            ApplicationProperties applicationProperties) {
+            ApplicationProperties applicationProperties,
+            LoginSettingsService loginSettingsService) {
         Duration timeout = sessionProperties.getTimeout();
+        if (loginSettingsService != null) {
+            timeout =
+                    Duration.ofMinutes(
+                            loginSettingsService.adminLoginSettings().sessionTimeoutMinutes());
+        }
         sessionRepository.setDefaultMaxInactiveInterval(
                 timeout != null ? timeout : MapSession.DEFAULT_MAX_INACTIVE_INTERVAL);
         return new SessionCleanupScheduler(
                 sessionRepository, taskScheduler, applicationProperties.session().cleanupCron());
+    }
+
+    SessionCleanupScheduler sessionCleanupScheduler(
+            JpaIndexedSessionRepository sessionRepository,
+            TaskScheduler taskScheduler,
+            SessionProperties sessionProperties,
+            ApplicationProperties applicationProperties) {
+        return sessionCleanupScheduler(
+                sessionRepository, taskScheduler, sessionProperties, applicationProperties, null);
     }
 
     private static final class JsonSerializer implements Serializer<Object> {

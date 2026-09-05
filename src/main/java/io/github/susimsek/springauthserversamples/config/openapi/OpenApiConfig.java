@@ -21,6 +21,7 @@ public class OpenApiConfig {
 
     public static final String ADMIN_BEARER = "adminBearer";
     public static final String ACCOUNT_BEARER = "accountBearer";
+    public static final String BROWSER_SESSION = "browserSession";
 
     @Bean
     OpenAPI authorizationServerOpenApi(ApplicationProperties applicationProperties) {
@@ -45,6 +46,14 @@ public class OpenApiConfig {
                                 .addSecuritySchemes(
                                         ACCOUNT_BEARER,
                                         bearerScheme("Access token with the `account-api` scope."))
+                                .addSecuritySchemes(
+                                        BROWSER_SESSION,
+                                        new SecurityScheme()
+                                                .type(Type.APIKEY)
+                                                .in(SecurityScheme.In.COOKIE)
+                                                .name("SESSION")
+                                                .description(
+                                                        "Authenticated browser session cookie."))
                                 .addSchemas(
                                         "OAuth2Error",
                                         new ObjectSchema()

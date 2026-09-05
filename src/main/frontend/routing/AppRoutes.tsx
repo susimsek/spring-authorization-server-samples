@@ -1,7 +1,9 @@
 "use client";
 
 import { Navigate, Outlet, Route, Routes, useParams } from "react-router-dom";
+import { useEffect } from "react";
 import { useDictionary, useLocale } from "@/i18n/client";
+import { useRouter, useSearchParams } from "@/routing/navigation";
 import { AdminAuthProvider } from "@/components/admin/AdminAuthProvider";
 import { AdminAuthGuard } from "@/components/admin/AdminAuthGuard";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -24,7 +26,8 @@ import { RoleDetail } from "@/components/admin/RoleDetail";
 import { ConsentDetail } from "@/components/admin/ConsentDetail";
 import { ClientScopesTable } from "@/components/admin/ClientScopesTable";
 import { ClientScopeCreateForm } from "@/components/admin/ClientScopeCreateForm";
-import { AccountAuthProvider } from "@/components/account/AccountAuthProvider";
+import { ClientScopeDetail } from "@/components/admin/ClientScopeDetail";
+import { AccountAuthProvider, useAccountAuth } from "@/components/account/AccountAuthProvider";
 import { AccountAuthGuard } from "@/components/account/AccountAuthGuard";
 import { AccountShell } from "@/components/account/AccountShell";
 import { AccountAuthorizationCallback } from "@/components/account/AccountAuthorizationCallback";
@@ -34,13 +37,17 @@ import { AccountProfileForm } from "@/components/account/AccountProfileForm";
 import { AccountPasswordForm } from "@/components/account/AccountPasswordForm";
 import { AccountSessions } from "@/components/account/AccountSessions";
 import { AccountApplications } from "@/components/account/AccountApplications";
+import { AccountDeleteForm } from "@/components/account/AccountDeleteForm";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { LoginForm } from "@/components/auth/LoginForm";
+import { RegistrationForm } from "@/components/auth/RegistrationForm";
 import { ConsentForm } from "@/components/auth/ConsentForm";
+import { RequiredActionsPage } from "@/components/auth/RequiredActionsPage";
 import { ErrorView } from "@/components/auth/ErrorView";
 import { NotFoundView } from "@/components/auth/NotFoundView";
 import AdminEvents from "@/components/admin/AdminEvents";
 import ServerInfo from "@/components/admin/ServerInfo";
+import AdminSettings from "@/components/admin/AdminSettings";
 import {
   ForgotPasswordForm,
   ResetPasswordForm,
@@ -66,13 +73,36 @@ function AccountLayout() {
   const dictionary = useDictionary();
   return (
     <AccountAuthProvider>
-      <AccountAuthGuard locale={locale} callbackContent={<Outlet />}>
-        <AccountShell locale={locale} dictionary={dictionary}>
-          <Outlet />
-        </AccountShell>
-      </AccountAuthGuard>
+      <AccountImpersonationReset>
+        <AccountAuthGuard locale={locale} callbackContent={<Outlet />}>
+          <AccountShell locale={locale} dictionary={dictionary}>
+            <Outlet />
+          </AccountShell>
+        </AccountAuthGuard>
+      </AccountImpersonationReset>
     </AccountAuthProvider>
   );
+}
+
+function AccountImpersonationReset({ children }: { children: React.ReactNode }) {
+  const searchParams = useSearchParams();
+  const impersonated = searchParams.get("impersonated") === "1";
+  const router = useRouter();
+  const { clearLocalSession } = useAccountAuth();
+
+  useEffect(() => {
+    if (!impersonated) return;
+    clearLocalSession();
+    router.replace(window.location.pathname);
+  }, [clearLocalSession, impersonated, router]);
+
+  if (impersonated)
+    return (
+      <div className="min-vh-100 d-flex align-items-center justify-content-center bg-body-tertiary">
+        <div className="spinner-border text-primary" role="status" />
+      </div>
+    );
+  return children;
 }
 
 function PublicLayout() {
@@ -83,11 +113,12 @@ function PublicLayout() {
   );
 }
 
-function EntityDetail({ entity }: { entity: "group" | "role" | "consent" }) {
+function EntityDetail({ entity }: { entity: "group" | "role" | "consent" | "client-scope" }) {
   const { id = "" } = useParams();
   const props = { locale: useLocale(), dictionary: useDictionary() };
   if (entity === "group") return <GroupDetail key={id} {...props} id={id} />;
   if (entity === "role") return <RoleDetail key={id} {...props} name={id} />;
+  if (entity === "client-scope") return <ClientScopeDetail key={id} {...props} id={id} />;
   return <ConsentDetail key={id} {...props} routeKey={id} />;
 }
 
@@ -102,7 +133,12 @@ function AccountPage({
     <div className="d-grid gap-4">
       <AccountBreadcrumb homeLabel={d.account.manage} current={copy.title} />
       <AccountPageHeader title={copy.title} description={copy.subtitle} />
-      {section === "profile" && <AccountProfileForm dictionary={d} />}
+      {section === "profile" && (
+        <>
+          <AccountProfileForm dictionary={d} />
+          <AccountDeleteForm dictionary={d} />
+        </>
+      )}
       {section === "security" && <AccountPasswordForm dictionary={d} />}
       {section === "sessions" && <AccountSessions dictionary={d} />}
       {section === "applications" && <AccountApplications dictionary={d} />}
@@ -127,11 +163,14 @@ export function AppRoutes() {
           }
         />
         <Route path="login" element={<LoginForm {...props} />} />
+        <Route path="register" element={<RegistrationForm dictionary={dictionary} />} />
         <Route path="consent" element={<ConsentForm dictionary={dictionary} />} />
+        <Route path="required-actions" element={<RequiredActionsPage dictionary={dictionary} />} />
         <Route path="auth-error" element={<ErrorView dictionary={dictionary} />} />
         <Route path="forgot-password" element={<ForgotPasswordForm {...props} />} />
         <Route path="reset-password" element={<ResetPasswordForm {...props} />} />
         <Route path="verify-email" element={<VerifyEmailView {...props} />} />
+        <Route path="confirm-email" element={<VerifyEmailView {...props} />} />
       </Route>
       <Route path="admin" element={<AdminLayout />}>
         <Route
@@ -261,6 +300,7 @@ export function AppRoutes() {
           }
         />
         <Route path="client-scopes" element={<ClientScopesTable dictionary={dictionary} />} />
+        <Route path="client-scopes/:id" element={<EntityDetail entity="client-scope" />} />
         <Route
           path="client-scopes/new"
           element={
@@ -275,6 +315,7 @@ export function AppRoutes() {
         />
         <Route path="events" element={<AdminEvents />} />
         <Route path="server-info" element={<ServerInfo />} />
+        <Route path="settings/:section?" element={<AdminSettings />} />
       </Route>
       <Route path="account" element={<AccountLayout />}>
         <Route index element={<Navigate to="personal-info" replace />} />

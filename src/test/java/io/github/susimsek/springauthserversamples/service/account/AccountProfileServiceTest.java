@@ -14,20 +14,20 @@ import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventS
 import io.github.susimsek.springauthserversamples.service.admin.UserAccessInvalidationService;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
+import io.github.susimsek.springauthserversamples.service.security.PasswordService;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 class AccountProfileServiceTest {
 
     @Mock private UserRepository userRepository;
     @Mock private AccountProfileMapper accountProfileMapper;
-    @Mock private PasswordEncoder passwordEncoder;
+    @Mock private PasswordService passwordService;
     @Mock private AdminAuditEventService auditEventService;
     @Mock private UserAccessInvalidationService userAccessInvalidationService;
     @Mock private UserActionService userActionService;
@@ -39,6 +39,8 @@ class AccountProfileServiceTest {
         var expected =
                 new AccountProfileDTO("alice", "Alice", "User", "alice@example.test", null, null);
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(accountProfileMapper.normalize(request))
+                .thenReturn(new AccountProfileRequestDTO("Alice", "User", "alice@example.test"));
         when(accountProfileMapper.toDTO(user)).thenReturn(expected);
 
         assertThat(service().updateProfile("alice", request)).isEqualTo(expected);
@@ -46,7 +48,7 @@ class AccountProfileServiceTest {
         ArgumentCaptor<AccountProfileRequestDTO> normalized =
                 ArgumentCaptor.forClass(AccountProfileRequestDTO.class);
         verify(accountProfileMapper)
-                .updateEntity(normalized.capture(), org.mockito.Mockito.same(user));
+                .updateNames(normalized.capture(), org.mockito.Mockito.same(user));
         assertThat(normalized.getValue())
                 .isEqualTo(new AccountProfileRequestDTO("Alice", "User", "alice@example.test"));
         verify(auditEventService).record("account.profile.updated", "user", "7");
@@ -57,9 +59,14 @@ class AccountProfileServiceTest {
         UserEntity user = user();
         user.setPassword("encoded-old");
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("old-password", "encoded-old")).thenReturn(true);
-        when(passwordEncoder.matches("new-password", "encoded-old")).thenReturn(false);
-        when(passwordEncoder.encode("new-password")).thenReturn("encoded-new");
+        when(passwordService.matchesCurrentPassword("old-password", user)).thenReturn(true);
+        org.mockito.Mockito.doAnswer(
+                        invocation -> {
+                            user.setPassword("encoded-new");
+                            return null;
+                        })
+                .when(passwordService)
+                .changePassword(user, "new-password");
 
         service().changePassword("alice", "old-password", "new-password");
 
@@ -83,7 +90,7 @@ class AccountProfileServiceTest {
         return new AccountProfileService(
                 userRepository,
                 accountProfileMapper,
-                passwordEncoder,
+                passwordService,
                 auditEventService,
                 userAccessInvalidationService,
                 userActionService);

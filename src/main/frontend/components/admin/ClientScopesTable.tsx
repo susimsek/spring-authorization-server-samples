@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "@/routing/Link";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, Form, Modal } from "react-bootstrap";
+import { Button, Dropdown, Form, Modal } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -52,7 +52,7 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<ClientScope | null>(null);
   const { clearFilters, page, query, setPage, setQuery, setSize, setSort, size, sort } =
-    useAdminTableState(20, false, "name,asc");
+    useAdminTableState(10, false, "name,asc");
   const clientScopeSchema = z.object({
     name: z.string().trim().min(1, common.validation.required).max(100, common.validation.max100),
     displayName: z.string().max(200, common.validation.max200),
@@ -208,12 +208,27 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
         <tbody>
           {items.map((scope) => (
             <tr key={scope.id}>
-              <td className="font-monospace fw-semibold">{scope.name}</td>
+              <td className="font-monospace fw-semibold">
+                <Link
+                  className="text-decoration-none"
+                  href={`/admin/client-scopes/${encodeURIComponent(scope.id)}`}
+                >
+                  {scope.name}
+                </Link>
+              </td>
               <td>{scope.displayName || "—"}</td>
               <td className="text-body-secondary">{scope.description || "—"}</td>
               <td className="text-end">
                 {access?.manageClients && (
                   <RowActions label={`${scope.name} ${common.actions}`}>
+                    <Dropdown.Item
+                      as={Link}
+                      href={`/admin/client-scopes/${encodeURIComponent(scope.id)}`}
+                    >
+                      <AdminActionIcon action="view" />
+                      {dictionary.admin.resources.details}
+                    </Dropdown.Item>
+                    <Dropdown.Divider />
                     <button className="dropdown-item" type="button" onClick={() => openEdit(scope)}>
                       <AdminActionIcon action="edit" />
                       {copy.edit}
@@ -268,7 +283,8 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="outline-secondary" onClick={() => setShowEditor(false)}>
+          <Button variant="secondary" onClick={() => setShowEditor(false)}>
+            <AdminActionIcon action="cancel" />
             {common.cancel}
           </Button>
           <Button disabled={saving} form="client-scope-form" type="submit">

@@ -124,7 +124,7 @@ function AdminResourcesContent({
     username,
     scope,
   } = useAdminTableState(
-    20,
+    10,
     resource === "users" || resource === "keys" || resource === "sessions",
     resource === "sessions"
       ? "lastAccessTime,desc"
@@ -467,7 +467,12 @@ function UsersTable({
                     {user.username.slice(0, 1).toUpperCase()}
                   </span>
                 )}
-                {user.username}
+                <Link
+                  className="fw-semibold text-decoration-none"
+                  href={`/admin/users/${encodeURIComponent(String(user.id))}/details`}
+                >
+                  {user.username}
+                </Link>
               </div>
             </td>
             <td data-label={copy.roles}>
@@ -501,6 +506,7 @@ function UsersTable({
                       })
                     }
                   >
+                    <AdminActionIcon action={user.enabled ? "disable" : "enable"} />
                     {user.enabled ? copy.disable : copy.enable}
                   </Dropdown.Item>
                   <Dropdown.Divider />
@@ -588,6 +594,7 @@ function SessionsTable({
                   className="font-monospace p-0 text-decoration-none"
                   onClick={() => void showDetail(session.id)}
                 >
+                  <AdminActionIcon action="view" />
                   {session.id.slice(0, 12)}…
                 </Button>
               </td>
@@ -604,6 +611,7 @@ function SessionsTable({
               <td className="text-end">
                 <RowActions label={copy.sessionActions}>
                   <Dropdown.Item onClick={() => void showDetail(session.id)}>
+                    <AdminActionIcon action="view" />
                     View details
                   </Dropdown.Item>
                   {canManage && !expired && (
@@ -802,6 +810,7 @@ function ConsentsTable({
                 <RowActions label={`${consent.clientName} consent actions`}>
                   {detailHref && (
                     <Dropdown.Item as={Link} href={detailHref}>
+                      <AdminActionIcon action="view" />
                       View details
                     </Dropdown.Item>
                   )}

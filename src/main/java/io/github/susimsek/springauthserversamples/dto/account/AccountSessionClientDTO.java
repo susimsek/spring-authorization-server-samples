@@ -2,7 +2,17 @@ package io.github.susimsek.springauthserversamples.dto.account;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-@Schema(description = "Client associated with an authenticated browser session.")
+@Schema(
+        name = "AccountSessionClient",
+        description = "Client associated with an authenticated browser session.")
 public record AccountSessionClientDTO(
-        @Schema(example = "account-console") String clientId,
-        @Schema(example = "Account Console") String clientName) {}
+        @Schema(
+                        description = "Registered client identifier.",
+                        example = "account-console",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                String clientId,
+        @Schema(
+                        description = "Human-readable client name.",
+                        example = "Account Console",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                String clientName) {}

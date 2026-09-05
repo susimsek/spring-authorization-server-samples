@@ -6,6 +6,7 @@ import io.github.susimsek.springauthserversamples.domain.UserSessionEntity;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminAuthorizationDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminSessionDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminSessionDetailDTO;
+import io.github.susimsek.springauthserversamples.mapper.AdminSessionMapper;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.repository.UserSessionRepository;
@@ -15,13 +16,14 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.factory.Mappers;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
 public class AdminSessionService {
 
     private final AdminUserService adminUserService;
@@ -30,6 +32,24 @@ public class AdminSessionService {
     private final ClientRepository clientRepository;
     private final AdminAuditEventService adminAuditEventService;
     private final SessionInvalidationService sessionInvalidationService;
+    private final AdminSessionMapper adminSessionMapper;
+
+    public AdminSessionService(
+            AdminUserService adminUserService,
+            UserSessionRepository userSessionRepository,
+            AuthorizationRepository authorizationRepository,
+            ClientRepository clientRepository,
+            AdminAuditEventService adminAuditEventService,
+            SessionInvalidationService sessionInvalidationService) {
+        this(
+                adminUserService,
+                userSessionRepository,
+                authorizationRepository,
+                clientRepository,
+                adminAuditEventService,
+                sessionInvalidationService,
+                Mappers.getMapper(AdminSessionMapper.class));
+    }
 
     @Transactional(readOnly = true)
     public Page<AdminSessionDTO> sessions(
@@ -79,25 +99,13 @@ public class AdminSessionService {
         List<AdminAuthorizationDTO> authorizationViews =
                 authorizations.stream()
                         .map(
-                                authorization -> {
-                                    var client = clients.get(authorization.getRegisteredClientId());
-                                    return new AdminAuthorizationDTO(
-                                            authorization.getId(),
-                                            client == null
-                                                    ? authorization.getRegisteredClientId()
-                                                    : client.getClientId(),
-                                            client == null
-                                                    ? authorization.getRegisteredClientId()
-                                                    : client.getClientName(),
-                                            authorization.getAuthorizationGrantType(),
-                                            splitScopes(authorization.getAuthorizedScopes()),
-                                            authorization.getAccessTokenIssuedAt(),
-                                            authorization.getAccessTokenExpiresAt(),
-                                            authorization.getRefreshTokenExpiresAt());
-                                })
+                                authorization ->
+                                        adminSessionMapper.toAuthorizationDTO(
+                                                authorization,
+                                                clients.get(authorization.getRegisteredClientId())))
                         .toList();
         Map<String, Long> counts = Map.of(sessionId, (long) authorizationViews.size());
-        return new AdminSessionDetailDTO(sessionView(session, counts), authorizationViews);
+        return adminSessionMapper.toDetailDTO(session, counts, authorizationViews);
     }
 
     @Transactional(readOnly = true)
@@ -138,7 +146,7 @@ public class AdminSessionService {
                                                         ::getSessionId,
                                                 AuthorizationRepository.SessionAuthorizationCount
                                                         ::getAuthorizationCount));
-        return sessions.map(session -> sessionView(session, authorizationCounts));
+        return sessions.map(session -> adminSessionMapper.toDTO(session, authorizationCounts));
     }
 
     @Transactional
@@ -168,27 +176,5 @@ public class AdminSessionService {
             case "active", "expired", "all" -> normalized;
             default -> "active";
         };
-    }
-
-    private static List<String> splitScopes(String scopes) {
-        if (scopes == null || scopes.isBlank()) {
-            return List.of();
-        }
-        return java.util.Arrays.stream(scopes.split("[, ]+"))
-                .filter(scope -> !scope.isBlank())
-                .distinct()
-                .toList();
-    }
-
-    private static AdminSessionDTO sessionView(
-            UserSessionEntity session, Map<String, Long> authorizationCounts) {
-        return new AdminSessionDTO(
-                session.getSessionId(),
-                session.getPrincipalName(),
-                Instant.ofEpochMilli(session.getCreationTime()),
-                Instant.ofEpochMilli(session.getLastAccessTime()),
-                Instant.ofEpochMilli(session.getExpiryTime()),
-                authorizationCounts.getOrDefault(session.getSessionId(), 0L),
-                session.getExpiryTime() > Instant.now().toEpochMilli());
     }
 }

@@ -1,6 +1,10 @@
 package io.github.susimsek.springauthserversamples.web;
 
 import io.github.susimsek.springauthserversamples.dto.oauth.AuthorizationConsentDTO;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.security.Principal;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
@@ -17,6 +21,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@ApiController
+@Tag(name = "OAuth2 / OIDC", description = "Authorization and consent-screen support endpoints.")
 public class AuthorizationConsentController {
 
     private final RegisteredClientRepository registeredClientRepository;
@@ -30,12 +36,36 @@ public class AuthorizationConsentController {
     }
 
     @GetMapping("/api/authorization/consent")
+    @Operation(
+            summary = "Get authorization consent data",
+            description =
+                    "Validates the OAuth2 request and returns the scopes that still require"
+                            + " approval.")
+    @ApiResponse(responseCode = "200", description = "Consent-screen data returned.")
     AuthorizationConsentDTO consent(
             Principal principal,
-            @RequestParam(OAuth2ParameterNames.CLIENT_ID) String clientId,
-            @RequestParam(OAuth2ParameterNames.SCOPE) String scope,
-            @RequestParam(OAuth2ParameterNames.STATE) String state,
-            @RequestParam(name = OAuth2ParameterNames.USER_CODE, required = false)
+            @Parameter(
+                            description = "OAuth2 registered client identifier.",
+                            example = "account-console",
+                            required = true)
+                    @RequestParam(OAuth2ParameterNames.CLIENT_ID)
+                    String clientId,
+            @Parameter(
+                            description = "Space-delimited OAuth2 scopes requested by the client.",
+                            example = "openid account-api",
+                            required = true)
+                    @RequestParam(OAuth2ParameterNames.SCOPE)
+                    String scope,
+            @Parameter(
+                            description = "Opaque state value returned to the client.",
+                            example = "abc123state",
+                            required = true)
+                    @RequestParam(OAuth2ParameterNames.STATE)
+                    String state,
+            @Parameter(
+                            description = "Optional device authorization user code.",
+                            example = "ABCD-EFGH")
+                    @RequestParam(name = OAuth2ParameterNames.USER_CODE, required = false)
                     String userCode) {
 
         RegisteredClient registeredClient = registeredClientRepository.findByClientId(clientId);

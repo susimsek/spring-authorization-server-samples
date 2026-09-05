@@ -4,12 +4,15 @@ import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
 import io.github.susimsek.springauthserversamples.domain.UserAction;
 import io.github.susimsek.springauthserversamples.domain.UserActionTokenEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
+import io.github.susimsek.springauthserversamples.mapper.AccountActionTokenMapper;
 import io.github.susimsek.springauthserversamples.repository.UserActionTokenRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
+import io.github.susimsek.springauthserversamples.service.EmailSettingsService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
 import io.github.susimsek.springauthserversamples.service.admin.UserAccessInvalidationService;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
+import io.github.susimsek.springauthserversamples.service.security.PasswordService;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -20,15 +23,15 @@ import java.util.Base64;
 import java.util.Locale;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.factory.Mappers;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
 public class UserActionService {
 
     public static final long DEFAULT_LIFESPAN_SECONDS = Duration.ofHours(12).toSeconds();
@@ -38,16 +41,58 @@ public class UserActionService {
 
     private final UserRepository userRepository;
     private final UserActionTokenRepository tokenRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final PasswordService passwordService;
     private final UserAccessInvalidationService userAccessInvalidationService;
     private final AdminAuditEventService auditEventService;
     private final ApplicationEventPublisher eventPublisher;
     private final ApplicationProperties applicationProperties;
+    private final EmailSettingsService emailSettingsService;
+    private final AccountActionTokenMapper accountActionTokenMapper;
     private final SecureRandom secureRandom = new SecureRandom();
+
+    public UserActionService(
+            UserRepository userRepository,
+            UserActionTokenRepository tokenRepository,
+            PasswordService passwordService,
+            UserAccessInvalidationService userAccessInvalidationService,
+            AdminAuditEventService auditEventService,
+            ApplicationEventPublisher eventPublisher,
+            ApplicationProperties applicationProperties,
+            EmailSettingsService emailSettingsService) {
+        this(
+                userRepository,
+                tokenRepository,
+                passwordService,
+                userAccessInvalidationService,
+                auditEventService,
+                eventPublisher,
+                applicationProperties,
+                emailSettingsService,
+                Mappers.getMapper(AccountActionTokenMapper.class));
+    }
+
+    public UserActionService(
+            UserRepository userRepository,
+            UserActionTokenRepository tokenRepository,
+            PasswordService passwordService,
+            UserAccessInvalidationService userAccessInvalidationService,
+            AdminAuditEventService auditEventService,
+            ApplicationEventPublisher eventPublisher,
+            ApplicationProperties applicationProperties) {
+        this(
+                userRepository,
+                tokenRepository,
+                passwordService,
+                userAccessInvalidationService,
+                auditEventService,
+                eventPublisher,
+                applicationProperties,
+                null);
+    }
 
     @Transactional
     public void forgotPassword(String identifier, Locale locale) {
-        if (identifier == null || identifier.isBlank() || !applicationProperties.mail().enabled()) {
+        if (identifier == null || identifier.isBlank() || !mailEnabled()) {
             return;
         }
         findByIdentifier(identifier.trim())
@@ -85,14 +130,31 @@ public class UserActionService {
 
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
+    public void confirmEmailChange(String rawToken) {
+        UserActionTokenEntity token = requireToken(rawToken, UserAction.UPDATE_EMAIL);
+        UserEntity user = token.getUser();
+        if (!java.util.Objects.equals(token.getEmail(), normalizeEmail(user.getPendingEmail()))) {
+            throw ApiException.badRequest(
+                    ApiErrorCode.ACTION_TOKEN_INVALID, "Action token is invalid");
+        }
+        user.setEmail(user.getPendingEmail());
+        user.setPendingEmail(null);
+        user.setEmailVerified(true);
+        consume(token);
+        userAccessInvalidationService.invalidate(user.getUsername());
+        auditEventService.record("user.email.changed", "user", user.getId().toString());
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public void resetPassword(String rawToken, String newPassword) {
-        if (newPassword == null || newPassword.length() < 8 || newPassword.length() > 200) {
+        if (newPassword == null || newPassword.length() < 12 || newPassword.length() > 128) {
             throw ApiException.badRequest(
                     "newPassword", ApiErrorCode.INVALID_PASSWORD, "Password is invalid");
         }
         UserActionTokenEntity token = requireToken(rawToken, UserAction.UPDATE_PASSWORD);
         UserEntity user = token.getUser();
-        user.setPassword(passwordEncoder.encode(newPassword));
+        passwordService.changePassword(user, newPassword);
         consume(token);
         userAccessInvalidationService.invalidate(user.getUsername());
         auditEventService.record("user.password.reset", "user", user.getId().toString());
@@ -104,7 +166,7 @@ public class UserActionService {
             Locale locale,
             Long requestedLifespan,
             boolean suppressCooldown) {
-        if (!applicationProperties.mail().enabled()) {
+        if (!mailEnabled()) {
             throw ApiException.badRequest(
                     ApiErrorCode.ACTION_EMAIL_UNAVAILABLE, "Email delivery is not configured");
         }
@@ -115,7 +177,10 @@ public class UserActionService {
             }
             throw ApiException.badRequest(ApiErrorCode.USER_PROTECTED, "User is disabled");
         }
-        String email = normalizeEmail(user.getEmail());
+        String email =
+                action == UserAction.UPDATE_EMAIL
+                        ? normalizeEmail(user.getPendingEmail())
+                        : normalizeEmail(user.getEmail());
         if (email == null) {
             if (suppressCooldown) {
                 return;
@@ -139,19 +204,25 @@ public class UserActionService {
         final String rawToken = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
 
         tokenRepository.deleteActive(user.getId(), action);
-        UserActionTokenEntity token = new UserActionTokenEntity();
-        token.setUser(user);
-        token.setAction(action);
-        token.setEmail(email);
-        token.setCredentialFingerprint(hash(user.getPassword()));
-        token.setTokenHash(hash(rawToken));
-        token.setIssuedAt(now);
-        token.setExpiresAt(now.plusSeconds(lifespan));
+        UserActionTokenEntity token =
+                accountActionTokenMapper.toEntity(
+                        user,
+                        action,
+                        email,
+                        hash(user.getPassword()),
+                        hash(rawToken),
+                        now,
+                        now.plusSeconds(lifespan));
         tokenRepository.save(token);
 
         Locale supportedLocale =
                 "tr".equals(locale.getLanguage()) ? Locale.forLanguageTag("tr") : Locale.ENGLISH;
-        String route = action == UserAction.VERIFY_EMAIL ? "verify-email" : "reset-password";
+        String route =
+                switch (action) {
+                    case VERIFY_EMAIL -> "verify-email";
+                    case UPDATE_EMAIL -> "confirm-email";
+                    case UPDATE_PASSWORD -> "reset-password";
+                };
         String url =
                 UriComponentsBuilder.fromUriString(applicationProperties.mail().baseUrl())
                         .pathSegment(route)
@@ -161,11 +232,19 @@ public class UserActionService {
         eventPublisher.publishEvent(
                 new UserActionEmailEvent(action, email, user.getUsername(), supportedLocale, url));
         auditEventService.record(
-                action == UserAction.VERIFY_EMAIL
-                        ? "user.verify-email.sent"
-                        : "user.reset-password.sent",
+                switch (action) {
+                    case VERIFY_EMAIL -> "user.verify-email.sent";
+                    case UPDATE_EMAIL -> "user.email-change.sent";
+                    case UPDATE_PASSWORD -> "user.reset-password.sent";
+                },
                 "user",
                 user.getId().toString());
+    }
+
+    private boolean mailEnabled() {
+        return emailSettingsService == null
+                ? applicationProperties.mail().enabled()
+                : emailSettingsService.current().enabled();
     }
 
     private UserActionTokenEntity requireToken(String rawToken, UserAction expectedAction) {
@@ -204,8 +283,12 @@ public class UserActionService {
             throw ApiException.badRequest(
                     ApiErrorCode.ACTION_TOKEN_EXPIRED, "Action token expired");
         }
+        String expectedEmail =
+                expectedAction == UserAction.UPDATE_EMAIL
+                        ? normalizeEmail(user.getPendingEmail())
+                        : normalizeEmail(user.getEmail());
         if (!user.isEnabled()
-                || !java.util.Objects.equals(token.getEmail(), normalizeEmail(user.getEmail()))
+                || !java.util.Objects.equals(token.getEmail(), expectedEmail)
                 || !java.util.Objects.equals(
                         token.getCredentialFingerprint(), hash(user.getPassword()))) {
             throw ApiException.badRequest(

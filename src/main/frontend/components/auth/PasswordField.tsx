@@ -6,7 +6,9 @@ import { type ComponentProps, useState } from "react";
 import { Button, Form, InputGroup } from "react-bootstrap";
 
 type PasswordFieldProps = {
+  controlId?: string;
   label: string;
+  autoComplete?: string;
   placeholder: string;
   showLabel: string;
   hideLabel: string;
@@ -14,7 +16,9 @@ type PasswordFieldProps = {
 };
 
 export function PasswordField({
+  controlId = "password",
   label,
+  autoComplete = "current-password",
   placeholder,
   showLabel,
   hideLabel,
@@ -23,7 +27,7 @@ export function PasswordField({
   const [visible, setVisible] = useState(false);
 
   return (
-    <Form.Group className="mb-4" controlId="password">
+    <Form.Group className="mb-4" controlId={controlId}>
       <Form.Label>{label}</Form.Label>
       <InputGroup>
         <InputGroup.Text>
@@ -31,12 +35,13 @@ export function PasswordField({
         </InputGroup.Text>
         <Form.Control
           type={visible ? "text" : "password"}
-          autoComplete="current-password"
+          autoComplete={autoComplete}
           placeholder={placeholder}
           {...inputProps}
         />
         <Button
-          variant="outline-secondary"
+          variant="link"
+          className="console-input-action"
           type="button"
           aria-label={visible ? hideLabel : showLabel}
           onClick={() => setVisible((value) => !value)}

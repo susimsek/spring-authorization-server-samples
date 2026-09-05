@@ -26,7 +26,11 @@ export function GroupCreateForm({ dictionary }: { dictionary: Dictionary; locale
   const copy = dictionary.admin.groups;
   const [groups, setGroups] = useState<Group[]>([]);
   const schema = z.object({
-    name: z.string().trim().min(1, dictionary.admin.common.validation.required).max(100),
+    name: z
+      .string()
+      .trim()
+      .min(1, dictionary.admin.common.validation.required)
+      .max(100, dictionary.admin.common.validation.max100),
     parentId: z.string(),
   });
   const {
@@ -103,7 +107,8 @@ export function GroupCreateForm({ dictionary }: { dictionary: Dictionary; locale
             <Form.Text>{copy.parentHelp}</Form.Text>
           </Form.Group>
           <div className="admin-create-actions">
-            <Button variant="outline-secondary" onClick={() => router.push(`/admin/groups`)}>
+            <Button variant="secondary" onClick={() => router.push(`/admin/groups`)}>
+              <AdminActionIcon action="cancel" />
               {dictionary.admin.common.cancel}
             </Button>
             <Button disabled={isSubmitting} type="submit">

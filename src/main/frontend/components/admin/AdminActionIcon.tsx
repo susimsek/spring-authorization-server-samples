@@ -1,31 +1,7 @@
-import {
-  faArrowsRotate,
-  faBan,
-  faFloppyDisk,
-  faPen,
-  faPlus,
-  faRotate,
-  faTrash,
-  faUserMinus,
-  faUserPlus,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { ActionIcon, type ActionIconName } from "@/components/shared/ActionIcon";
 
-type AdminAction =
-  "add" | "assign" | "delete" | "edit" | "regenerate" | "remove" | "revoke" | "rotate" | "save";
-
-const icons = {
-  add: faPlus,
-  assign: faUserPlus,
-  delete: faTrash,
-  edit: faPen,
-  regenerate: faArrowsRotate,
-  remove: faUserMinus,
-  revoke: faBan,
-  rotate: faRotate,
-  save: faFloppyDisk,
-} as const;
+export type AdminAction = ActionIconName;
 
 export function AdminActionIcon({ action }: { action: AdminAction }) {
-  return <FontAwesomeIcon aria-hidden className="me-2" fixedWidth icon={icons[action]} />;
+  return <ActionIcon action={action} />;
 }

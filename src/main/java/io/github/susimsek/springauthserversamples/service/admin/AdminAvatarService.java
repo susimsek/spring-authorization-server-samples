@@ -3,6 +3,7 @@ package io.github.susimsek.springauthserversamples.service.admin;
 import io.github.susimsek.springauthserversamples.domain.UserAvatarEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminAvatarDTO;
+import io.github.susimsek.springauthserversamples.mapper.AdminAvatarMapper;
 import io.github.susimsek.springauthserversamples.repository.UserAvatarRepository;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
@@ -14,12 +15,13 @@ import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.factory.Mappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
 public class AdminAvatarService {
 
     private static final long MAX_AVATAR_PIXELS = 4_000_000;
@@ -28,6 +30,18 @@ public class AdminAvatarService {
     private final AdminUserService adminUserService;
     private final UserAvatarRepository userAvatarRepository;
     private final AdminAuditEventService adminAuditEventService;
+    private final AdminAvatarMapper adminAvatarMapper;
+
+    public AdminAvatarService(
+            AdminUserService adminUserService,
+            UserAvatarRepository userAvatarRepository,
+            AdminAuditEventService adminAuditEventService) {
+        this(
+                adminUserService,
+                userAvatarRepository,
+                adminAuditEventService,
+                Mappers.getMapper(AdminAvatarMapper.class));
+    }
 
     @Transactional
     public AdminAvatarDTO updateAvatar(Long id, MultipartFile file, String currentUsername) {
@@ -35,15 +49,14 @@ public class AdminAvatarService {
         AvatarPayload payload = avatarPayload(file);
         UserAvatarEntity avatar =
                 userAvatarRepository.findById(id).orElseGet(UserAvatarEntity::new);
-        avatar.setUserId(id);
-        if (avatar.getPublicId() == null) {
-            avatar.setPublicId(UUID.randomUUID().toString());
+        String publicId = avatar.getPublicId();
+        if (publicId == null) {
+            publicId = UUID.randomUUID().toString();
         }
-        avatar.setContentType(payload.contentType());
-        avatar.setContent(payload.content());
+        adminAvatarMapper.update(avatar, id, publicId, payload.contentType(), payload.content());
         UserAvatarEntity saved = userAvatarRepository.saveAndFlush(avatar);
         adminAuditEventService.avatarUpdated(id);
-        return new AdminAvatarDTO(avatarUrl(saved.getPublicId(), saved.getUpdatedAt()));
+        return adminAvatarMapper.toDTO(avatarUrl(saved.getPublicId(), saved.getUpdatedAt()));
     }
 
     @Transactional

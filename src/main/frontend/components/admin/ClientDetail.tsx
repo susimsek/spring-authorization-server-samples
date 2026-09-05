@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Alert, Badge, Button, Card, Dropdown } from "react-bootstrap";
+import { Alert, Badge, Button, Card } from "react-bootstrap";
 import { useRouter } from "@/routing/navigation";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
@@ -12,7 +12,6 @@ import { ConfirmModal } from "./ConfirmModal";
 import { ErrorState, LoadingState } from "./AsyncState";
 import { ResultModal } from "./ResultModal";
 import { DetailTabs } from "./DetailTabs";
-import { RowActions } from "./RowActions";
 import { AdminBreadcrumb } from "./AdminBreadcrumb";
 import { ClientForm } from "./ClientForm";
 import { EntityRelatedData } from "./EntityRelatedData";
@@ -124,20 +123,12 @@ export function ClientDetail({
           <h1 className="h3 mb-1">{client.clientName}</h1>
           <div className="font-monospace text-body-secondary">{client.clientId}</div>
         </div>
-        <RowActions label={`${client.clientName} ${dictionary.admin.common.actions}`}>
-          <Dropdown.Item
-            disabled={!access?.manageClients}
-            onClick={() => setShowSecretConfirm(true)}
-          >
-            <AdminActionIcon action="regenerate" />
-            {dictionary.admin.clients.regenerateSecret}
-          </Dropdown.Item>
-          <Dropdown.Divider />
-          <Dropdown.Item className="text-danger" onClick={() => setShowDeleteConfirm(true)}>
+        <div className="d-flex flex-wrap gap-2">
+          <Button variant="danger" onClick={() => setShowDeleteConfirm(true)}>
             <AdminActionIcon action="delete" />
             {dictionary.admin.clients.delete}
-          </Dropdown.Item>
-        </RowActions>
+          </Button>
+        </div>
       </div>
       <DetailTabs tabs={tabs} active={activeTab} />
       {secretError && <Alert variant="danger">{dictionary.admin.clients.secretError}</Alert>}
@@ -205,7 +196,7 @@ export function ClientDetail({
                       </dd>
                     </dl>
                     <Button
-                      variant="outline-primary"
+                      variant="primary"
                       disabled={!access?.manageClients}
                       onClick={() => setShowSecretConfirm(true)}
                     >

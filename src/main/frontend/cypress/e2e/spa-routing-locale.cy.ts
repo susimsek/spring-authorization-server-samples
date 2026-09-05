@@ -37,7 +37,7 @@ describe("static SPA routing and cookie locale", () => {
       cy.window().then((win) => {
         const tokens = JSON.parse(win.localStorage.getItem("AUTH_CONSOLE_TOKEN:admin")!);
         cy.request<{ content: Array<{ id: string; name: string; clientId: string }> }>({
-          url: `/api/admin/${resource}?size=20`,
+          url: `/api/admin/${resource}?size=10`,
           headers: { Authorization: `Bearer ${tokens.accessToken}` },
         }).then(({ body }) => {
           expect(body.content.length).to.be.greaterThan(0);
@@ -135,7 +135,7 @@ describe("static SPA routing and cookie locale", () => {
     cy.window().then((win) => {
       const tokens = JSON.parse(win.localStorage.getItem("AUTH_CONSOLE_TOKEN:admin")!);
       cy.request({
-        url: "/api/admin/users?size=20",
+        url: "/api/admin/users?size=10",
         headers: { Authorization: `Bearer ${tokens.accessToken}` },
       }).then(({ body }) => {
         const id = String(body.content[0].id);
@@ -156,7 +156,12 @@ describe("static SPA routing and cookie locale", () => {
   });
 
   it("serves arbitrary frontend deep links but never replaces API or assets with SPA HTML", () => {
-    ["/admin/users/123", "/admin/clients/abc", "/admin/roles/42"].forEach((url) => {
+    [
+      "/admin/users/123",
+      "/admin/clients/abc",
+      "/admin/roles/42",
+      "/admin/client-scopes/abc",
+    ].forEach((url) => {
       cy.request({ url, headers: { Accept: "text/html" }, followRedirect: false }).then(
         (response) => {
           expect(response.status).to.eq(200);

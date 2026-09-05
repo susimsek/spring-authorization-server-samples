@@ -6,6 +6,8 @@ import io.github.susimsek.springauthserversamples.dto.admin.AdminClientScopeRequ
 import io.github.susimsek.springauthserversamples.service.admin.AdminClientScopeService;
 import io.github.susimsek.springauthserversamples.web.ApiController;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -41,31 +43,82 @@ public class AdminClientScopeController {
     @Operation(
             summary = "Search client scopes",
             description = "Returns a paged client-scope list. `size` is capped at 100.")
+    @ApiResponse(responseCode = "200", description = "Paged client scopes returned.")
     Page<AdminClientScopeDTO> findAll(
-            @RequestParam(defaultValue = "") String q,
+            @Parameter(
+                            description = "Optional scope name or display-name search text.",
+                            example = "account")
+                    @RequestParam(defaultValue = "")
+                    String q,
             @PageableDefault(size = 20, sort = "name") Pageable pageable) {
         return adminClientScopeService.findAll(q, pageable);
     }
 
+    @GetMapping("/{id}")
+    @Operation(
+            summary = "Get client scope",
+            description = "Returns a single client scope from the scope catalogue.")
+    @ApiResponse(responseCode = "200", description = "Client scope returned.")
+    AdminClientScopeDTO findOne(
+            @Parameter(
+                            description = "Internal scope identifier.",
+                            example = "scope-123",
+                            required = true)
+                    @PathVariable
+                    String id) {
+        return adminClientScopeService.findOne(id);
+    }
+
     @PostMapping
-    @Operation(summary = "Create client scope")
+    @Operation(
+            summary = "Create client scope",
+            description = "Creates a client scope in the scope catalogue.")
+    @ApiResponse(responseCode = "201", description = "Client scope created and returned.")
     ResponseEntity<AdminClientScopeDTO> create(
-            @Valid @RequestBody AdminClientScopeRequestDTO request) {
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                            description = "Client scope definition.",
+                            required = true)
+                    @Valid
+                    @RequestBody
+                    AdminClientScopeRequestDTO request) {
         var created = adminClientScopeService.create(request);
         return ResponseEntity.created(URI.create("/api/admin/client-scopes/" + created.id()))
                 .body(created);
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update client scope")
+    @Operation(
+            summary = "Update client scope",
+            description = "Updates a client scope in the scope catalogue.")
+    @ApiResponse(responseCode = "200", description = "Updated client scope returned.")
     AdminClientScopeDTO update(
-            @PathVariable String id, @Valid @RequestBody AdminClientScopeRequestDTO request) {
+            @Parameter(
+                            description = "Internal scope identifier.",
+                            example = "scope-123",
+                            required = true)
+                    @PathVariable
+                    String id,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                            description = "Replacement client scope definition.",
+                            required = true)
+                    @Valid
+                    @RequestBody
+                    AdminClientScopeRequestDTO request) {
         return adminClientScopeService.update(id, request);
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete client scope")
-    ResponseEntity<Void> delete(@PathVariable String id) {
+    @Operation(
+            summary = "Delete client scope",
+            description = "Deletes a client scope that is no longer assigned to clients.")
+    @ApiResponse(responseCode = "204", description = "Client scope deleted.")
+    ResponseEntity<Void> delete(
+            @Parameter(
+                            description = "Internal scope identifier.",
+                            example = "scope-123",
+                            required = true)
+                    @PathVariable
+                    String id) {
         adminClientScopeService.delete(id);
         return ResponseEntity.noContent().build();
     }

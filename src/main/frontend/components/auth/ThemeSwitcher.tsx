@@ -33,7 +33,12 @@ export function ThemeSwitcher({ dictionary }: ThemeSwitcherProps) {
 
   return (
     <Dropdown align="end">
-      <Dropdown.Toggle variant="outline-secondary" size="sm" aria-label={dictionary.theme.label}>
+      <Dropdown.Toggle
+        variant="link"
+        size="sm"
+        className="console-navbar-control"
+        aria-label={dictionary.theme.label}
+      >
         <FontAwesomeIcon icon={themeIcons[theme]} className="me-2" />
         {labels[theme]}
       </Dropdown.Toggle>

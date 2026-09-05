@@ -32,6 +32,8 @@ public class AdminApiSecurityConfig {
                                 authorize
                                         .requestMatchers(HttpMethod.GET, "/api/admin/dashboard")
                                         .hasAuthority("ROLE_ADMIN")
+                                        .requestMatchers("/api/admin/settings/**")
+                                        .hasAuthority("ROLE_ADMIN")
                                         .requestMatchers("/api/admin/whoami")
                                         .hasAuthority("SCOPE_admin-api")
                                         .requestMatchers(
@@ -54,6 +56,23 @@ public class AdminApiSecurityConfig {
                                                 "ROLE_ADMIN",
                                                 "ROLE_USER_VIEWER",
                                                 "ROLE_USER_MANAGER")
+                                        .requestMatchers(
+                                                HttpMethod.GET, "/api/admin/required-actions")
+                                        .hasAuthority("ROLE_ADMIN")
+                                        .requestMatchers(
+                                                HttpMethod.PUT, "/api/admin/required-actions/**")
+                                        .hasAuthority("ROLE_ADMIN")
+                                        .requestMatchers(
+                                                HttpMethod.POST,
+                                                "/api/admin/required-actions/users/**")
+                                        .hasAuthority("ROLE_ADMIN")
+                                        .requestMatchers(
+                                                HttpMethod.DELETE,
+                                                "/api/admin/required-actions/users/**")
+                                        .hasAuthority("ROLE_ADMIN")
+                                        .requestMatchers(
+                                                HttpMethod.POST, "/api/admin/users/*/impersonation")
+                                        .hasAuthority("ROLE_ADMIN")
                                         .requestMatchers(HttpMethod.GET, "/api/admin/events")
                                         .hasAnyAuthority(
                                                 "ROLE_ADMIN",
@@ -62,6 +81,9 @@ public class AdminApiSecurityConfig {
                                         .requestMatchers(HttpMethod.PUT, "/api/admin/users/**")
                                         .hasAnyAuthority("ROLE_ADMIN", "ROLE_USER_MANAGER")
                                         .requestMatchers(HttpMethod.POST, "/api/admin/users")
+                                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_USER_MANAGER")
+                                        .requestMatchers(
+                                                HttpMethod.POST, "/api/admin/users/*/unlock")
                                         .hasAnyAuthority("ROLE_ADMIN", "ROLE_USER_MANAGER")
                                         .requestMatchers(HttpMethod.DELETE, "/api/admin/users/**")
                                         .hasAnyAuthority("ROLE_ADMIN", "ROLE_USER_MANAGER")

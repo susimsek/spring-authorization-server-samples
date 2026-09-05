@@ -17,6 +17,7 @@ import { useLocale } from "@/i18n/client";
 import { adminRequest } from "@/lib/admin-api";
 import type { PageResponse } from "@/lib/api-types";
 import { useAdminAuth } from "./AdminAuthProvider";
+import { ActionIcon } from "@/components/shared/ActionIcon";
 
 type Dashboard = { clients: number; users: number; sessions: number; consents: number };
 type ServerInfo = {
@@ -113,7 +114,8 @@ export function AdminDashboard({ dictionary }: { dictionary: Dictionary }) {
               <div className="small text-body-secondary text-break">
                 {serverInfo?.issuer ?? "—"}
               </div>
-              <Link className="btn btn-sm btn-outline-secondary mt-3" href={`/admin/server-info`}>
+              <Link className="btn btn-sm btn-secondary mt-3" href={`/admin/server-info`}>
+                <ActionIcon action="view" />
                 {dictionary.admin.dashboard.openServerInfo}
               </Link>
             </div>
@@ -132,7 +134,7 @@ export function AdminDashboard({ dictionary }: { dictionary: Dictionary }) {
                     {serverInfo.activeSigningKey.kid}
                   </div>
                   <div className="mt-2">
-                    <span className="badge text-bg-light border">
+                    <span className="badge text-bg-secondary">
                       {serverInfo.activeSigningKey.algorithm}
                     </span>
                   </div>
@@ -140,7 +142,8 @@ export function AdminDashboard({ dictionary }: { dictionary: Dictionary }) {
               ) : (
                 <div className="text-body-secondary">—</div>
               )}
-              <Link className="btn btn-sm btn-outline-secondary mt-3" href={`/admin/keys`}>
+              <Link className="btn btn-sm btn-secondary mt-3" href={`/admin/keys`}>
+                <ActionIcon action="manage" />
                 {dictionary.admin.dashboard.manageKeys}
               </Link>
             </div>
@@ -159,7 +162,8 @@ export function AdminDashboard({ dictionary }: { dictionary: Dictionary }) {
               {dictionary.admin.dashboard.recentActivity}
             </div>
           </div>
-          <Link className="btn btn-sm btn-outline-secondary" href={`/admin/events`}>
+          <Link className="btn btn-sm btn-secondary" href={`/admin/events`}>
+            <ActionIcon action="view" />
             {dictionary.admin.dashboard.viewAll}
           </Link>
         </div>
@@ -186,5 +190,5 @@ export function AdminDashboard({ dictionary }: { dictionary: Dictionary }) {
   );
 }
 function BadgeLike({ action }: { action: string }) {
-  return <span className="badge text-bg-light border font-monospace">{action}</span>;
+  return <span className="badge text-bg-secondary font-monospace">{action}</span>;
 }

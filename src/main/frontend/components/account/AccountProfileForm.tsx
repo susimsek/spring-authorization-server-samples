@@ -9,6 +9,7 @@ import { z } from "zod";
 import { DetailLoadingState, ErrorState } from "@/components/admin/AsyncState";
 import { ReadOnlyMetadata } from "@/components/admin/ReadOnlyMetadata";
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
+import { ActionIcon } from "@/components/shared/ActionIcon";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { useDateTimeFormatter } from "@/i18n/useDateTimeFormatter";
 import { problemViolations } from "@/lib/problem-detail";
@@ -190,6 +191,7 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
                         disabled={verificationSending}
                         onClick={() => void requestVerification()}
                       >
+                        <ActionIcon action="verify" />
                         {copy.profile.sendVerification}
                       </Button>
                     )}
@@ -217,11 +219,12 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
           </Row>
           <div className="account-form-actions mt-4 pt-4 border-top">
             <Button type="submit" disabled={!isDirty || isSubmitting} data-cy="save-profile">
+              <ActionIcon action="save" />
               {isSubmitting ? copy.common.saving : copy.common.save}
             </Button>
             <Button
               type="button"
-              variant="outline-secondary"
+              variant="secondary"
               disabled={!isDirty || isSubmitting}
               onClick={() =>
                 reset({
@@ -231,6 +234,7 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
                 })
               }
             >
+              <ActionIcon action="cancel" />
               {copy.common.cancel}
             </Button>
           </div>

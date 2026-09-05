@@ -2,6 +2,8 @@
 
 import { Button, Modal } from "react-bootstrap";
 
+import { ActionIcon } from "@/components/shared/ActionIcon";
+
 export function ResultModal({
   show,
   title,
@@ -31,7 +33,10 @@ export function ResultModal({
         )}
       </Modal.Body>
       <Modal.Footer>
-        <Button onClick={onClose}>{closeLabel}</Button>
+        <Button onClick={onClose}>
+          <ActionIcon action="cancel" />
+          {closeLabel}
+        </Button>
       </Modal.Footer>
     </Modal>
   );

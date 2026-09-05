@@ -40,7 +40,7 @@ describe("useAdminTableState", () => {
 
     const { result } = renderHook(() => useAdminTableState());
 
-    expect(result.current).toMatchObject({ query: "", page: 0, size: 20, status: "" });
+    expect(result.current).toMatchObject({ query: "", page: 0, size: 10, status: "" });
   });
 
   it("does not persist status when status filters are disabled", () => {

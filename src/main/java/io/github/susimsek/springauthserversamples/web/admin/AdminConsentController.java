@@ -5,6 +5,8 @@ import io.github.susimsek.springauthserversamples.dto.admin.AdminConsentDTO;
 import io.github.susimsek.springauthserversamples.service.admin.AdminConsentService;
 import io.github.susimsek.springauthserversamples.web.ApiController;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -31,36 +33,83 @@ class AdminConsentController {
     private final AdminConsentService adminConsentService;
 
     @GetMapping("/users/{id}/consents")
-    @Operation(summary = "List user consents")
+    @Operation(
+            summary = "List user consents",
+            description = "Returns OAuth2 consents granted by the specified user.")
+    @ApiResponse(responseCode = "200", description = "Paged user consents returned.")
     Page<AdminConsentDTO> userConsents(
-            @PathVariable Long id,
+            @Parameter(description = "Internal user identifier.", example = "2", required = true)
+                    @PathVariable
+                    Long id,
             @PageableDefault(size = 20, sort = "id.registeredClientId") Pageable pageable,
             Authentication authentication) {
         return adminConsentService.userConsents(id, authentication.getName(), pageable);
     }
 
     @GetMapping("/consents")
-    @Operation(summary = "Search user consents")
+    @Operation(
+            summary = "Search user consents",
+            description = "Searches OAuth2 consents by client, user, and scope filters.")
+    @ApiResponse(responseCode = "200", description = "Paged matching consents returned.")
     Page<AdminConsentDTO> consents(
-            @RequestParam(defaultValue = "") String q,
-            @RequestParam(defaultValue = "") String clientId,
-            @RequestParam(defaultValue = "") String username,
-            @RequestParam(defaultValue = "") String scope,
+            @Parameter(description = "Free-text client or user search.", example = "account")
+                    @RequestParam(defaultValue = "")
+                    String q,
+            @Parameter(
+                            description = "Registered client identifier filter.",
+                            example = "account-console")
+                    @RequestParam(defaultValue = "")
+                    String clientId,
+            @Parameter(description = "Username filter.", example = "user")
+                    @RequestParam(defaultValue = "")
+                    String username,
+            @Parameter(description = "Granted scope filter.", example = "account-api")
+                    @RequestParam(defaultValue = "")
+                    String scope,
             @PageableDefault(size = 20, sort = "id.principalName") Pageable pageable) {
         return adminConsentService.consents(q, clientId, username, scope, pageable);
     }
 
     @GetMapping("/consents/{clientId}/{username}")
-    @Operation(summary = "Get user consent")
-    AdminConsentDTO consent(@PathVariable String clientId, @PathVariable String username) {
+    @Operation(
+            summary = "Get user consent",
+            description = "Returns one user's consent for a registered client.")
+    @ApiResponse(responseCode = "200", description = "Consent returned.")
+    AdminConsentDTO consent(
+            @Parameter(
+                            description = "Registered client identifier.",
+                            example = "account-console",
+                            required = true)
+                    @PathVariable
+                    String clientId,
+            @Parameter(
+                            description = "Username that granted consent.",
+                            example = "user",
+                            required = true)
+                    @PathVariable
+                    String username) {
         return adminConsentService.consent(clientId, username);
     }
 
     @DeleteMapping("/consents/{clientId}/{username}")
-    @Operation(summary = "Revoke user consent")
+    @Operation(
+            summary = "Revoke user consent",
+            description =
+                    "Revokes all consent and associated authorization state for a user and client.")
+    @ApiResponse(responseCode = "204", description = "Consent revoked.")
     ResponseEntity<Void> revokeConsent(
-            @PathVariable String clientId,
-            @PathVariable String username,
+            @Parameter(
+                            description = "Registered client identifier.",
+                            example = "account-console",
+                            required = true)
+                    @PathVariable
+                    String clientId,
+            @Parameter(
+                            description = "Username that granted consent.",
+                            example = "user",
+                            required = true)
+                    @PathVariable
+                    String username,
             Authentication authentication) {
         adminConsentService.revokeConsent(clientId, username, authentication.getName());
         return ResponseEntity.noContent().build();

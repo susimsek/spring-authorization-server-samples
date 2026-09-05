@@ -237,8 +237,22 @@ curl http://localhost:9090/actuator/health/readiness
 ### Validation
 
 - This sample does not use the gRPC Protovalidate layer from the original project.
+- Validate every application request DTO with Jakarta Bean Validation and `@Valid`/`@Validated` at the controller boundary; do not rely on service-layer checks alone.
+- Put constraints on the DTO field that owns the rule, including nullability, blank values, length, format, ranges, collection size, and cross-field rules where applicable.
+- Use validation groups only when create/update semantics genuinely differ, and keep group selection explicit in the controller.
+- Convert validation failures through the centralized Problem Detail contract, including stable field names and localized messages in both `messages.properties` and `messages_tr.properties`.
 - Prefer request validation through Spring Security / Authorization Server defaults unless there is a clear application-specific need.
 - Keep configuration minimal and consistent with framework defaults.
+
+### DTOs, Mapping, and API Documentation
+
+- Keep application request and response records under the relevant `dto/<feature>` package; never expose JPA entities directly from an application API.
+- Annotate every DTO and every DTO field with Springdoc `@Schema` metadata: description, representative example, format where meaningful, and `requiredMode`. Use explicit enum and nullable documentation when applicable.
+- Keep `@Schema` requiredness aligned with Bean Validation and actual runtime behavior; do not mark optional or nullable fields as required in OpenAPI.
+- Document every controller operation with `@Operation`, relevant `@ApiResponse` entries, request/response schemas, representative examples, parameters, and `@SecurityRequirement`. Keep documentation on the controller contract, not in generated or ad hoc code.
+- Use MapStruct mappers for entity-to-DTO, DTO-to-entity, and update mappings where a mapper exists or the mapping is non-trivial. Keep mapping orchestration out of controllers and avoid duplicating mapping logic in services.
+- Place mapper interfaces under `mapper`, define explicit null/ignore behavior for partial updates, and add mapper tests when mappings contain derived fields, nested data, or security-sensitive values.
+- Keep OpenAPI examples valid against the DTO constraints and current endpoint behavior; update documentation and tests together when a contract changes.
 
 ### API, Services, and Administration Flows
 

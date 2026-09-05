@@ -1,6 +1,9 @@
 package io.github.susimsek.springauthserversamples.web;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -16,7 +19,19 @@ import org.springframework.web.bind.annotation.RestController;
 public class OidcSessionStatusController {
 
     @GetMapping("/oidc/session-status")
-    @Operation(summary = "Get browser SSO session status")
+    @Operation(
+            summary = "Get browser SSO session status",
+            description = "Returns whether a browser SSO session exists for the current request.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Session status returned.",
+            content =
+                    @Content(
+                            schema =
+                                    @Schema(
+                                            type = "object",
+                                            example =
+                                                    "{\"authenticated\":true,\"sessionId\":\"6f9b4dd0-2ed2-4af8-9e89-6ef3d4dd8c12\"}")))
     ResponseEntity<Map<String, Object>> sessionStatus(
             HttpServletRequest request, Principal principal) {
         HttpSession session = request.getSession(false);

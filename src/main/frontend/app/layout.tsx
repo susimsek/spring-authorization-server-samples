@@ -5,6 +5,9 @@ import type { Metadata } from "next";
 
 import { StoreProvider } from "@/store/StoreProvider";
 import { ThemeManager } from "@/components/auth/ThemeManager";
+import { loadIcons } from "@/lib/icon-loader";
+
+loadIcons();
 
 // Keep callback query parameters out of the browser's fallback document title.
 export const metadata: Metadata = { title: "Authorization Server" };

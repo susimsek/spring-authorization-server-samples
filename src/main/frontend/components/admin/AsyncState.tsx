@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { useDictionary } from "@/i18n/client";
 import { Alert, Button } from "react-bootstrap";
 
+import { ActionIcon } from "@/components/shared/ActionIcon";
+
 function useAdminCopy() {
   return useDictionary().admin.common;
 }
@@ -52,7 +54,8 @@ export function ErrorState({
     >
       <span>{message}</span>
       {onRetry && (
-        <Button size="sm" variant="outline-danger" onClick={onRetry}>
+        <Button size="sm" variant="secondary" onClick={onRetry}>
+          <ActionIcon action="retry" />
           {retryLabel ?? copy.retry}
         </Button>
       )}

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+	<changeSet id="014-01-login-settings" author="codex">
+		<createTable tableName="login_settings">
+			<column name="id" type="bigint">
+				<constraints nullable="false" primaryKey="true" primaryKeyName="pk_login_settings"/>
+			</column>
+			<column name="user_registration_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+			<column name="forgot_password_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+			<column name="remember_me_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+		</createTable>
+		<insert tableName="login_settings">
+			<column name="id" valueNumeric="1"/>
+			<column name="user_registration_enabled" valueBoolean="true"/>
+			<column name="forgot_password_enabled" valueBoolean="true"/>
+			<column name="remember_me_enabled" valueBoolean="true"/>
+		</insert>
+	</changeSet>
+</databaseChangeLog>

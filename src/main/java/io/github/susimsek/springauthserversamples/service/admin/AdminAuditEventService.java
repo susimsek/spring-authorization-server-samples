@@ -1,36 +1,43 @@
 package io.github.susimsek.springauthserversamples.service.admin;
 
-import io.github.susimsek.springauthserversamples.domain.AdminEventEntity;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminEventDTO;
+import io.github.susimsek.springauthserversamples.mapper.AdminEventMapper;
 import io.github.susimsek.springauthserversamples.repository.AdminEventRepository;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.factory.Mappers;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
 public class AdminAuditEventService {
 
     private final AdminEventRepository adminEventRepository;
+    private final AdminEventMapper adminEventMapper;
+
+    public AdminAuditEventService(AdminEventRepository adminEventRepository) {
+        this(adminEventRepository, Mappers.getMapper(AdminEventMapper.class));
+    }
 
     public void record(String action, String targetType, String targetId) {
-        AdminEventEntity event = new AdminEventEntity();
-        event.setId(UUID.randomUUID().toString());
-        event.setActor(
+        String actor =
                 java.util.Optional.ofNullable(
                                 SecurityContextHolder.getContext().getAuthentication())
                         .filter(authentication -> authentication.isAuthenticated())
                         .map(authentication -> authentication.getName())
-                        .orElse("system"));
-        event.setAction(action);
-        event.setTargetType(targetType);
-        event.setTargetId(targetId);
-        event.setOccurredAt(Instant.now());
-        adminEventRepository.save(event);
+                        .orElse("system");
+        adminEventRepository.save(
+                adminEventMapper.toEntity(
+                        UUID.randomUUID().toString(),
+                        actor,
+                        action,
+                        targetType,
+                        targetId,
+                        Instant.now()));
     }
 
     public Page<AdminEventDTO> events(
@@ -90,29 +97,19 @@ public class AdminAuditEventService {
                             return predicate;
                         },
                         pageable)
-                .map(AdminAuditEventService::eventDTO);
+                .map(adminEventMapper::toDTO);
     }
 
     public Page<AdminEventDTO> userEvents(Long userId, Pageable pageable) {
         return adminEventRepository
                 .findByTargetTypeAndTargetId("user", userId.toString(), pageable)
-                .map(AdminAuditEventService::eventDTO);
+                .map(adminEventMapper::toDTO);
     }
 
     public Page<AdminEventDTO> clientEvents(String clientId, Pageable pageable) {
         return adminEventRepository
                 .findByTargetTypeAndTargetId("client", clientId, pageable)
-                .map(AdminAuditEventService::eventDTO);
-    }
-
-    private static AdminEventDTO eventDTO(AdminEventEntity event) {
-        return new AdminEventDTO(
-                event.getId(),
-                event.getActor(),
-                event.getAction(),
-                event.getTargetType(),
-                event.getTargetId(),
-                event.getOccurredAt());
+                .map(adminEventMapper::toDTO);
     }
 
     public void avatarUpdated(Long userId) {

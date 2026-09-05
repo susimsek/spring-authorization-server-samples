@@ -3,6 +3,7 @@ package io.github.susimsek.springauthserversamples.service.admin;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentEntity;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentId;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminConsentDTO;
+import io.github.susimsek.springauthserversamples.mapper.AdminConsentMapper;
 import io.github.susimsek.springauthserversamples.mapper.AuthorizationServerMapperSupport;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationConsentRepository;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
@@ -11,13 +12,14 @@ import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.factory.Mappers;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
 public class AdminConsentService {
 
     private final AdminUserService adminUserService;
@@ -27,6 +29,26 @@ public class AdminConsentService {
     private final UserRepository userRepository;
     private final AuthorizationServerMapperSupport mapperSupport;
     private final AdminAuditEventService adminAuditEventService;
+    private final AdminConsentMapper adminConsentMapper;
+
+    public AdminConsentService(
+            AdminUserService adminUserService,
+            AuthorizationConsentRepository authorizationConsentRepository,
+            AuthorizationRepository authorizationRepository,
+            ClientRepository clientRepository,
+            UserRepository userRepository,
+            AuthorizationServerMapperSupport mapperSupport,
+            AdminAuditEventService adminAuditEventService) {
+        this(
+                adminUserService,
+                authorizationConsentRepository,
+                authorizationRepository,
+                clientRepository,
+                userRepository,
+                mapperSupport,
+                adminAuditEventService,
+                Mappers.getMapper(AdminConsentMapper.class));
+    }
 
     @Transactional(readOnly = true)
     public Page<AdminConsentDTO> consents(
@@ -193,16 +215,6 @@ public class AdminConsentService {
             AuthorizationConsentEntity consent,
             Map<String, String> clientNames,
             Map<String, Long> userIds) {
-        String clientId = consent.getId().getRegisteredClientId();
-        return new AdminConsentDTO(
-                clientId,
-                clientNames.getOrDefault(clientId, clientId),
-                consent.getId().getPrincipalName(),
-                userIds.get(consent.getId().getPrincipalName()),
-                mapperSupport.readAuthorities(consent.getAuthorities()).stream()
-                        .map(authority -> authority.getAuthority())
-                        .collect(java.util.stream.Collectors.toUnmodifiableSet()),
-                consent.getCreatedAt(),
-                consent.getUpdatedAt());
+        return adminConsentMapper.toDTO(consent, clientNames, userIds, mapperSupport);
     }
 }

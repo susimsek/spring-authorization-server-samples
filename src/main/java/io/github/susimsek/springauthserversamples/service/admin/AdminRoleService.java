@@ -4,31 +4,47 @@ import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminRoleDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminRoleDetailDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminRoleUserDTO;
+import io.github.susimsek.springauthserversamples.mapper.AdminRoleMapper;
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.factory.Mappers;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
 public class AdminRoleService {
 
     private final AuthorityRepository authorityRepository;
     private final UserRepository userRepository;
     private final AdminAuditEventService adminAuditEventService;
     private final AdminUserService adminUserService;
+    private final AdminRoleMapper adminRoleMapper;
+
+    public AdminRoleService(
+            AuthorityRepository authorityRepository,
+            UserRepository userRepository,
+            AdminAuditEventService adminAuditEventService,
+            AdminUserService adminUserService) {
+        this(
+                authorityRepository,
+                userRepository,
+                adminAuditEventService,
+                adminUserService,
+                Mappers.getMapper(AdminRoleMapper.class));
+    }
 
     @Transactional(readOnly = true)
     public Page<AdminRoleDTO> roles(String query, Pageable pageable) {
         return authorityRepository
                 .findByNameContainingIgnoreCase(AdminSearch.normalize(query), pageable)
-                .map(AdminRoleService::roleView);
+                .map(adminRoleMapper::toDTO);
     }
 
     @Transactional(readOnly = true)
@@ -38,10 +54,7 @@ public class AdminRoleService {
         }
         return userRepository
                 .findAvailableRoleUsers(name, AdminSearch.normalize(query), pageable)
-                .map(
-                        user ->
-                                new AdminRoleUserDTO(
-                                        user.getId(), user.getUsername(), user.isEnabled()));
+                .map(adminRoleMapper::toUserDTO);
     }
 
     @Transactional(readOnly = true)
@@ -54,13 +67,8 @@ public class AdminRoleService {
                 userRepository
                         .findByAuthoritiesNameAndUsernameContainingIgnoreCase(
                                 name, AdminSearch.normalize(query), pageable)
-                        .map(
-                                user ->
-                                        new AdminRoleUserDTO(
-                                                user.getId(),
-                                                user.getUsername(),
-                                                user.isEnabled()));
-        return new AdminRoleDetailDTO(
+                        .map(adminRoleMapper::toUserDTO);
+        return adminRoleMapper.toDetailDTO(
                 role.getName(),
                 userRepository.countByAuthoritiesId(role.getId()),
                 AuthoritiesConstants.ADMIN.equals(name) || AuthoritiesConstants.USER.equals(name),
@@ -95,9 +103,8 @@ public class AdminRoleService {
             throw ApiException.conflict(
                     "name", ApiErrorCode.ROLE_DUPLICATE_NAME, "Role is already registered");
         }
-        AuthorityEntity role = new AuthorityEntity();
-        role.setName(name);
-        AdminRoleDTO view = roleView(authorityRepository.save(role));
+        AdminRoleDTO view =
+                adminRoleMapper.toDTO(authorityRepository.save(adminRoleMapper.toEntity(name)));
         adminAuditEventService.record("role.created", "role", name);
         return view;
     }
@@ -117,10 +124,6 @@ public class AdminRoleService {
         }
         authorityRepository.delete(role);
         adminAuditEventService.record("role.deleted", "role", name);
-    }
-
-    private static AdminRoleDTO roleView(AuthorityEntity role) {
-        return new AdminRoleDTO(role.getName());
     }
 
     private static void validateRoleName(String name) {

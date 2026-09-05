@@ -29,12 +29,30 @@ final class ApplicationApiOpenApiCustomizer implements OpenApiCustomizer {
                 .flatMap(pathItem -> pathItem.readOperations().stream())
                 .filter(operation -> operation.getParameters() != null)
                 .flatMap(operation -> operation.getParameters().stream())
-                .filter(parameter -> "size".equals(parameter.getName()))
+                .filter(
+                        parameter ->
+                                "size".equals(parameter.getName())
+                                        || "page".equals(parameter.getName())
+                                        || "sort".equals(parameter.getName()))
                 .filter(parameter -> parameter.getSchema() != null)
                 .forEach(
                         parameter -> {
-                            parameter.getSchema().maximum(BigDecimal.valueOf(100));
-                            parameter.setDescription("Page size (maximum 100).");
+                            if ("size".equals(parameter.getName())) {
+                                parameter
+                                        .getSchema()
+                                        .minimum(BigDecimal.ONE)
+                                        .maximum(BigDecimal.valueOf(100))
+                                        .example(20);
+                                parameter.setDescription("Page size (1-100; default 20).");
+                            } else if ("page".equals(parameter.getName())) {
+                                parameter.getSchema().minimum(BigDecimal.ZERO).example(0);
+                                parameter.setDescription("Zero-based page number (default 0).");
+                            } else if ("sort".equals(parameter.getName())) {
+                                parameter.setDescription(
+                                        "Sorting property, optionally followed by `,asc` or"
+                                                + " `,desc`.");
+                                parameter.getSchema().example("username,asc");
+                            }
                         });
     }
 

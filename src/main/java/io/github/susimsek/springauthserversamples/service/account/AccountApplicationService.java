@@ -3,6 +3,7 @@ package io.github.susimsek.springauthserversamples.service.account;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentEntity;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentId;
 import io.github.susimsek.springauthserversamples.dto.account.AccountApplicationDTO;
+import io.github.susimsek.springauthserversamples.mapper.AccountApplicationMapper;
 import io.github.susimsek.springauthserversamples.mapper.AuthorizationServerMapperSupport;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationConsentRepository;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
@@ -10,15 +11,15 @@ import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.util.Map;
-import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.factory.Mappers;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
 public class AccountApplicationService {
 
     private final AuthorizationConsentRepository authorizationConsentRepository;
@@ -26,6 +27,22 @@ public class AccountApplicationService {
     private final ClientRepository clientRepository;
     private final AuthorizationServerMapperSupport mapperSupport;
     private final AdminAuditEventService auditEventService;
+    private final AccountApplicationMapper accountApplicationMapper;
+
+    public AccountApplicationService(
+            AuthorizationConsentRepository authorizationConsentRepository,
+            AuthorizationRepository authorizationRepository,
+            ClientRepository clientRepository,
+            AuthorizationServerMapperSupport mapperSupport,
+            AdminAuditEventService auditEventService) {
+        this(
+                authorizationConsentRepository,
+                authorizationRepository,
+                clientRepository,
+                mapperSupport,
+                auditEventService,
+                Mappers.getMapper(AccountApplicationMapper.class));
+    }
 
     @Transactional(readOnly = true)
     public Page<AccountApplicationDTO> applications(String username, Pageable pageable) {
@@ -44,19 +61,7 @@ public class AccountApplicationService {
                                         client -> client.getId(),
                                         client -> client.getClientName()));
         return consents.map(
-                consent -> {
-                    String clientId = consent.getId().getRegisteredClientId();
-                    Set<String> scopes =
-                            mapperSupport.readAuthorities(consent.getAuthorities()).stream()
-                                    .map(authority -> authority.getAuthority())
-                                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
-                    return new AccountApplicationDTO(
-                            clientId,
-                            clientNames.getOrDefault(clientId, clientId),
-                            scopes,
-                            consent.getCreatedAt(),
-                            consent.getUpdatedAt());
-                });
+                consent -> accountApplicationMapper.toDTO(consent, clientNames, mapperSupport));
     }
 
     @Transactional

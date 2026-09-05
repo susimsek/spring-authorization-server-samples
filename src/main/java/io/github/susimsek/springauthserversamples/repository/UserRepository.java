@@ -22,7 +22,23 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Cacheable(cacheNames = USER_BY_USERNAME_CACHE)
     Optional<UserEntity> findByUsername(String username);
 
+    @EntityGraph(value = "User.withEffectiveAuthorities")
+    @Query("select u from UserEntity u where lower(u.username) = lower(:username)")
+    Optional<UserEntity> findForAuthentication(@Param("username") String username);
+
+    @EntityGraph(value = "User.withEffectiveAuthorities")
+    @Query(
+            "select u from UserEntity u where lower(u.username) = lower(:identifier) or"
+                    + " lower(u.email) = lower(:identifier)")
+    Optional<UserEntity> findForAuthenticationByIdentifier(@Param("identifier") String identifier);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from UserEntity u where lower(u.username) = lower(:username)")
+    Optional<UserEntity> findForLoginUpdate(@Param("username") String username);
+
     Optional<UserEntity> findByEmailIgnoreCase(String email);
+
+    boolean existsByEmailIgnoreCase(String email);
 
     boolean existsByEmailIgnoreCaseAndIdNot(String email, Long id);
 

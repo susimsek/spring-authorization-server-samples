@@ -19,7 +19,7 @@ type TableState = {
   to: string;
 };
 
-export function useAdminTableState(defaultSize = 20, includesStatus = false, defaultSort = "") {
+export function useAdminTableState(defaultSize = 10, includesStatus = false, defaultSort = "") {
   const pathname = usePathname();
   useEffect(() => {
     window.dispatchEvent(new Event("admin-table-state"));

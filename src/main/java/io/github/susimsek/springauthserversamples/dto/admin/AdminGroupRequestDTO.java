@@ -8,6 +8,15 @@ import jakarta.validation.constraints.Size;
 public record AdminGroupRequestDTO(
         @NotBlank(message = "{app.api.problem.violation.required}")
                 @Size(max = 100, message = "{app.api.problem.violation.max_length}")
-                @Schema(example = "finance-operators")
+                @Schema(
+                        description = "Group name.",
+                        example = "finance-operators",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
                 String name,
-        @Schema(example = "1", nullable = true) Long parentId) {}
+        @Schema(
+                        description = "Parent group identifier for a nested group.",
+                        example = "1",
+                        format = "int64",
+                        nullable = true,
+                        requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+                Long parentId) {}

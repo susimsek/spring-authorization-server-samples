@@ -10,9 +10,9 @@ import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventS
 import io.github.susimsek.springauthserversamples.service.admin.UserAccessInvalidationService;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
+import io.github.susimsek.springauthserversamples.service.security.PasswordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,7 +22,7 @@ public class AccountProfileService {
 
     private final UserRepository userRepository;
     private final AccountProfileMapper accountProfileMapper;
-    private final PasswordEncoder passwordEncoder;
+    private final PasswordService passwordService;
     private final AdminAuditEventService auditEventService;
     private final UserAccessInvalidationService userAccessInvalidationService;
     private final UserActionService userActionService;
@@ -36,17 +36,22 @@ public class AccountProfileService {
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, key = "#username")
     public AccountProfileDTO updateProfile(String username, AccountProfileRequestDTO request) {
         UserEntity user = requireUser(username);
-        AccountProfileRequestDTO normalized = normalized(request);
+        AccountProfileRequestDTO normalized = accountProfileMapper.normalize(request);
         String email = normalized.email();
         if (email != null && userRepository.existsByEmailIgnoreCaseAndIdNot(email, user.getId())) {
             throw ApiException.conflict(
                     "email", ApiErrorCode.USER_DUPLICATE_EMAIL, "Email is already registered");
         }
         boolean emailChanged = !java.util.Objects.equals(user.getEmail(), email);
-        accountProfileMapper.updateEntity(normalized, user);
         if (emailChanged) {
+            accountProfileMapper.updateNames(normalized, user);
+            user.setPendingEmail(email);
             user.setEmailVerified(false);
             userActionService.invalidateActions(user.getId());
+            userActionService.executeActionsEmail(
+                    user.getId(), UserAction.UPDATE_EMAIL, null, java.util.Locale.ENGLISH);
+        } else {
+            accountProfileMapper.updateEntity(normalized, user);
         }
         userRepository.save(user);
         auditEventService.record("account.profile.updated", "user", user.getId().toString());
@@ -57,25 +62,13 @@ public class AccountProfileService {
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, key = "#username")
     public void changePassword(String username, String currentPassword, String newPassword) {
         UserEntity user = requireUser(username);
-        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+        if (!passwordService.matchesCurrentPassword(currentPassword, user)) {
             throw ApiException.badRequest(
                     "currentPassword",
                     ApiErrorCode.INVALID_CURRENT_PASSWORD,
                     "Current password is incorrect");
         }
-        if (newPassword == null || newPassword.length() < 8) {
-            throw ApiException.badRequest(
-                    "newPassword",
-                    ApiErrorCode.INVALID_PASSWORD,
-                    "Password must be at least 8 characters");
-        }
-        if (passwordEncoder.matches(newPassword, user.getPassword())) {
-            throw ApiException.badRequest(
-                    "newPassword",
-                    ApiErrorCode.PASSWORD_UNCHANGED,
-                    "New password must be different");
-        }
-        user.setPassword(passwordEncoder.encode(newPassword));
+        passwordService.changePassword(user, newPassword);
         userActionService.invalidateActions(user.getId());
         userRepository.save(user);
         userAccessInvalidationService.invalidate(username);
@@ -91,21 +84,5 @@ public class AccountProfileService {
         return userRepository
                 .findByUsername(username)
                 .orElseThrow(() -> ApiException.notFound("User not found"));
-    }
-
-    private static AccountProfileRequestDTO normalized(AccountProfileRequestDTO request) {
-        return new AccountProfileRequestDTO(
-                normalize(request.firstName()),
-                normalize(request.lastName()),
-                normalizeEmail(request.email()));
-    }
-
-    private static String normalize(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
-    }
-
-    private static String normalizeEmail(String value) {
-        String normalized = normalize(value);
-        return normalized == null ? null : normalized.toLowerCase(java.util.Locale.ROOT);
     }
 }

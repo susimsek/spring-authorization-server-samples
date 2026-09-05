@@ -62,7 +62,7 @@ export function EntityRelatedData({
   const alerts = useConsoleAlerts();
   const [items, setItems] = useState<Array<Session | Consent | Event>>([]);
   const [page, setPage] = useState(0);
-  const [size, setSize] = useState(20);
+  const [size, setSize] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -184,7 +184,7 @@ export function EntityRelatedData({
                   <td className="text-end">
                     <Button
                       type="button"
-                      variant="outline-danger"
+                      variant="danger"
                       size="sm"
                       onClick={() => void removeSession(session)}
                     >
@@ -237,15 +237,16 @@ export function EntityRelatedData({
                 <td className="text-end">
                   <div className="d-flex justify-content-end gap-2 flex-wrap">
                     <Link
-                      className="btn btn-sm btn-outline-secondary"
+                      className="btn btn-sm btn-secondary"
                       href={`/admin/consents/${encodeConsentRouteKey(consent.clientId, consent.principalName)}`}
                     >
+                      <AdminActionIcon action="view" />
                       {copy.details}
                     </Link>
                     {canManage && (
                       <Button
                         type="button"
-                        variant="outline-danger"
+                        variant="danger"
                         size="sm"
                         onClick={() => void revokeConsent(consent)}
                       >

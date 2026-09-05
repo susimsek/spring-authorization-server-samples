@@ -19,6 +19,8 @@ import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
 import io.github.susimsek.springauthserversamples.service.account.UserActionService;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
+import io.github.susimsek.springauthserversamples.service.security.AccountLockService;
+import io.github.susimsek.springauthserversamples.service.security.PasswordService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -30,7 +32,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 class AdminUserServiceTest {
@@ -40,7 +41,8 @@ class AdminUserServiceTest {
     @Mock private UserAvatarRepository userAvatarRepository;
     @Mock private AuthorityRepository authorityRepository;
     @Mock private UserAccessInvalidationService userAccessInvalidationService;
-    @Mock private PasswordEncoder passwordEncoder;
+    @Mock private AccountLockService accountLockService;
+    @Mock private PasswordService passwordService;
     @Mock private AdminAuditEventService adminAuditEventService;
     @Mock private UserActionService userActionService;
 
@@ -96,7 +98,7 @@ class AdminUserServiceTest {
                                         .createUser(
                                                 "alice", "short", true, Set.of(), "administrator"))
                 .isInstanceOf(ApiException.class)
-                .hasMessage("Password must be at least 8 characters");
+                .hasMessage("Password must be at least 12 characters");
     }
 
     @Test
@@ -106,7 +108,13 @@ class AdminUserServiceTest {
         when(userRepository.findByUsername("alice")).thenReturn(Optional.empty());
         when(authorityRepository.findByNameIn(Set.of(AuthoritiesConstants.USER)))
                 .thenReturn(List.of(authority(1L, AuthoritiesConstants.USER)));
-        when(passwordEncoder.encode("password-123")).thenReturn("encoded-password");
+        org.mockito.Mockito.doAnswer(
+                        invocation -> {
+                            invocation.<UserEntity>getArgument(0).setPassword("encoded-password");
+                            return null;
+                        })
+                .when(passwordService)
+                .setInitialPassword(any(UserEntity.class), org.mockito.Mockito.eq("password-123"));
         when(userRepository.save(any(UserEntity.class)))
                 .thenAnswer(
                         invocation -> {
@@ -322,7 +330,7 @@ class AdminUserServiceTest {
     void changePasswordRejectsShortPasswords() {
         assertThatThrownBy(() -> service().changePassword(5L, "short", "manager"))
                 .isInstanceOf(ApiException.class)
-                .hasMessage("Password must be at least 8 characters");
+                .hasMessage("Password must be at least 12 characters");
     }
 
     @Test
@@ -331,7 +339,14 @@ class AdminUserServiceTest {
         UserEntity administrator = user(6L, "administrator", AuthoritiesConstants.ADMIN);
         when(userRepository.findById(5L)).thenReturn(Optional.of(user));
         when(userRepository.findByUsername("administrator")).thenReturn(Optional.of(administrator));
-        when(passwordEncoder.encode("new-password")).thenReturn("encoded-password");
+        org.mockito.Mockito.doAnswer(
+                        invocation -> {
+                            invocation.<UserEntity>getArgument(0).setPassword("encoded-password");
+                            return null;
+                        })
+                .when(passwordService)
+                .setTemporaryPassword(
+                        any(UserEntity.class), org.mockito.Mockito.eq("new-password"));
 
         service().changePassword(5L, "new-password", "administrator");
 
@@ -550,7 +565,8 @@ class AdminUserServiceTest {
                 userAvatarRepository,
                 authorityRepository,
                 userAccessInvalidationService,
-                passwordEncoder,
+                accountLockService,
+                passwordService,
                 adminAuditEventService,
                 userActionService);
     }

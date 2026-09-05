@@ -3,10 +3,13 @@ import { Badge, Button, Form, InputGroup } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 
+import { ActionIcon } from "@/components/shared/ActionIcon";
+
 export function ResourceFilters({
   query,
   searchLabel,
   onQueryChange,
+  filterToggle,
   children,
   sort,
   activeFilters = [],
@@ -14,10 +17,12 @@ export function ResourceFilters({
   onClearFilters,
   resultCount,
   recordsLabel,
+  childrenClassName,
 }: {
   query: string;
   searchLabel: string;
   onQueryChange: (value: string) => void;
+  filterToggle?: React.ReactNode;
   children?: React.ReactNode;
   sort?: {
     label: string;
@@ -30,6 +35,7 @@ export function ResourceFilters({
   onClearFilters?: () => void;
   resultCount?: number;
   recordsLabel?: string;
+  childrenClassName?: string;
 }) {
   const [value, setValue] = useState(query);
   const notifyQueryChange = useEffectEvent(onQueryChange);
@@ -52,6 +58,7 @@ export function ResourceFilters({
             value={value}
           />
         </InputGroup>
+        {filterToggle}
         {sort && (
           <Form.Select
             aria-label={sort.label}
@@ -66,7 +73,11 @@ export function ResourceFilters({
             ))}
           </Form.Select>
         )}
-        <div className="ms-auto d-flex flex-wrap gap-2">{children}</div>
+        {children && (
+          <div className={`ms-auto d-flex flex-wrap gap-2 ${childrenClassName ?? ""}`}>
+            {children}
+          </div>
+        )}
       </div>
       {(activeFilters.length > 0 || resultCount !== undefined) && (
         <div className="admin-active-filters mt-3">
@@ -89,12 +100,13 @@ export function ResourceFilters({
                 type="button"
                 onClick={filter.onRemove}
               >
-                ×
+                <ActionIcon action="cancel" className="m-0" />
               </button>
             </Badge>
           ))}
           {activeFilters.length > 0 && clearFiltersLabel && onClearFilters && (
             <Button size="sm" variant="link" className="p-0" onClick={onClearFilters}>
+              <ActionIcon action="cancel" />
               {clearFiltersLabel}
             </Button>
           )}

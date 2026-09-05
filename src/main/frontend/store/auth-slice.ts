@@ -3,6 +3,7 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { ConsoleKind, JwtPayload } from "@/lib/console-auth-types";
 
 export type AdminAccess = {
+  isAdmin?: boolean;
   viewClients: boolean;
   manageClients: boolean;
   viewUsers: boolean;

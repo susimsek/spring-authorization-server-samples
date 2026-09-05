@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "@/routing/Link";
-import { Button } from "react-bootstrap";
+import { Badge, Dropdown } from "react-bootstrap";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
@@ -15,6 +15,7 @@ import { DataTable } from "./DataTable";
 import { ErrorState, LoadingState } from "./AsyncState";
 import { PaginationControls } from "./PaginationControls";
 import { ResourceFilters } from "./ResourceFilters";
+import { RowActions } from "./RowActions";
 import { useAdminTableState } from "./useAdminTableState";
 
 type Role = { name: string };
@@ -31,7 +32,7 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
   const [error, setError] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<string | null>(null);
   const { clearFilters, page, query, setPage, setQuery, setSize, setSort, size, sort } =
-    useAdminTableState(20, false, "name,asc");
+    useAdminTableState(10, false, "name,asc");
 
   useEffect(() => {
     if (!accessToken) return;
@@ -154,15 +155,30 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
                 </Link>
               </td>
               <td className="text-end">
-                <Button
-                  disabled={saving || role.name === "ROLE_ADMIN" || role.name === "ROLE_USER"}
-                  onClick={() => setRoleToDelete(role.name)}
-                  size="sm"
-                  variant="outline-danger"
-                >
-                  <AdminActionIcon action="delete" />
-                  {copy.delete}
-                </Button>
+                <div className="d-inline-flex align-items-center gap-2">
+                  {(role.name === "ROLE_ADMIN" || role.name === "ROLE_USER") && (
+                    <Badge bg="secondary">{copy.protected}</Badge>
+                  )}
+                  <RowActions label={`${role.name} ${dictionary.admin.common.actions}`}>
+                    <Dropdown.Item as={Link} href={`/admin/roles/${encodeURIComponent(role.name)}`}>
+                      <AdminActionIcon action="edit" />
+                      {dictionary.admin.resources.edit}
+                    </Dropdown.Item>
+                    {role.name !== "ROLE_ADMIN" && role.name !== "ROLE_USER" && (
+                      <>
+                        <Dropdown.Divider />
+                        <Dropdown.Item
+                          className="text-danger"
+                          disabled={saving}
+                          onClick={() => setRoleToDelete(role.name)}
+                        >
+                          <AdminActionIcon action="delete" />
+                          {copy.delete}
+                        </Dropdown.Item>
+                      </>
+                    )}
+                  </RowActions>
+                </div>
               </td>
             </tr>
           ))}

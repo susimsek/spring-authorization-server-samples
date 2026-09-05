@@ -15,7 +15,8 @@ class UserActionEmailListener {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     void send(UserActionEmailEvent event) {
-        if (event.action() == UserAction.VERIFY_EMAIL) {
+        if (event.action() == UserAction.VERIFY_EMAIL
+                || event.action() == UserAction.UPDATE_EMAIL) {
             mailService.sendEmailVerification(
                     event.recipient(), event.username(), event.locale(), event.actionUrl());
         } else {

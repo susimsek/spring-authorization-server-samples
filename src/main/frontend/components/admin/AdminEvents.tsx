@@ -2,7 +2,7 @@
 import { useDictionary, useLocale } from "@/i18n/client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Badge, Form, Offcanvas } from "react-bootstrap";
+import { Badge, Button, Form, Offcanvas } from "react-bootstrap";
 import { adminRequest } from "@/lib/admin-api";
 import type { PageResponse } from "@/lib/api-types";
 import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
@@ -11,6 +11,7 @@ import { ResourceFilters } from "@/components/admin/ResourceFilters";
 import { PaginationControls } from "@/components/admin/PaginationControls";
 import { useAdminTableState } from "@/components/admin/useAdminTableState";
 import { ViewHeader } from "@/components/admin/ViewHeader";
+import { ActionIcon } from "@/components/shared/ActionIcon";
 
 export type Event = {
   id: string;
@@ -28,6 +29,7 @@ export default function AdminEventsPage() {
   const copy = dictionary.admin.events;
   const [events, setEvents] = useState<Event[]>([]);
   const [selected, setSelected] = useState<Event | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const {
@@ -50,7 +52,7 @@ export default function AdminEventsPage() {
     targetId,
     targetType,
     to,
-  } = useAdminTableState(20, false, "occurredAt,desc");
+  } = useAdminTableState(10, false, "occurredAt,desc");
   useEffect(() => {
     if (!accessToken) return;
     const search = new URLSearchParams({
@@ -113,54 +115,70 @@ export default function AdminEventsPage() {
         onClearFilters={clearFilters}
         resultCount={total}
         recordsLabel={copy.records}
+        filterToggle={
+          <Button
+            aria-expanded={showFilters}
+            onClick={() => setShowFilters((current) => !current)}
+            size="sm"
+            variant="secondary"
+          >
+            <ActionIcon action="filter" />
+            {showFilters ? copy.hideFilters : copy.filterEvents}
+          </Button>
+        }
+        childrenClassName="admin-resource-filter-controls"
       >
-        <Form.Select
-          aria-label={copy.action}
-          className="admin-resource-filter-control"
-          value={action}
-          onChange={(event) => setAction(event.target.value)}
-        >
-          <option value="">{copy.allActions}</option>
-          {types.map((item) => (
-            <option key={item}>{item}</option>
-          ))}
-        </Form.Select>
-        <Form.Select
-          aria-label={copy.targetType}
-          className="admin-resource-filter-control"
-          value={targetType}
-          onChange={(event) => setTargetType(event.target.value)}
-        >
-          <option value="">{copy.allTargetTypes}</option>
-          <option value="client">{copy.targetTypes.client}</option>
-          <option value="user">{copy.targetTypes.user}</option>
-          <option value="session">{copy.targetTypes.session}</option>
-          <option value="consent">{copy.targetTypes.consent}</option>
-          <option value="key">{copy.targetTypes.key}</option>
-          <option value="role">{copy.targetTypes.role}</option>
-          <option value="client-scope">{copy.targetTypes.clientScope}</option>
-        </Form.Select>
-        <Form.Control
-          className="admin-resource-filter-control"
-          value={targetId}
-          onChange={(event) => setTargetId(event.target.value)}
-          placeholder={copy.targetId}
-          aria-label={copy.targetId}
-        />
-        <Form.Control
-          className="admin-resource-filter-control"
-          type="date"
-          value={from}
-          onChange={(event) => setFrom(event.target.value)}
-          aria-label={copy.from}
-        />
-        <Form.Control
-          className="admin-resource-filter-control"
-          type="date"
-          value={to}
-          onChange={(event) => setTo(event.target.value)}
-          aria-label={copy.to}
-        />
+        {showFilters && (
+          <>
+            <Form.Select
+              aria-label={copy.action}
+              className="admin-resource-filter-control"
+              value={action}
+              onChange={(event) => setAction(event.target.value)}
+            >
+              <option value="">{copy.allActions}</option>
+              {types.map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </Form.Select>
+            <Form.Select
+              aria-label={copy.targetType}
+              className="admin-resource-filter-control"
+              value={targetType}
+              onChange={(event) => setTargetType(event.target.value)}
+            >
+              <option value="">{copy.allTargetTypes}</option>
+              <option value="client">{copy.targetTypes.client}</option>
+              <option value="user">{copy.targetTypes.user}</option>
+              <option value="session">{copy.targetTypes.session}</option>
+              <option value="consent">{copy.targetTypes.consent}</option>
+              <option value="key">{copy.targetTypes.key}</option>
+              <option value="role">{copy.targetTypes.role}</option>
+              <option value="client-scope">{copy.targetTypes.clientScope}</option>
+            </Form.Select>
+            <Form.Control
+              className="admin-resource-filter-control"
+              value={targetId}
+              onChange={(event) => setTargetId(event.target.value)}
+              placeholder={copy.targetId}
+              aria-label={copy.targetId}
+            />
+            <Form.Control
+              className="admin-resource-filter-control"
+              type="date"
+              value={from}
+              onChange={(event) => setFrom(event.target.value)}
+              aria-label={copy.from}
+            />
+            <Form.Control
+              className="admin-resource-filter-control"
+              type="date"
+              value={to}
+              onChange={(event) => setTo(event.target.value)}
+              aria-label={copy.to}
+            />
+          </>
+        )}
       </ResourceFilters>
       <DataTable
         isEmpty={events.length === 0}

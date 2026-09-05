@@ -6,6 +6,8 @@ import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventS
 import io.github.susimsek.springauthserversamples.service.admin.AdminUserService;
 import io.github.susimsek.springauthserversamples.web.ApiController;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.Instant;
@@ -32,14 +34,35 @@ class AdminEventController {
     private final AdminUserService adminUserService;
 
     @GetMapping("/events")
-    @Operation(summary = "Search administrative events")
+    @Operation(
+            summary = "Search administrative events",
+            description =
+                    "Searches audit events using optional text, action, target, and time-range"
+                            + " filters.")
+    @ApiResponse(responseCode = "200", description = "Paged matching audit events returned.")
     Page<AdminEventDTO> events(
-            @RequestParam(defaultValue = "") String q,
-            @RequestParam(defaultValue = "") String action,
-            @RequestParam(defaultValue = "") String targetType,
-            @RequestParam(defaultValue = "") String targetId,
-            @RequestParam(required = false) Instant from,
-            @RequestParam(required = false) Instant to,
+            @Parameter(description = "Free-text actor or target search.", example = "admin")
+                    @RequestParam(defaultValue = "")
+                    String q,
+            @Parameter(description = "Stable action filter.", example = "user.updated")
+                    @RequestParam(defaultValue = "")
+                    String action,
+            @Parameter(description = "Target resource type filter.", example = "user")
+                    @RequestParam(defaultValue = "")
+                    String targetType,
+            @Parameter(description = "Target resource identifier filter.", example = "2")
+                    @RequestParam(defaultValue = "")
+                    String targetId,
+            @Parameter(
+                            description = "Inclusive start timestamp in ISO-8601 format.",
+                            example = "2026-09-01T00:00:00Z")
+                    @RequestParam(required = false)
+                    Instant from,
+            @Parameter(
+                            description = "Inclusive end timestamp in ISO-8601 format.",
+                            example = "2026-09-04T23:59:59Z")
+                    @RequestParam(required = false)
+                    Instant to,
             @PageableDefault(
                             size = 20,
                             sort = "occurredAt",
@@ -49,9 +72,14 @@ class AdminEventController {
     }
 
     @GetMapping("/users/{id}/events")
-    @Operation(summary = "List user events")
+    @Operation(
+            summary = "List user events",
+            description = "Returns audit events whose target is the specified user.")
+    @ApiResponse(responseCode = "200", description = "Paged user audit events returned.")
     Page<AdminEventDTO> userEvents(
-            @PathVariable Long id,
+            @Parameter(description = "Internal user identifier.", example = "2", required = true)
+                    @PathVariable
+                    Long id,
             @PageableDefault(
                             size = 20,
                             sort = "occurredAt",

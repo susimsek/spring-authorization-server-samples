@@ -329,6 +329,11 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
     [clearAuthentication, config],
   );
 
+  const clearLocalSession = useCallback(() => {
+    clearStoredTransactions();
+    clearAuthentication(false);
+  }, [clearAuthentication]);
+
   return {
     accessToken,
     idToken,
@@ -342,6 +347,7 @@ export function useConsoleAuth(config: ConsoleAuthConfig, consoleKind: ConsoleKi
     isLoggingOut,
     refreshAccessToken,
     logout,
+    clearLocalSession,
     beginAuthorization,
     completeAuthorization,
   };

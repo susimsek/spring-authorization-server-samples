@@ -39,7 +39,7 @@ describe("RolesTable", () => {
     mockAdminRequest.mockReset();
   });
 
-  it("loads a server-side role page and protects built-in roles", async () => {
+  it("loads a server-side role page and marks built-in roles as protected", async () => {
     mockAdminRequest.mockResolvedValue({
       status: 200,
       data: rolePage([{ name: "ROLE_ADMIN" }, { name: "ROLE_USER" }, { name: "ROLE_AUDITOR" }]),
@@ -47,11 +47,9 @@ describe("RolesTable", () => {
     render(<RolesTable dictionary={dictionary} />);
     expect(await screen.findByText("ROLE_AUDITOR")).toBeVisible();
     expect(
-      screen.getAllByRole("button", { name: dictionary.admin.roles.delete })[0],
-    ).toBeDisabled();
-    expect(
-      screen.getAllByRole("button", { name: dictionary.admin.roles.delete })[2],
-    ).not.toBeDisabled();
+      screen.getByRole("button", { name: `ROLE_AUDITOR ${dictionary.admin.common.actions}` }),
+    ).toBeVisible();
+    expect(screen.getAllByText(dictionary.admin.roles.protected)).toHaveLength(2);
     expect(mockAdminRequest).toHaveBeenCalledWith("token", {
       url: "/api/admin/roles?q=&page=0&size=10&sort=name%2Casc",
     });
@@ -78,9 +76,15 @@ describe("RolesTable", () => {
     render(<RolesTable dictionary={dictionary} />);
     expect(await screen.findByText("ROLE_AUDITOR")).toBeVisible();
 
+    fireEvent.click(
+      screen.getByRole("button", { name: `ROLE_AUDITOR ${dictionary.admin.common.actions}` }),
+    );
     fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.roles.delete })[0]);
     expect(await screen.findByText(dictionary.admin.roles.deleteConfirm)).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.cancel }));
+    fireEvent.click(
+      screen.getByRole("button", { name: `ROLE_AUDITOR ${dictionary.admin.common.actions}` }),
+    );
     fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.roles.delete })[0]);
     fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.roles.delete })[1]);
     await waitFor(() =>
@@ -103,6 +107,9 @@ describe("RolesTable", () => {
       .mockResolvedValueOnce({ status: 500, data: null } as never);
     render(<RolesTable dictionary={dictionary} />);
     expect(await screen.findByText("ROLE_AUDITOR")).toBeVisible();
+    fireEvent.click(
+      screen.getByRole("button", { name: `ROLE_AUDITOR ${dictionary.admin.common.actions}` }),
+    );
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.roles.delete }));
     fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.roles.delete })[1]);
     expect(await screen.findByText(dictionary.admin.roles.operationError)).toBeVisible();

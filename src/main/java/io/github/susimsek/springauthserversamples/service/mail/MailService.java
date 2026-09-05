@@ -1,6 +1,7 @@
 package io.github.susimsek.springauthserversamples.service.mail;
 
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
+import io.github.susimsek.springauthserversamples.service.EmailSettingsService;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import java.nio.charset.StandardCharsets;
@@ -28,16 +29,28 @@ public class MailService {
     private final JavaMailSender mailSender;
     private final MessageSource messageSource;
     private final SpringTemplateEngine templateEngine;
+    private final EmailSettingsService emailSettingsService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public MailService(
+            ApplicationProperties applicationProperties,
+            JavaMailSender mailSender,
+            MessageSource messageSource,
+            SpringTemplateEngine templateEngine,
+            EmailSettingsService emailSettingsService) {
+        this.properties = applicationProperties.mail();
+        this.mailSender = mailSender;
+        this.messageSource = messageSource;
+        this.templateEngine = templateEngine;
+        this.emailSettingsService = emailSettingsService;
+    }
 
     public MailService(
             ApplicationProperties applicationProperties,
             JavaMailSender mailSender,
             MessageSource messageSource,
             SpringTemplateEngine templateEngine) {
-        this.properties = applicationProperties.mail();
-        this.mailSender = mailSender;
-        this.messageSource = messageSource;
-        this.templateEngine = templateEngine;
+        this(applicationProperties, mailSender, messageSource, templateEngine, null);
     }
 
     @Async
@@ -76,7 +89,8 @@ public class MailService {
             String actionUrl,
             String templateName,
             String subjectKey) {
-        if (!properties.enabled()) {
+        EmailSettingsService.EmailConfiguration configuration = configuration();
+        if (!configuration.enabled()) {
             LOG.debug("Email delivery is disabled; skipping message to '{}'", recipient);
             return;
         }
@@ -84,7 +98,7 @@ public class MailService {
         Context context = new Context(locale);
         context.setVariable("username", username);
         context.setVariable("actionUrl", actionUrl);
-        context.setVariable("baseUrl", properties.baseUrl());
+        context.setVariable("baseUrl", configuration.baseUrl());
 
         String content = templateEngine.process(templateName, context);
         String subject = messageSource.getMessage(subjectKey, null, locale);
@@ -92,23 +106,58 @@ public class MailService {
     }
 
     private void sendEmailSync(String recipient, String subject, String content, boolean html) {
-        if (!properties.enabled()) {
+        EmailSettingsService.EmailConfiguration configuration = configuration();
+        if (!configuration.enabled()) {
             LOG.debug("Email delivery is disabled; skipping message to '{}'", recipient);
             return;
         }
 
-        MimeMessage mimeMessage = mailSender.createMimeMessage();
+        JavaMailSender sender = configuredSender(configuration);
+        MimeMessage mimeMessage = sender.createMimeMessage();
         try {
             MimeMessageHelper message =
                     new MimeMessageHelper(mimeMessage, false, StandardCharsets.UTF_8.name());
             message.setTo(recipient);
-            message.setFrom(properties.from());
+            message.setFrom(configuration.fromAddress());
             message.setSubject(subject);
             message.setText(content, html);
-            mailSender.send(mimeMessage);
+            sender.send(mimeMessage);
             LOG.debug("Email sent to '{}'", recipient);
         } catch (MailException | MessagingException exception) {
             LOG.warn("Email could not be sent to '{}'", recipient, exception);
         }
+    }
+
+    private EmailSettingsService.EmailConfiguration configuration() {
+        return emailSettingsService == null
+                ? new EmailSettingsService.EmailConfiguration(
+                        properties.enabled(),
+                        properties.from(),
+                        properties.baseUrl(),
+                        null,
+                        0,
+                        null,
+                        null,
+                        false,
+                        false,
+                        false)
+                : emailSettingsService.current();
+    }
+
+    private JavaMailSender configuredSender(EmailSettingsService.EmailConfiguration configuration) {
+        if (emailSettingsService == null || configuration.host() == null) {
+            return mailSender;
+        }
+        org.springframework.mail.javamail.JavaMailSenderImpl sender =
+                new org.springframework.mail.javamail.JavaMailSenderImpl();
+        sender.setHost(configuration.host());
+        sender.setPort(configuration.port());
+        sender.setUsername(configuration.username());
+        sender.setPassword(configuration.password());
+        java.util.Properties props = sender.getJavaMailProperties();
+        props.put("mail.smtp.auth", configuration.smtpAuth());
+        props.put("mail.smtp.starttls.enable", configuration.starttls());
+        props.put("mail.smtp.ssl.enable", configuration.ssl());
+        return sender;
     }
 }

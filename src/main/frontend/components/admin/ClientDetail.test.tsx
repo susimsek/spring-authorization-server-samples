@@ -62,15 +62,15 @@ describe("ClientDetail", () => {
       return { status: 200, data: { clientSecret: "new-secret" } } as never;
     });
 
-    render(<ClientDetail dictionary={dictionary} id="client-1" locale="en" />);
+    render(<ClientDetail dictionary={dictionary} id="client-1" locale="en" tab="credentials" />);
 
     expect(await screen.findByRole("heading", { name: "Web client" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: `Web client ${dictionary.admin.common.actions}` }),
+    ).not.toBeInTheDocument();
     fireEvent.click(
-      screen.getByRole("button", {
-        name: `Web client ${dictionary.admin.common.actions}`,
-      }),
+      screen.getByRole("button", { name: dictionary.admin.clients.regenerateSecret }),
     );
-    fireEvent.click(screen.getByText(dictionary.admin.clients.regenerateSecret));
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", {
         name: dictionary.admin.clients.regenerateSecret,
@@ -79,12 +79,7 @@ describe("ClientDetail", () => {
     expect(await screen.findByText("new-secret")).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.common.close })[1]);
 
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: `Web client ${dictionary.admin.common.actions}`,
-      }),
-    );
-    fireEvent.click(screen.getByText(dictionary.admin.clients.delete));
+    fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.clients.delete })[0]);
     expect(screen.getByText(dictionary.admin.clients.deleteConfirm)).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.clients.delete })[1]);
 
@@ -103,37 +98,24 @@ describe("ClientDetail", () => {
       if (url.endsWith("/secret")) return { status: 500, data: null } as never;
       return { status: 500, data: null } as never;
     });
-    render(<ClientDetail dictionary={dictionary} id="client-2" locale="en" />);
+    render(<ClientDetail dictionary={dictionary} id="client-2" locale="en" tab="credentials" />);
     expect(await screen.findByRole("heading", { name: "Web client" })).toBeVisible();
     fireEvent.click(
-      screen.getByRole("button", {
-        name: `Web client ${dictionary.admin.common.actions}`,
-      }),
+      screen.getByRole("button", { name: dictionary.admin.clients.regenerateSecret }),
     );
-    fireEvent.click(screen.getByText(dictionary.admin.clients.regenerateSecret));
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", {
         name: dictionary.admin.clients.regenerateSecret,
       }),
     );
     expect(await screen.findByText(dictionary.admin.clients.secretError)).toBeVisible();
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: `Web client ${dictionary.admin.common.actions}`,
-      }),
-    );
-    fireEvent.click(screen.getByText(dictionary.admin.clients.delete));
+    fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.clients.delete })[0]);
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", {
         name: dictionary.admin.common.cancel,
       }),
     );
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: `Web client ${dictionary.admin.common.actions}`,
-      }),
-    );
-    fireEvent.click(screen.getAllByText(dictionary.admin.clients.delete)[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.clients.delete })[0]);
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", {
         name: dictionary.admin.clients.delete,

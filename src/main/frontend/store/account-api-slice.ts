@@ -79,6 +79,12 @@ export const accountApi = createApi({
       }),
       invalidatesTags: ["AccountProfile"],
     }),
+    deleteAccount: builder.mutation<void, Authenticated & { currentPassword: string }>({
+      query: ({ accessToken, currentPassword }) => ({
+        accessToken,
+        config: { method: "DELETE", url: "/api/account", data: { currentPassword } },
+      }),
+    }),
     updateAccountPassword: builder.mutation<
       void,
       Authenticated & { currentPassword: string; newPassword: string }
@@ -136,6 +142,7 @@ export const accountApi = createApi({
 });
 
 export const {
+  useDeleteAccountMutation,
   useGetAccountApplicationsQuery,
   useGetAccountProfileQuery,
   useGetAccountSessionsQuery,

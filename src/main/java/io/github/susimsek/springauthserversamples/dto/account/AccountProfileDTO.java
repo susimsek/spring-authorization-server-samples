@@ -3,15 +3,53 @@ package io.github.susimsek.springauthserversamples.dto.account;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 
-@Schema(description = "Authenticated account profile.")
+@Schema(name = "AccountProfile", description = "Authenticated account profile.")
 public record AccountProfileDTO(
-        @Schema(example = "user") String username,
-        @Schema(example = "Ada") String firstName,
-        @Schema(example = "Lovelace") String lastName,
-        @Schema(example = "ada@example.test") String email,
-        boolean emailVerified,
-        Instant createdAt,
-        Instant updatedAt) {
+        @Schema(
+                        description = "Unique login name.",
+                        example = "user",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                String username,
+        @Schema(
+                        description = "Given name.",
+                        example = "Ada",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                String firstName,
+        @Schema(
+                        description = "Family name.",
+                        example = "Lovelace",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                String lastName,
+        @Schema(
+                        description = "Email address.",
+                        example = "ada@example.test",
+                        format = "email",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                String email,
+        @Schema(
+                        description = "Email address awaiting confirmation.",
+                        example = "ada.new@example.test",
+                        format = "email",
+                        nullable = true,
+                        requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+                String pendingEmail,
+        @Schema(
+                        description = "Whether the email address has been verified.",
+                        example = "false",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                boolean emailVerified,
+        @Schema(
+                        description = "Account creation time.",
+                        example = "2026-09-04T08:30:00Z",
+                        format = "date-time",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                Instant createdAt,
+        @Schema(
+                        description = "Last account update time.",
+                        example = "2026-09-04T08:30:00Z",
+                        format = "date-time",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                Instant updatedAt) {
 
     public AccountProfileDTO(
             String username,
@@ -20,6 +58,6 @@ public record AccountProfileDTO(
             String email,
             Instant createdAt,
             Instant updatedAt) {
-        this(username, firstName, lastName, email, false, createdAt, updatedAt);
+        this(username, firstName, lastName, email, null, false, createdAt, updatedAt);
     }
 }

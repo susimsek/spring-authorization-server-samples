@@ -290,10 +290,12 @@ export function GroupDetail({
               </Form.Select>
               <Form.Text>{copy.parentHelp}</Form.Text>
             </Form.Group>
-            <Button disabled={saving || !isGroupSettingsDirty} type="submit">
-              <AdminActionIcon action="save" />
-              {dictionary.admin.common.save}
-            </Button>
+            <div className="admin-form-actions">
+              <Button disabled={saving || !isGroupSettingsDirty} type="submit">
+                <AdminActionIcon action="save" />
+                {dictionary.admin.common.save}
+              </Button>
+            </div>
           </Form>
         </Card.Body>
       </Card>
@@ -318,10 +320,12 @@ export function GroupDetail({
               />
             ))}
           </div>
-          <Button disabled={saving} onClick={() => void saveRoles()}>
-            <AdminActionIcon action="save" />
-            {copy.saveMappings}
-          </Button>
+          <div className="admin-form-actions">
+            <Button disabled={saving} onClick={() => void saveRoles()}>
+              <AdminActionIcon action="save" />
+              {copy.saveMappings}
+            </Button>
+          </div>
         </Card.Body>
       </Card>
       <Card className="admin-panel-card">
@@ -413,7 +417,7 @@ export function GroupDetail({
                 <Button
                   disabled={saving}
                   size="sm"
-                  variant="outline-danger"
+                  variant="danger"
                   onClick={() => void removeMember(user)}
                 >
                   <AdminActionIcon action="remove" />

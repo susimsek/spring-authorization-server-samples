@@ -3,11 +3,10 @@ import { useDictionary, useLocale } from "@/i18n/client";
 
 import { useEffect, useState } from "react";
 import { Alert, Badge, Button, Card, Nav, Tab } from "react-bootstrap";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 
 import { ViewHeader } from "@/components/admin/ViewHeader";
 import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
+import { AdminActionIcon } from "@/components/admin/AdminActionIcon";
 import { adminRequest } from "@/lib/admin-api";
 
 type KeySummary = {
@@ -57,9 +56,9 @@ function CopyButton({
       onClick={onCopy}
       size="sm"
       type="button"
-      variant={copied ? "success" : "outline-secondary"}
+      variant={copied ? "success" : "secondary"}
     >
-      <FontAwesomeIcon className="me-1" icon={copied ? faCheck : faCopy} />
+      <AdminActionIcon action={copied ? "check" : "copy"} />
       {copied ? copiedLabel : label}
     </Button>
   );
@@ -160,7 +159,8 @@ export default function ServerInfoPage() {
           variant="danger"
         >
           <span>{copy.loadError}</span>
-          <Button onClick={retry} size="sm" variant="outline-danger">
+          <Button onClick={retry} size="sm" variant="danger">
+            <AdminActionIcon action="retry" />
             {copy.retry}
           </Button>
         </Alert>

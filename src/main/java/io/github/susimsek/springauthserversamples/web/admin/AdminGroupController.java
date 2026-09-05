@@ -9,6 +9,8 @@ import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupUserReques
 import io.github.susimsek.springauthserversamples.service.admin.AdminGroupService;
 import io.github.susimsek.springauthserversamples.web.ApiController;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -44,73 +46,152 @@ public class AdminGroupController {
     @Operation(
             summary = "Search groups",
             description = "Returns a paged group list. `size` is capped at 100.")
+    @ApiResponse(responseCode = "200", description = "Paged groups returned.")
     Page<AdminGroupDTO> findAll(
-            @RequestParam(defaultValue = "") String q,
+            @Parameter(
+                            description = "Optional group name or path search text.",
+                            example = "finance")
+                    @RequestParam(defaultValue = "")
+                    String q,
             @PageableDefault(size = 20, sort = "name") Pageable pageable) {
         return adminGroupService.findAll(q, pageable);
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get group")
-    AdminGroupDTO findById(@PathVariable Long id) {
+    @Operation(summary = "Get group", description = "Returns one group by its internal identifier.")
+    @ApiResponse(responseCode = "200", description = "Group returned.")
+    AdminGroupDTO findById(
+            @Parameter(description = "Internal group identifier.", example = "1", required = true)
+                    @PathVariable
+                    Long id) {
         return adminGroupService.findById(id);
     }
 
     @PostMapping
-    @Operation(summary = "Create group")
-    ResponseEntity<AdminGroupDTO> create(@Valid @RequestBody AdminGroupRequestDTO request) {
+    @Operation(
+            summary = "Create group",
+            description = "Creates a group, optionally nested under a parent group.")
+    @ApiResponse(responseCode = "201", description = "Group created and returned.")
+    ResponseEntity<AdminGroupDTO> create(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                            description = "Group name and optional parent.",
+                            required = true)
+                    @Valid
+                    @RequestBody
+                    AdminGroupRequestDTO request) {
         AdminGroupDTO created = adminGroupService.create(request);
         return ResponseEntity.created(URI.create("/api/admin/groups/" + created.id()))
                 .body(created);
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Rename group")
-    AdminGroupDTO update(@PathVariable Long id, @Valid @RequestBody AdminGroupRequestDTO request) {
+    @Operation(
+            summary = "Rename group",
+            description = "Changes a group's name or parent relationship.")
+    @ApiResponse(responseCode = "200", description = "Updated group returned.")
+    AdminGroupDTO update(
+            @Parameter(description = "Internal group identifier.", example = "1", required = true)
+                    @PathVariable
+                    Long id,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                            description = "Updated group name and optional parent.",
+                            required = true)
+                    @Valid
+                    @RequestBody
+                    AdminGroupRequestDTO request) {
         return adminGroupService.update(id, request);
     }
 
     @PutMapping("/{id}/roles")
-    @Operation(summary = "Replace group role mappings")
+    @Operation(
+            summary = "Replace group role mappings",
+            description = "Replaces the complete set of realm roles mapped to the group.")
+    @ApiResponse(responseCode = "200", description = "Updated group returned.")
     AdminGroupDTO updateRoles(
-            @PathVariable Long id, @Valid @RequestBody AdminGroupRolesRequestDTO request) {
+            @Parameter(description = "Internal group identifier.", example = "1", required = true)
+                    @PathVariable
+                    Long id,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                            description = "Complete role mapping.",
+                            required = true)
+                    @Valid
+                    @RequestBody
+                    AdminGroupRolesRequestDTO request) {
         return adminGroupService.updateRoles(id, request);
     }
 
     @GetMapping("/{id}/users")
-    @Operation(summary = "List group members")
+    @Operation(
+            summary = "List group members",
+            description = "Returns users currently assigned to the group.")
+    @ApiResponse(responseCode = "200", description = "Paged group members returned.")
     Page<AdminGroupUserDTO> users(
-            @PathVariable Long id,
-            @RequestParam(defaultValue = "") String q,
+            @Parameter(description = "Internal group identifier.", example = "1", required = true)
+                    @PathVariable
+                    Long id,
+            @Parameter(description = "Optional username search text.", example = "user")
+                    @RequestParam(defaultValue = "")
+                    String q,
             @PageableDefault(size = 20, sort = "username") Pageable pageable) {
         return adminGroupService.users(id, q, pageable);
     }
 
     @GetMapping("/{id}/available-users")
-    @Operation(summary = "Search users that are not group members")
+    @Operation(
+            summary = "Search users that are not group members",
+            description = "Returns users eligible to be added to the group.")
+    @ApiResponse(responseCode = "200", description = "Paged eligible users returned.")
     Page<AdminGroupUserDTO> availableUsers(
-            @PathVariable Long id,
-            @RequestParam(defaultValue = "") String q,
+            @Parameter(description = "Internal group identifier.", example = "1", required = true)
+                    @PathVariable
+                    Long id,
+            @Parameter(description = "Optional username search text.", example = "user")
+                    @RequestParam(defaultValue = "")
+                    String q,
             @PageableDefault(size = 10, sort = "username") Pageable pageable) {
         return adminGroupService.availableUsers(id, q, pageable);
     }
 
     @PostMapping("/{id}/users")
-    @Operation(summary = "Add user to group")
+    @Operation(
+            summary = "Add user to group",
+            description = "Adds a user to the group and returns the updated group.")
+    @ApiResponse(responseCode = "200", description = "Updated group returned.")
     AdminGroupDTO addUser(
-            @PathVariable Long id, @Valid @RequestBody AdminGroupUserRequestDTO request) {
+            @Parameter(description = "Internal group identifier.", example = "1", required = true)
+                    @PathVariable
+                    Long id,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                            description = "User to add.",
+                            required = true)
+                    @Valid
+                    @RequestBody
+                    AdminGroupUserRequestDTO request) {
         return adminGroupService.addUser(id, request.userId());
     }
 
     @DeleteMapping("/{id}/users/{userId}")
-    @Operation(summary = "Remove user from group")
-    AdminGroupDTO removeUser(@PathVariable Long id, @PathVariable Long userId) {
+    @Operation(
+            summary = "Remove user from group",
+            description = "Removes a user from the group and returns the updated group.")
+    @ApiResponse(responseCode = "200", description = "Updated group returned.")
+    AdminGroupDTO removeUser(
+            @Parameter(description = "Internal group identifier.", example = "1", required = true)
+                    @PathVariable
+                    Long id,
+            @Parameter(description = "Internal user identifier.", example = "2", required = true)
+                    @PathVariable
+                    Long userId) {
         return adminGroupService.removeUser(id, userId);
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete group")
-    ResponseEntity<Void> delete(@PathVariable Long id) {
+    @Operation(summary = "Delete group", description = "Deletes a group and its memberships.")
+    @ApiResponse(responseCode = "204", description = "Group deleted.")
+    ResponseEntity<Void> delete(
+            @Parameter(description = "Internal group identifier.", example = "1", required = true)
+                    @PathVariable
+                    Long id) {
         adminGroupService.delete(id);
         return ResponseEntity.noContent().build();
     }

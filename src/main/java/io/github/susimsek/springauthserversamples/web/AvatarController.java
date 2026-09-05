@@ -4,6 +4,10 @@ import io.github.susimsek.springauthserversamples.config.openapi.OpenApiConfig;
 import io.github.susimsek.springauthserversamples.repository.UserAvatarRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.Duration;
@@ -29,13 +33,43 @@ public class AvatarController {
     private final UserRepository userRepository;
 
     @GetMapping("/avatars/{id}")
-    @Operation(summary = "Get public avatar")
+    @Operation(
+            summary = "Get public avatar",
+            description =
+                    "Returns a publicly addressable avatar when the supplied version matches the"
+                            + " stored image.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Avatar image returned.",
+            content =
+                    @Content(
+                            mediaType = "image/*",
+                            schema = @Schema(type = "string", format = "binary")))
+    @ApiResponse(
+            responseCode = "304",
+            description = "Avatar has not changed since the supplied ETag.")
+    @ApiResponse(
+            responseCode = "404",
+            description = "No avatar matches the identifier and version.")
     ResponseEntity<byte[]> avatar(
-            @PathVariable String id,
-            @RequestParam("v") long version,
+            @Parameter(
+                            description = "Public avatar identifier.",
+                            example = "user-avatar-123",
+                            required = true)
+                    @PathVariable
+                    String id,
+            @Parameter(
+                            description = "Avatar version from the URL returned by the API.",
+                            example = "1725438600000",
+                            required = true)
+                    @RequestParam("v")
+                    long version,
             @org.springframework.web.bind.annotation.RequestHeader(
                             value = HttpHeaders.IF_NONE_MATCH,
                             required = false)
+                    @Parameter(
+                            description = "Previously returned ETag for conditional requests.",
+                            example = "\"avatar-user-avatar-123-1725438600000\"")
                     String ifNoneMatch) {
         return userAvatarRepository
                 .findByPublicId(id)
@@ -53,13 +87,29 @@ public class AvatarController {
     }
 
     @GetMapping({"/account/avatar", "/api/account/avatar"})
-    @Operation(summary = "Get current user avatar")
+    @Operation(
+            summary = "Get current user avatar",
+            description = "Returns the authenticated user's private avatar image.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Avatar image returned.",
+            content =
+                    @Content(
+                            mediaType = "image/*",
+                            schema = @Schema(type = "string", format = "binary")))
+    @ApiResponse(
+            responseCode = "304",
+            description = "Avatar has not changed since the supplied ETag.")
+    @ApiResponse(responseCode = "404", description = "The authenticated user has no avatar.")
     @SecurityRequirement(name = OpenApiConfig.ACCOUNT_BEARER)
     ResponseEntity<byte[]> currentUserAvatar(
             Authentication authentication,
             @org.springframework.web.bind.annotation.RequestHeader(
                             value = HttpHeaders.IF_NONE_MATCH,
                             required = false)
+                    @Parameter(
+                            description = "Previously returned ETag for conditional requests.",
+                            example = "\"avatar-user-avatar-123-1725438600000\"")
                     String ifNoneMatch) {
         return userRepository
                 .findByUsername(authentication.getName())

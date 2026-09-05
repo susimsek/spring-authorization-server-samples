@@ -6,12 +6,14 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import io.github.susimsek.springauthserversamples.domain.OAuth2KeyEntity;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminKeyDTO;
+import io.github.susimsek.springauthserversamples.mapper.AdminKeyMapper;
 import io.github.susimsek.springauthserversamples.repository.OAuth2KeyRepository;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.util.Base64;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.factory.Mappers;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,11 +21,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
 public class KeyManagementService {
 
     private final OAuth2KeyRepository oauth2KeyRepository;
     private final AdminAuditEventService adminAuditEventService;
+    private final AdminKeyMapper adminKeyMapper;
+
+    public KeyManagementService(
+            OAuth2KeyRepository oauth2KeyRepository,
+            AdminAuditEventService adminAuditEventService) {
+        this(oauth2KeyRepository, adminAuditEventService, Mappers.getMapper(AdminKeyMapper.class));
+    }
 
     @Transactional(readOnly = true)
     public Page<AdminKeyDTO> keys(String query, Boolean active, Pageable pageable) {
@@ -33,7 +42,7 @@ public class KeyManagementService {
                         ? oauth2KeyRepository.findByKidContainingIgnoreCase(searchQuery, pageable)
                         : oauth2KeyRepository.findByKidContainingIgnoreCaseAndActive(
                                 searchQuery, active, pageable);
-        return keys.map(KeyManagementService::keyView);
+        return keys.map(adminKeyMapper::toDTO);
     }
 
     @Transactional
@@ -48,34 +57,22 @@ public class KeyManagementService {
                             .algorithm(JWSAlgorithm.RS256)
                             .keyID(kid)
                             .generate();
-            OAuth2KeyEntity entity = new OAuth2KeyEntity();
-            entity.setId(UUID.randomUUID().toString());
-            entity.setKid(kid);
-            entity.setType("RSA");
-            entity.setAlgorithm("RS256");
-            entity.setUse("sig");
-            entity.setActive(true);
-            entity.setPublicKey(
-                    Base64.getEncoder().encodeToString(key.toRSAPublicKey().getEncoded()));
-            entity.setPrivateKey(
-                    Base64.getEncoder().encodeToString(key.toRSAPrivateKey().getEncoded()));
+            OAuth2KeyEntity entity =
+                    adminKeyMapper.toEntity(
+                            UUID.randomUUID().toString(),
+                            kid,
+                            "RSA",
+                            "RS256",
+                            "sig",
+                            true,
+                            Base64.getEncoder().encodeToString(key.toRSAPublicKey().getEncoded()),
+                            Base64.getEncoder().encodeToString(key.toRSAPrivateKey().getEncoded()));
             OAuth2KeyEntity saved = oauth2KeyRepository.save(entity);
             adminAuditEventService.record("key.rotated", "key", saved.getId());
-            return keyView(saved);
+            return adminKeyMapper.toDTO(saved);
         } catch (Exception ex) {
             throw ApiException.serverError(
                     ApiErrorCode.KEY_ROTATION_FAILED, "Could not rotate the signing key", ex);
         }
-    }
-
-    private static AdminKeyDTO keyView(OAuth2KeyEntity key) {
-        return new AdminKeyDTO(
-                key.getId(),
-                key.getKid(),
-                key.getType(),
-                key.getAlgorithm(),
-                key.getUse(),
-                key.isActive(),
-                key.getCreatedAt());
     }
 }

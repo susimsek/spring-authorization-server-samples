@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "@/routing/Link";
 import { useSearchParams } from "@/routing/navigation";
+import { usePathname } from "@/routing/navigation";
 import { useState, type ReactNode } from "react";
 import { Alert, Button, Card, Form, Stack } from "react-bootstrap";
 import { useForm } from "react-hook-form";
@@ -11,6 +12,7 @@ import { z } from "zod";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { accountActionError, submitAccountAction } from "@/lib/account-actions-api";
+import { ActionIcon } from "@/components/shared/ActionIcon";
 
 type Props = { locale: Locale; dictionary: Dictionary };
 
@@ -75,6 +77,7 @@ export function ForgotPasswordForm({ locale, dictionary }: Props) {
             </Form.Control.Feedback>
           </Form.Group>
           <Button className="w-100" size="lg" type="submit" disabled={isSubmitting}>
+            <ActionIcon action="send" />
             {copy.send}
           </Button>
         </Form>
@@ -95,8 +98,8 @@ export function ResetPasswordForm({ dictionary }: Props) {
     .object({
       newPassword: z
         .string()
-        .min(8, dictionary.account.validation.password)
-        .max(200, dictionary.account.validation.max200),
+        .min(12, dictionary.account.validation.password)
+        .max(128, dictionary.account.validation.max200),
       confirmPassword: z.string(),
     })
     .refine((values) => values.newPassword === values.confirmPassword, {
@@ -160,6 +163,7 @@ export function ResetPasswordForm({ dictionary }: Props) {
               </Form.Control.Feedback>
             </Form.Group>
             <Button type="submit" size="lg" disabled={isSubmitting}>
+              <ActionIcon action="save" />
               {copy.reset}
             </Button>
           </Stack>
@@ -175,6 +179,7 @@ export function ResetPasswordForm({ dictionary }: Props) {
 export function VerifyEmailView({ dictionary }: Props) {
   const copy = dictionary.accountActions;
   const token = useSearchParams().get("token");
+  const action = usePathname().endsWith("/confirm-email") ? "confirm-email" : "verify-email";
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -184,7 +189,7 @@ export function VerifyEmailView({ dictionary }: Props) {
     setBusy(true);
     setError(null);
     try {
-      await submitAccountAction("verify-email", { token });
+      await submitAccountAction(action, { token });
       setDone(true);
       window.history.replaceState(null, "", window.location.pathname);
     } catch (failure) {
@@ -205,6 +210,7 @@ export function VerifyEmailView({ dictionary }: Props) {
           <p>{copy.verifyHelp}</p>
           {error && <Alert variant="danger">{error}</Alert>}
           <Button className="w-100" type="button" disabled={busy} onClick={() => void verify()}>
+            <ActionIcon action="verify" />
             {busy ? copy.verifyWorking : copy.verifyTitle}
           </Button>
         </>

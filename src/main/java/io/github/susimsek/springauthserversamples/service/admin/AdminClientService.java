@@ -3,6 +3,7 @@ package io.github.susimsek.springauthserversamples.service.admin;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminClientCreatedDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminClientDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminClientRequestDTO;
+import io.github.susimsek.springauthserversamples.mapper.AdminClientMapper;
 import io.github.susimsek.springauthserversamples.mapper.AuthorizationServerMapperSupport;
 import io.github.susimsek.springauthserversamples.mapper.RegisteredClientMapper;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationConsentRepository;
@@ -17,6 +18,7 @@ import java.util.HashMap;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.factory.Mappers;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -30,7 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
 public class AdminClientService {
 
     private static final String ADMIN_CONSOLE_CLIENT_ID = "admin-console";
@@ -45,6 +47,26 @@ public class AdminClientService {
     private final AuthorizationServerMapperSupport mapperSupport;
     private final PasswordEncoder passwordEncoder;
     private final AdminAuditEventService adminAuditEventService;
+    private final AdminClientMapper adminClientMapper;
+
+    public AdminClientService(
+            ClientRepository clientRepository,
+            AuthorizationRepository authorizationRepository,
+            AuthorizationConsentRepository authorizationConsentRepository,
+            RegisteredClientMapper registeredClientMapper,
+            AuthorizationServerMapperSupport mapperSupport,
+            PasswordEncoder passwordEncoder,
+            AdminAuditEventService adminAuditEventService) {
+        this(
+                clientRepository,
+                authorizationRepository,
+                authorizationConsentRepository,
+                registeredClientMapper,
+                mapperSupport,
+                passwordEncoder,
+                adminAuditEventService,
+                Mappers.getMapper(AdminClientMapper.class));
+    }
 
     @Transactional(readOnly = true)
     public Page<AdminClientDTO> findAll(String query, Pageable pageable) {
@@ -53,7 +75,7 @@ public class AdminClientService {
                 .findByClientIdContainingIgnoreCaseOrClientNameContainingIgnoreCase(
                         searchQuery, searchQuery, pageable)
                 .map(entity -> registeredClientMapper.toObject(entity, mapperSupport))
-                .map(AdminClientService::toView);
+                .map(adminClientMapper::toDTO);
     }
 
     @Transactional(readOnly = true)
@@ -61,7 +83,7 @@ public class AdminClientService {
         return clientRepository
                 .findById(id)
                 .map(entity -> registeredClientMapper.toObject(entity, mapperSupport))
-                .map(AdminClientService::toView)
+                .map(adminClientMapper::toDTO)
                 .orElse(null);
     }
 
@@ -92,9 +114,9 @@ public class AdminClientService {
                                 null)
                         .build();
 
-        AdminClientDTO saved = toView(save(client));
+        AdminClientDTO saved = adminClientMapper.toDTO(save(client));
         adminAuditEventService.record("client.created", "client", saved.id());
-        return new AdminClientCreatedDTO(saved, rawSecret);
+        return adminClientMapper.toCreatedDTO(saved, rawSecret);
     }
 
     @Transactional
@@ -128,7 +150,7 @@ public class AdminClientService {
         }
 
         RegisteredClient updated = apply(builder, request, existing).build();
-        AdminClientDTO saved = toView(save(updated));
+        AdminClientDTO saved = adminClientMapper.toDTO(save(updated));
         adminAuditEventService.record("client.updated", "client", saved.id());
         return saved;
     }
@@ -417,28 +439,5 @@ public class AdminClientService {
     private static String generateSecret() {
         return UUID.randomUUID().toString().replace("-", "")
                 + UUID.randomUUID().toString().replace("-", "");
-    }
-
-    private static AdminClientDTO toView(RegisteredClient client) {
-        return new AdminClientDTO(
-                client.getId(),
-                client.getClientId(),
-                client.getClientName(),
-                client.getClientIdIssuedAt(),
-                client.getClientSecretExpiresAt(),
-                client.getClientAuthenticationMethods().stream()
-                        .map(ClientAuthenticationMethod::getValue)
-                        .collect(java.util.stream.Collectors.toUnmodifiableSet()),
-                client.getAuthorizationGrantTypes().stream()
-                        .map(AuthorizationGrantType::getValue)
-                        .collect(java.util.stream.Collectors.toUnmodifiableSet()),
-                client.getRedirectUris(),
-                client.getPostLogoutRedirectUris(),
-                client.getScopes(),
-                client.getClientSettings().isRequireAuthorizationConsent(),
-                client.getClientSettings().isRequireProofKey(),
-                client.getTokenSettings().getAuthorizationCodeTimeToLive(),
-                client.getTokenSettings().getAccessTokenTimeToLive(),
-                client.getTokenSettings().getRefreshTokenTimeToLive());
     }
 }

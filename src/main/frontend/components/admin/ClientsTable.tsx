@@ -35,7 +35,7 @@ export function ClientsTable({ dictionary }: { locale: Locale; dictionary: Dicti
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const { clearFilters, page, query, setPage, setQuery, setSize, setSort, size, sort } =
-    useAdminTableState(20, false, "clientId,asc");
+    useAdminTableState(10, false, "clientId,asc");
   useEffect(() => {
     if (!accessToken) return;
     adminRequest<PageResponse<AdminClient>>(accessToken, {

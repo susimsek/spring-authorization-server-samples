@@ -116,6 +116,21 @@ describe("ClientForm", () => {
     expect(await screen.findAllByText(dictionary.admin.common.validation.required)).toHaveLength(2);
   });
 
+  it("returns to the first invalid step when saving from the final step", async () => {
+    render(<ClientForm dictionary={dictionary} locale="en" mode="create" />);
+    advanceCreateStep();
+    advanceCreateStep();
+    fireEvent.change(document.querySelector('textarea[name="redirectUris"]')!, {
+      target: { value: "https://app.example/callback" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.save }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /1 General settings/ })).toHaveClass("active"),
+    );
+    expect(screen.getAllByText(dictionary.admin.common.validation.required)).toHaveLength(2);
+  });
+
   it("routes directly after creating a client without a secret", async () => {
     mockAdminRequest.mockResolvedValue({
       status: 201,

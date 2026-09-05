@@ -3,6 +3,9 @@ package io.github.susimsek.springauthserversamples.web.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.susimsek.springauthserversamples.dto.admin.AdminClientRequestDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminClientScopeAssignmentRequestDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupRolesRequestDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminRequiredActionRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminUserRequestDTO;
 import io.github.susimsek.springauthserversamples.web.admin.validation.CreateValidation;
 import io.github.susimsek.springauthserversamples.web.admin.validation.UpdateValidation;
@@ -52,5 +55,30 @@ class AdminRequestValidationTest {
                 new AdminUserRequestDTO("user", "", true, Set.of("ROLE_USER"));
 
         assertThat(validator.validate(request, UpdateValidation.class)).isEmpty();
+    }
+
+    @Test
+    void rejectsOversizedRequiredActionFields() {
+        AdminRequiredActionRequestDTO request =
+                new AdminRequiredActionRequestDTO(
+                        "x".repeat(201), "x".repeat(1001), true, false, 1, 0, "x".repeat(4001));
+
+        assertThat(validator.validate(request))
+                .extracting(violation -> violation.getPropertyPath().toString())
+                .contains("displayName", "description", "configuration");
+    }
+
+    @Test
+    void rejectsBlankRoleAndScopeAssignments() {
+        AdminGroupRolesRequestDTO roles = new AdminGroupRolesRequestDTO(Set.of(""));
+        AdminClientScopeAssignmentRequestDTO scopes =
+                new AdminClientScopeAssignmentRequestDTO(Set.of(""), Set.of("profile"));
+
+        assertThat(validator.validate(roles))
+                .extracting(violation -> violation.getPropertyPath().toString())
+                .contains("roles[].<iterable element>");
+        assertThat(validator.validate(scopes))
+                .extracting(violation -> violation.getPropertyPath().toString())
+                .contains("defaultScopes[].<iterable element>");
     }
 }

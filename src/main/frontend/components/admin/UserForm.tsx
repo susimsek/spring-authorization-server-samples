@@ -30,6 +30,11 @@ type User = {
   email: string | null;
   emailVerified: boolean;
   enabled: boolean;
+  locked: boolean;
+  lockedUntil: string | null;
+  failedLoginCount: number;
+  mustChangePassword: boolean;
+  temporaryPassword: boolean;
   avatarUrl: string | null;
   authorities: string[];
   createdAt: string;
@@ -74,9 +79,17 @@ export function UserForm({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [createdAt, setCreatedAt] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [securityState, setSecurityState] = useState({
+    locked: false,
+    lockedUntil: null as string | null,
+    failedLoginCount: 0,
+    mustChangePassword: false,
+    temporaryPassword: false,
+  });
   const [avatarSaving, setAvatarSaving] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [showAvatarDeleteConfirm, setShowAvatarDeleteConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [loading, setLoading] = useState(editing);
   const [saving, setSaving] = useState(false);
   const actionForm = useForm<{
@@ -93,6 +106,7 @@ export function UserForm({
   });
   const [actionError, setActionError] = useState(false);
   const [actionSent, setActionSent] = useState(false);
+  const [impersonationBusy, setImpersonationBusy] = useState(false);
   const [error, setError] = useState(false);
   const activeTab = USER_DETAIL_TABS.includes(tab as (typeof USER_DETAIL_TABS)[number])
     ? tab
@@ -110,8 +124,8 @@ export function UserForm({
       ? z
           .string()
           .max(200, validation.max200)
-          .refine((value) => value === "" || value.length >= 8, validation.password)
-      : z.string().min(8, validation.password).max(200, validation.max200),
+          .refine((value) => value === "" || value.length >= 12, validation.password)
+      : z.string().min(12, validation.password).max(128, validation.max200),
     enabled: z.boolean(),
     roles: z.array(z.string()).min(1, validation.roles),
   });
@@ -155,10 +169,37 @@ export function UserForm({
         setAvatarUrl(response.data.avatarUrl);
         setCreatedAt(response.data.createdAt);
         setUpdatedAt(response.data.updatedAt);
+        setSecurityState({
+          locked: response.data.locked,
+          lockedUntil: response.data.lockedUntil,
+          failedLoginCount: response.data.failedLoginCount,
+          mustChangePassword: response.data.mustChangePassword,
+          temporaryPassword: response.data.temporaryPassword,
+        });
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [accessToken, editing, id, reset]);
+
+  const unlockUser = async () => {
+    if (!accessToken || !id) return;
+    setError(false);
+    try {
+      const response = await adminRequest(accessToken, {
+        url: `/api/admin/users/${encodeURIComponent(id)}/unlock`,
+        method: "POST",
+      });
+      if (response.status >= 300) throw new Error();
+      setSecurityState((state) => ({
+        ...state,
+        locked: false,
+        lockedUntil: null,
+        failedLoginCount: 0,
+      }));
+    } catch {
+      setError(true);
+    }
+  };
 
   useEffect(() => {
     if (!accessToken) return;
@@ -259,6 +300,22 @@ export function UserForm({
     }
   });
 
+  const impersonate = async () => {
+    if (!accessToken || !id || impersonationBusy) return;
+    setImpersonationBusy(true);
+    try {
+      const response = await adminRequest<{ url: string }>(accessToken, {
+        url: `/api/admin/users/${encodeURIComponent(id)}/impersonation`,
+        method: "POST",
+      });
+      if (response.status >= 300) throw new Error();
+      window.location.assign(response.data.url);
+    } catch {
+      setError(true);
+      setImpersonationBusy(false);
+    }
+  };
+
   const submit = async (values: UserFormValues) => {
     if (!accessToken) return;
     setSaving(true);
@@ -306,11 +363,61 @@ export function UserForm({
           throw new Error();
         }
       }
+      if (editing && typeof response.data.enabled === "boolean") {
+        setValue("enabled", response.data.enabled, { shouldDirty: false });
+        setSecurityState((state) => ({
+          ...state,
+          locked: response.data.locked ?? state.locked,
+          lockedUntil: response.data.lockedUntil ?? state.lockedUntil,
+          failedLoginCount: response.data.failedLoginCount ?? state.failedLoginCount,
+          mustChangePassword: response.data.mustChangePassword ?? state.mustChangePassword,
+          temporaryPassword: response.data.temporaryPassword ?? state.temporaryPassword,
+        }));
+      }
       router.push(editing && id ? `/admin/users/${encodeURIComponent(id)}/${tab}` : `/admin/users`);
     } catch {
       setError(true);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const toggleEnabled = async () => {
+    if (!editing || !accessToken || !id || !access?.manageUsers || saving) return;
+    const nextEnabled = !enabled;
+    setSaving(true);
+    setError(false);
+    try {
+      const response = await adminRequest(accessToken, {
+        url: `/api/admin/users/${encodeURIComponent(id)}/enabled`,
+        method: "PUT",
+        data: { enabled: nextEnabled },
+      });
+      if (response.status >= 300) throw new Error();
+      setValue("enabled", nextEnabled, { shouldDirty: false });
+    } catch {
+      setError(true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteUser = async () => {
+    if (!accessToken || !id) return;
+    setSaving(true);
+    setError(false);
+    try {
+      const response = await adminRequest(accessToken, {
+        url: `/api/admin/users/${encodeURIComponent(id)}`,
+        method: "DELETE",
+      });
+      if (response.status >= 300) throw new Error();
+      router.push("/admin/users");
+    } catch {
+      setError(true);
+    } finally {
+      setSaving(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -342,6 +449,37 @@ export function UserForm({
               <h1 className="h3 mb-1">{getValues("username")}</h1>
               <div className="text-body-secondary">{copy.user}</div>
             </div>
+            {access?.manageUsers && (
+              <div className="d-flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="info"
+                  disabled={impersonationBusy}
+                  onClick={() => void impersonate()}
+                >
+                  <AdminActionIcon action="impersonate" />
+                  {impersonationBusy ? dictionary.admin.common.saving : copy.impersonate}
+                </Button>
+                <Button
+                  type="button"
+                  variant={enabled ? "warning" : "success"}
+                  disabled={saving}
+                  onClick={() => void toggleEnabled()}
+                >
+                  <AdminActionIcon action={enabled ? "disable" : "enable"} />
+                  {enabled ? copy.disable : copy.enable}
+                </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  disabled={saving}
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  <AdminActionIcon action="delete" />
+                  {copy.delete}
+                </Button>
+              </div>
+            )}
           </div>
           <DetailTabs tabs={userTabs} active={activeTab} />
         </div>
@@ -436,7 +574,8 @@ export function UserForm({
                     <div className="fw-semibold">{getValues("username")}</div>
                     <div className="small text-body-secondary">{copy.avatarHelp}</div>
                   </div>
-                  <label className="btn btn-sm btn-outline-primary mb-0">
+                  <label className="btn btn-sm btn-primary mb-0">
+                    <AdminActionIcon action="upload" />
                     {copy.uploadAvatar}
                     <input
                       className="visually-hidden"
@@ -449,7 +588,7 @@ export function UserForm({
                   {avatarUrl && (
                     <Button
                       size="sm"
-                      variant="outline-danger"
+                      variant="danger"
                       disabled={avatarSaving}
                       onClick={() => setShowAvatarDeleteConfirm(true)}
                       type="button"
@@ -465,6 +604,26 @@ export function UserForm({
                   {avatarError}
                 </Alert>
               )}
+              <div className="account-metadata-panel d-flex flex-wrap align-items-center gap-3">
+                <div>
+                  <div className="fw-semibold">{copy.securityStatus}</div>
+                  <div className="small text-body-secondary">
+                    {securityState.locked ? copy.locked : copy.unlocked} · {copy.failedLogins}:{" "}
+                    {securityState.failedLoginCount}
+                    {securityState.lockedUntil &&
+                      ` · ${new Date(securityState.lockedUntil).toLocaleString(locale)}`}
+                  </div>
+                  {(securityState.mustChangePassword || securityState.temporaryPassword) && (
+                    <div className="small text-warning">{copy.passwordChangeRequired}</div>
+                  )}
+                </div>
+                {securityState.locked && access?.manageUsers && (
+                  <Button type="button" variant="primary" onClick={() => void unlockUser()}>
+                    <AdminActionIcon action="unlock" />
+                    {copy.unlock}
+                  </Button>
+                )}
+              </div>
               <Form.Group>
                 <Form.Label>{copy.username}</Form.Label>
                 <Form.Control isInvalid={Boolean(errors.username)} {...register("username")} />
@@ -552,10 +711,11 @@ export function UserForm({
                 <div>
                   <Button
                     type="button"
-                    variant="outline-primary"
+                    variant="primary"
                     disabled={actionForm.formState.isSubmitting}
                     onClick={() => void sendActionEmail()}
                   >
+                    <AdminActionIcon action="send" />
                     {actionForm.formState.isSubmitting
                       ? dictionary.admin.common.saving
                       : copy.sendActionEmail}
@@ -626,11 +786,8 @@ export function UserForm({
 
         {(!editing || ["details", "credentials", "roles"].includes(activeTab)) && (
           <div className={`admin-create-actions${editing ? " mt-3" : ""}`}>
-            <Button
-              type="button"
-              variant="outline-secondary"
-              onClick={() => router.push(`/admin/users`)}
-            >
+            <Button type="button" variant="secondary" onClick={() => router.push(`/admin/users`)}>
+              <AdminActionIcon action="cancel" />
               {dictionary.admin.common.cancel}
             </Button>
             <Button type="submit" disabled={saving}>
@@ -651,6 +808,15 @@ export function UserForm({
           void removeAvatar();
         }}
         show={showAvatarDeleteConfirm}
+      />
+      <ConfirmModal
+        busy={saving}
+        cancelLabel={dictionary.admin.common.cancel}
+        confirmLabel={copy.delete}
+        message={copy.deleteUserConfirm}
+        onCancel={() => setShowDeleteConfirm(false)}
+        onConfirm={() => void deleteUser()}
+        show={showDeleteConfirm}
       />
     </>
   );

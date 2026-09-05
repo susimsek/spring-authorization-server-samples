@@ -22,6 +22,11 @@ public class SessionInvalidationService {
     }
 
     @Transactional
+    public void invalidateAuthorizations(String sessionId) {
+        authorizationRepository.deleteBySessionId(sessionId);
+    }
+
+    @Transactional
     public void invalidateSessions(Collection<String> sessionIds) {
         if (sessionIds.isEmpty()) {
             return;

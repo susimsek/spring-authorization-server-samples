@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Card } from "react-bootstrap";
 import { useTranslation } from "react-i18next";
 import Link from "@/routing/Link";
+import { ActionIcon } from "@/components/shared/ActionIcon";
 
 /** Shared by Next's exported 404 and the browser router's unmatched routes. */
 export function NotFoundView() {
@@ -20,9 +21,11 @@ export function NotFoundView() {
         <p className="text-body-secondary mb-4">{t("error.types.not_found.description")}</p>
         <div className="d-flex flex-wrap justify-content-center gap-2">
           <Link href="/" className="btn btn-primary">
+            <ActionIcon action="back" />
             {t("error.backToHome")}
           </Link>
-          <Link href="/account/" className="btn btn-outline-secondary">
+          <Link href="/account/" className="btn btn-secondary">
+            <ActionIcon action="view" />
             {t("error.openAccount")}
           </Link>
         </div>

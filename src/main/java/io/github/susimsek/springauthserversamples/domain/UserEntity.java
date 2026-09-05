@@ -14,6 +14,7 @@ import jakarta.persistence.NamedEntityGraphs;
 import jakarta.persistence.NamedSubgraph;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -69,11 +70,38 @@ public class UserEntity extends AuditableEntity {
     @Column(name = "email", length = 200)
     private String email;
 
+    @Column(name = "pending_email", length = 200)
+    private String pendingEmail;
+
     @Column(name = "email_verified", nullable = false)
     private boolean emailVerified;
 
     @Column(name = "enabled", nullable = false)
     private boolean enabled;
+
+    @Column(name = "password_changed_at")
+    private Instant passwordChangedAt;
+
+    @Column(name = "must_change_password", nullable = false)
+    private boolean mustChangePassword;
+
+    @Column(name = "temporary_password", nullable = false)
+    private boolean temporaryPassword;
+
+    @Column(name = "failed_login_count", nullable = false)
+    private int failedLoginCount;
+
+    @Column(name = "last_failed_login_at")
+    private Instant lastFailedLoginAt;
+
+    @Column(name = "locked_until")
+    private Instant lockedUntil;
+
+    @Column(name = "temporary_lockout_count", nullable = false)
+    private int temporaryLockoutCount;
+
+    @Column(name = "permanently_locked", nullable = false)
+    private boolean permanentlyLocked;
 
     @ManyToMany
     @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)

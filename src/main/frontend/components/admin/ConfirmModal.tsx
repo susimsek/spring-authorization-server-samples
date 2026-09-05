@@ -2,6 +2,8 @@
 
 import { Button, Modal } from "react-bootstrap";
 
+import { ActionIcon } from "@/components/shared/ActionIcon";
+
 export function ConfirmModal({
   show,
   message,
@@ -24,9 +26,11 @@ export function ConfirmModal({
       <Modal.Body>{message}</Modal.Body>
       <Modal.Footer>
         <Button disabled={busy} onClick={onCancel} type="button" variant="secondary">
+          <ActionIcon action="cancel" />
           {cancelLabel}
         </Button>
         <Button disabled={busy} onClick={onConfirm} type="button" variant="danger">
+          <ActionIcon action="check" />
           {confirmLabel}
         </Button>
       </Modal.Footer>

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Alert, Button, Card, Col, Form, Row } from "react-bootstrap";
 import { useRouter } from "@/routing/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { z } from "zod";
 
 import type { Locale } from "@/i18n/config";
@@ -39,8 +39,8 @@ type ClientScopeOption = {
 type FormState = {
   clientId: string;
   clientName: string;
-  clientAuthenticationMethods: string[];
-  authorizationGrantTypes: string[];
+  clientAuthenticationMethods: (typeof METHODS)[number][];
+  authorizationGrantTypes: (typeof GRANTS)[number][];
   redirectUris: string;
   postLogoutRedirectUris: string;
   scopes: string;
@@ -66,16 +66,26 @@ const EMPTY: FormState = {
   refreshTokenTimeToLive: "PT1H",
 };
 
-const METHODS = ["client_secret_basic", "client_secret_post", "none"];
-const GRANTS = ["authorization_code", "refresh_token", "client_credentials"];
+const METHODS = ["client_secret_basic", "client_secret_post", "none"] as const;
+const GRANTS = ["authorization_code", "refresh_token", "client_credentials"] as const;
+const CLIENT_FORM_STEP_FIELDS: (keyof FormState)[][] = [
+  ["clientId", "clientName"],
+  [
+    "clientAuthenticationMethods",
+    "authorizationGrantTypes",
+    "requireAuthorizationConsent",
+    "requireProofKey",
+  ],
+  ["redirectUris", "postLogoutRedirectUris", "scopes"],
+];
 const clientSchema = (validation: Dictionary["admin"]["common"]["validation"]) =>
   z
     .object({
       clientId: z.string().trim().min(1, validation.required).max(100, validation.max100),
       clientName: z.string().trim().min(1, validation.required).max(200, validation.max200),
       scopes: z.string().trim().min(1, validation.scope),
-      clientAuthenticationMethods: z.array(z.string()).min(1, validation.selection),
-      authorizationGrantTypes: z.array(z.string()).min(1, validation.selection),
+      clientAuthenticationMethods: z.array(z.enum(METHODS)).min(1, validation.selection),
+      authorizationGrantTypes: z.array(z.enum(GRANTS)).min(1, validation.selection),
       redirectUris: z
         .string()
         .refine((value) => lines(value).every(isValidAbsoluteUri), validation.uri),
@@ -232,8 +242,10 @@ export function ClientForm({
         reset({
           clientId: client.clientId,
           clientName: client.clientName,
-          clientAuthenticationMethods: client.clientAuthenticationMethods,
-          authorizationGrantTypes: client.authorizationGrantTypes,
+          clientAuthenticationMethods:
+            client.clientAuthenticationMethods as FormState["clientAuthenticationMethods"],
+          authorizationGrantTypes:
+            client.authorizationGrantTypes as FormState["authorizationGrantTypes"],
           redirectUris: client.redirectUris.join("\n"),
           postLogoutRedirectUris: client.postLogoutRedirectUris.join("\n"),
           scopes: client.scopes.join(" "),
@@ -252,12 +264,11 @@ export function ClientForm({
     field: "clientAuthenticationMethods" | "authorizationGrantTypes",
     value: string,
   ) => {
-    const selected = getValues(field);
-    setValue(
-      field,
-      selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value],
-      { shouldDirty: true, shouldValidate: true },
-    );
+    const selected = getValues(field) as string[];
+    const next = selected.includes(value)
+      ? selected.filter((item) => item !== value)
+      : [...selected, value];
+    setValue(field, next as FormState[typeof field], { shouldDirty: true, shouldValidate: true });
   };
 
   const toggleScope = (scope: string) => {
@@ -351,6 +362,15 @@ export function ClientForm({
     }
   };
 
+  const handleInvalid = (formErrors: FieldErrors<FormState>) => {
+    if (mode !== "create") return;
+    const firstInvalidField = Object.keys(formErrors)[0] as keyof FormState | undefined;
+    const invalidStep = firstInvalidField
+      ? CLIENT_FORM_STEP_FIELDS.findIndex((fields) => fields.includes(firstInvalidField))
+      : -1;
+    if (invalidStep >= 0) setStep(invalidStep);
+  };
+
   if (missingId) {
     return <ErrorState message={dictionary.admin.clients.notFound} />;
   }
@@ -368,7 +388,7 @@ export function ClientForm({
   return (
     <Form
       className={mode === "create" ? "admin-create-form" : undefined}
-      onSubmit={handleSubmit(submit)}
+      onSubmit={handleSubmit(submit, handleInvalid)}
     >
       {error && (
         <Alert variant="danger">{errorMessage ?? dictionary.admin.clients.saveError}</Alert>
@@ -597,7 +617,7 @@ export function ClientForm({
         className={`admin-create-actions${mode === "create" ? " admin-create-wizard-actions" : ""}`}
       >
         <Button
-          variant="outline-secondary"
+          variant="secondary"
           type="button"
           onClick={() =>
             mode === "create" && step > 0
@@ -609,10 +629,18 @@ export function ClientForm({
                 )
           }
         >
+          <AdminActionIcon action={mode === "create" && step > 0 ? "back" : "cancel"} />
           {mode === "create" && step > 0 ? backLabel : dictionary.admin.common.cancel}
         </Button>
         {mode === "create" && step < 2 ? (
-          <Button type="button" onClick={() => setStep(step + 1)}>
+          <Button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              setStep((current) => current + 1);
+            }}
+          >
+            <AdminActionIcon action="next" />
             {nextLabel}
           </Button>
         ) : (

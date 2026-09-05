@@ -282,7 +282,7 @@ export function RoleDetail({
                 </Badge>
               </td>
               <td className="text-end">
-                <Button size="sm" variant="outline-danger" onClick={() => void remove(user)}>
+                <Button size="sm" variant="danger" onClick={() => void remove(user)}>
                   <AdminActionIcon action="remove" />
                   {dictionary.admin.roles.remove}
                 </Button>

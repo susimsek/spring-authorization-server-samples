@@ -5,6 +5,7 @@ import io.github.susimsek.springauthserversamples.dto.admin.AdminClientScopeAssi
 import io.github.susimsek.springauthserversamples.dto.admin.AdminClientScopeDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminClientScopeRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminScopeAssignmentsDTO;
+import io.github.susimsek.springauthserversamples.mapper.AdminClientScopeMapper;
 import io.github.susimsek.springauthserversamples.mapper.AuthorizationServerMapperSupport;
 import io.github.susimsek.springauthserversamples.mapper.RegisteredClientMapper;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.factory.Mappers;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,7 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
 public class AdminClientScopeService {
 
     private final ClientScopeRepository clientScopeRepository;
@@ -33,13 +35,29 @@ public class AdminClientScopeService {
     private final RegisteredClientMapper registeredClientMapper;
     private final AuthorizationServerMapperSupport mapperSupport;
     private final AdminAuditEventService adminAuditEventService;
+    private final AdminClientScopeMapper adminClientScopeMapper;
+
+    public AdminClientScopeService(
+            ClientScopeRepository clientScopeRepository,
+            ClientRepository clientRepository,
+            RegisteredClientMapper registeredClientMapper,
+            AuthorizationServerMapperSupport mapperSupport,
+            AdminAuditEventService adminAuditEventService) {
+        this(
+                clientScopeRepository,
+                clientRepository,
+                registeredClientMapper,
+                mapperSupport,
+                adminAuditEventService,
+                Mappers.getMapper(AdminClientScopeMapper.class));
+    }
 
     @Transactional(readOnly = true)
     public Page<AdminClientScopeDTO> findAll(String query, Pageable pageable) {
         String q = query == null ? "" : query.trim();
         return clientScopeRepository
                 .findByNameContainingIgnoreCaseOrDisplayNameContainingIgnoreCase(q, q, pageable)
-                .map(AdminClientScopeService::toDTO);
+                .map(adminClientScopeMapper::toDTO);
     }
 
     @Transactional(readOnly = true)
@@ -47,8 +65,13 @@ public class AdminClientScopeService {
         return clientScopeRepository
                 .findAll(org.springframework.data.domain.Sort.by("name"))
                 .stream()
-                .map(AdminClientScopeService::toDTO)
+                .map(adminClientScopeMapper::toDTO)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public AdminClientScopeDTO findOne(String id) {
+        return adminClientScopeMapper.toDTO(required(id));
     }
 
     @Transactional
@@ -58,14 +81,15 @@ public class AdminClientScopeService {
             throw ApiException.conflict(
                     ApiErrorCode.CLIENT_SCOPE_DUPLICATE, "Client scope already exists");
         }
-        ClientScopeEntity entity = new ClientScopeEntity();
-        entity.setId(UUID.randomUUID().toString());
-        entity.setName(name);
-        entity.setDisplayName(trimToNull(request.displayName()));
-        entity.setDescription(trimToNull(request.description()));
+        ClientScopeEntity entity =
+                adminClientScopeMapper.toEntity(
+                        UUID.randomUUID().toString(),
+                        name,
+                        trimToNull(request.displayName()),
+                        trimToNull(request.description()));
         ClientScopeEntity saved = clientScopeRepository.save(entity);
         adminAuditEventService.record("client-scope.created", "client-scope", saved.getId());
-        return toDTO(saved);
+        return adminClientScopeMapper.toDTO(saved);
     }
 
     @Transactional
@@ -87,12 +111,11 @@ public class AdminClientScopeService {
         if (!entity.getName().equals(name)) {
             renameAssignedScope(entity.getName(), name);
         }
-        entity.setName(name);
-        entity.setDisplayName(trimToNull(request.displayName()));
-        entity.setDescription(trimToNull(request.description()));
+        adminClientScopeMapper.update(
+                name, trimToNull(request.displayName()), trimToNull(request.description()), entity);
         ClientScopeEntity saved = clientScopeRepository.save(entity);
         adminAuditEventService.record("client-scope.updated", "client-scope", id);
-        return toDTO(saved);
+        return adminClientScopeMapper.toDTO(saved);
     }
 
     @Transactional
@@ -119,7 +142,7 @@ public class AdminClientScopeService {
         Set<String> defaults = ClientScopeSettings.defaultScopes(client);
         Set<String> optional = ClientScopeSettings.optionalScopes(client);
         List<AdminClientScopeDTO> scopes = findAll();
-        return new AdminScopeAssignmentsDTO(defaults, optional, scopes);
+        return adminClientScopeMapper.toAssignmentsDTO(defaults, optional, scopes);
     }
 
     @Transactional
@@ -162,7 +185,7 @@ public class AdminClientScopeService {
         RegisteredClient updated = builder.build();
         clientRepository.save(registeredClientMapper.toEntity(updated, mapperSupport));
         adminAuditEventService.record("client.scopes.updated", "client", clientId);
-        return new AdminScopeAssignmentsDTO(defaults, optional, findAll());
+        return adminClientScopeMapper.toAssignmentsDTO(defaults, optional, findAll());
     }
 
     private void renameAssignedScope(String oldName, String newName) {
@@ -248,15 +271,5 @@ public class AdminClientScopeService {
 
     private static String trimToNull(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
-    }
-
-    private static AdminClientScopeDTO toDTO(ClientScopeEntity entity) {
-        return new AdminClientScopeDTO(
-                entity.getId(),
-                entity.getName(),
-                entity.getDisplayName(),
-                entity.getDescription(),
-                entity.getCreatedAt(),
-                entity.getUpdatedAt());
     }
 }

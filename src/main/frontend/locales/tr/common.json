@@ -19,8 +19,11 @@
     "hidePassword": "Şifreyi gizle",
     "submit": "Giriş yap",
     "forgotPassword": "Parolanızı mı unuttunuz?",
+    "rememberMe": "Beni hatırla",
+    "register": "Hesap oluştur",
     "invalidCredentials": "Kullanıcı adı veya şifre hatalı.",
-    "loggedOut": "Başarıyla çıkış yaptınız."
+    "loggedOut": "Başarıyla çıkış yaptınız.",
+    "accountDeleted": "Hesabınız başarıyla silindi."
   },
   "accountActions": {
     "forgotTitle": "Parolanızı sıfırlayın",
@@ -44,6 +47,49 @@
     "cooldown": "Yeni bir e-posta göndermeden önce 30 saniye bekleyin.",
     "operationError": "İşlem tamamlanamadı. Lütfen tekrar deneyin.",
     "verifyHelp": "Bu e-posta adresini doğrulamak istediğinizi onaylayın."
+  },
+  "requiredActions": {
+    "eyebrow": "Gerekli işlem",
+    "loading": "Gerekli işlemler yükleniyor…",
+    "saving": "Kaydediliyor…",
+    "continue": "Devam et",
+    "accept": "Kabul et ve devam et",
+    "emailPending": "Devam etmeden önce yeni e-posta adresinize gelen onay bağlantısını açın.",
+    "error": "Gerekli işlem yüklenemedi veya tamamlanamadı.",
+    "required": "Bu alan zorunludur.",
+    "email": "Geçerli bir e-posta adresi girin.",
+    "firstName": "Ad",
+    "lastName": "Soyad",
+    "emailLabel": "E-posta",
+    "password": "Yeni parola",
+    "confirmPassword": "Yeni parolayı doğrulayın",
+    "passwordHelp": "En az 12 karakter; büyük harf, küçük harf, rakam ve sembol kullanın.",
+    "passwordMismatch": "Parolalar eşleşmiyor."
+  },
+  "registration": {
+    "eyebrow": "Yeni hesap",
+    "title": "Hesabınızı oluşturun",
+    "subtitle": "Yetkilendirme sunucusunu kullanmak için kayıt olun.",
+    "username": "Kullanıcı adı",
+    "firstName": "Ad",
+    "lastName": "Soyad",
+    "email": "E-posta",
+    "password": "Parola",
+    "confirmPassword": "Parolayı doğrulayın",
+    "submit": "Hesap oluştur",
+    "creating": "Hesap oluşturuluyor…",
+    "created": "Hesabınız oluşturuldu. Şimdi giriş yapabilirsiniz.",
+    "backToLogin": "Girişe dön",
+    "validation": {
+      "required": "Bu alan zorunludur.",
+      "email": "Geçerli bir e-posta adresi girin.",
+      "max100": "En fazla 100 karakter kullanın.",
+      "max200": "En fazla 200 karakter kullanın.",
+      "password": "Parola en az 12 karakter olmalı; büyük harf, küçük harf, rakam ve sembol içermelidir.",
+      "passwordMismatch": "Parolalar eşleşmiyor.",
+      "usernameDuplicate": "Bu kullanıcı adı zaten kayıtlı.",
+      "emailDuplicate": "Bu e-posta zaten kayıtlı."
+    }
   },
   "theme": {
     "label": "Tema",
@@ -143,7 +189,7 @@
     }
   },
   "admin": {
-    "product": "Authorization Server Yönetimi",
+    "product": "Admin Console",
     "manage": "Yönetim",
     "nav": {
       "dashboard": "Genel Bakış",
@@ -156,7 +202,10 @@
       "keys": "Anahtarlar",
       "events": "Olaylar",
       "clientScopes": "İstemci scope’ları",
-      "serverInfo": "Sunucu bilgisi"
+      "serverInfo": "Sunucu bilgisi",
+      "settings": "Ayarlar",
+      "loginSettings": "Giriş ayarları",
+      "emailSettings": "E-posta ayarları"
     },
     "dashboard": {
       "title": "Genel Bakış",
@@ -202,11 +251,56 @@
       "configurationError": "OpenID yapılandırması yüklenemedi.",
       "jwksError": "JWKS belgesi yüklenemedi."
     },
+    "loginSettings": {
+      "title": "Giriş ayarları",
+      "subtitle": "Genel giriş sayfasında görünecek hesap seçeneklerini yönetin.",
+      "userRegistration": "Kullanıcı kaydı",
+      "userRegistrationHelp": "Ziyaretçilerin yeni hesap oluşturmasına izin verin.",
+      "forgotPassword": "Şifremi unuttum",
+      "forgotPasswordHelp": "Kullanıcıların şifre sıfırlama e-postası istemesine izin verin.",
+      "rememberMe": "Beni hatırla",
+      "rememberMeHelp": "Beni hatırla kutusunu gösterin ve seçilen oturumları açık tutun.",
+      "loginWithEmail": "E-posta ile giriş",
+      "loginWithEmailHelp": "Kullanıcıların e-posta adresiyle giriş yapmasına izin verin.",
+      "verifyEmail": "E-posta doğrulama",
+      "verifyEmailHelp": "Yeni hesaplar için doğrulanmış e-posta adresi isteyin.",
+      "sessionTimeout": "Oturum zaman aşımı (dakika)",
+      "passwordMinimumLength": "Minimum parola uzunluğu",
+      "bruteForceEnabled": "Brute-force koruması",
+      "bruteForceMaxFailures": "Maksimum başarısız giriş",
+      "save": "Ayarları kaydet",
+      "saving": "Kaydediliyor…",
+      "saved": "Giriş ayarları kaydedildi.",
+      "loading": "Giriş ayarları yükleniyor…",
+      "error": "Giriş ayarları yüklenemedi veya kaydedilemedi."
+    },
+    "emailSettings": {
+      "title": "E-posta ayarları",
+      "subtitle": "Doğrulama ve parola sıfırlama e-postaları için SMTP gönderimini yapılandırın.",
+      "enabled": "E-posta gönderimini etkinleştir",
+      "fromAddress": "Gönderen adresi",
+      "baseUrl": "Uygulama URL’si",
+      "host": "SMTP sunucusu",
+      "port": "SMTP portu",
+      "username": "Kullanıcı adı",
+      "password": "Parola",
+      "passwordConfigured": "Parola zaten yapılandırılmış",
+      "smtpAuth": "SMTP kimlik doğrulaması",
+      "starttls": "StartTLS",
+      "ssl": "SSL/TLS",
+      "save": "E-posta ayarlarını kaydet",
+      "saving": "Kaydediliyor…",
+      "saved": "E-posta ayarları kaydedildi.",
+      "loading": "E-posta ayarları yükleniyor…",
+      "error": "E-posta ayarları yüklenemedi veya kaydedilemedi."
+    },
     "events": {
       "title": "Olaylar",
       "subtitle": "Yönetim ve hesap işlemlerinin denetim geçmişi.",
       "records": "olay",
       "search": "Olaylarda ara",
+      "filterEvents": "Olaylarda ara",
+      "hideFilters": "Filtreleri gizle",
       "action": "İşlem",
       "allActions": "Tüm işlem tipleri",
       "targetType": "Hedef tipi",
@@ -229,6 +323,10 @@
         "role": "Rol",
         "clientScope": "İstemci scope'u"
       }
+    },
+    "settings": {
+      "title": "Ayarlar",
+      "subtitle": "Giriş deneyimini, oturumları, güvenlik politikalarını ve e-posta gönderimini yapılandırın."
     },
     "clients": {
       "title": "İstemciler",
@@ -326,13 +424,15 @@
         "roleDuplicate": "Bu rol zaten kayıtlı.",
         "groupDuplicate": "Bu grup adı zaten kayıtlı.",
         "scopeDuplicate": "Bu client scope zaten kayıtlı.",
-        "password": "Parola en az 8 karakter olmalıdır.",
+        "password": "Parola en az 12 karakter olmalı; büyük harf, küçük harf, rakam ve sembol içermelidir.",
         "roles": "En az bir rol seçin.",
         "roleFormat": "ROLE_AUDITOR gibi büyük harfli ROLE_ adları kullanın.",
         "max50": "En fazla 50 karakter kullanın.",
         "max100": "En fazla 100 karakter kullanın.",
         "max200": "En fazla 200 karakter kullanın.",
-        "max500": "En fazla 500 karakter kullanın."
+        "max500": "En fazla 500 karakter kullanın.",
+        "positiveNumber": "Sıfırdan büyük bir sayı girin.",
+        "minimumPasswordLength": "En az 8 karakter kullanın."
       }
     },
     "roles": {
@@ -441,6 +541,7 @@
       "lastActive": "Son etkinlik",
       "expires": "Bitiş",
       "user": "Kullanıcı",
+      "impersonate": "Bu kullanıcı olarak giriş yap",
       "client": "İstemci",
       "grantedScopes": "Verilen scope’lar",
       "scope": "Scope",
@@ -449,6 +550,12 @@
       "credentials": "Kimlik bilgileri",
       "roleMappings": "Rol eşlemeleri",
       "resetPasswordHelp": "Kullanıcı için yeni bir parola belirleyin.",
+      "securityStatus": "Hesap güvenliği",
+      "locked": "Kilitli",
+      "unlocked": "Kilitli değil",
+      "failedLogins": "Başarısız girişler",
+      "passwordChangeRequired": "Bir sonraki girişte parola değişikliği zorunlu.",
+      "unlock": "Hesabın kilidini aç",
       "time": "Zaman",
       "action": "İşlem",
       "actor": "Aktör",
@@ -557,7 +664,7 @@
       "required": "Bu alan zorunludur.",
       "email": "Geçerli bir e-posta adresi girin.",
       "max100": "En fazla 100 karakter kullanın.",
-      "password": "Parola en az 8 karakter olmalıdır.",
+      "password": "Parola en az 12 karakter olmalı; büyük harf, küçük harf, rakam ve sembol içermelidir.",
       "passwordMismatch": "Parolalar eşleşmiyor.",
       "currentPassword": "Mevcut parola hatalı.",
       "invalid": "Bu değeri kontrol edin.",
@@ -584,6 +691,14 @@
       "metadata": "Hesap bilgileri",
       "cancel": "Değişiklikleri iptal et"
     },
+    "deleteAccount": {
+      "title": "Hesabı sil",
+      "subtitle": "Hesabınızı ve ilişkili erişimleri kalıcı olarak kaldırın.",
+      "warning": "Bu işlem geri alınamaz. Oturumlarınız, izinleriniz ve hesap bilgileriniz silinir.",
+      "currentPassword": "Mevcut parolanızla onaylayın",
+      "submit": "Hesabımı sil",
+      "error": "Hesap silinemedi. Parolanızı kontrol edip tekrar deneyin."
+    },
     "security": {
       "title": "Güvenlik",
       "subtitle": "Parolanızı ve hesap güvenliğinizi yönetin.",
@@ -594,7 +709,7 @@
       "sectionTitle": "Parola",
       "sectionHelp": "Diğer hesaplarınızda kullanmadığınız güçlü bir parola seçin.",
       "policyTitle": "Parola gereksinimleri",
-      "policyMinLength": "En az 8 karakter",
+      "policyMinLength": "En az 12 karakter",
       "policyMatch": "Parolalar eşleşiyor",
       "cancel": "Değişiklikleri temizle",
       "policyMaxLength": "En fazla 200 karakter",

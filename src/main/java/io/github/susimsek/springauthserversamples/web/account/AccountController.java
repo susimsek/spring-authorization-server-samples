@@ -2,15 +2,19 @@ package io.github.susimsek.springauthserversamples.web.account;
 
 import io.github.susimsek.springauthserversamples.config.openapi.OpenApiConfig;
 import io.github.susimsek.springauthserversamples.dto.account.AccountApplicationDTO;
+import io.github.susimsek.springauthserversamples.dto.account.AccountDeleteRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.account.AccountPasswordRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.account.AccountProfileDTO;
 import io.github.susimsek.springauthserversamples.dto.account.AccountProfileRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.account.AccountSessionDTO;
 import io.github.susimsek.springauthserversamples.service.account.AccountApplicationService;
+import io.github.susimsek.springauthserversamples.service.account.AccountDeletionService;
 import io.github.susimsek.springauthserversamples.service.account.AccountProfileService;
 import io.github.susimsek.springauthserversamples.service.account.AccountSessionService;
 import io.github.susimsek.springauthserversamples.web.ApiController;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -45,32 +49,81 @@ public class AccountController {
     private final AccountProfileService accountProfileService;
     private final AccountSessionService accountSessionService;
     private final AccountApplicationService accountApplicationService;
+    private final AccountDeletionService accountDeletionService;
+
+    @DeleteMapping
+    @Operation(
+            summary = "Delete the authenticated account",
+            description =
+                    "Permanently deletes the authenticated account after password confirmation.")
+    @ApiResponse(responseCode = "204", description = "Account deleted.")
+    ResponseEntity<Void> deleteAccount(
+            Authentication authentication,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                            description = "Current password confirmation.",
+                            required = true)
+                    @Valid
+                    @RequestBody
+                    AccountDeleteRequestDTO request) {
+        accountDeletionService.deleteAccount(authentication.getName(), request.currentPassword());
+        return ResponseEntity.noContent().build();
+    }
 
     @GetMapping("/profile")
-    @Operation(summary = "Read profile")
+    @Operation(
+            summary = "Read profile",
+            description = "Returns the profile of the authenticated account.")
+    @ApiResponse(responseCode = "200", description = "Authenticated account profile returned.")
     AccountProfileDTO profile(Authentication authentication) {
         return accountProfileService.profile(authentication.getName());
     }
 
     @PutMapping("/profile")
-    @Operation(summary = "Update profile")
+    @Operation(
+            summary = "Update profile",
+            description = "Updates editable profile fields for the authenticated account.")
+    @ApiResponse(responseCode = "200", description = "Updated account profile returned.")
     AccountProfileDTO updateProfile(
-            Authentication authentication, @Valid @RequestBody AccountProfileRequestDTO request) {
+            Authentication authentication,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                            description = "Editable profile fields.",
+                            required = true)
+                    @Valid
+                    @RequestBody
+                    AccountProfileRequestDTO request) {
         return accountProfileService.updateProfile(authentication.getName(), request);
     }
 
     @PutMapping("/password")
-    @Operation(summary = "Change password")
+    @Operation(
+            summary = "Change password",
+            description =
+                    "Changes the authenticated account password and invalidates affected access.")
+    @ApiResponse(responseCode = "204", description = "Password changed successfully.")
     ResponseEntity<Void> changePassword(
-            Authentication authentication, @Valid @RequestBody AccountPasswordRequestDTO request) {
+            Authentication authentication,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                            description = "Current and new password.",
+                            required = true)
+                    @Valid
+                    @RequestBody
+                    AccountPasswordRequestDTO request) {
         accountProfileService.changePassword(
                 authentication.getName(), request.currentPassword(), request.newPassword());
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/send-verify-email")
-    @Operation(summary = "Send an email verification link")
-    ResponseEntity<Void> sendVerifyEmail(Authentication authentication, Locale locale) {
+    @Operation(
+            summary = "Send an email verification link",
+            description = "Sends a verification link to the authenticated account email address.")
+    @ApiResponse(responseCode = "204", description = "Verification email queued.")
+    ResponseEntity<Void> sendVerifyEmail(
+            Authentication authentication,
+            @Parameter(
+                            description = "BCP 47 locale used for the verification email.",
+                            example = "en")
+                    Locale locale) {
         accountProfileService.sendVerificationEmail(authentication.getName(), locale);
         return ResponseEntity.noContent().build();
     }
@@ -80,6 +133,7 @@ public class AccountController {
             summary = "List sessions",
             description =
                     "Returns the authenticated account's active sessions. `size` is capped at 100.")
+    @ApiResponse(responseCode = "200", description = "Paged active sessions returned.")
     Page<AccountSessionDTO> sessions(
             Authentication authentication,
             @AuthenticationPrincipal Jwt jwt,
@@ -93,7 +147,10 @@ public class AccountController {
     }
 
     @DeleteMapping("/sessions/others")
-    @Operation(summary = "Sign out other sessions")
+    @Operation(
+            summary = "Sign out other sessions",
+            description = "Terminates every authenticated session except the current session.")
+    @ApiResponse(responseCode = "204", description = "Other sessions terminated.")
     ResponseEntity<Void> deleteOtherSessions(
             Authentication authentication, @AuthenticationPrincipal Jwt jwt) {
         accountSessionService.deleteOtherSessions(
@@ -102,9 +159,18 @@ public class AccountController {
     }
 
     @DeleteMapping("/sessions/{sessionId}")
-    @Operation(summary = "Sign out a session")
+    @Operation(
+            summary = "Sign out a session",
+            description = "Terminates the selected authenticated browser session.")
+    @ApiResponse(responseCode = "204", description = "Session terminated.")
     ResponseEntity<Void> deleteSession(
-            Authentication authentication, @PathVariable String sessionId) {
+            Authentication authentication,
+            @Parameter(
+                            description = "Opaque session identifier.",
+                            example = "6f9b4dd0-2ed2-4af8-9e89-6ef3d4dd8c12",
+                            required = true)
+                    @PathVariable
+                    String sessionId) {
         accountSessionService.deleteSession(authentication.getName(), sessionId);
         return ResponseEntity.noContent().build();
     }
@@ -115,6 +181,7 @@ public class AccountController {
             description =
                     "Returns a paged list of OAuth2/OIDC clients authorized by the account. `size`"
                             + " is capped at 100.")
+    @ApiResponse(responseCode = "200", description = "Paged authorized applications returned.")
     Page<AccountApplicationDTO> applications(
             Authentication authentication,
             @PageableDefault(size = 20, sort = "id.registeredClientId") Pageable pageable) {
@@ -122,9 +189,18 @@ public class AccountController {
     }
 
     @DeleteMapping("/applications/{clientId}")
-    @Operation(summary = "Revoke application consent")
+    @Operation(
+            summary = "Revoke application consent",
+            description = "Revokes the authenticated account's consent for a registered client.")
+    @ApiResponse(responseCode = "204", description = "Application consent revoked.")
     ResponseEntity<Void> revokeApplication(
-            Authentication authentication, @PathVariable String clientId) {
+            Authentication authentication,
+            @Parameter(
+                            description = "Registered client identifier.",
+                            example = "account-console",
+                            required = true)
+                    @PathVariable
+                    String clientId) {
         accountApplicationService.revokeApplication(authentication.getName(), clientId);
         return ResponseEntity.noContent().build();
     }

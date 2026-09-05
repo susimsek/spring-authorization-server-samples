@@ -17,6 +17,8 @@ import io.github.susimsek.springauthserversamples.service.admin.AdminConsentServ
 import io.github.susimsek.springauthserversamples.service.admin.AdminSessionService;
 import io.github.susimsek.springauthserversamples.web.ApiController;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -56,8 +58,11 @@ public class AdminClientController {
     @Operation(
             summary = "Search clients",
             description = "Returns a paged client list. `size` is capped at 100.")
+    @ApiResponse(responseCode = "200", description = "Paged registered clients returned.")
     Page<AdminClientDTO> findAll(
-            @RequestParam(defaultValue = "") String q,
+            @Parameter(description = "Optional client ID or name search text.", example = "account")
+                    @RequestParam(defaultValue = "")
+                    String q,
             @PageableDefault(size = 20, sort = "clientId") Pageable pageable) {
         return adminClientService.findAll(q, pageable);
     }
@@ -66,15 +71,30 @@ public class AdminClientController {
     @Operation(
             summary = "Get client",
             description = "Returns one registered client by its internal identifier.")
-    ResponseEntity<AdminClientDTO> findById(@PathVariable String id) {
+    @ApiResponse(responseCode = "200", description = "Registered client returned.")
+    ResponseEntity<AdminClientDTO> findById(
+            @Parameter(
+                            description = "Internal client identifier.",
+                            example = "b0a80123-4567-89ab-cdef-0123456789ab",
+                            required = true)
+                    @PathVariable
+                    String id) {
         AdminClientDTO client = adminClientService.findById(id);
         return client == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(client);
     }
 
     @PostMapping
     @Operation(summary = "Create client", description = "Creates a registered OAuth2/OIDC client.")
+    @ApiResponse(
+            responseCode = "201",
+            description = "Client created; the plain-text secret is returned once.")
     ResponseEntity<AdminClientCreatedDTO> create(
-            @Valid @RequestBody AdminClientRequestDTO request) {
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                            description = "Client configuration.",
+                            required = true)
+                    @Valid
+                    @RequestBody
+                    AdminClientRequestDTO request) {
         AdminClientCreatedDTO created = adminClientService.create(request);
         return ResponseEntity.created(URI.create("/api/admin/clients/" + created.client().id()))
                 .body(created);
@@ -82,8 +102,20 @@ public class AdminClientController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update client", description = "Updates a registered OAuth2/OIDC client.")
+    @ApiResponse(responseCode = "200", description = "Updated registered client returned.")
     AdminClientDTO update(
-            @PathVariable String id, @Valid @RequestBody AdminClientRequestDTO request) {
+            @Parameter(
+                            description = "Internal client identifier.",
+                            example = "b0a80123-4567-89ab-cdef-0123456789ab",
+                            required = true)
+                    @PathVariable
+                    String id,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                            description = "Replacement client configuration.",
+                            required = true)
+                    @Valid
+                    @RequestBody
+                    AdminClientRequestDTO request) {
         return adminClientService.update(id, request);
     }
 
@@ -91,7 +123,14 @@ public class AdminClientController {
     @Operation(
             summary = "Delete client",
             description = "Deletes a registered client and its assignments.")
-    ResponseEntity<Void> delete(@PathVariable String id) {
+    @ApiResponse(responseCode = "204", description = "Client deleted.")
+    ResponseEntity<Void> delete(
+            @Parameter(
+                            description = "Internal client identifier.",
+                            example = "b0a80123-4567-89ab-cdef-0123456789ab",
+                            required = true)
+                    @PathVariable
+                    String id) {
         adminClientService.delete(id);
         return ResponseEntity.noContent().build();
     }
@@ -100,21 +139,50 @@ public class AdminClientController {
     @Operation(
             summary = "Regenerate client secret",
             description = "Returns the replacement client secret once.")
-    AdminClientSecretDTO regenerateSecret(@PathVariable String id) {
+    @ApiResponse(responseCode = "200", description = "Replacement secret returned once.")
+    AdminClientSecretDTO regenerateSecret(
+            @Parameter(
+                            description = "Internal client identifier.",
+                            example = "b0a80123-4567-89ab-cdef-0123456789ab",
+                            required = true)
+                    @PathVariable
+                    String id) {
         return new AdminClientSecretDTO(adminClientService.regenerateSecret(id));
     }
 
     @GetMapping("/{id}/scope-assignments")
-    @Operation(summary = "Get client scope assignments")
-    AdminScopeAssignmentsDTO scopeAssignments(@PathVariable String id) {
+    @Operation(
+            summary = "Get client scope assignments",
+            description = "Returns the default, optional, and available scopes for a client.")
+    @ApiResponse(responseCode = "200", description = "Client scope assignments returned.")
+    AdminScopeAssignmentsDTO scopeAssignments(
+            @Parameter(
+                            description = "Internal client identifier.",
+                            example = "b0a80123-4567-89ab-cdef-0123456789ab",
+                            required = true)
+                    @PathVariable
+                    String id) {
         return adminClientScopeService.assignments(id);
     }
 
     @PutMapping("/{id}/scope-assignments")
-    @Operation(summary = "Update client scope assignments")
+    @Operation(
+            summary = "Update client scope assignments",
+            description = "Replaces the complete default and optional scope assignment sets.")
+    @ApiResponse(responseCode = "200", description = "Updated client scope assignments returned.")
     AdminScopeAssignmentsDTO updateScopeAssignments(
-            @PathVariable String id,
-            @Valid @RequestBody AdminClientScopeAssignmentRequestDTO request) {
+            @Parameter(
+                            description = "Internal client identifier.",
+                            example = "b0a80123-4567-89ab-cdef-0123456789ab",
+                            required = true)
+                    @PathVariable
+                    String id,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                            description = "Complete scope assignment sets.",
+                            required = true)
+                    @Valid
+                    @RequestBody
+                    AdminClientScopeAssignmentRequestDTO request) {
         return adminClientScopeService.updateAssignments(id, request);
     }
 
@@ -122,8 +190,14 @@ public class AdminClientController {
     @Operation(
             summary = "List client sessions",
             description = "Returns browser sessions associated with the client.")
+    @ApiResponse(responseCode = "200", description = "Paged client sessions returned.")
     Page<AdminSessionDTO> sessions(
-            @PathVariable String id,
+            @Parameter(
+                            description = "Internal client identifier.",
+                            example = "b0a80123-4567-89ab-cdef-0123456789ab",
+                            required = true)
+                    @PathVariable
+                    String id,
             @PageableDefault(
                             size = 20,
                             sort = "lastAccessTime",
@@ -136,8 +210,14 @@ public class AdminClientController {
     @Operation(
             summary = "List client consents",
             description = "Returns user consents granted to the client.")
+    @ApiResponse(responseCode = "200", description = "Paged client consents returned.")
     Page<AdminConsentDTO> consents(
-            @PathVariable String id,
+            @Parameter(
+                            description = "Internal client identifier.",
+                            example = "b0a80123-4567-89ab-cdef-0123456789ab",
+                            required = true)
+                    @PathVariable
+                    String id,
             @PageableDefault(size = 20, sort = "id.principalName") Pageable pageable) {
         return adminConsentService.clientConsents(id, pageable);
     }
@@ -146,8 +226,14 @@ public class AdminClientController {
     @Operation(
             summary = "List client events",
             description = "Returns administrative audit events for the client.")
+    @ApiResponse(responseCode = "200", description = "Paged client audit events returned.")
     Page<AdminEventDTO> events(
-            @PathVariable String id,
+            @Parameter(
+                            description = "Internal client identifier.",
+                            example = "b0a80123-4567-89ab-cdef-0123456789ab",
+                            required = true)
+                    @PathVariable
+                    String id,
             @PageableDefault(
                             size = 20,
                             sort = "occurredAt",

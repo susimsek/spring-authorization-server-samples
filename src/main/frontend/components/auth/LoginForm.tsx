@@ -1,10 +1,10 @@
 "use client";
 
-import { faArrowRight, faUser } from "@fortawesome/free-solid-svg-icons";
+import { faUser } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useSearchParams } from "@/routing/navigation";
 import Link from "@/routing/Link";
-import { Suspense, type FormEvent } from "react";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -12,6 +12,7 @@ import { Alert, Button, Card, Form, InputGroup, Stack } from "react-bootstrap";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
 import type { Locale } from "@/i18n/config";
+import { ActionIcon } from "@/components/shared/ActionIcon";
 
 import { PasswordField } from "./PasswordField";
 
@@ -21,6 +22,20 @@ type LoginFormProps = {
 };
 
 export function LoginForm({ dictionary }: LoginFormProps) {
+  const [settings, setSettings] = useState({
+    userRegistration: true,
+    forgotPassword: true,
+    rememberMe: true,
+  });
+  useEffect(() => {
+    if (typeof fetch !== "function") return;
+    fetch("/api/auth/login-settings")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((value) => {
+        if (value) setSettings(value);
+      })
+      .catch(() => {});
+  }, []);
   const schema = z.object({
     username: z.string().trim().min(1, dictionary.admin.common.validation.required),
     password: z.string().min(1, dictionary.admin.common.validation.required),
@@ -87,15 +102,32 @@ export function LoginForm({ dictionary }: LoginFormProps) {
             <div className="invalid-feedback d-block">{errors.password.message}</div>
           )}
 
-          <div className="text-end mb-3">
-            <Link href={`/forgot-password`}>{dictionary.login.forgotPassword}</Link>
-          </div>
+          {settings.rememberMe && (
+            <Form.Check
+              className="mb-3"
+              id="remember-me"
+              label={dictionary.login.rememberMe}
+              name="remember-me"
+              type="checkbox"
+            />
+          )}
+
+          {settings.forgotPassword && (
+            <div className="text-end mb-3">
+              <Link href={`/forgot-password`}>{dictionary.login.forgotPassword}</Link>
+            </div>
+          )}
 
           <Button type="submit" size="lg" className="w-100">
-            <span className="me-2">{dictionary.login.submit}</span>
-            <FontAwesomeIcon icon={faArrowRight} />
+            <ActionIcon action="login" />
+            {dictionary.login.submit}
           </Button>
         </Form>
+        {settings.userRegistration && (
+          <Link className="d-block text-center mt-3" href={`/register`}>
+            {dictionary.login.register}
+          </Link>
+        )}
       </Card.Body>
     </Card>
   );
@@ -110,6 +142,9 @@ function LoginStatusAlerts({ dictionary }: LoginFormProps) {
     <>
       {loginError && <Alert variant="danger">{dictionary.login.invalidCredentials}</Alert>}
       {loggedOut && <Alert variant="success">{dictionary.login.loggedOut}</Alert>}
+      {searchParams.has("deleted") && (
+        <Alert variant="success">{dictionary.login.accountDeleted}</Alert>
+      )}
     </>
   );
 }

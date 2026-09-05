@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  faClock,
-  faDesktop,
-  faRightFromBracket,
-  faShieldHalved,
-} from "@fortawesome/free-solid-svg-icons";
+import { faClock, faDesktop, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useState } from "react";
 import { Badge, Button, Card } from "react-bootstrap";
@@ -24,6 +19,7 @@ import { ConfirmModal } from "@/components/admin/ConfirmModal";
 import { PaginationControls } from "@/components/admin/PaginationControls";
 import { useAdminTableState } from "@/components/admin/useAdminTableState";
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
+import { ActionIcon } from "@/components/shared/ActionIcon";
 import { useAccountAuth } from "./AccountAuthProvider";
 
 type PendingAction =
@@ -126,17 +122,17 @@ export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
               <div className="d-flex flex-wrap gap-2">
                 {items.some((session) => !session.current) && (
                   <Button
-                    variant="outline-danger"
+                    variant="danger"
                     size="sm"
                     onClick={() => setPending({ type: "others" })}
                     data-cy="sign-out-others"
                   >
-                    <FontAwesomeIcon className="me-2" icon={faRightFromBracket} />
+                    <ActionIcon action="logout" />
                     {copy.sessions.signOutOthers}
                   </Button>
                 )}
                 <Button variant="danger" size="sm" onClick={() => setPending({ type: "all" })}>
-                  <FontAwesomeIcon className="me-2" icon={faRightFromBracket} />
+                  <ActionIcon action="logout" />
                   {copy.sessions.signOutAll}
                 </Button>
               </div>
@@ -206,6 +202,7 @@ export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
                       size="sm"
                       onClick={() => setPending({ type: "single", session })}
                     >
+                      <ActionIcon action="logout" />
                       {copy.sessions.signOut}
                     </Button>
                   )}

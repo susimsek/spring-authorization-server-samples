@@ -65,7 +65,7 @@ export function PaginationControls({
       <div className="admin-pagination-nav">
         <Button
           size="sm"
-          variant="outline-secondary"
+          variant="secondary"
           className="admin-pagination-control"
           aria-label={first}
           title={first}
@@ -76,7 +76,7 @@ export function PaginationControls({
         </Button>
         <Button
           size="sm"
-          variant="outline-secondary"
+          variant="secondary"
           className="admin-pagination-control"
           aria-label={previous}
           title={previous}
@@ -90,7 +90,7 @@ export function PaginationControls({
         </span>
         <Button
           size="sm"
-          variant="outline-secondary"
+          variant="secondary"
           className="admin-pagination-control"
           aria-label={next}
           title={next}
@@ -101,7 +101,7 @@ export function PaginationControls({
         </Button>
         <Button
           size="sm"
-          variant="outline-secondary"
+          variant="secondary"
           className="admin-pagination-control"
           aria-label={last}
           title={last}

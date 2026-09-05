@@ -109,7 +109,7 @@ export function ConsentDetail({
         description={dictionary.admin.resources.consentDescription}
         actions={
           access?.manageConsents ? (
-            <Button variant="outline-danger" onClick={() => setShowRevoke(true)}>
+            <Button variant="danger" onClick={() => setShowRevoke(true)}>
               <AdminActionIcon action="revoke" />
               {dictionary.admin.resources.revoke}
             </Button>

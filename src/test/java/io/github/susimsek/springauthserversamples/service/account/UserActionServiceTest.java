@@ -17,6 +17,7 @@ import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventS
 import io.github.susimsek.springauthserversamples.service.admin.UserAccessInvalidationService;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
+import io.github.susimsek.springauthserversamples.service.security.PasswordService;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
@@ -30,14 +31,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 class UserActionServiceTest {
 
     @Mock private UserRepository userRepository;
     @Mock private UserActionTokenRepository tokenRepository;
-    @Mock private PasswordEncoder passwordEncoder;
+    @Mock private PasswordService passwordService;
     @Mock private UserAccessInvalidationService invalidationService;
     @Mock private AdminAuditEventService auditEventService;
     @Mock private ApplicationEventPublisher eventPublisher;
@@ -51,7 +51,7 @@ class UserActionServiceTest {
                 new UserActionService(
                         userRepository,
                         tokenRepository,
-                        passwordEncoder,
+                        passwordService,
                         invalidationService,
                         auditEventService,
                         eventPublisher,
@@ -142,7 +142,13 @@ class UserActionServiceTest {
         when(tokenRepository.findUserIdByTokenHash(hash("raw-token"))).thenReturn(Optional.of(7L));
         when(userRepository.findForActionById(7L)).thenReturn(Optional.of(token.getUser()));
         when(tokenRepository.findByTokenHash(hash("raw-token"))).thenReturn(Optional.of(token));
-        when(passwordEncoder.encode("new-password")).thenReturn("encoded-password");
+        org.mockito.Mockito.doAnswer(
+                        invocation -> {
+                            invocation.<UserEntity>getArgument(0).setPassword("encoded-password");
+                            return null;
+                        })
+                .when(passwordService)
+                .changePassword(any(UserEntity.class), org.mockito.Mockito.eq("new-password"));
 
         service.resetPassword("raw-token", "new-password");
 

@@ -26,6 +26,7 @@ export function RoleCreateForm({ dictionary }: { dictionary: Dictionary; locale:
     name: z
       .string()
       .trim()
+      .min(1, dictionary.admin.common.validation.required)
       .max(50, dictionary.admin.common.validation.max50)
       .regex(/^ROLE_[A-Z0-9_]+$/, dictionary.admin.common.validation.roleFormat),
   });
@@ -84,7 +85,8 @@ export function RoleCreateForm({ dictionary }: { dictionary: Dictionary; locale:
             <Form.Text>{copy.help}</Form.Text>
           </Form.Group>
           <div className="admin-create-actions">
-            <Button variant="outline-secondary" onClick={() => router.push(`/admin/roles`)}>
+            <Button variant="secondary" onClick={() => router.push(`/admin/roles`)}>
+              <AdminActionIcon action="cancel" />
               {dictionary.admin.common.cancel}
             </Button>
             <Button disabled={isSubmitting} type="submit">

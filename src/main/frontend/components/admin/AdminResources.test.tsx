@@ -97,7 +97,10 @@ describe("AdminResources", () => {
     });
 
     render(<AdminResources copy={dictionary.admin.resources} locale="en" resource="users" />);
-    expect(await screen.findByText("ada")).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "ada" })).toHaveAttribute(
+      "href",
+      "/admin/users/1/details",
+    );
     expect(
       screen.getByRole("link", { name: dictionary.admin.resources.createUser }),
     ).toHaveAttribute("href", "/admin/users/new");
@@ -137,7 +140,7 @@ describe("AdminResources", () => {
       expect(mockAdminRequest).toHaveBeenCalledWith(
         "token",
         expect.objectContaining({
-          url: "/api/admin/sessions?q=&page=0&size=20&sort=lastAccessTime%2Cdesc&status=active&clientId=",
+          url: "/api/admin/sessions?q=&page=0&size=10&sort=lastAccessTime%2Cdesc&status=active&clientId=",
         }),
       ),
     );

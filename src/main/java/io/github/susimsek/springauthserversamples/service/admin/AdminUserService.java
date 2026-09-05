@@ -6,6 +6,8 @@ import io.github.susimsek.springauthserversamples.domain.UserAction;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminUserDTO;
+import io.github.susimsek.springauthserversamples.mapper.AdminGroupMapper;
+import io.github.susimsek.springauthserversamples.mapper.AdminUserMapper;
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
 import io.github.susimsek.springauthserversamples.repository.GroupRepository;
 import io.github.susimsek.springauthserversamples.repository.UserAvatarRepository;
@@ -14,22 +16,23 @@ import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
 import io.github.susimsek.springauthserversamples.service.account.UserActionService;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
-import java.util.LinkedHashSet;
+import io.github.susimsek.springauthserversamples.service.security.AccountLockService;
+import io.github.susimsek.springauthserversamples.service.security.PasswordService;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.factory.Mappers;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
 public class AdminUserService {
 
     private final UserRepository userRepository;
@@ -37,9 +40,36 @@ public class AdminUserService {
     private final UserAvatarRepository userAvatarRepository;
     private final AuthorityRepository authorityRepository;
     private final UserAccessInvalidationService userAccessInvalidationService;
-    private final PasswordEncoder passwordEncoder;
+    private final AccountLockService accountLockService;
+    private final PasswordService passwordService;
     private final AdminAuditEventService adminAuditEventService;
     private final UserActionService userActionService;
+    private final AdminUserMapper adminUserMapper;
+    private final AdminGroupMapper adminGroupMapper;
+
+    public AdminUserService(
+            UserRepository userRepository,
+            GroupRepository groupRepository,
+            UserAvatarRepository userAvatarRepository,
+            AuthorityRepository authorityRepository,
+            UserAccessInvalidationService userAccessInvalidationService,
+            AccountLockService accountLockService,
+            PasswordService passwordService,
+            AdminAuditEventService adminAuditEventService,
+            UserActionService userActionService) {
+        this(
+                userRepository,
+                groupRepository,
+                userAvatarRepository,
+                authorityRepository,
+                userAccessInvalidationService,
+                accountLockService,
+                passwordService,
+                adminAuditEventService,
+                userActionService,
+                Mappers.getMapper(AdminUserMapper.class),
+                Mappers.getMapper(AdminGroupMapper.class));
+    }
 
     @Transactional(readOnly = true)
     public AdminUserDTO user(Long id, String currentUsername) {
@@ -79,13 +109,15 @@ public class AdminUserService {
                     ApiErrorCode.USER_DUPLICATE_USERNAME,
                     "Username is already registered");
         }
-        UserEntity user = new UserEntity();
-        user.setUsername(username);
-        user.setPassword(passwordEncoder.encode(password));
-        user.setEmail(normalizedEmail);
-        user.setEmailVerified(normalizedEmail != null && emailVerified);
-        user.setEnabled(enabled);
-        user.setAuthorities(resolveAuthorities(roles));
+        UserEntity user =
+                adminUserMapper.toEntity(
+                        username,
+                        normalizedEmail,
+                        emailVerified,
+                        enabled,
+                        null,
+                        resolveAuthorities(roles));
+        passwordService.setInitialPassword(user, password);
         UserEntity saved = userRepository.save(user);
         adminAuditEventService.record("user.created", "user", saved.getId().toString());
         return userView(saved, null);
@@ -137,11 +169,14 @@ public class AdminUserService {
         assertNotLastAdmin(user, requestedRoleNames(roles));
         userAccessInvalidationService.invalidate(user.getUsername());
         userActionService.invalidateActions(user.getId());
-        user.setUsername(username);
-        user.setEmail(normalizedEmail);
-        user.setEmailVerified(normalizedEmail != null && emailVerified);
-        user.setEnabled(enabled);
-        user.setAuthorities(resolveAuthorities(roles));
+        adminUserMapper.update(
+                username,
+                normalizedEmail,
+                emailVerified,
+                enabled,
+                user.getPassword(),
+                resolveAuthorities(roles),
+                user);
         adminAuditEventService.record("user.updated", "user", user.getId().toString());
         return userView(user, avatarUrl(user.getId()));
     }
@@ -149,18 +184,27 @@ public class AdminUserService {
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public void changePassword(Long id, String password, String currentUsername) {
-        if (password == null || password.length() < 8) {
+        if (password == null || password.length() < 12) {
             throw ApiException.badRequest(
                     "password",
                     ApiErrorCode.USER_INVALID_PASSWORD,
-                    "Password must be at least 8 characters");
+                    "Password must be at least 12 characters");
         }
         UserEntity user = findUser(id);
         assertCanManageUser(user, currentUsername);
-        user.setPassword(passwordEncoder.encode(password));
+        passwordService.setTemporaryPassword(user, password);
         userAccessInvalidationService.invalidate(user.getUsername());
         userActionService.invalidateActions(user.getId());
         adminAuditEventService.record("user.password.updated", "user", user.getId().toString());
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
+    public void unlockUser(Long id, String currentUsername) {
+        UserEntity user = findUser(id);
+        assertCanManageUser(user, currentUsername);
+        accountLockService.unlock(id);
+        adminAuditEventService.record("user.account.unlocked", "user", id.toString());
     }
 
     @Transactional
@@ -229,7 +273,8 @@ public class AdminUserService {
         assertNotLastAdmin(user, remaining);
         if (user.getAuthorities().removeIf(authority -> authority.getName().equals(roleName))) {
             if (user.getAuthorities().isEmpty()) {
-                user.setAuthorities(resolveAuthorities(Set.of(AuthoritiesConstants.USER)));
+                adminUserMapper.updateAuthorities(
+                        resolveAuthorities(Set.of(AuthoritiesConstants.USER)), user);
             }
             userAccessInvalidationService.invalidate(user.getUsername());
             adminAuditEventService.record("user.role.removed", "user", id.toString());
@@ -250,7 +295,7 @@ public class AdminUserService {
             assertNotLastAdmin(user, Set.of());
             userAccessInvalidationService.invalidate(user.getUsername());
         }
-        user.setEnabled(enabled);
+        adminUserMapper.updateEnabled(enabled, user);
         adminAuditEventService.record("user.enabled.updated", "user", user.getId().toString());
     }
 
@@ -357,17 +402,8 @@ public class AdminUserService {
                 : "/avatars/" + avatar.getPublicId() + "?v=" + avatar.getUpdatedAt().toEpochMilli();
     }
 
-    private static AdminUserDTO userView(UserEntity user, String avatarUrl) {
-        return new AdminUserDTO(
-                user.getId(),
-                user.getUsername(),
-                user.getEmail(),
-                user.isEmailVerified(),
-                user.isEnabled(),
-                avatarUrl,
-                authorities(user),
-                user.getCreatedAt(),
-                user.getUpdatedAt());
+    private AdminUserDTO userView(UserEntity user, String avatarUrl) {
+        return adminUserMapper.toDTO(user, avatarUrl);
     }
 
     private AdminGroupDTO groupView(GroupEntity group) {
@@ -375,18 +411,7 @@ public class AdminUserService {
     }
 
     private AdminGroupDTO groupView(GroupEntity group, long userCount) {
-        Set<String> roles =
-                group.getAuthorities().stream()
-                        .map(AuthorityEntity::getName)
-                        .sorted()
-                        .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        return new AdminGroupDTO(
-                group.getId(),
-                group.getName(),
-                groupPath(group),
-                group.getParent() == null ? null : group.getParent().getId(),
-                roles,
-                userCount);
+        return adminGroupMapper.toDTO(group, userCount);
     }
 
     private Page<AdminGroupDTO> groupViews(Page<GroupEntity> groups, Pageable pageable) {
@@ -415,26 +440,16 @@ public class AdminUserService {
         return roles == null || roles.isEmpty() ? Set.of(AuthoritiesConstants.USER) : roles;
     }
 
-    private static String groupPath(GroupEntity group) {
-        java.util.Deque<String> names = new java.util.ArrayDeque<>();
-        GroupEntity current = group;
-        while (current != null) {
-            names.addFirst(current.getName());
-            current = current.getParent();
-        }
-        return String.join(" / ", names);
-    }
-
     private static void validateUser(String username, String password) {
         if (username == null || username.isBlank()) {
             throw ApiException.badRequest(
                     "username", ApiErrorCode.USER_INVALID_USERNAME, "Username is required");
         }
-        if (password != null && password.length() < 8) {
+        if (password != null && password.length() < 12) {
             throw ApiException.badRequest(
                     "password",
                     ApiErrorCode.USER_INVALID_PASSWORD,
-                    "Password must be at least 8 characters");
+                    "Password must be at least 12 characters");
         }
     }
 

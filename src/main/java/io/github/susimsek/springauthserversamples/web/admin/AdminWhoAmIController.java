@@ -2,6 +2,9 @@ package io.github.susimsek.springauthserversamples.web.admin;
 
 import io.github.susimsek.springauthserversamples.dto.admin.AdminWhoAmIDTO;
 import io.github.susimsek.springauthserversamples.web.ApiController;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -13,9 +16,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @ApiController
 @RequestMapping("/api/admin")
+@Tag(name = "Admin - Identity", description = "Current administrator identity and access flags.")
 public class AdminWhoAmIController {
 
     @GetMapping("/whoami")
+    @Operation(
+            summary = "Get current administrator",
+            description =
+                    "Returns the authenticated administrator and access flags calculated from"
+                            + " assigned authorities.")
+    @ApiResponse(responseCode = "200", description = "Current administrator identity returned.")
     AdminWhoAmIDTO whoAmI(Authentication authentication) {
         Set<String> authorities =
                 authentication.getAuthorities().stream()
@@ -26,6 +36,7 @@ public class AdminWhoAmIController {
                 authentication.getName(),
                 authorities.stream().sorted().toList(),
                 Map.ofEntries(
+                        Map.entry("isAdmin", hasAny(authorities, "ROLE_ADMIN")),
                         Map.entry(
                                 "viewClients",
                                 hasAny(

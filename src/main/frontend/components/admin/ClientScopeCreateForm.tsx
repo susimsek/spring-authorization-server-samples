@@ -105,7 +105,8 @@ export function ClientScopeCreateForm({ dictionary }: { dictionary: Dictionary; 
             </Form.Control.Feedback>
           </Form.Group>
           <div className="admin-create-actions">
-            <Button variant="outline-secondary" onClick={() => router.push(`/admin/client-scopes`)}>
+            <Button variant="secondary" onClick={() => router.push(`/admin/client-scopes`)}>
+              <AdminActionIcon action="cancel" />
               {common.cancel}
             </Button>
             <Button disabled={isSubmitting} type="submit">

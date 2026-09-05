@@ -20,7 +20,8 @@ import java.lang.annotation.Target;
             content = @Content(schema = @Schema(implementation = ApiProblemDTO.class))),
     @ApiResponse(
             responseCode = "401",
-            description = "Bearer access token is missing, expired, or invalid."),
+            description = "Bearer access token is missing, expired, or invalid.",
+            content = @Content(schema = @Schema(implementation = ApiProblemDTO.class))),
     @ApiResponse(
             responseCode = "403",
             description = "The token lacks the required scope or authority.",

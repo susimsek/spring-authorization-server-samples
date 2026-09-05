@@ -9,6 +9,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
+import { ActionIcon } from "@/components/shared/ActionIcon";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { problemViolations } from "@/lib/problem-detail";
 import { type AccountApiError, useUpdateAccountPasswordMutation } from "@/store/account-api-slice";
@@ -26,7 +27,7 @@ export function AccountPasswordForm({ dictionary }: { dictionary: Dictionary }) 
   const schema = z
     .object({
       currentPassword: z.string().min(1, copy.validation.required).max(200, copy.validation.max200),
-      newPassword: z.string().min(8, copy.validation.password).max(200, copy.validation.max200),
+      newPassword: z.string().min(12, copy.validation.password).max(128, copy.validation.max200),
       confirmPassword: z.string().min(1, copy.validation.required).max(200, copy.validation.max200),
     })
     .refine((values) => values.currentPassword !== values.newPassword, {
@@ -53,8 +54,8 @@ export function AccountPasswordForm({ dictionary }: { dictionary: Dictionary }) 
   const currentPassword = useWatch({ control, name: "currentPassword" }) ?? "";
   const newPassword = useWatch({ control, name: "newPassword" }) ?? "";
   const confirmPassword = useWatch({ control, name: "confirmPassword" }) ?? "";
-  const longEnough = newPassword.length >= 8;
-  const shortEnough = newPassword.length <= 200;
+  const longEnough = newPassword.length >= 12;
+  const shortEnough = newPassword.length <= 128;
   const differentFromCurrent = newPassword.length > 0 && newPassword !== currentPassword;
   const passwordsMatch = confirmPassword.length > 0 && newPassword === confirmPassword;
 
@@ -149,17 +150,19 @@ export function AccountPasswordForm({ dictionary }: { dictionary: Dictionary }) 
           </Form.Group>
           <div className="account-form-actions pt-4 border-top">
             <Button type="submit" disabled={!isDirty || isSubmitting} data-cy="save-password">
+              <ActionIcon action="save" />
               {isSubmitting ? copy.common.saving : copy.common.save}
             </Button>
             <Button
               type="button"
-              variant="outline-secondary"
+              variant="secondary"
               disabled={!isDirty || isSubmitting}
               onClick={() => {
                 reset();
                 setFailed(false);
               }}
             >
+              <ActionIcon action="cancel" />
               {copy.common.cancel}
             </Button>
           </div>

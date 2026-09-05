@@ -17,6 +17,7 @@ import { ConfirmModal } from "@/components/admin/ConfirmModal";
 import { PaginationControls } from "@/components/admin/PaginationControls";
 import { useAdminTableState } from "@/components/admin/useAdminTableState";
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
+import { ActionIcon } from "@/components/shared/ActionIcon";
 import { useAccountAuth } from "./AccountAuthProvider";
 
 export function AccountApplications({ dictionary }: { dictionary: Dictionary }) {
@@ -102,11 +103,8 @@ export function AccountApplications({ dictionary }: { dictionary: Dictionary }) 
                       </span>
                     </div>
                   </div>
-                  <Button
-                    variant="outline-danger"
-                    size="sm"
-                    onClick={() => setPending(application)}
-                  >
+                  <Button variant="danger" size="sm" onClick={() => setPending(application)}>
+                    <ActionIcon action="revoke" />
                     {copy.applications.revoke}
                   </Button>
                 </div>

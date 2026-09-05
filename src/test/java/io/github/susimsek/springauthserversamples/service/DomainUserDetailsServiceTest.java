@@ -9,6 +9,7 @@ import io.github.susimsek.springauthserversamples.domain.GroupEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
+import io.github.susimsek.springauthserversamples.service.security.AccountLockService;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -22,15 +23,16 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 class DomainUserDetailsServiceTest {
 
     @Mock private UserRepository userRepository;
+    @Mock private AccountLockService accountLockService;
 
     @Test
     void loadsEnabledUser() {
-        when(userRepository.findByUsername("admin"))
+        when(userRepository.findForAuthentication("admin"))
                 .thenReturn(
                         Optional.of(
                                 user(true, AuthoritiesConstants.ADMIN, AuthoritiesConstants.USER)));
 
-        var userDetails = new DomainUserDetailsService(userRepository).loadUserByUsername("admin");
+        var userDetails = service().loadUserByUsername("admin");
 
         assertThat(userDetails.getUsername()).isEqualTo("admin");
         assertThat(userDetails.getPassword()).isEqualTo("hash");
@@ -42,10 +44,10 @@ class DomainUserDetailsServiceTest {
 
     @Test
     void loadsDisabledUser() {
-        when(userRepository.findByUsername("admin"))
+        when(userRepository.findForAuthentication("admin"))
                 .thenReturn(Optional.of(user(false, AuthoritiesConstants.ADMIN)));
 
-        var userDetails = new DomainUserDetailsService(userRepository).loadUserByUsername("admin");
+        var userDetails = service().loadUserByUsername("admin");
 
         assertThat(userDetails.isEnabled()).isFalse();
     }
@@ -58,9 +60,9 @@ class DomainUserDetailsServiceTest {
         child.setParent(parent);
         UserEntity user = user(true, AuthoritiesConstants.USER);
         user.setGroups(Set.of(child));
-        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(user));
+        when(userRepository.findForAuthentication("admin")).thenReturn(Optional.of(user));
 
-        var userDetails = new DomainUserDetailsService(userRepository).loadUserByUsername("admin");
+        var userDetails = service().loadUserByUsername("admin");
 
         assertThat(userDetails.getAuthorities())
                 .extracting(Object::toString)
@@ -69,14 +71,15 @@ class DomainUserDetailsServiceTest {
 
     @Test
     void rejectsMissingUser() {
-        when(userRepository.findByUsername("missing")).thenReturn(Optional.empty());
+        when(userRepository.findForAuthentication("missing")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(
-                        () ->
-                                new DomainUserDetailsService(userRepository)
-                                        .loadUserByUsername("missing"))
+        assertThatThrownBy(() -> service().loadUserByUsername("missing"))
                 .isInstanceOf(UsernameNotFoundException.class)
                 .hasMessage("User not found: missing");
+    }
+
+    private DomainUserDetailsService service() {
+        return new DomainUserDetailsService(userRepository, accountLockService);
     }
 
     private static UserEntity user(boolean enabled, String... authorities) {

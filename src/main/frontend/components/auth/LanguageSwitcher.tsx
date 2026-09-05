@@ -30,7 +30,12 @@ export function LanguageSwitcher({ label }: LanguageSwitcherProps) {
 
   return (
     <Dropdown align="end">
-      <Dropdown.Toggle variant="outline-secondary" size="sm" aria-label={label}>
+      <Dropdown.Toggle
+        variant="link"
+        size="sm"
+        className="console-navbar-control"
+        aria-label={label}
+      >
         <FontAwesomeIcon icon={faGlobe} className="me-2" />
         {languageNames[activeLocale]}
       </Dropdown.Toggle>

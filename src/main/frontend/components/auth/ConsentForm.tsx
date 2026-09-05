@@ -1,6 +1,6 @@
 "use client";
 
-import { faCheck, faShieldHalved, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
@@ -10,6 +10,7 @@ import { Alert, Badge, Button, Card, Form, Spinner, Stack } from "react-bootstra
 import { z } from "zod";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
+import { ActionIcon } from "@/components/shared/ActionIcon";
 
 type ConsentFormProps = {
   dictionary: Dictionary;
@@ -160,8 +161,8 @@ function ConsentRequest({ dictionary, consent }: ConsentFormProps & { consent: C
         </div>
 
         <Button type="submit" size="lg" className="w-100">
-          <span className="me-2">{dictionary.consent.submit}</span>
-          <FontAwesomeIcon icon={faCheck} />
+          <ActionIcon action="check" />
+          {dictionary.consent.submit}
         </Button>
       </Form>
 
@@ -169,9 +170,9 @@ function ConsentRequest({ dictionary, consent }: ConsentFormProps & { consent: C
         <input type="hidden" name="client_id" value={consent.clientId} />
         <input type="hidden" name="state" value={consent.state} />
         {consent.userCode && <input type="hidden" name="user_code" value={consent.userCode} />}
-        <Button type="submit" size="lg" variant="outline-secondary" className="w-100">
-          <span className="me-2">{dictionary.consent.deny}</span>
-          <FontAwesomeIcon icon={faXmark} />
+        <Button type="submit" size="lg" variant="secondary" className="w-100">
+          <ActionIcon action="cancel" />
+          {dictionary.consent.deny}
         </Button>
       </Form>
     </>

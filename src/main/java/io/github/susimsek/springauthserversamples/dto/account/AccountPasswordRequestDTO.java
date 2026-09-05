@@ -4,9 +4,25 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-@Schema(description = "Password change request for the authenticated account.")
+@Schema(
+        name = "AccountPasswordRequest",
+        description = "Password change request for the authenticated account.")
 public record AccountPasswordRequestDTO(
-        @Schema(example = "current-password", format = "password") @NotBlank @Size(max = 200)
+        @Schema(
+                        description = "The account's current password.",
+                        example = "current-password",
+                        format = "password",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                @NotBlank
+                @Size(max = 200)
                 String currentPassword,
-        @Schema(example = "new-password", format = "password") @NotBlank @Size(min = 8, max = 200)
+        @Schema(
+                        description =
+                                "The new password; must contain at least 12 characters and"
+                                        + " complexity rules.",
+                        example = "new-password",
+                        format = "password",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                @NotBlank
+                @Size(min = 12, max = 128)
                 String newPassword) {}

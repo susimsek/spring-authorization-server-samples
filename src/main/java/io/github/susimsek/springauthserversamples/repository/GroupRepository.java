@@ -27,8 +27,14 @@ public interface GroupRepository extends JpaRepository<GroupEntity, Long> {
 
     @EntityGraph(attributePaths = {"authorities", "parent"})
     @Query(
-            "select g from UserEntity u join u.groups g where u.id = :userId"
-                    + " and (:query = '' or lower(g.name) like lower(concat('%', :query, '%')))")
+            value =
+                    "select g from GroupEntity g where g.id in (select memberGroup.id from"
+                        + " UserEntity u join u.groups memberGroup where u.id = :userId) and"
+                        + " (:query = '' or lower(g.name) like lower(concat('%', :query, '%')))",
+            countQuery =
+                    "select count(g) from GroupEntity g where g.id in (select memberGroup.id from"
+                        + " UserEntity u join u.groups memberGroup where u.id = :userId) and"
+                        + " (:query = '' or lower(g.name) like lower(concat('%', :query, '%')))")
     Page<GroupEntity> findByUserIdAndNameContainingIgnoreCase(
             @Param("userId") Long userId, @Param("query") String query, Pageable pageable);
 }

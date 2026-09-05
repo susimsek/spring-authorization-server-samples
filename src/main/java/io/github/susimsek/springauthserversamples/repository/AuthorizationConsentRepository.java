@@ -20,6 +20,8 @@ public interface AuthorizationConsentRepository
 
     long deleteByIdRegisteredClientId(String registeredClientId);
 
+    long deleteByIdPrincipalName(String principalName);
+
     Page<AuthorizationConsentEntity> findByIdRegisteredClientId(
             String registeredClientId, Pageable pageable);
 

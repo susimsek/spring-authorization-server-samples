@@ -16,5 +16,10 @@
 	<include file="db/changelog/changes/008-create-admin-events.xml"/>
 	<include file="db/changelog/changes/009-add-group-hierarchy.xml"/>
 	<include file="db/changelog/changes/010-add-user-actions.xml"/>
+	<include file="db/changelog/changes/012-required-actions-and-impersonation.xml"/>
+	<include file="db/changelog/changes/013-password-security.xml"/>
+	<include file="db/changelog/changes/014-login-settings.xml"/>
+	<include file="db/changelog/changes/015-email-settings.xml"/>
+	<include file="db/changelog/changes/016-login-policy-settings.xml"/>
     <include file="db/changelog/changes/011-unprefix-console-routes.xml"/>
 </databaseChangeLog>

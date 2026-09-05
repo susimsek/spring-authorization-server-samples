@@ -4,6 +4,19 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(name = "AdminGroupUser", description = "A user returned from group membership endpoints.")
 public record AdminGroupUserDTO(
-        @Schema(example = "2") Long id,
-        @Schema(example = "user") String username,
-        @Schema(example = "true") boolean enabled) {}
+        @Schema(
+                        description = "Internal user identifier.",
+                        example = "2",
+                        format = "int64",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                Long id,
+        @Schema(
+                        description = "User login name.",
+                        example = "user",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                String username,
+        @Schema(
+                        description = "Whether the user is enabled.",
+                        example = "true",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                boolean enabled) {}

@@ -98,7 +98,7 @@ export function ClientScopeAssignments({ clientId, dictionary, onChanged }: Prop
           {kind !== "default" && (
             <Button
               size="sm"
-              variant="outline-primary"
+              variant="primary"
               disabled={saving}
               onClick={() => move(scope.name, "default")}
             >
@@ -109,7 +109,7 @@ export function ClientScopeAssignments({ clientId, dictionary, onChanged }: Prop
           {kind !== "optional" && (
             <Button
               size="sm"
-              variant="outline-secondary"
+              variant="secondary"
               disabled={saving}
               onClick={() => move(scope.name, "optional")}
             >

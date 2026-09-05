@@ -5,6 +5,8 @@ import io.github.susimsek.springauthserversamples.dto.admin.AdminKeyDTO;
 import io.github.susimsek.springauthserversamples.service.admin.KeyManagementService;
 import io.github.susimsek.springauthserversamples.web.ApiController;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -28,10 +30,19 @@ class AdminKeyController {
     private final KeyManagementService keyManagementService;
 
     @GetMapping
-    @Operation(summary = "List signing keys")
+    @Operation(
+            summary = "List signing keys",
+            description = "Returns signing keys with optional identifier and active-state filters.")
+    @ApiResponse(responseCode = "200", description = "Paged signing-key summaries returned.")
     Page<AdminKeyDTO> keys(
-            @RequestParam(defaultValue = "") String q,
-            @RequestParam(required = false) Boolean active,
+            @Parameter(
+                            description = "Optional key ID or key identifier search text.",
+                            example = "rsa")
+                    @RequestParam(defaultValue = "")
+                    String q,
+            @Parameter(description = "Filter by active state.", example = "true")
+                    @RequestParam(required = false)
+                    Boolean active,
             @PageableDefault(
                             size = 20,
                             sort = "createdAt",
@@ -41,7 +52,12 @@ class AdminKeyController {
     }
 
     @PostMapping("/rotate")
-    @Operation(summary = "Rotate signing key")
+    @Operation(
+            summary = "Rotate signing key",
+            description =
+                    "Creates a new active signing key and keeps previous keys available for"
+                            + " verification.")
+    @ApiResponse(responseCode = "200", description = "New active signing-key summary returned.")
     AdminKeyDTO rotateKey() {
         return keyManagementService.rotateKey();
     }

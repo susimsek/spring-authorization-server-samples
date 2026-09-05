@@ -10,7 +10,8 @@ These instructions apply to `src/main/frontend/**` and supplement the repository
 4.  [Testing Guidelines](#testing-guidelines)
 5.  [Authentication](#authentication)
 6.  [Development Guidelines](#development-guidelines)
-7.  [Common Mistakes to Avoid](#common-mistakes-to-avoid)
+7.  [UI and Visual Standards](#ui-and-visual-standards)
+8.  [Common Mistakes to Avoid](#common-mistakes-to-avoid)
 
 ## Quick Reference
 
@@ -64,9 +65,13 @@ These instructions apply to `src/main/frontend/**` and supplement the repository
 ### Forms and Validation
 
 - All user-editable create and update forms must use React Hook Form with a Zod schema and `zodResolver`.
+- Define required, trimming, length, format, range, collection, and cross-field rules in the schema; do not rely on HTML `required` alone or validate only after the API call.
+- Use `noValidate` with React Hook Form, render field-level errors through the shared Bootstrap invalid-control pattern, and ensure submit validation focuses or navigates to the first invalid field/step.
 - Do not manage submitted field values or validation errors with component-local state. Keep only transient UI state local, such as search input, selected table row, modal visibility, and loading state.
 - Form validation messages must come from the localized dictionary. Map backend `ProblemDetail` violations to the matching React Hook Form fields where applicable.
 - Disable submission while a mutation is pending, show localized success/error feedback, and reset form values only after a successful server response.
+- Keep frontend validation consistent with backend constraints, but treat backend validation and authorization as authoritative; never remove server-side checks because a client schema exists.
+- Administration settings forms keep editable controls in a single vertical column, matching the Keycloak-style settings layout; do not place settings inputs side by side in grid columns.
 
 ### Lists and API Responses
 
@@ -81,6 +86,23 @@ These instructions apply to `src/main/frontend/**` and supplement the repository
 - Do not generate placeholder routes or use `generateStaticParams`. React Router resolves dynamic identifiers at runtime; Spring forwards frontend GET/HEAD HTML navigation to `/index.html`.
 - Keep the login, Administration Console, and Account Console UI in `src/main/frontend`. Do not move application authentication behavior into Next.js.
 
+## UI and Visual Standards
+
+- Use the shared design tokens in `app/styles.css` for control heights, spacing, typography, radii, touch targets, and focus rings. Do not introduce one-off dimensions when an existing token covers the need.
+- Keep visible form controls aligned to the shared sizes: normal `2.5rem`, small `2.25rem`, and large `3rem`. Apply the same rhythm to `Form.Control`, `Form.Select`, `InputGroup`, and action buttons.
+- Use the shared semantic action colors consistently: `primary` for normal create/save/add/assign actions, `secondary` for cancel/back/copy/view/retry actions, `danger` for destructive or session-invalidating actions, and `warning` only for sensitive cautionary operations.
+- Do not use `outline-*` or `btn-outline-*` button variants. Use solid Bootstrap variants so controls remain legible in both `data-bs-theme="light"` and `data-bs-theme="dark"`.
+- Do not hard-code theme-sensitive colors such as white or black for UI content. Prefer Bootstrap theme variables (`--bs-body-*`, `--bs-*-bg`, `--bs-*-text-emphasis`, `--bs-border-*`, and their RGB variables); preserve visible focus indicators with the shared focus-ring token.
+- Keep page headers, breadcrumbs, form sections, cards, tables, modals, empty states, loading states, and responsive action areas aligned with the existing shared CSS classes before adding a new pattern.
+- Use the shared spacing rhythm (`--console-space-*`) and surface/control radii. Keep table cells vertically centered, preserve horizontal scrolling for dense tables on small screens, and stack modal/form actions when space is constrained.
+- Status badges must communicate the same state with the same semantic color across screens. Prefer filled, theme-compatible badges and avoid `text-bg-light` for content that must work on dark surfaces.
+- Icon-only controls must meet the shared touch target where practical and include an accessible `aria-label` or equivalent visible name. Do not remove focus styles to achieve visual similarity.
+- Use the centralized icon registry in `lib/icon-loader.ts` and the shared `ActionIcon`/`AdminActionIcon` components for actions. Do not import Font Awesome definitions directly into feature components or create one-off inline SVG/action icons.
+- Reuse the same semantic icon for the same action everywhere (`save`, `edit`, `delete`, `disable`, `enable`, `unlock`, `retry`, `view`, `copy`, `search`, and so on); add a registry entry before introducing a new action icon.
+- Keep icon meaning independent from color, provide an accessible label for icon-only controls, and use localized visible labels for important actions. Decorative icons must be hidden from assistive technology.
+- Prefer shared components and CSS classes for cards, forms, tables, alerts, modals, buttons, loading, empty, and error states. Add a new visual pattern only when an existing shared pattern cannot express the requirement.
+- Check light/dark themes, keyboard focus, validation/error states, disabled/loading states, responsive layout, and long localized text for every materially changed screen.
+
 ## Common Mistakes to Avoid
 
 - Replacing the shared Keycloak-style OIDC adapter with a custom token flow.
@@ -90,3 +112,13 @@ These instructions apply to `src/main/frontend/**` and supplement the repository
 - Fetching complete pageable resources to implement client-side pagination.
 - Adding a new frontend route without static-export and fallback coverage.
 - Hiding an action in the UI and treating that as an authorization control.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

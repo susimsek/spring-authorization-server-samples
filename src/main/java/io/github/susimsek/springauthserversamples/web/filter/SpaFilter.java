@@ -21,11 +21,14 @@ public class SpaFilter extends OncePerRequestFilter {
             Set.of(
                     "/",
                     "/login",
+                    "/register",
                     "/consent",
                     "/auth-error",
                     "/forgot-password",
                     "/reset-password",
-                    "/verify-email");
+                    "/verify-email",
+                    "/confirm-email",
+                    "/required-actions");
     private static final Set<String> BACKEND_ROOTS =
             Set.of(
                     "/api",

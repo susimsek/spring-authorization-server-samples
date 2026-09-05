@@ -18,7 +18,7 @@ export function RowActions({ label, children }: { label?: string; children: Reac
       >
         <FontAwesomeIcon icon={faEllipsisVertical} />
       </Dropdown.Toggle>
-      <Dropdown.Menu className="shadow-sm">{children}</Dropdown.Menu>
+      <Dropdown.Menu>{children}</Dropdown.Menu>
     </Dropdown>
   );
 }

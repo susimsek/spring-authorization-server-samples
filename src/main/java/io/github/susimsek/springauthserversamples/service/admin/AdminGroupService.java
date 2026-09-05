@@ -7,6 +7,7 @@ import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupRolesRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupUserDTO;
+import io.github.susimsek.springauthserversamples.mapper.AdminGroupMapper;
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
 import io.github.susimsek.springauthserversamples.repository.GroupRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.factory.Mappers;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -26,7 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /** Administration operations for Keycloak-style groups and their realm-role mappings. */
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
 public class AdminGroupService {
 
     private final GroupRepository groupRepository;
@@ -34,6 +36,22 @@ public class AdminGroupService {
     private final UserRepository userRepository;
     private final UserAccessInvalidationService userAccessInvalidationService;
     private final AdminAuditEventService adminAuditEventService;
+    private final AdminGroupMapper adminGroupMapper;
+
+    public AdminGroupService(
+            GroupRepository groupRepository,
+            AuthorityRepository authorityRepository,
+            UserRepository userRepository,
+            UserAccessInvalidationService userAccessInvalidationService,
+            AdminAuditEventService adminAuditEventService) {
+        this(
+                groupRepository,
+                authorityRepository,
+                userRepository,
+                userAccessInvalidationService,
+                adminAuditEventService,
+                Mappers.getMapper(AdminGroupMapper.class));
+    }
 
     @Transactional(readOnly = true)
     public Page<AdminGroupDTO> findAll(String query, Pageable pageable) {
@@ -55,9 +73,8 @@ public class AdminGroupService {
             throw ApiException.conflict(
                     "name", ApiErrorCode.GROUP_DUPLICATE_NAME, "Group name is already registered");
         }
-        GroupEntity group = new GroupEntity();
-        group.setName(name);
-        group.setParent(resolveParent(request.parentId(), null));
+        GroupEntity group =
+                adminGroupMapper.toEntity(request, resolveParent(request.parentId(), null));
         AdminGroupDTO view = groupView(groupRepository.save(group));
         adminAuditEventService.record("group.created", "group", view.id().toString());
         return view;
@@ -71,7 +88,7 @@ public class AdminGroupService {
             throw ApiException.conflict(
                     "name", ApiErrorCode.GROUP_DUPLICATE_NAME, "Group name is already registered");
         }
-        group.setName(name);
+        adminGroupMapper.update(request, group);
         group.setParent(resolveParent(request.parentId(), group));
         invalidateUsersInGroupTree(group);
         adminAuditEventService.record("group.updated", "group", group.getId().toString());
@@ -82,7 +99,7 @@ public class AdminGroupService {
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public AdminGroupDTO updateRoles(Long id, AdminGroupRolesRequestDTO request) {
         GroupEntity group = findGroup(id);
-        group.setAuthorities(resolveAuthorities(request.roles()));
+        adminGroupMapper.updateRoles(resolveAuthorities(request.roles()), group);
         invalidateUsersInGroupTree(group);
         adminAuditEventService.record("group.roles.updated", "group", group.getId().toString());
         return groupView(group);
@@ -94,7 +111,7 @@ public class AdminGroupService {
         return userRepository
                 .findByGroupsIdAndUsernameContainingIgnoreCase(
                         id, AdminSearch.normalize(query), pageable)
-                .map(AdminGroupService::userView);
+                .map(adminGroupMapper::toUserDTO);
     }
 
     @Transactional(readOnly = true)
@@ -102,7 +119,7 @@ public class AdminGroupService {
         requireGroup(id);
         return userRepository
                 .findAvailableGroupUsers(id, AdminSearch.normalize(query), pageable)
-                .map(AdminGroupService::userView);
+                .map(adminGroupMapper::toUserDTO);
     }
 
     @Transactional
@@ -176,18 +193,7 @@ public class AdminGroupService {
     }
 
     private AdminGroupDTO groupView(GroupEntity group, long userCount) {
-        Set<String> roles =
-                group.getAuthorities().stream()
-                        .map(AuthorityEntity::getName)
-                        .sorted()
-                        .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        return new AdminGroupDTO(
-                group.getId(),
-                group.getName(),
-                groupPath(group),
-                parentId(group),
-                roles,
-                userCount);
+        return adminGroupMapper.toDTO(group, userCount);
     }
 
     private Page<AdminGroupDTO> groupViews(Page<GroupEntity> groups, Pageable pageable) {
@@ -204,10 +210,6 @@ public class AdminGroupService {
                                         UserRepository.GroupUserCount::getGroupId,
                                         UserRepository.GroupUserCount::getUserCount));
         return groups.map(group -> groupView(group, userCounts.getOrDefault(group.getId(), 0L)));
-    }
-
-    private static AdminGroupUserDTO userView(UserEntity user) {
-        return new AdminGroupUserDTO(user.getId(), user.getUsername(), user.isEnabled());
     }
 
     private void invalidateUsersInGroupTree(GroupEntity group) {
@@ -257,19 +259,5 @@ public class AdminGroupService {
             current = current.getParent();
         }
         return false;
-    }
-
-    private static Long parentId(GroupEntity group) {
-        return group.getParent() == null ? null : group.getParent().getId();
-    }
-
-    private static String groupPath(GroupEntity group) {
-        java.util.Deque<String> names = new java.util.ArrayDeque<>();
-        GroupEntity current = group;
-        while (current != null) {
-            names.addFirst(current.getName());
-            current = current.getParent();
-        }
-        return String.join(" / ", names);
     }
 }

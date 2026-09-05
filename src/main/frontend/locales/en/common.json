@@ -19,8 +19,11 @@
     "hidePassword": "Hide password",
     "submit": "Sign in",
     "forgotPassword": "Forgot password?",
+    "rememberMe": "Remember me",
+    "register": "Create an account",
     "invalidCredentials": "The username or password is incorrect.",
-    "loggedOut": "You have signed out successfully."
+    "loggedOut": "You have signed out successfully.",
+    "accountDeleted": "Your account has been deleted successfully."
   },
   "accountActions": {
     "forgotTitle": "Reset your password",
@@ -44,6 +47,49 @@
     "cooldown": "Please wait 30 seconds before sending another email.",
     "operationError": "The operation could not be completed. Please try again.",
     "verifyHelp": "Confirm that you want to verify this email address."
+  },
+  "requiredActions": {
+    "eyebrow": "Action required",
+    "loading": "Loading required actions…",
+    "saving": "Saving…",
+    "continue": "Continue",
+    "accept": "Accept and continue",
+    "emailPending": "Check your new email address and follow the confirmation link before continuing.",
+    "error": "The required action could not be loaded or completed.",
+    "required": "This field is required.",
+    "email": "Enter a valid email address.",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "emailLabel": "Email",
+    "password": "New password",
+    "confirmPassword": "Confirm new password",
+    "passwordHelp": "Use at least 12 characters with uppercase, lowercase, a number, and a symbol.",
+    "passwordMismatch": "Passwords do not match."
+  },
+  "registration": {
+    "eyebrow": "New account",
+    "title": "Create your account",
+    "subtitle": "Register to use the authorization server.",
+    "username": "Username",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "submit": "Create account",
+    "creating": "Creating account…",
+    "created": "Your account was created. You can now sign in.",
+    "backToLogin": "Back to sign in",
+    "validation": {
+      "required": "This field is required.",
+      "email": "Enter a valid email address.",
+      "max100": "Use at most 100 characters.",
+      "max200": "Use at most 200 characters.",
+      "password": "Password must be at least 12 characters and include uppercase, lowercase, a number, and a symbol.",
+      "passwordMismatch": "Passwords do not match.",
+      "usernameDuplicate": "This username is already registered.",
+      "emailDuplicate": "This email is already registered."
+    }
   },
   "theme": {
     "label": "Theme",
@@ -143,7 +189,7 @@
     }
   },
   "admin": {
-    "product": "Authorization Server Admin",
+    "product": "Admin Console",
     "manage": "Manage",
     "nav": {
       "dashboard": "Dashboard",
@@ -156,7 +202,10 @@
       "keys": "Keys",
       "events": "Events",
       "clientScopes": "Client scopes",
-      "serverInfo": "Server info"
+      "serverInfo": "Server info",
+      "settings": "Settings",
+      "loginSettings": "Login settings",
+      "emailSettings": "Email settings"
     },
     "dashboard": {
       "title": "Dashboard",
@@ -202,11 +251,56 @@
       "configurationError": "The OpenID configuration could not be loaded.",
       "jwksError": "The JWKS document could not be loaded."
     },
+    "loginSettings": {
+      "title": "Login settings",
+      "subtitle": "Control which account options appear on the public sign-in page.",
+      "userRegistration": "User registration",
+      "userRegistrationHelp": "Allow visitors to create a new account.",
+      "forgotPassword": "Forgot password",
+      "forgotPasswordHelp": "Allow users to request a password reset email.",
+      "rememberMe": "Remember me",
+      "rememberMeHelp": "Show the remember-me checkbox and keep selected sessions signed in.",
+      "loginWithEmail": "Login with email",
+      "loginWithEmailHelp": "Allow users to sign in using their email address.",
+      "verifyEmail": "Verify email",
+      "verifyEmailHelp": "Require a verified email address for new accounts.",
+      "sessionTimeout": "Session timeout (minutes)",
+      "passwordMinimumLength": "Minimum password length",
+      "bruteForceEnabled": "Brute-force protection",
+      "bruteForceMaxFailures": "Maximum login failures",
+      "save": "Save settings",
+      "saving": "Saving…",
+      "saved": "Login settings saved.",
+      "loading": "Loading login settings…",
+      "error": "Login settings could not be loaded or saved."
+    },
+    "emailSettings": {
+      "title": "Email settings",
+      "subtitle": "Configure SMTP delivery for verification and password reset emails.",
+      "enabled": "Enable email delivery",
+      "fromAddress": "From address",
+      "baseUrl": "Application URL",
+      "host": "SMTP host",
+      "port": "SMTP port",
+      "username": "Username",
+      "password": "Password",
+      "passwordConfigured": "Password already configured",
+      "smtpAuth": "SMTP authentication",
+      "starttls": "StartTLS",
+      "ssl": "SSL/TLS",
+      "save": "Save email settings",
+      "saving": "Saving…",
+      "saved": "Email settings saved.",
+      "loading": "Loading email settings…",
+      "error": "Email settings could not be loaded or saved."
+    },
     "events": {
       "title": "Events",
       "subtitle": "Audit history for administration and account actions.",
       "records": "events",
       "search": "Search events",
+      "filterEvents": "Search user event",
+      "hideFilters": "Hide filters",
       "action": "Action",
       "allActions": "All event types",
       "targetType": "Target type",
@@ -229,6 +323,10 @@
         "role": "Role",
         "clientScope": "Client scope"
       }
+    },
+    "settings": {
+      "title": "Settings",
+      "subtitle": "Configure the sign-in experience, sessions, security policies and email delivery."
     },
     "clients": {
       "title": "Clients",
@@ -326,13 +424,15 @@
         "roleDuplicate": "This role is already registered.",
         "groupDuplicate": "This group name is already registered.",
         "scopeDuplicate": "This client scope is already registered.",
-        "password": "Password must be at least 8 characters.",
+        "password": "Password must be at least 12 characters and include uppercase, lowercase, a number, and a symbol.",
         "roles": "Select at least one role.",
         "roleFormat": "Use uppercase ROLE_ names, for example ROLE_AUDITOR.",
         "max50": "Use at most 50 characters.",
         "max100": "Use at most 100 characters.",
         "max200": "Use at most 200 characters.",
-        "max500": "Use at most 500 characters."
+        "max500": "Use at most 500 characters.",
+        "positiveNumber": "Enter a number greater than zero.",
+        "minimumPasswordLength": "Use at least 8 characters."
       }
     },
     "roles": {
@@ -441,6 +541,7 @@
       "lastActive": "Last active",
       "expires": "Expires",
       "user": "User",
+      "impersonate": "Sign in as this user",
       "client": "Client",
       "grantedScopes": "Granted scopes",
       "scope": "Scope",
@@ -449,6 +550,12 @@
       "credentials": "Credentials",
       "roleMappings": "Role mapping",
       "resetPasswordHelp": "Set a new password for this user.",
+      "securityStatus": "Account security",
+      "locked": "Locked",
+      "unlocked": "Unlocked",
+      "failedLogins": "Failed logins",
+      "passwordChangeRequired": "Password change required at next sign-in.",
+      "unlock": "Unlock account",
       "time": "Time",
       "action": "Action",
       "actor": "Actor",
@@ -557,7 +664,7 @@
       "required": "This field is required.",
       "email": "Enter a valid email address.",
       "max100": "Use at most 100 characters.",
-      "password": "Password must be at least 8 characters.",
+      "password": "Password must be at least 12 characters and include uppercase, lowercase, a number, and a symbol.",
       "passwordMismatch": "Passwords do not match.",
       "currentPassword": "Current password is incorrect.",
       "invalid": "Please check this value.",
@@ -584,6 +691,14 @@
       "metadata": "Account metadata",
       "cancel": "Cancel changes"
     },
+    "deleteAccount": {
+      "title": "Delete account",
+      "subtitle": "Permanently remove your account and associated access.",
+      "warning": "This action cannot be undone. Your sessions, consents, and account data will be removed.",
+      "currentPassword": "Confirm with your current password",
+      "submit": "Delete my account",
+      "error": "The account could not be deleted. Check your password and try again."
+    },
     "security": {
       "title": "Security",
       "subtitle": "Manage your password and account security.",
@@ -594,7 +709,7 @@
       "sectionTitle": "Password",
       "sectionHelp": "Choose a strong password that you do not use for other accounts.",
       "policyTitle": "Password requirements",
-      "policyMinLength": "At least 8 characters",
+      "policyMinLength": "At least 12 characters",
       "policyMatch": "Passwords match",
       "cancel": "Clear changes",
       "policyMaxLength": "At most 200 characters",

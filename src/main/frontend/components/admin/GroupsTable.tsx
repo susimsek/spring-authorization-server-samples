@@ -2,7 +2,7 @@
 
 import Link from "@/routing/Link";
 import { useEffect, useState } from "react";
-import { Button } from "react-bootstrap";
+import { Dropdown } from "react-bootstrap";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
@@ -15,6 +15,7 @@ import { DataTable } from "./DataTable";
 import { ErrorState, LoadingState } from "./AsyncState";
 import { PaginationControls } from "./PaginationControls";
 import { ResourceFilters } from "./ResourceFilters";
+import { RowActions } from "./RowActions";
 import { useAdminTableState } from "./useAdminTableState";
 
 type Group = { id: number; name: string; path: string; roles: string[]; userCount: number };
@@ -31,7 +32,7 @@ export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
   const [error, setError] = useState(false);
   const [groupToDelete, setGroupToDelete] = useState<Group | null>(null);
   const { clearFilters, page, query, setPage, setQuery, setSize, setSort, size, sort } =
-    useAdminTableState(20, false, "name,asc");
+    useAdminTableState(10, false, "name,asc");
 
   useEffect(() => {
     if (!accessToken) return;
@@ -152,15 +153,21 @@ export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
               <td data-label={copy.roleMappings}>{group.roles.length}</td>
               <td data-label={copy.members}>{group.userCount}</td>
               <td className="text-end">
-                <Button
-                  disabled={saving}
-                  onClick={() => setGroupToDelete(group)}
-                  size="sm"
-                  variant="outline-danger"
-                >
-                  <AdminActionIcon action="delete" />
-                  {copy.delete}
-                </Button>
+                <RowActions label={`${group.path} ${dictionary.admin.common.actions}`}>
+                  <Dropdown.Item as={Link} href={`/admin/groups/${group.id}`}>
+                    <AdminActionIcon action="edit" />
+                    {copy.settings}
+                  </Dropdown.Item>
+                  <Dropdown.Divider />
+                  <Dropdown.Item
+                    className="text-danger"
+                    disabled={saving}
+                    onClick={() => setGroupToDelete(group)}
+                  >
+                    <AdminActionIcon action="delete" />
+                    {copy.delete}
+                  </Dropdown.Item>
+                </RowActions>
               </td>
             </tr>
           ))}

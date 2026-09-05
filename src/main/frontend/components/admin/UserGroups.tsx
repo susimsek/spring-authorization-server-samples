@@ -189,7 +189,7 @@ export function UserGroups({ dictionary, userId }: { dictionary: Dictionary; use
                     onClick={() => void leave(group)}
                     size="sm"
                     type="button"
-                    variant="outline-danger"
+                    variant="danger"
                   >
                     <AdminActionIcon action="remove" />
                     {copy.removeGroup}

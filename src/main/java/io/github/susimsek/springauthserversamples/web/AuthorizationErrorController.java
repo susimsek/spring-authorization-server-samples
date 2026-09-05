@@ -1,5 +1,8 @@
 package io.github.susimsek.springauthserversamples.web;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -13,9 +16,16 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 @Controller
+@Tag(name = "Application", description = "Application error handling endpoints.")
 public class AuthorizationErrorController implements ErrorController {
 
     @RequestMapping("/error")
+    @Operation(
+            summary = "Handle authorization errors",
+            description =
+                    "Redirects browser authorization errors to the localized authentication error"
+                            + " page.")
+    @ApiResponse(responseCode = "302", description = "Redirect to the authentication error page.")
     public String error(HttpServletRequest request, HttpServletResponse response) {
         Object statusCode = request.getAttribute(RequestDispatcher.ERROR_STATUS_CODE);
         if (statusCode instanceof Integer status) {

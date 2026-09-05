@@ -42,6 +42,7 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Acce
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
@@ -63,6 +64,7 @@ public class AuthorizationServerConfig {
             HttpSecurity http,
             OAuth2TokenGenerator<OAuth2Token> tokenGenerator,
             RegisteredClientRepository registeredClientRepository,
+            RequiredActionAuthorizationFilter requiredActionAuthorizationFilter,
             @Qualifier("authorizationServerSecurityContextRepository")
                     SecurityContextRepository securityContextRepository) {
         OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
@@ -75,6 +77,7 @@ public class AuthorizationServerConfig {
                                 securityContext
                                         .securityContextRepository(securityContextRepository)
                                         .requireExplicitSave(false))
+                .addFilterBefore(requiredActionAuthorizationFilter, AuthorizationFilter.class)
                 .sessionManagement(
                         sessionManagement ->
                                 sessionManagement.requireExplicitAuthenticationStrategy(true))

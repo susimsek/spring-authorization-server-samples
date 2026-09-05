@@ -2,8 +2,8 @@ package io.github.susimsek.springauthserversamples.service.account;
 
 import io.github.susimsek.springauthserversamples.domain.AuthorizationEntity;
 import io.github.susimsek.springauthserversamples.domain.UserSessionEntity;
-import io.github.susimsek.springauthserversamples.dto.account.AccountSessionClientDTO;
 import io.github.susimsek.springauthserversamples.dto.account.AccountSessionDTO;
+import io.github.susimsek.springauthserversamples.mapper.AccountSessionMapper;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.repository.UserSessionRepository;
@@ -16,13 +16,14 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.factory.Mappers;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
 public class AccountSessionService {
 
     private final UserSessionRepository userSessionRepository;
@@ -30,6 +31,22 @@ public class AccountSessionService {
     private final ClientRepository clientRepository;
     private final AdminAuditEventService auditEventService;
     private final SessionInvalidationService sessionInvalidationService;
+    private final AccountSessionMapper accountSessionMapper;
+
+    public AccountSessionService(
+            UserSessionRepository userSessionRepository,
+            AuthorizationRepository authorizationRepository,
+            ClientRepository clientRepository,
+            AdminAuditEventService auditEventService,
+            SessionInvalidationService sessionInvalidationService) {
+        this(
+                userSessionRepository,
+                authorizationRepository,
+                clientRepository,
+                auditEventService,
+                sessionInvalidationService,
+                Mappers.getMapper(AccountSessionMapper.class));
+    }
 
     @Transactional(readOnly = true)
     public Page<AccountSessionDTO> sessions(
@@ -81,7 +98,9 @@ public class AccountSessionService {
                 sessions.getContent().stream().map(UserSessionEntity::getSessionId).toList();
         if (sessionIds.isEmpty()) {
             return sessions.map(
-                    session -> sessionView(session, currentSessionId, List.of(), Map.of()));
+                    session ->
+                            accountSessionMapper.toDTO(
+                                    session, currentSessionId, List.of(), Map.of()));
         }
         Map<String, List<AuthorizationEntity>> authorizationsBySessionId =
                 authorizationRepository
@@ -105,35 +124,11 @@ public class AccountSessionService {
                                         client -> client.getClientName()));
         return sessions.map(
                 session ->
-                        sessionView(
+                        accountSessionMapper.toDTO(
                                 session,
                                 currentSessionId,
                                 authorizationsBySessionId.getOrDefault(
                                         session.getSessionId(), List.of()),
                                 clientNames));
-    }
-
-    private static AccountSessionDTO sessionView(
-            UserSessionEntity session,
-            String currentSessionId,
-            List<AuthorizationEntity> authorizations,
-            Map<String, String> clientNames) {
-        List<AccountSessionClientDTO> clients =
-                authorizations.stream()
-                        .map(AuthorizationEntity::getRegisteredClientId)
-                        .distinct()
-                        .map(
-                                clientId ->
-                                        new AccountSessionClientDTO(
-                                                clientId,
-                                                clientNames.getOrDefault(clientId, clientId)))
-                        .toList();
-        return new AccountSessionDTO(
-                session.getSessionId(),
-                Instant.ofEpochMilli(session.getCreationTime()),
-                Instant.ofEpochMilli(session.getLastAccessTime()),
-                Instant.ofEpochMilli(session.getExpiryTime()),
-                OidcSessionIdentifier.matches(currentSessionId, session.getSessionId()),
-                clients);
     }
 }

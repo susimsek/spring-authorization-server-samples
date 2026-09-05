@@ -7,6 +7,7 @@ import io.github.susimsek.springauthserversamples.service.admin.AdminDashboardSe
 import io.github.susimsek.springauthserversamples.service.admin.AdminServerInfoService;
 import io.github.susimsek.springauthserversamples.web.ApiController;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -26,13 +27,20 @@ class AdminDashboardController {
     private final AdminServerInfoService adminServerInfoService;
 
     @GetMapping("/dashboard")
-    @Operation(summary = "Get administration dashboard")
+    @Operation(
+            summary = "Get administration dashboard",
+            description = "Returns aggregate resource counts for the administration console.")
+    @ApiResponse(responseCode = "200", description = "Dashboard counts returned.")
     AdminDashboardDTO dashboard() {
         return adminDashboardService.dashboard();
     }
 
     @GetMapping("/server-info")
-    @Operation(summary = "Get server information")
+    @Operation(
+            summary = "Get server information",
+            description =
+                    "Returns configured OAuth2/OIDC endpoints and active signing-key metadata.")
+    @ApiResponse(responseCode = "200", description = "Server metadata returned.")
     AdminServerInfoDTO serverInfo() {
         return adminServerInfoService.serverInfo();
     }
