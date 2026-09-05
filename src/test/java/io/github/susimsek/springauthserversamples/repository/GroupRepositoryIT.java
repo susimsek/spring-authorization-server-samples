@@ -24,6 +24,7 @@ class GroupRepositoryIT {
         UserEntity user = userRepository.findByUsername("admin").orElseThrow();
         GroupEntity second = groupRepository.save(group("Zulu group"));
         GroupEntity first = groupRepository.save(group("Alpha group"));
+        user.getGroups().clear();
         user.getGroups().add(second);
         user.getGroups().add(first);
         userRepository.saveAndFlush(user);
