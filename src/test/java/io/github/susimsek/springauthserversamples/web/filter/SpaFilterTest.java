@@ -25,6 +25,7 @@ class SpaFilterTest {
                 "/login/",
                 "/consent",
                 "/auth-error",
+                "/mfa",
                 "/forgot-password",
                 "/reset-password",
                 "/verify-email",

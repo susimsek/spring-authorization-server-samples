@@ -14,4 +14,12 @@ public class UserAccessInvalidationService {
     public void invalidate(String username) {
         sessionInvalidationService.invalidatePrincipal(username);
     }
+
+    public void invalidateOtherSessions(String username, String currentSessionId) {
+        if (currentSessionId == null) {
+            invalidate(username);
+            return;
+        }
+        sessionInvalidationService.invalidatePrincipalExceptSession(username, currentSessionId);
+    }
 }

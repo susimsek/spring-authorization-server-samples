@@ -19,17 +19,17 @@
 			<column name="brute_force_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
 			<column name="brute_force_max_failures" type="int" defaultValueNumeric="5"><constraints nullable="false"/></column>
 		</createTable>
-		<insert tableName="login_settings">
-			<column name="id" valueNumeric="1"/>
-			<column name="user_registration_enabled" valueBoolean="true"/>
-			<column name="forgot_password_enabled" valueBoolean="true"/>
-			<column name="remember_me_enabled" valueBoolean="true"/>
-			<column name="login_with_email" valueBoolean="false"/>
-			<column name="verify_email" valueBoolean="false"/>
-			<column name="session_timeout_minutes" valueNumeric="30"/>
-			<column name="password_minimum_length" valueNumeric="12"/>
-			<column name="brute_force_enabled" valueBoolean="true"/>
-			<column name="brute_force_max_failures" valueNumeric="5"/>
-		</insert>
+		<loadData encoding="UTF-8" file="db/data/login-settings.csv" separator=";" tableName="login_settings" usePreparedStatements="true">
+			<column header="id" type="numeric"/>
+			<column header="user_registration_enabled" type="boolean"/>
+			<column header="forgot_password_enabled" type="boolean"/>
+			<column header="remember_me_enabled" type="boolean"/>
+			<column header="login_with_email" type="boolean"/>
+			<column header="verify_email" type="boolean"/>
+			<column header="session_timeout_minutes" type="numeric"/>
+			<column header="password_minimum_length" type="numeric"/>
+			<column header="brute_force_enabled" type="boolean"/>
+			<column header="brute_force_max_failures" type="numeric"/>
+		</loadData>
 	</changeSet>
 </databaseChangeLog>

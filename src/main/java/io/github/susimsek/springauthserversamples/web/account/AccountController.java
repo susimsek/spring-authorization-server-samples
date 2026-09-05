@@ -7,10 +7,14 @@ import io.github.susimsek.springauthserversamples.dto.account.AccountPasswordReq
 import io.github.susimsek.springauthserversamples.dto.account.AccountProfileDTO;
 import io.github.susimsek.springauthserversamples.dto.account.AccountProfileRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.account.AccountSessionDTO;
+import io.github.susimsek.springauthserversamples.dto.account.MfaCodeRequestDTO;
+import io.github.susimsek.springauthserversamples.dto.account.MfaSetupDTO;
+import io.github.susimsek.springauthserversamples.dto.account.MfaStatusDTO;
 import io.github.susimsek.springauthserversamples.service.account.AccountApplicationService;
 import io.github.susimsek.springauthserversamples.service.account.AccountDeletionService;
 import io.github.susimsek.springauthserversamples.service.account.AccountProfileService;
 import io.github.susimsek.springauthserversamples.service.account.AccountSessionService;
+import io.github.susimsek.springauthserversamples.service.account.MfaService;
 import io.github.susimsek.springauthserversamples.web.ApiController;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -50,6 +54,45 @@ public class AccountController {
     private final AccountSessionService accountSessionService;
     private final AccountApplicationService accountApplicationService;
     private final AccountDeletionService accountDeletionService;
+    private final MfaService mfaService;
+
+    @GetMapping("/mfa")
+    @Operation(
+            summary = "Read MFA status",
+            description = "Returns TOTP MFA status and realm policy.")
+    @ApiResponse(responseCode = "200", description = "MFA status returned.")
+    MfaStatusDTO mfa(Authentication authentication) {
+        return mfaService.status(authentication.getName());
+    }
+
+    @PostMapping("/mfa/setup")
+    @Operation(summary = "Start MFA setup", description = "Creates a new TOTP enrollment secret.")
+    @ApiResponse(responseCode = "200", description = "TOTP setup details returned.")
+    MfaSetupDTO setupMfa(Authentication authentication) {
+        return mfaService.setup(authentication.getName());
+    }
+
+    @PostMapping("/mfa/enable")
+    @Operation(
+            summary = "Enable MFA",
+            description = "Enables TOTP after verifying an authenticator code.")
+    @ApiResponse(responseCode = "204", description = "MFA enabled.")
+    ResponseEntity<Void> enableMfa(
+            Authentication authentication, @Valid @RequestBody MfaCodeRequestDTO request) {
+        mfaService.enable(authentication.getName(), request.code());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/mfa/disable")
+    @Operation(
+            summary = "Disable MFA",
+            description = "Disables TOTP after verifying an authenticator code.")
+    @ApiResponse(responseCode = "204", description = "MFA disabled.")
+    ResponseEntity<Void> disableMfa(
+            Authentication authentication, @Valid @RequestBody MfaCodeRequestDTO request) {
+        mfaService.disable(authentication.getName(), request.code());
+        return ResponseEntity.noContent().build();
+    }
 
     @DeleteMapping
     @Operation(

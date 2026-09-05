@@ -19,4 +19,13 @@ class UserAccessInvalidationServiceTest {
 
         verify(sessionInvalidationService).invalidatePrincipal("alice");
     }
+
+    @Test
+    void invalidateOtherSessionsPreservesCurrentBrowserSession() {
+        new UserAccessInvalidationService(sessionInvalidationService)
+                .invalidateOtherSessions("alice", "current-session");
+
+        verify(sessionInvalidationService)
+                .invalidatePrincipalExceptSession("alice", "current-session");
+    }
 }

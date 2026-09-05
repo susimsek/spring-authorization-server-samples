@@ -10,7 +10,11 @@ public enum ApiErrorCode {
     INTERNAL_ERROR("internal_error", "An unexpected error occurred."),
     RATE_LIMIT_EXCEEDED("rate_limit_exceeded", "Too many requests. Please try again later."),
     INVALID_CURRENT_PASSWORD("invalid_current_password", "Current password is invalid."),
-    INVALID_PASSWORD("invalid_password", "Password must be at least 8 characters."),
+    INVALID_TOTP_CODE("invalid_totp_code", "Authenticator code is invalid."),
+    INVALID_PASSWORD(
+            "invalid_password",
+            "Password must be at least 12 characters and include uppercase, lowercase, a number,"
+                    + " and a symbol."),
     PASSWORD_UNCHANGED("password_unchanged", "New password must be different."),
     PASSWORD_MISMATCH("password_mismatch", "Passwords do not match."),
     SESSION_FORBIDDEN("session_forbidden", "You cannot manage another user's session."),
@@ -70,7 +74,10 @@ public enum ApiErrorCode {
     ACTION_TOKEN_EXPIRED("action_token_expired", "The action token has expired."),
     ACTION_TOKEN_USED("action_token_used", "The action token has already been used."),
     ACTION_UNSUPPORTED("action_unsupported", "The requested user action is not supported."),
-    USER_INVALID_PASSWORD("user_invalid_password", "Password must be at least 8 characters."),
+    USER_INVALID_PASSWORD(
+            "user_invalid_password",
+            "Password must be at least 12 characters and include uppercase, lowercase, a number,"
+                    + " and a symbol."),
     USER_INVALID_ROLES("user_invalid_roles", "One or more roles are invalid."),
     USER_INVALID_USERNAME("user_invalid_username", "Username is required."),
     USER_PROTECTED("user_protected", "This user cannot be changed by the current administrator.");

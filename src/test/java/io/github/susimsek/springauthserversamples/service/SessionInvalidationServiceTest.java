@@ -52,4 +52,13 @@ class SessionInvalidationServiceTest {
         verify(userSessionRepository).deleteByPrincipalName("alice");
         verify(authorizationRepository).deleteByPrincipalName("alice");
     }
+
+    @Test
+    void preservesCurrentSessionWhileInvalidatingOtherPrincipalState() {
+        service.invalidatePrincipalExceptSession("alice", "current-session");
+
+        verify(userSessionRepository)
+                .deleteByPrincipalNameAndSessionIdNot("alice", "current-session");
+        verify(authorizationRepository).deleteByPrincipalName("alice");
+    }
 }

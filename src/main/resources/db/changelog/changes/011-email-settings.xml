@@ -13,6 +13,16 @@
       <column name="starttls" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
       <column name="ssl" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
     </createTable>
-    <insert tableName="email_settings"><column name="id" valueNumeric="1"/><column name="enabled" valueBoolean="false"/><column name="from_address" value="Spring Authorization Server &lt;no-reply@localhost&gt;"/><column name="base_url" value="http://127.0.0.1:9090"/><column name="host" value="localhost"/><column name="port" valueNumeric="1025"/><column name="smtp_auth" valueBoolean="false"/><column name="starttls" valueBoolean="false"/><column name="ssl" valueBoolean="false"/></insert>
+    <loadData encoding="UTF-8" file="db/data/email-settings.csv" separator=";" tableName="email_settings" usePreparedStatements="true">
+      <column header="id" type="numeric"/>
+      <column header="enabled" type="boolean"/>
+      <column header="from_address" type="string"/>
+      <column header="base_url" type="string"/>
+      <column header="host" type="string"/>
+      <column header="port" type="numeric"/>
+      <column header="smtp_auth" type="boolean"/>
+      <column header="starttls" type="boolean"/>
+      <column header="ssl" type="boolean"/>
+    </loadData>
   </changeSet>
 </databaseChangeLog>

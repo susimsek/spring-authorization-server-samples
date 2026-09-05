@@ -68,6 +68,7 @@ public class AuthorizationServerConfig {
             OAuth2TokenGenerator<OAuth2Token> tokenGenerator,
             RegisteredClientRepository registeredClientRepository,
             RequiredActionAuthorizationFilter requiredActionAuthorizationFilter,
+            MfaAuthorizationFilter mfaAuthorizationFilter,
             @Qualifier("authorizationServerSecurityContextRepository")
                     SecurityContextRepository securityContextRepository) {
         OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
@@ -81,6 +82,7 @@ public class AuthorizationServerConfig {
                                         .securityContextRepository(securityContextRepository)
                                         .requireExplicitSave(false))
                 .addFilterBefore(requiredActionAuthorizationFilter, AuthorizationFilter.class)
+                .addFilterBefore(mfaAuthorizationFilter, AuthorizationFilter.class)
                 .sessionManagement(
                         sessionManagement ->
                                 sessionManagement.requireExplicitAuthenticationStrategy(true))

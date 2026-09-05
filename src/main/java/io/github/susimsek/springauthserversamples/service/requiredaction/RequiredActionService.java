@@ -108,6 +108,18 @@ public class RequiredActionService {
             Map<String, Object> values,
             String ipAddress,
             String userAgent) {
+        completeInSession(username, actionKey, values, ipAddress, userAgent, null);
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
+    public boolean completeInSession(
+            String username,
+            String actionKey,
+            Map<String, Object> values,
+            String ipAddress,
+            String userAgent,
+            String currentSessionId) {
         UserEntity user =
                 userRepository
                         .findForActionById(findUser(username).getId())
@@ -121,11 +133,11 @@ public class RequiredActionService {
         }
         if (!pending(user.getUsername()).stream()
                 .anyMatch(action -> action.key().equals(actionKey))) {
-            return;
+            return false;
         }
         RequiredActionHandler actionHandler = handler(actionKey);
         if (actionHandler instanceof StandardRequiredActionHandler standardHandler) {
-            standardHandler.completeStandard(user, actionKey, values);
+            standardHandler.completeStandard(user, actionKey, values, currentSessionId);
         } else {
             actionHandler.complete(user, values == null ? Map.of() : values);
         }
@@ -134,6 +146,7 @@ public class RequiredActionService {
                         user, actionKey, version, Instant.now(), ipAddress, userAgent);
         completionRepository.save(completion);
         auditEventService.record("user.required-action.completed", "user", user.getId().toString());
+        return true;
     }
 
     @Transactional

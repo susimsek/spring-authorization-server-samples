@@ -28,7 +28,8 @@ public class SpaFilter extends OncePerRequestFilter {
                     "/reset-password",
                     "/verify-email",
                     "/confirm-email",
-                    "/required-actions");
+                    "/required-actions",
+                    "/mfa");
     private static final Set<String> BACKEND_ROOTS =
             Set.of(
                     "/api",

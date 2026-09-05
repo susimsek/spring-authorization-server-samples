@@ -78,6 +78,8 @@ public interface UserSessionRepository extends JpaRepository<UserSessionEntity, 
 
     long deleteByPrincipalName(String principalName);
 
+    long deleteByPrincipalNameAndSessionIdNot(String principalName, String sessionId);
+
     @Modifying
     @Query("delete from UserSessionEntity s where s.expiryTime < :expiryTime")
     int deleteExpiredSessions(@Param("expiryTime") long expiryTime);

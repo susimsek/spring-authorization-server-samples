@@ -1,0 +1,2 @@
+id;user_registration_enabled;forgot_password_enabled;remember_me_enabled;login_with_email;verify_email;session_timeout_minutes;password_minimum_length;brute_force_enabled;brute_force_max_failures
+1;true;true;true;false;false;30;12;true;5

@@ -64,7 +64,27 @@
     "password": "Yeni parola",
     "confirmPassword": "Yeni parolayı doğrulayın",
     "passwordHelp": "En az 12 karakter; büyük harf, küçük harf, rakam ve sembol kullanın.",
-    "passwordMismatch": "Parolalar eşleşmiyor."
+    "passwordMissingPrefix": "Eksik gereksinimler: ",
+    "passwordMinLength": "en az 12 karakter",
+    "passwordTooLong": "En fazla 128 karakter kullanın.",
+    "passwordUppercase": "bir büyük harf",
+    "passwordLowercase": "bir küçük harf",
+    "passwordDigit": "bir rakam",
+    "passwordSymbol": "bir sembol",
+    "passwordMismatch": "Parolalar eşleşmiyor.",
+    "totpSecret": "Bu gizli anahtarı doğrulama uygulamanıza ekleyin",
+    "totpUriHelp": "QR kod tarayıcı ile bu otpauth URI’sini de kullanabilirsiniz.",
+    "totpCode": "Doğrulama kodu",
+    "invalidCode": "Geçerli bir doğrulama kodu girin."
+  },
+  "mfa": {
+    "eyebrow": "Çok faktörlü kimlik doğrulama",
+    "title": "Doğrulama kodunuzu girin",
+    "subtitle": "Devam etmek için doğrulama uygulamanızdaki güncel kodu girin.",
+    "code": "Doğrulama kodu",
+    "invalidCode": "Doğrulama kodu geçersiz.",
+    "verify": "Doğrula ve devam et",
+    "verifying": "Doğrulanıyor…"
   },
   "registration": {
     "eyebrow": "Yeni hesap",
@@ -268,6 +288,13 @@
       "passwordMinimumLength": "Minimum parola uzunluğu",
       "bruteForceEnabled": "Brute-force koruması",
       "bruteForceMaxFailures": "Maksimum başarısız giriş",
+      "otpEnabled": "Doğrulama uygulamalarına izin ver (TOTP)",
+      "otpRequired": "Parola girişinden sonra TOTP zorunlu olsun",
+      "otpIssuer": "Doğrulayıcı yayıncısı",
+      "otpAlgorithm": "TOTP algoritması",
+      "otpDigits": "TOTP kod basamakları",
+      "otpPeriodSeconds": "TOTP süresi (saniye)",
+      "otpLookAheadWindow": "İzin verilen saat kayması periyodu",
       "save": "Ayarları kaydet",
       "saving": "Kaydediliyor…",
       "saved": "Giriş ayarları kaydedildi.",
@@ -713,7 +740,19 @@
       "policyMatch": "Parolalar eşleşiyor",
       "cancel": "Değişiklikleri temizle",
       "policyMaxLength": "En fazla 200 karakter",
-      "policyDifferent": "Mevcut paroladan farklı"
+      "policyDifferent": "Mevcut paroladan farklı",
+      "mfa": {
+        "title": "İki aşamalı doğrulama",
+        "help": "Kimlik doğrulama uygulamasındaki zamana dayalı tek kullanımlık parolayla hesabınızı koruyun.",
+        "setup": "Kimlik doğrulayıcıyı kur",
+        "secret": "Kurulum anahtarı",
+        "code": "6 veya 8 haneli kodu girin",
+        "enable": "MFA'yı etkinleştir",
+        "disable": "MFA'yı devre dışı bırak",
+        "enabled": "Kimlik doğrulayıcı tabanlı MFA etkin.",
+        "invalidCode": "Doğrulama kodu geçersiz.",
+        "error": "MFA işlemi tamamlanamadı. Kodu kontrol edip tekrar deneyin."
+      }
     },
     "sessions": {
       "title": "Cihaz etkinliği",

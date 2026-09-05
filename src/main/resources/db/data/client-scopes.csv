@@ -5,3 +5,4 @@ scope-user-read;user.read;User read;Read user information.;system;system
 scope-user-write;user.write;User write;Update user information.;system;system
 scope-admin-api;admin-api;Admin API;Access the administration API.;system;system
 scope-account-api;account-api;Account API;Access the account API.;system;system
+scope-email;email;Email;Email address and verification status.;system;system

@@ -3,6 +3,8 @@ package io.github.susimsek.springauthserversamples.dto.admin;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 
 @Schema(
         name = "AdminLoginSettingsRequest",
@@ -23,4 +25,23 @@ public record AdminLoginSettingsRequestDTO(
         @Schema(description = "Enable protection against repeated failed logins.")
                 boolean bruteForceEnabled,
         @Schema(description = "Failed login threshold before throttling.", minimum = "1") @Min(1)
-                int bruteForceMaxFailures) {}
+                int bruteForceMaxFailures,
+        @Schema(description = "Allow users to enroll a TOTP authenticator.") boolean otpEnabled,
+        @Schema(description = "Require TOTP after password authentication.") boolean otpRequired,
+        @Schema(description = "Issuer label shown in authenticator applications.")
+                @NotBlank
+                @jakarta.validation.constraints.Size(max = 100)
+                String otpIssuer,
+        @Schema(description = "TOTP algorithm (SHA1, SHA256, or SHA512).")
+                @NotBlank
+                @Pattern(regexp = "(?i)SHA1|SHA256|SHA512")
+                String otpAlgorithm,
+        @Schema(description = "TOTP code length (6 or 8).", minimum = "6", maximum = "8")
+                @Min(6)
+                @Max(8)
+                int otpDigits,
+        @Schema(description = "TOTP period in seconds.", minimum = "15") @Min(15)
+                int otpPeriodSeconds,
+        @Schema(description = "Accepted clock drift window in adjacent periods.", minimum = "0")
+                @Min(0)
+                int otpLookAheadWindow) {}

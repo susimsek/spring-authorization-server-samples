@@ -3,11 +3,13 @@ package io.github.susimsek.springauthserversamples.service.requiredaction;
 import io.github.susimsek.springauthserversamples.domain.RequiredActionDefinitionEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.dto.account.AccountProfileRequestDTO;
+import io.github.susimsek.springauthserversamples.service.LoginSettingsService;
 import io.github.susimsek.springauthserversamples.service.admin.UserAccessInvalidationService;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import io.github.susimsek.springauthserversamples.service.security.PasswordPolicyService;
 import io.github.susimsek.springauthserversamples.service.security.PasswordService;
+import io.github.susimsek.springauthserversamples.service.security.TotpService;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import java.util.Map;
@@ -22,17 +24,23 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
     private final PasswordPolicyService passwordPolicyService;
     private final PasswordService passwordService;
     private final UserAccessInvalidationService userAccessInvalidationService;
+    private final LoginSettingsService loginSettingsService;
+    private final TotpService totpService;
 
     @Autowired
     StandardRequiredActionHandler(
             Validator validator,
             PasswordPolicyService passwordPolicyService,
             PasswordService passwordService,
-            UserAccessInvalidationService userAccessInvalidationService) {
+            UserAccessInvalidationService userAccessInvalidationService,
+            LoginSettingsService loginSettingsService,
+            TotpService totpService) {
         this.validator = validator;
         this.passwordPolicyService = passwordPolicyService;
         this.passwordService = passwordService;
         this.userAccessInvalidationService = userAccessInvalidationService;
+        this.loginSettingsService = loginSettingsService;
+        this.totpService = totpService;
     }
 
     StandardRequiredActionHandler(Validator validator) {
@@ -40,6 +48,8 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
         this.passwordPolicyService = null;
         this.passwordService = null;
         this.userAccessInvalidationService = null;
+        this.loginSettingsService = null;
+        this.totpService = null;
     }
 
     @Override
@@ -61,6 +71,10 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
                             || user.isTemporaryPassword()
                             || (passwordPolicyService != null
                                     && passwordPolicyService.isExpired(user));
+            case "CONFIGURE_TOTP" ->
+                    loginSettingsService != null
+                            && loginSettingsService.isOtpRequired()
+                            && !user.isTotpEnabled();
             default -> !completed;
         };
     }
@@ -73,6 +87,11 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
     }
 
     void completeStandard(UserEntity user, String key, Map<String, Object> values) {
+        completeStandard(user, key, values, null);
+    }
+
+    void completeStandard(
+            UserEntity user, String key, Map<String, Object> values, String currentSessionId) {
         Map<String, Object> submitted = values == null ? Map.of() : values;
         switch (key) {
             case "UPDATE_PROFILE" -> {
@@ -121,6 +140,27 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
                 passwordService.changePassword(user, newPassword);
                 if (userAccessInvalidationService != null) {
                     userAccessInvalidationService.invalidate(user.getUsername());
+                }
+            }
+            case "CONFIGURE_TOTP" -> {
+                String code = value(submitted, "code");
+                if (totpService == null
+                        || loginSettingsService == null
+                        || user.getTotpSecret() == null
+                        || !totpService.matches(
+                                user.getTotpSecret(),
+                                code,
+                                loginSettingsService.otpAlgorithm(),
+                                loginSettingsService.otpDigits(),
+                                loginSettingsService.otpPeriodSeconds(),
+                                loginSettingsService.otpLookAheadWindow())) {
+                    throw ApiException.badRequest(
+                            ApiErrorCode.INVALID_TOTP_CODE, "The authenticator code is invalid");
+                }
+                user.setTotpEnabled(true);
+                if (userAccessInvalidationService != null) {
+                    userAccessInvalidationService.invalidateOtherSessions(
+                            user.getUsername(), currentSessionId);
                 }
             }
             default ->

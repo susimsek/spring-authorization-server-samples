@@ -8,6 +8,7 @@ import io.github.susimsek.springauthserversamples.repository.LoginSettingsReposi
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
 import io.github.susimsek.springauthserversamples.session.JpaIndexedSessionRepository;
 import java.time.Duration;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,11 +48,19 @@ public class LoginSettingsService {
                 settings.getSessionTimeoutMinutes(),
                 settings.getPasswordMinimumLength(),
                 settings.isBruteForceEnabled(),
-                settings.getBruteForceMaxFailures());
+                settings.getBruteForceMaxFailures(),
+                settings.isOtpEnabled(),
+                settings.isOtpRequired(),
+                settings.getOtpIssuer(),
+                settings.getOtpAlgorithm(),
+                settings.getOtpDigits(),
+                settings.getOtpPeriodSeconds(),
+                settings.getOtpLookAheadWindow());
     }
 
     @Transactional
     public AdminLoginSettingsDTO update(AdminLoginSettingsRequestDTO request) {
+        validateOtpPolicy(request);
         LoginSettingsEntity settings = settings();
         settings.setUserRegistrationEnabled(request.userRegistration());
         settings.setForgotPasswordEnabled(request.forgotPassword());
@@ -62,6 +71,13 @@ public class LoginSettingsService {
         settings.setPasswordMinimumLength(request.passwordMinimumLength());
         settings.setBruteForceEnabled(request.bruteForceEnabled());
         settings.setBruteForceMaxFailures(request.bruteForceMaxFailures());
+        settings.setOtpEnabled(request.otpEnabled());
+        settings.setOtpRequired(request.otpRequired());
+        settings.setOtpIssuer(request.otpIssuer().trim());
+        settings.setOtpAlgorithm(request.otpAlgorithm().toUpperCase(Locale.ROOT));
+        settings.setOtpDigits(request.otpDigits());
+        settings.setOtpPeriodSeconds(request.otpPeriodSeconds());
+        settings.setOtpLookAheadWindow(request.otpLookAheadWindow());
         repository.save(settings);
         if (sessionRepository != null) {
             sessionRepository.setDefaultMaxInactiveInterval(
@@ -111,9 +127,74 @@ public class LoginSettingsService {
         return settings().getBruteForceMaxFailures();
     }
 
+    @Transactional(readOnly = true)
+    public boolean isOtpEnabled() {
+        return settings().isOtpEnabled();
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isOtpRequired() {
+        return settings().isOtpRequired();
+    }
+
+    @Transactional(readOnly = true)
+    public String otpIssuer() {
+        return settings().getOtpIssuer();
+    }
+
+    @Transactional(readOnly = true)
+    public String otpAlgorithm() {
+        return settings().getOtpAlgorithm();
+    }
+
+    @Transactional(readOnly = true)
+    public int otpDigits() {
+        return settings().getOtpDigits();
+    }
+
+    @Transactional(readOnly = true)
+    public int otpPeriodSeconds() {
+        return settings().getOtpPeriodSeconds();
+    }
+
+    @Transactional(readOnly = true)
+    public int otpLookAheadWindow() {
+        return settings().getOtpLookAheadWindow();
+    }
+
     private LoginSettingsEntity settings() {
         return repository
                 .findById(SETTINGS_ID)
                 .orElseThrow(() -> new IllegalStateException("Login settings are not initialized"));
+    }
+
+    private static void validateOtpPolicy(AdminLoginSettingsRequestDTO request) {
+        if (request.otpRequired() && !request.otpEnabled()) {
+            throw io.github.susimsek.springauthserversamples.service.error.ApiException.badRequest(
+                    io.github.susimsek.springauthserversamples.service.error.ApiErrorCode
+                            .INVALID_REQUEST,
+                    "OTP cannot be required when it is disabled");
+        }
+        if (request.otpIssuer() == null || request.otpIssuer().isBlank()) {
+            throw io.github.susimsek.springauthserversamples.service.error.ApiException.badRequest(
+                    io.github.susimsek.springauthserversamples.service.error.ApiErrorCode
+                            .INVALID_REQUEST,
+                    "OTP issuer is required");
+        }
+        String algorithm = request.otpAlgorithm();
+        if (algorithm == null
+                || !java.util.Set.of("SHA1", "SHA256", "SHA512")
+                        .contains(algorithm.toUpperCase(Locale.ROOT))) {
+            throw io.github.susimsek.springauthserversamples.service.error.ApiException.badRequest(
+                    io.github.susimsek.springauthserversamples.service.error.ApiErrorCode
+                            .INVALID_REQUEST,
+                    "OTP algorithm is invalid");
+        }
+        if (request.otpDigits() != 6 && request.otpDigits() != 8) {
+            throw io.github.susimsek.springauthserversamples.service.error.ApiException.badRequest(
+                    io.github.susimsek.springauthserversamples.service.error.ApiErrorCode
+                            .INVALID_REQUEST,
+                    "OTP digits must be 6 or 8");
+        }
     }
 }

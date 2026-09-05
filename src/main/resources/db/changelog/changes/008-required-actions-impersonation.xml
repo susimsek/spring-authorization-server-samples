@@ -60,9 +60,17 @@
 	</changeSet>
 
 	<changeSet id="012-04-seed-required-actions" author="susimsek">
-		<insert tableName="required_action_definition"><column name="action_key" value="UPDATE_PROFILE"/><column name="display_name" value="Complete your profile"/><column name="description" value="Provide the required profile information."/><column name="enabled" valueBoolean="false"/><column name="global_policy" valueBoolean="false"/><column name="version" valueNumeric="1"/><column name="priority" valueNumeric="10"/><column name="created_by" value="system"/><column name="created_at" valueDate="${now}"/><column name="updated_at" valueDate="${now}"/></insert>
-		<insert tableName="required_action_definition"><column name="action_key" value="TERMS_AND_CONDITIONS"/><column name="display_name" value="Accept the terms and conditions"/><column name="description" value="Review and accept the current terms."/><column name="enabled" valueBoolean="false"/><column name="global_policy" valueBoolean="true"/><column name="version" valueNumeric="1"/><column name="priority" valueNumeric="20"/><column name="created_by" value="system"/><column name="created_at" valueDate="${now}"/><column name="updated_at" valueDate="${now}"/></insert>
-		<insert tableName="required_action_definition"><column name="action_key" value="UPDATE_EMAIL"/><column name="display_name" value="Confirm your new email address"/><column name="description" value="Confirm the email address waiting for verification."/><column name="enabled" valueBoolean="true"/><column name="global_policy" valueBoolean="true"/><column name="version" valueNumeric="1"/><column name="priority" valueNumeric="30"/><column name="created_by" value="system"/><column name="created_at" valueDate="${now}"/><column name="updated_at" valueDate="${now}"/></insert>
-		<insert tableName="required_action_definition"><column name="action_key" value="DELETE_ACCOUNT"/><column name="display_name" value="Confirm account deletion"/><column name="description" value="Confirm the requested account deletion."/><column name="enabled" valueBoolean="false"/><column name="global_policy" valueBoolean="false"/><column name="version" valueNumeric="1"/><column name="priority" valueNumeric="40"/><column name="created_by" value="system"/><column name="created_at" valueDate="${now}"/><column name="updated_at" valueDate="${now}"/></insert>
+		<loadData encoding="UTF-8" file="db/data/required-action-definitions.csv" separator=";" tableName="required_action_definition" usePreparedStatements="true">
+			<column header="action_key" type="string"/>
+			<column header="display_name" type="string"/>
+			<column header="description" type="string"/>
+			<column header="enabled" type="boolean"/>
+			<column header="global_policy" type="boolean"/>
+			<column header="version" type="numeric"/>
+			<column header="priority" type="numeric"/>
+			<column header="created_by" type="string"/>
+			<column header="created_at" type="date"/>
+			<column header="updated_at" type="date"/>
+		</loadData>
 	</changeSet>
 </databaseChangeLog>

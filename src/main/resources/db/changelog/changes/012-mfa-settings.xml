@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet id="012-01-mfa-settings" author="susimsek">
+        <addColumn tableName="users">
+            <column name="totp_secret" type="varchar(64)"/>
+            <column name="totp_enabled" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <addColumn tableName="login_settings">
+            <column name="otp_enabled" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="otp_required" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="otp_issuer" type="varchar(100)" defaultValue="Spring Authorization Server">
+                <constraints nullable="false"/>
+            </column>
+            <column name="otp_algorithm" type="varchar(10)" defaultValue="SHA1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="otp_digits" type="int" defaultValueNumeric="6">
+                <constraints nullable="false"/>
+            </column>
+            <column name="otp_period_seconds" type="int" defaultValueNumeric="30">
+                <constraints nullable="false"/>
+            </column>
+            <column name="otp_look_ahead_window" type="int" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

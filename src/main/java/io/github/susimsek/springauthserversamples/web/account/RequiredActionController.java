@@ -1,8 +1,11 @@
 package io.github.susimsek.springauthserversamples.web.account;
 
 import io.github.susimsek.springauthserversamples.config.openapi.OpenApiConfig;
+import io.github.susimsek.springauthserversamples.config.security.MfaAuthorizationFilter;
+import io.github.susimsek.springauthserversamples.dto.account.MfaSetupDTO;
 import io.github.susimsek.springauthserversamples.dto.account.RequiredActionCompleteRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.account.RequiredActionDTO;
+import io.github.susimsek.springauthserversamples.service.account.MfaService;
 import io.github.susimsek.springauthserversamples.service.requiredaction.RequiredActionService;
 import io.github.susimsek.springauthserversamples.web.ApiController;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,6 +14,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +36,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class RequiredActionController {
 
     private final RequiredActionService requiredActionService;
+    private final MfaService mfaService;
+
+    @GetMapping("/CONFIGURE_TOTP/setup")
+    @Operation(
+            summary = "Start TOTP required action",
+            description = "Creates a TOTP setup secret for the authenticated account.")
+    @ApiResponse(responseCode = "200", description = "TOTP setup details returned.")
+    MfaSetupDTO setupTotp(Authentication authentication) {
+        return mfaService.setup(authentication.getName());
+    }
 
     @GetMapping
     @Operation(
@@ -64,12 +78,18 @@ public class RequiredActionController {
                     RequiredActionCompleteRequestDTO request,
             Authentication authentication,
             HttpServletRequest servletRequest) {
-        requiredActionService.complete(
-                authentication.getName(),
-                key,
-                request == null ? null : request.values(),
-                servletRequest.getRemoteAddr(),
-                servletRequest.getHeader("User-Agent"));
+        HttpSession session = servletRequest.getSession(false);
+        boolean completed =
+                requiredActionService.completeInSession(
+                        authentication.getName(),
+                        key,
+                        request == null ? null : request.values(),
+                        servletRequest.getRemoteAddr(),
+                        servletRequest.getHeader("User-Agent"),
+                        session == null ? null : session.getId());
+        if (completed && session != null && "CONFIGURE_TOTP".equals(key)) {
+            session.setAttribute(MfaAuthorizationFilter.MFA_VERIFIED, true);
+        }
         return ResponseEntity.noContent().build();
     }
 }

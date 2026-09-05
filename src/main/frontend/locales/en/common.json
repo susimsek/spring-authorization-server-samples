@@ -64,7 +64,27 @@
     "password": "New password",
     "confirmPassword": "Confirm new password",
     "passwordHelp": "Use at least 12 characters with uppercase, lowercase, a number, and a symbol.",
-    "passwordMismatch": "Passwords do not match."
+    "passwordMissingPrefix": "Missing requirements: ",
+    "passwordMinLength": "at least 12 characters",
+    "passwordTooLong": "Use at most 128 characters.",
+    "passwordUppercase": "an uppercase letter",
+    "passwordLowercase": "a lowercase letter",
+    "passwordDigit": "a number",
+    "passwordSymbol": "a symbol",
+    "passwordMismatch": "Passwords do not match.",
+    "totpSecret": "Add this secret to your authenticator app",
+    "totpUriHelp": "You can also use this otpauth URI with a QR-code scanner.",
+    "totpCode": "Authenticator code",
+    "invalidCode": "Enter a valid authenticator code."
+  },
+  "mfa": {
+    "eyebrow": "Multi-factor authentication",
+    "title": "Verify your authenticator code",
+    "subtitle": "Enter the current code from your authenticator app to continue.",
+    "code": "Authenticator code",
+    "invalidCode": "The authenticator code is invalid.",
+    "verify": "Verify and continue",
+    "verifying": "Verifying…"
   },
   "registration": {
     "eyebrow": "New account",
@@ -268,6 +288,13 @@
       "passwordMinimumLength": "Minimum password length",
       "bruteForceEnabled": "Brute-force protection",
       "bruteForceMaxFailures": "Maximum login failures",
+      "otpEnabled": "Allow authenticator apps (TOTP)",
+      "otpRequired": "Require TOTP after password login",
+      "otpIssuer": "Authenticator issuer",
+      "otpAlgorithm": "TOTP algorithm",
+      "otpDigits": "TOTP code digits",
+      "otpPeriodSeconds": "TOTP period (seconds)",
+      "otpLookAheadWindow": "Allowed clock drift periods",
       "save": "Save settings",
       "saving": "Saving…",
       "saved": "Login settings saved.",
@@ -713,7 +740,19 @@
       "policyMatch": "Passwords match",
       "cancel": "Clear changes",
       "policyMaxLength": "At most 200 characters",
-      "policyDifferent": "Different from current password"
+      "policyDifferent": "Different from current password",
+      "mfa": {
+        "title": "Two-factor authentication",
+        "help": "Protect your account with a time-based one-time password from an authenticator app.",
+        "setup": "Set up authenticator",
+        "secret": "Setup key",
+        "code": "Enter the 6 or 8 digit code",
+        "enable": "Enable MFA",
+        "disable": "Disable MFA",
+        "enabled": "Authenticator-based MFA is enabled.",
+        "invalidCode": "The authenticator code is invalid.",
+        "error": "The MFA operation could not be completed. Check the code and try again."
+      }
     },
     "sessions": {
       "title": "Device activity",

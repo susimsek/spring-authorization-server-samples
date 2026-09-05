@@ -44,4 +44,25 @@ public class LoginSettingsEntity {
 
     @Column(name = "brute_force_max_failures", nullable = false)
     private int bruteForceMaxFailures;
+
+    @Column(name = "otp_enabled", nullable = false)
+    private boolean otpEnabled;
+
+    @Column(name = "otp_required", nullable = false)
+    private boolean otpRequired;
+
+    @Column(name = "otp_issuer", nullable = false, length = 100)
+    private String otpIssuer;
+
+    @Column(name = "otp_algorithm", nullable = false, length = 10)
+    private String otpAlgorithm;
+
+    @Column(name = "otp_digits", nullable = false)
+    private int otpDigits;
+
+    @Column(name = "otp_period_seconds", nullable = false)
+    private int otpPeriodSeconds;
+
+    @Column(name = "otp_look_ahead_window", nullable = false)
+    private int otpLookAheadWindow;
 }

@@ -40,4 +40,10 @@ public class SessionInvalidationService {
         userSessionRepository.deleteByPrincipalName(username);
         authorizationRepository.deleteByPrincipalName(username);
     }
+
+    @Transactional
+    public void invalidatePrincipalExceptSession(String username, String currentSessionId) {
+        userSessionRepository.deleteByPrincipalNameAndSessionIdNot(username, currentSessionId);
+        authorizationRepository.deleteByPrincipalName(username);
+    }
 }

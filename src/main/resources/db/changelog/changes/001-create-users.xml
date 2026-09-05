@@ -26,7 +26,7 @@
 			<column name="password" type="varchar(255)">
 				<constraints nullable="false"/>
 			</column>
-			<column name="password_changed_at" type="timestamp"/>
+			<column name="password_changed_at" type="timestamp" defaultValueDate="${now}"/>
 			<column name="must_change_password" type="boolean" defaultValueBoolean="false">
 				<constraints nullable="false"/>
 			</column>
@@ -140,6 +140,9 @@
 			usePreparedStatements="true">
 			<column header="username" type="string"/>
 			<column header="password" type="string"/>
+			<column header="first_name" type="string"/>
+			<column header="last_name" type="string"/>
+			<column header="email" type="string"/>
 			<column header="enabled" type="boolean"/>
 			<column header="created_by" type="string"/>
 			<column header="last_modified_by" type="string"/>

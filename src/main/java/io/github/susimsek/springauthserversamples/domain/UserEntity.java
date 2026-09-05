@@ -103,6 +103,12 @@ public class UserEntity extends AuditableEntity {
     @Column(name = "permanently_locked", nullable = false)
     private boolean permanentlyLocked;
 
+    @Column(name = "totp_secret", length = 64)
+    private String totpSecret;
+
+    @Column(name = "totp_enabled", nullable = false)
+    private boolean totpEnabled;
+
     @ManyToMany
     @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
     @JoinTable(

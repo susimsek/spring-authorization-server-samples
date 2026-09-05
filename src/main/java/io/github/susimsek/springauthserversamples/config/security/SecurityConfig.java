@@ -90,6 +90,8 @@ public class SecurityConfig {
                                 authorize
                                         .requestMatchers("/avatars/**", "/oidc/session-iframe.html")
                                         .permitAll()
+                                        .requestMatchers("/api/auth/mfa/**")
+                                        .authenticated()
                                         .requestMatchers("/account/avatar")
                                         .authenticated()
                                         .requestMatchers("/api/auth/**")
@@ -109,6 +111,7 @@ public class SecurityConfig {
                                                 "/verify-email",
                                                 "/confirm-email",
                                                 "/required-actions",
+                                                "/mfa",
                                                 "/login",
                                                 "/login/**",
                                                 "/register",

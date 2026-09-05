@@ -48,14 +48,6 @@
 	</changeSet>
 
 	<changeSet id="010-03-add-email-scope" author="susimsek">
-		<insert tableName="oauth2_client_scope">
-			<column name="id" value="scope-email"/>
-			<column name="name" value="email"/>
-			<column name="display_name" value="Email"/>
-			<column name="description" value="Email address and verification status."/>
-			<column name="created_by" value="system"/>
-			<column name="last_modified_by" value="system"/>
-		</insert>
 		<update tableName="oauth2_registered_client">
 			<column name="scopes" valueComputed="concat(scopes, ',email')"/>
 			<where>client_id in ('admin-console', 'account-console') and scopes not like '%email%'</where>

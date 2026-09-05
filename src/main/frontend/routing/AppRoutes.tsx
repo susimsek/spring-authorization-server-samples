@@ -35,6 +35,7 @@ import { AccountPageHeader } from "@/components/account/AccountPageHeader";
 import { AccountBreadcrumb } from "@/components/account/AccountBreadcrumb";
 import { AccountProfileForm } from "@/components/account/AccountProfileForm";
 import { AccountPasswordForm } from "@/components/account/AccountPasswordForm";
+import { MfaSettings } from "@/components/account/MfaSettings";
 import { AccountSessions } from "@/components/account/AccountSessions";
 import { AccountApplications } from "@/components/account/AccountApplications";
 import { AccountDeleteForm } from "@/components/account/AccountDeleteForm";
@@ -45,6 +46,7 @@ import { ConsentForm } from "@/components/auth/ConsentForm";
 import { RequiredActionsPage } from "@/components/auth/RequiredActionsPage";
 import { ErrorView } from "@/components/auth/ErrorView";
 import { NotFoundView } from "@/components/auth/NotFoundView";
+import { MfaChallengePage } from "@/components/auth/MfaChallengePage";
 import AdminEvents from "@/components/admin/AdminEvents";
 import ServerInfo from "@/components/admin/ServerInfo";
 import AdminSettings from "@/components/admin/AdminSettings";
@@ -139,7 +141,12 @@ function AccountPage({
           <AccountDeleteForm dictionary={d} />
         </>
       )}
-      {section === "security" && <AccountPasswordForm dictionary={d} />}
+      {section === "security" && (
+        <>
+          <AccountPasswordForm dictionary={d} />
+          <MfaSettings dictionary={d} />
+        </>
+      )}
       {section === "sessions" && <AccountSessions dictionary={d} />}
       {section === "applications" && <AccountApplications dictionary={d} />}
     </div>
@@ -166,6 +173,7 @@ export function AppRoutes() {
         <Route path="register" element={<RegistrationForm dictionary={dictionary} />} />
         <Route path="consent" element={<ConsentForm dictionary={dictionary} />} />
         <Route path="required-actions" element={<RequiredActionsPage dictionary={dictionary} />} />
+        <Route path="mfa" element={<MfaChallengePage dictionary={dictionary} />} />
         <Route path="auth-error" element={<ErrorView dictionary={dictionary} />} />
         <Route path="forgot-password" element={<ForgotPasswordForm {...props} />} />
         <Route path="reset-password" element={<ResetPasswordForm {...props} />} />

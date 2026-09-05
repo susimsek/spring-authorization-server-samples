@@ -62,6 +62,7 @@ This repository is a Spring Boot 4.1 + Java 25 sample application built around t
 - JPA-backed registered client storage
 - JPA-backed authorization and consent storage
 - Form login backed by Spring Security and JPA user storage
+- Optional account TOTP MFA with configurable issuer, algorithm, digits, period, clock-drift window, and required-action enrollment
 - Built-in Administration and Account consoles using public OIDC clients with Authorization Code + PKCE, refresh tokens, and OIDC logout
 - H2 in-memory database in PostgreSQL compatibility mode for `dev`
 - PostgreSQL support for `prod`
@@ -229,9 +230,9 @@ The static frontend also contains browser-based OIDC clients for administration 
 | Console | Entry URL | OIDC client | API scope | Access |
 | --- | --- | --- | --- | --- |
 | Administration | `/admin` | `admin-console` | `admin-api` | Administrative API permissions; the seeded `admin/admin` user has `ROLE_ADMIN` |
-| Account | `/account` | `account-console` | `account-api` | Authenticated users, including `admin/admin` and `user/user` |
+| Account | `/account` | `account-console` | `account-api` | Authenticated users, including `admin/admin`, `user/user`, `user2/user2`, `user3/user3`, `user4/user4`, `user5/user5`, and `user6/user6` |
 
-The authorization server browser session provides SSO between the login screen and the console clients. The Admin Console includes client, client-scope, user, role, session, consent, signing-key, event, and server-information screens. The Account Console provides personal information, security, authorized applications, and session-management screens.
+The authorization server browser session provides SSO between the login screen and the console clients. The Admin Console includes client, client-scope, user, role, session, consent, signing-key, event, and server-information screens. The Account Console provides personal information, password and TOTP MFA security, authorized applications, and session-management screens.
 
 The registered redirect and post-logout redirect URIs are seeded for `localhost:9090` and `https://spring-authorization-server-samples.local`. When deploying elsewhere, set `app.authorization-server.issuer` (or `APP_AUTHORIZATION_SERVER_ISSUER`) to the public address and register matching client redirect URIs.
 
@@ -603,6 +604,11 @@ Seeded users:
 | --- | --- | --- |
 | `admin` | `admin` | `ROLE_ADMIN`, `ROLE_USER` |
 | `user` | `user` | `ROLE_USER` |
+| `user2` | `user2` | `ROLE_USER` |
+| `user3` | `user3` | `ROLE_USER` |
+| `user4` | `user4` | `ROLE_USER` |
+| `user5` | `user5` | `ROLE_USER` |
+| `user6` | `user6` | `ROLE_USER` |
 
 Seeded OAuth2 clients:
 

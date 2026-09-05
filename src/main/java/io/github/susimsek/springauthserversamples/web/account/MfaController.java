@@ -1,0 +1,50 @@
+package io.github.susimsek.springauthserversamples.web.account;
+
+import io.github.susimsek.springauthserversamples.config.openapi.OpenApiConfig;
+import io.github.susimsek.springauthserversamples.config.security.MfaAuthorizationFilter;
+import io.github.susimsek.springauthserversamples.dto.account.MfaCodeRequestDTO;
+import io.github.susimsek.springauthserversamples.service.account.MfaService;
+import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
+import io.github.susimsek.springauthserversamples.web.ApiController;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@ApiController
+@RestController
+@RequestMapping("/api/auth/mfa")
+@RequiredArgsConstructor
+@Tag(name = "MFA", description = "Browser-session TOTP verification.")
+@SecurityRequirement(name = OpenApiConfig.BROWSER_SESSION)
+public class MfaController {
+
+    private final MfaService mfaService;
+
+    @PostMapping("/verify")
+    @Operation(
+            summary = "Verify TOTP",
+            description = "Verifies the current authenticator code for the browser session.")
+    @ApiResponse(responseCode = "204", description = "TOTP verified for the current session.")
+    ResponseEntity<Void> verify(
+            Authentication authentication,
+            @Valid @RequestBody MfaCodeRequestDTO request,
+            HttpServletRequest servletRequest) {
+        if (!mfaService.valid(authentication.getName(), request.code())) {
+            throw ApiException.badRequest(
+                    ApiErrorCode.INVALID_TOTP_CODE, "The authenticator code is invalid");
+        }
+        servletRequest.getSession(true).setAttribute(MfaAuthorizationFilter.MFA_VERIFIED, true);
+        return ResponseEntity.noContent().build();
+    }
+}

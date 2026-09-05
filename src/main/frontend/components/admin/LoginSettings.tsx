@@ -23,6 +23,13 @@ type Settings = {
   passwordMinimumLength: number;
   bruteForceEnabled: boolean;
   bruteForceMaxFailures: number;
+  otpEnabled: boolean;
+  otpRequired: boolean;
+  otpIssuer: string;
+  otpAlgorithm: "SHA1" | "SHA256" | "SHA512";
+  otpDigits: number;
+  otpPeriodSeconds: number;
+  otpLookAheadWindow: number;
 };
 
 export default function LoginSettingsPage({ embedded = false }: { embedded?: boolean }) {
@@ -43,6 +50,16 @@ export default function LoginSettingsPage({ embedded = false }: { embedded?: boo
     passwordMinimumLength: z.number().int().min(8, validation.minimumPasswordLength),
     bruteForceEnabled: z.boolean(),
     bruteForceMaxFailures: z.number().int().min(1, validation.positiveNumber),
+    otpEnabled: z.boolean(),
+    otpRequired: z.boolean(),
+    otpIssuer: z.string().trim().min(1, validation.required).max(100),
+    otpAlgorithm: z.enum(["SHA1", "SHA256", "SHA512"]),
+    otpDigits: z
+      .number()
+      .int()
+      .refine((value) => value === 6 || value === 8, validation.positiveNumber),
+    otpPeriodSeconds: z.number().int().min(15, validation.positiveNumber),
+    otpLookAheadWindow: z.number().int().min(0, validation.positiveNumber),
   });
   const {
     register,
@@ -150,6 +167,54 @@ export default function LoginSettingsPage({ embedded = false }: { embedded?: boo
                 label={copy.bruteForceEnabled}
                 {...register("bruteForceEnabled")}
               />
+              <hr className="my-4" />
+              <Form.Check
+                className="mb-3"
+                type="switch"
+                label={copy.otpEnabled}
+                {...register("otpEnabled")}
+              />
+              <Form.Check
+                className="mb-4"
+                type="switch"
+                label={copy.otpRequired}
+                {...register("otpRequired")}
+              />
+              <div className="d-grid gap-3 mb-4">
+                <Form.Group controlId="login-otp-issuer">
+                  <Form.Label>{copy.otpIssuer}</Form.Label>
+                  <Form.Control isInvalid={Boolean(errors.otpIssuer)} {...register("otpIssuer")} />
+                  <Form.Control.Feedback type="invalid">
+                    {errors.otpIssuer?.message}
+                  </Form.Control.Feedback>
+                </Form.Group>
+                <Form.Group controlId="login-otp-algorithm">
+                  <Form.Label>{copy.otpAlgorithm}</Form.Label>
+                  <Form.Select {...register("otpAlgorithm")}>
+                    <option value="SHA1">SHA-1</option>
+                    <option value="SHA256">SHA-256</option>
+                    <option value="SHA512">SHA-512</option>
+                  </Form.Select>
+                </Form.Group>
+                <NumberField
+                  id="login-otp-digits"
+                  label={copy.otpDigits}
+                  error={errors.otpDigits?.message}
+                  registration={register("otpDigits", { valueAsNumber: true })}
+                />
+                <NumberField
+                  id="login-otp-period"
+                  label={copy.otpPeriodSeconds}
+                  error={errors.otpPeriodSeconds?.message}
+                  registration={register("otpPeriodSeconds", { valueAsNumber: true })}
+                />
+                <NumberField
+                  id="login-otp-look-ahead"
+                  label={copy.otpLookAheadWindow}
+                  error={errors.otpLookAheadWindow?.message}
+                  registration={register("otpLookAheadWindow", { valueAsNumber: true })}
+                />
+              </div>
               <div className="admin-form-actions">
                 <Button disabled={isSubmitting} type="submit">
                   <AdminActionIcon action="save" />
