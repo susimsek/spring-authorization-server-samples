@@ -41,7 +41,8 @@ export function GroupDetail({
   dictionary: Dictionary;
   id: string;
 }) {
-  const { accessToken } = useAdminAuth();
+  const { access, accessToken } = useAdminAuth();
+  const canManage = Boolean(access?.manageUsers);
   const alerts = useConsoleAlerts();
   const router = useRouter();
   const groupId = id;
@@ -270,6 +271,7 @@ export function GroupDetail({
               <Form.Control
                 isInvalid={Boolean(groupSettingsErrors.name)}
                 maxLength={100}
+                disabled={!canManage}
                 {...registerGroupSettings("name")}
               />
               <Form.Control.Feedback type="invalid">
@@ -278,7 +280,7 @@ export function GroupDetail({
             </Form.Group>
             <Form.Group className="mb-3" controlId="group-parent">
               <Form.Label>{copy.parent}</Form.Label>
-              <Form.Select {...registerGroupSettings("parentId")}>
+              <Form.Select disabled={!canManage} {...registerGroupSettings("parentId")}>
                 <option value="">{copy.rootGroup}</option>
                 {groups
                   .filter((candidate) => candidate.id !== group.id)
@@ -291,10 +293,12 @@ export function GroupDetail({
               <Form.Text>{copy.parentHelp}</Form.Text>
             </Form.Group>
             <div className="admin-form-actions">
-              <Button disabled={saving || !isGroupSettingsDirty} type="submit">
-                <AdminActionIcon action="save" />
-                {dictionary.admin.common.save}
-              </Button>
+              {canManage && (
+                <Button disabled={saving || !isGroupSettingsDirty} type="submit">
+                  <AdminActionIcon action="save" />
+                  {dictionary.admin.common.save}
+                </Button>
+              )}
             </div>
           </Form>
         </Card.Body>
@@ -310,6 +314,7 @@ export function GroupDetail({
                 id={`role-${role.name}`}
                 label={role.name}
                 type="checkbox"
+                disabled={!canManage}
                 onChange={() =>
                   setSelectedRoles((current) =>
                     current.includes(role.name)
@@ -321,10 +326,12 @@ export function GroupDetail({
             ))}
           </div>
           <div className="admin-form-actions">
-            <Button disabled={saving} onClick={() => void saveRoles()}>
-              <AdminActionIcon action="save" />
-              {copy.saveMappings}
-            </Button>
+            {canManage && (
+              <Button disabled={saving} onClick={() => void saveRoles()}>
+                <AdminActionIcon action="save" />
+                {copy.saveMappings}
+              </Button>
+            )}
           </div>
         </Card.Body>
       </Card>
@@ -337,6 +344,7 @@ export function GroupDetail({
                 aria-label={copy.assignUser}
                 placeholder={dictionary.admin.resources.search}
                 value={selectedUser?.username ?? userQuery}
+                disabled={!canManage}
                 onChange={(event) => {
                   setSelectedUser(null);
                   setSuggestions([]);
@@ -353,10 +361,12 @@ export function GroupDetail({
                 </ListGroup>
               )}
             </div>
-            <Button disabled={!selectedUser || saving} onClick={() => void addMember()}>
-              <AdminActionIcon action="assign" />
-              {copy.assignUser}
-            </Button>
+            {canManage && (
+              <Button disabled={!selectedUser || saving} onClick={() => void addMember()}>
+                <AdminActionIcon action="assign" />
+                {copy.assignUser}
+              </Button>
+            )}
           </div>
         </Card.Body>
       </Card>
@@ -414,15 +424,17 @@ export function GroupDetail({
                 </Badge>
               </td>
               <td className="text-end">
-                <Button
-                  disabled={saving}
-                  size="sm"
-                  variant="danger"
-                  onClick={() => void removeMember(user)}
-                >
-                  <AdminActionIcon action="remove" />
-                  {copy.removeUser}
-                </Button>
+                {canManage && (
+                  <Button
+                    disabled={saving}
+                    size="sm"
+                    variant="danger"
+                    onClick={() => void removeMember(user)}
+                  >
+                    <AdminActionIcon action="remove" />
+                    {copy.removeUser}
+                  </Button>
+                )}
               </td>
             </tr>
           ))}

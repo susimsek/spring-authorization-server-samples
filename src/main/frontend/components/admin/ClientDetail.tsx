@@ -224,7 +224,7 @@ export function ClientDetail({
           url={`/api/admin/clients/${encodeURIComponent(client.id)}/sessions`}
           locale={locale}
           dictionary={dictionary}
-          canManage={access?.manageSessions ?? false}
+          canManage={access?.manageUsers ?? false}
         />
       )}
       {activeTab === "consents" && (

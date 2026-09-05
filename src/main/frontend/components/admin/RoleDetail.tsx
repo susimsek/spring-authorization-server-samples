@@ -35,7 +35,7 @@ export function RoleDetail({
   dictionary: Dictionary;
   name: string;
 }) {
-  const { accessToken } = useAdminAuth();
+  const { access, accessToken } = useAdminAuth();
   const alerts = useConsoleAlerts();
   const router = useRouter();
   const actualName = name;
@@ -213,10 +213,12 @@ export function RoleDetail({
                 </ListGroup>
               )}
             </div>
-            <Button disabled={!selectedUser} onClick={() => void assign()}>
-              <AdminActionIcon action="assign" />
-              {dictionary.admin.roles.assign}
-            </Button>
+            {access?.manageRoles && (
+              <Button disabled={!selectedUser} onClick={() => void assign()}>
+                <AdminActionIcon action="assign" />
+                {dictionary.admin.roles.assign}
+              </Button>
+            )}
           </div>
           <Form.Text className="text-body-secondary">
             {dictionary.admin.roles.searchUsersHelp}
@@ -282,10 +284,12 @@ export function RoleDetail({
                 </Badge>
               </td>
               <td className="text-end">
-                <Button size="sm" variant="danger" onClick={() => void remove(user)}>
-                  <AdminActionIcon action="remove" />
-                  {dictionary.admin.roles.remove}
-                </Button>
+                {access?.manageRoles && (
+                  <Button size="sm" variant="danger" onClick={() => void remove(user)}>
+                    <AdminActionIcon action="remove" />
+                    {dictionary.admin.roles.remove}
+                  </Button>
+                )}
               </td>
             </tr>
           ))}

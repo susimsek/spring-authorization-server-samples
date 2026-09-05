@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
-  <changeSet id="015-01-email-settings" author="codex">
+  <changeSet id="015-01-email-settings" author="susimsek">
     <createTable tableName="email_settings">
       <column name="id" type="bigint"><constraints nullable="false" primaryKey="true" primaryKeyName="pk_email_settings"/></column>
       <column name="enabled" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>

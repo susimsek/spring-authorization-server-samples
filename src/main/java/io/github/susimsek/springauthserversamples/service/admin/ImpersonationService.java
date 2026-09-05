@@ -7,6 +7,7 @@ import io.github.susimsek.springauthserversamples.mapper.AdminImpersonationMappe
 import io.github.susimsek.springauthserversamples.mapper.AdminImpersonationTicketMapper;
 import io.github.susimsek.springauthserversamples.repository.ImpersonationTicketRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
+import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.nio.charset.StandardCharsets;
@@ -49,7 +50,7 @@ public class ImpersonationService {
                     ApiErrorCode.USER_PROTECTED, "Disabled users cannot be impersonated");
         }
         if (userDetailsService.loadUserByUsername(target.getUsername()).getAuthorities().stream()
-                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()))) {
+                .anyMatch(a -> AuthoritiesConstants.ADMIN.equals(a.getAuthority()))) {
             throw ApiException.forbidden(
                     ApiErrorCode.USER_PROTECTED, "Administrators cannot be impersonated");
         }

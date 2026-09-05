@@ -4,6 +4,7 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
+import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
 import java.util.ArrayList;
 import java.util.Collection;
 import org.springframework.context.annotation.Bean;
@@ -31,76 +32,110 @@ public class AdminApiSecurityConfig {
                         authorize ->
                                 authorize
                                         .requestMatchers(HttpMethod.GET, "/api/admin/dashboard")
-                                        .hasAuthority("ROLE_ADMIN")
+                                        .hasAuthority(AuthoritiesConstants.ADMIN)
                                         .requestMatchers("/api/admin/settings/**")
-                                        .hasAuthority("ROLE_ADMIN")
+                                        .hasAuthority(AuthoritiesConstants.ADMIN)
                                         .requestMatchers("/api/admin/whoami")
                                         .hasAuthority("SCOPE_admin-api")
                                         .requestMatchers(
                                                 HttpMethod.GET, "/api/admin/client-scopes/**")
                                         .hasAnyAuthority(
-                                                "ROLE_ADMIN",
-                                                "ROLE_CLIENT_VIEWER",
-                                                "ROLE_CLIENT_MANAGER")
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.CLIENT_VIEWER,
+                                                AuthoritiesConstants.CLIENT_MANAGER)
                                         .requestMatchers("/api/admin/client-scopes/**")
-                                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_CLIENT_MANAGER")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.CLIENT_MANAGER)
                                         .requestMatchers(HttpMethod.GET, "/api/admin/clients/**")
                                         .hasAnyAuthority(
-                                                "ROLE_ADMIN",
-                                                "ROLE_CLIENT_VIEWER",
-                                                "ROLE_CLIENT_MANAGER")
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.CLIENT_VIEWER,
+                                                AuthoritiesConstants.CLIENT_MANAGER)
                                         .requestMatchers("/api/admin/clients/**")
-                                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_CLIENT_MANAGER")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.CLIENT_MANAGER)
                                         .requestMatchers(HttpMethod.GET, "/api/admin/users/**")
                                         .hasAnyAuthority(
-                                                "ROLE_ADMIN",
-                                                "ROLE_USER_VIEWER",
-                                                "ROLE_USER_MANAGER")
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.USER_VIEWER,
+                                                AuthoritiesConstants.USER_MANAGER)
+                                        .requestMatchers(HttpMethod.GET, "/api/admin/groups/**")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.USER_VIEWER,
+                                                AuthoritiesConstants.USER_MANAGER)
+                                        .requestMatchers("/api/admin/groups/**")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.USER_MANAGER)
                                         .requestMatchers(
                                                 HttpMethod.GET, "/api/admin/required-actions")
-                                        .hasAuthority("ROLE_ADMIN")
+                                        .hasAuthority(AuthoritiesConstants.ADMIN)
                                         .requestMatchers(
                                                 HttpMethod.PUT, "/api/admin/required-actions/**")
-                                        .hasAuthority("ROLE_ADMIN")
+                                        .hasAuthority(AuthoritiesConstants.ADMIN)
                                         .requestMatchers(
                                                 HttpMethod.POST,
                                                 "/api/admin/required-actions/users/**")
-                                        .hasAuthority("ROLE_ADMIN")
+                                        .hasAuthority(AuthoritiesConstants.ADMIN)
                                         .requestMatchers(
                                                 HttpMethod.DELETE,
                                                 "/api/admin/required-actions/users/**")
-                                        .hasAuthority("ROLE_ADMIN")
+                                        .hasAuthority(AuthoritiesConstants.ADMIN)
                                         .requestMatchers(
                                                 HttpMethod.POST, "/api/admin/users/*/impersonation")
-                                        .hasAuthority("ROLE_ADMIN")
+                                        .hasAuthority(AuthoritiesConstants.ADMIN)
                                         .requestMatchers(HttpMethod.GET, "/api/admin/events")
                                         .hasAnyAuthority(
-                                                "ROLE_ADMIN",
-                                                "ROLE_USER_VIEWER",
-                                                "ROLE_USER_MANAGER")
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.USER_VIEWER,
+                                                AuthoritiesConstants.USER_MANAGER)
                                         .requestMatchers(HttpMethod.PUT, "/api/admin/users/**")
-                                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_USER_MANAGER")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.USER_MANAGER)
                                         .requestMatchers(HttpMethod.POST, "/api/admin/users")
-                                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_USER_MANAGER")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.USER_MANAGER)
                                         .requestMatchers(
                                                 HttpMethod.POST, "/api/admin/users/*/unlock")
-                                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_USER_MANAGER")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.USER_MANAGER)
                                         .requestMatchers(HttpMethod.DELETE, "/api/admin/users/**")
-                                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_USER_MANAGER")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.USER_MANAGER)
                                         .requestMatchers(HttpMethod.GET, "/api/admin/roles")
-                                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_USER_MANAGER")
-                                        .requestMatchers("/api/admin/sessions/**")
-                                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_SESSION_MANAGER")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.USER_VIEWER,
+                                                AuthoritiesConstants.USER_MANAGER)
+                                        .requestMatchers(HttpMethod.GET, "/api/admin/sessions/**")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.USER_VIEWER,
+                                                AuthoritiesConstants.USER_MANAGER)
+                                        .requestMatchers(
+                                                HttpMethod.DELETE, "/api/admin/sessions/**")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.USER_MANAGER)
                                         .requestMatchers(HttpMethod.GET, "/api/admin/consents")
                                         .hasAnyAuthority(
-                                                "ROLE_ADMIN",
-                                                "ROLE_USER_VIEWER",
-                                                "ROLE_USER_MANAGER")
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.USER_VIEWER,
+                                                AuthoritiesConstants.USER_MANAGER)
                                         .requestMatchers(
                                                 HttpMethod.DELETE, "/api/admin/consents/**")
-                                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_USER_MANAGER")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.USER_MANAGER)
                                         .requestMatchers("/api/admin/**")
-                                        .hasAuthority("ROLE_ADMIN"))
+                                        .hasAuthority(AuthoritiesConstants.ADMIN))
                 .oauth2ResourceServer(
                         resourceServer ->
                                 resourceServer.jwt(

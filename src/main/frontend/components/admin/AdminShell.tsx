@@ -41,12 +41,12 @@ export function AdminShell({ locale, dictionary, children }: Props) {
   const { access, idTokenParsed, logout, tokenParsed, username } = useAdminAuth();
   const [navigationOpen, setNavigationOpen] = useState(false);
   const items = [
-    ["", dictionary.admin.nav.dashboard, faGaugeHigh, true],
+    ["", dictionary.admin.nav.dashboard, faGaugeHigh, access?.isAdmin],
     ["/clients", dictionary.admin.nav.clients, faAddressCard, access?.viewClients],
     ["/client-scopes", dictionary.admin.nav.clientScopes, faLayerGroup, access?.viewClients],
     ["/users", dictionary.admin.nav.users, faUsers, access?.viewUsers],
-    ["/roles", dictionary.admin.nav.roles, faUserShield, access?.manageRoles],
-    ["/groups", dictionary.admin.nav.groups, faLayerGroup, access?.manageRoles],
+    ["/roles", dictionary.admin.nav.roles, faUserShield, access?.viewRoles],
+    ["/groups", dictionary.admin.nav.groups, faLayerGroup, access?.viewUsers],
     ["/sessions", dictionary.admin.nav.sessions, faLaptop, access?.viewSessions],
     ["/consents", dictionary.admin.nav.consents, faShieldHalved, access?.viewConsents],
     ["/keys", dictionary.admin.nav.keys, faKey, access?.viewKeys],

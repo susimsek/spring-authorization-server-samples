@@ -4,7 +4,7 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
-	<changeSet id="012-02-required-action-tables" author="codex">
+	<changeSet id="012-02-required-action-tables" author="susimsek">
 		<createSequence sequenceName="user_required_action_seq" startValue="1" incrementBy="1"/>
 		<createSequence sequenceName="required_action_completion_seq" startValue="1" incrementBy="1"/>
 		<createTable tableName="required_action_definition">
@@ -45,7 +45,7 @@
 		</createIndex>
 	</changeSet>
 
-	<changeSet id="012-03-impersonation-ticket" author="codex">
+	<changeSet id="012-03-impersonation-ticket" author="susimsek">
 		<createSequence sequenceName="impersonation_ticket_seq" startValue="1" incrementBy="1"/>
 		<createTable tableName="impersonation_ticket">
 			<column name="id" type="bigint"><constraints primaryKey="true" nullable="false" primaryKeyName="pk_impersonation_ticket"/></column>
@@ -59,7 +59,7 @@
 		<addForeignKeyConstraint baseTableName="impersonation_ticket" baseColumnNames="target_user_id" constraintName="fk_impersonation_ticket_target" referencedTableName="users" referencedColumnNames="id" onDelete="CASCADE"/>
 	</changeSet>
 
-	<changeSet id="012-04-seed-required-actions" author="codex">
+	<changeSet id="012-04-seed-required-actions" author="susimsek">
 		<insert tableName="required_action_definition"><column name="action_key" value="UPDATE_PROFILE"/><column name="display_name" value="Complete your profile"/><column name="description" value="Provide the required profile information."/><column name="enabled" valueBoolean="false"/><column name="global_policy" valueBoolean="false"/><column name="version" valueNumeric="1"/><column name="priority" valueNumeric="10"/><column name="created_by" value="system"/><column name="created_at" valueDate="${now}"/><column name="updated_at" valueDate="${now}"/></insert>
 		<insert tableName="required_action_definition"><column name="action_key" value="TERMS_AND_CONDITIONS"/><column name="display_name" value="Accept the terms and conditions"/><column name="description" value="Review and accept the current terms."/><column name="enabled" valueBoolean="false"/><column name="global_policy" valueBoolean="true"/><column name="version" valueNumeric="1"/><column name="priority" valueNumeric="20"/><column name="created_by" value="system"/><column name="created_at" valueDate="${now}"/><column name="updated_at" valueDate="${now}"/></insert>
 		<insert tableName="required_action_definition"><column name="action_key" value="UPDATE_EMAIL"/><column name="display_name" value="Confirm your new email address"/><column name="description" value="Confirm the email address waiting for verification."/><column name="enabled" valueBoolean="true"/><column name="global_policy" valueBoolean="true"/><column name="version" valueNumeric="1"/><column name="priority" valueNumeric="30"/><column name="created_by" value="system"/><column name="created_at" valueDate="${now}"/><column name="updated_at" valueDate="${now}"/></insert>

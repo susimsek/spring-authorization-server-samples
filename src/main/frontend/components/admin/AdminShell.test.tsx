@@ -22,6 +22,7 @@ jest.mock("@/routing/Link", () => ({ children, href, ...props }: React.Component
 jest.mock("./AdminAuthProvider", () => ({
   useAdminAuth: () => ({
     access: {
+      isAdmin: true,
       viewClients: true,
       viewUsers: true,
       manageRoles: true,

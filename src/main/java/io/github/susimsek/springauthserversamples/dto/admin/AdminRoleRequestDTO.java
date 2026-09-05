@@ -14,6 +14,6 @@ public record AdminRoleRequestDTO(
                 @Size(max = 50)
                 @Schema(
                         description = "Role name; must match `ROLE_[A-Z0-9_]+`.",
-                        example = "ROLE_REPORT_VIEWER",
+                        example = "ROLE_AUDITOR",
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 String name) {}

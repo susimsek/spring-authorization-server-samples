@@ -2,6 +2,7 @@ package io.github.susimsek.springauthserversamples.web;
 
 import io.github.susimsek.springauthserversamples.config.openapi.OpenApiConfig;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
+import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
 import io.github.susimsek.springauthserversamples.service.SessionInvalidationService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
 import io.github.susimsek.springauthserversamples.service.admin.ImpersonationService;
@@ -77,7 +78,8 @@ public class ImpersonationController {
                 .filter(FactorGrantedAuthority.class::isInstance)
                 .forEach(authorities::add);
         authorities.add(
-                new SwitchUserGrantedAuthority("ROLE_PREVIOUS_ADMINISTRATOR", authentication));
+                new SwitchUserGrantedAuthority(
+                        AuthoritiesConstants.PREVIOUS_ADMINISTRATOR, authentication));
         Authentication switched =
                 UsernamePasswordAuthenticationToken.authenticated(targetDetails, null, authorities);
         auditEventService.record("user.impersonation.accepted", "user", target.getId().toString());
@@ -142,7 +144,10 @@ public class ImpersonationController {
     private static void requireAdmin(Authentication authentication) {
         if (authentication == null
                 || authentication.getAuthorities().stream()
-                        .noneMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()))) {
+                        .noneMatch(
+                                authority ->
+                                        AuthoritiesConstants.ADMIN.equals(
+                                                authority.getAuthority()))) {
             throw ApiException.forbidden(
                     ApiErrorCode.FORBIDDEN, "Only administrators can impersonate users");
         }

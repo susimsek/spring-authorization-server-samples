@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+	<changeSet id="001-create-groups" author="susimsek">
+		<createSequence
+			sequenceName="group_seq"
+			startValue="1"
+			incrementBy="1"
+			minValue="1"
+			maxValue="9999999999999999"
+			cacheSize="100"
+			cycle="false"/>
+		<createTable tableName="groups">
+			<column name="id" type="bigint" defaultValueSequenceNext="group_seq">
+				<constraints nullable="false" primaryKey="true" primaryKeyName="pk_groups"/>
+			</column>
+			<column name="name" type="varchar(100)">
+				<constraints nullable="false" unique="true" uniqueConstraintName="uk_groups_name"/>
+			</column>
+			<column name="parent_id" type="bigint"/>
+		</createTable>
+		<createTable tableName="user_groups">
+			<column name="user_id" type="bigint">
+				<constraints nullable="false"/>
+			</column>
+			<column name="group_id" type="bigint">
+				<constraints nullable="false"/>
+			</column>
+		</createTable>
+		<addPrimaryKey
+			tableName="user_groups"
+			columnNames="user_id, group_id"
+			constraintName="pk_user_groups"/>
+		<addForeignKeyConstraint
+			baseTableName="user_groups"
+			baseColumnNames="user_id"
+			constraintName="fk_user_groups_user"
+			referencedTableName="users"
+			referencedColumnNames="id"/>
+		<addForeignKeyConstraint
+			baseTableName="user_groups"
+			baseColumnNames="group_id"
+			constraintName="fk_user_groups_group"
+			referencedTableName="groups"
+			referencedColumnNames="id"/>
+		<createIndex indexName="idx_user_groups_group" tableName="user_groups">
+			<column name="group_id"/>
+		</createIndex>
+		<createTable tableName="group_authorities">
+			<column name="group_id" type="bigint">
+				<constraints nullable="false"/>
+			</column>
+			<column name="authority_id" type="bigint">
+				<constraints nullable="false"/>
+			</column>
+		</createTable>
+		<addPrimaryKey
+			tableName="group_authorities"
+			columnNames="group_id, authority_id"
+			constraintName="pk_group_authorities"/>
+		<addForeignKeyConstraint
+			baseTableName="group_authorities"
+			baseColumnNames="group_id"
+			constraintName="fk_group_authorities_group"
+			referencedTableName="groups"
+			referencedColumnNames="id"/>
+		<addForeignKeyConstraint
+			baseTableName="group_authorities"
+			baseColumnNames="authority_id"
+			constraintName="fk_group_authorities_authority"
+			referencedTableName="authorities"
+			referencedColumnNames="id"/>
+		<createIndex indexName="idx_group_authorities_authority" tableName="group_authorities">
+			<column name="authority_id"/>
+		</createIndex>
+	</changeSet>
+
+	<changeSet id="002-seed-groups" author="susimsek">
+		<loadData
+			encoding="UTF-8"
+			file="db/data/groups.csv"
+			separator=";"
+			tableName="groups"
+			usePreparedStatements="true">
+			<column header="name" type="string"/>
+			<column header="parent_id" type="numeric"/>
+		</loadData>
+		<loadData
+			encoding="UTF-8"
+			file="db/data/group-authorities.csv"
+			separator=";"
+			tableName="group_authorities"
+			usePreparedStatements="true">
+			<column header="group_id" type="numeric"/>
+			<column header="authority_id" type="numeric"/>
+		</loadData>
+		<loadData
+			encoding="UTF-8"
+			file="db/data/user-groups.csv"
+			separator=";"
+			tableName="user_groups"
+			usePreparedStatements="true">
+			<column header="user_id" type="numeric"/>
+			<column header="group_id" type="numeric"/>
+		</loadData>
+	</changeSet>
+</databaseChangeLog>

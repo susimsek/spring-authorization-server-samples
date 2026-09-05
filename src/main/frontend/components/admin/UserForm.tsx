@@ -763,7 +763,7 @@ export function UserForm({
             url={`/api/admin/users/${encodeURIComponent(id)}/sessions`}
             locale={locale}
             dictionary={dictionary}
-            canManage={access?.manageSessions ?? false}
+            canManage={access?.manageUsers ?? false}
           />
         )}
         {editing && id && activeTab === "consents" && (

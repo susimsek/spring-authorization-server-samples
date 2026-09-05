@@ -21,7 +21,7 @@ import { useAdminTableState } from "./useAdminTableState";
 type Role = { name: string };
 
 export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
-  const { accessToken } = useAdminAuth();
+  const { access, accessToken } = useAdminAuth();
   const copy = dictionary.admin.roles;
   const [roles, setRoles] = useState<Role[]>([]);
   const [totalPages, setTotalPages] = useState(0);
@@ -110,10 +110,12 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
         resultCount={totalElements}
         recordsLabel={dictionary.admin.resources.records}
       >
-        <Link className="btn btn-primary text-nowrap" href={`/admin/roles/new`}>
-          <AdminActionIcon action="add" />
-          {copy.create}
-        </Link>
+        {access?.manageRoles && (
+          <Link className="btn btn-primary text-nowrap" href={`/admin/roles/new`}>
+            <AdminActionIcon action="add" />
+            {copy.create}
+          </Link>
+        )}
       </ResourceFilters>
       <DataTable
         emptyMessage={dictionary.admin.resources.empty}
@@ -164,19 +166,21 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
                       <AdminActionIcon action="edit" />
                       {dictionary.admin.resources.edit}
                     </Dropdown.Item>
-                    {role.name !== "ROLE_ADMIN" && role.name !== "ROLE_USER" && (
-                      <>
-                        <Dropdown.Divider />
-                        <Dropdown.Item
-                          className="text-danger"
-                          disabled={saving}
-                          onClick={() => setRoleToDelete(role.name)}
-                        >
-                          <AdminActionIcon action="delete" />
-                          {copy.delete}
-                        </Dropdown.Item>
-                      </>
-                    )}
+                    {access?.manageRoles &&
+                      role.name !== "ROLE_ADMIN" &&
+                      role.name !== "ROLE_USER" && (
+                        <>
+                          <Dropdown.Divider />
+                          <Dropdown.Item
+                            className="text-danger"
+                            disabled={saving}
+                            onClick={() => setRoleToDelete(role.name)}
+                          >
+                            <AdminActionIcon action="delete" />
+                            {copy.delete}
+                          </Dropdown.Item>
+                        </>
+                      )}
                   </RowActions>
                 </div>
               </td>

@@ -21,7 +21,7 @@ import { useAdminTableState } from "./useAdminTableState";
 type Group = { id: number; name: string; path: string; roles: string[]; userCount: number };
 
 export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
-  const { accessToken } = useAdminAuth();
+  const { access, accessToken } = useAdminAuth();
   const copy = dictionary.admin.groups;
   const [groups, setGroups] = useState<Group[]>([]);
   const [totalPages, setTotalPages] = useState(0);
@@ -107,10 +107,12 @@ export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
         resultCount={totalElements}
         recordsLabel={dictionary.admin.resources.records}
       >
-        <Link className="btn btn-primary text-nowrap" href={`/admin/groups/new`}>
-          <AdminActionIcon action="add" />
-          {copy.create}
-        </Link>
+        {access?.manageUsers && (
+          <Link className="btn btn-primary text-nowrap" href={`/admin/groups/new`}>
+            <AdminActionIcon action="add" />
+            {copy.create}
+          </Link>
+        )}
       </ResourceFilters>
       <DataTable
         emptyMessage={dictionary.admin.resources.empty}
@@ -158,15 +160,19 @@ export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
                     <AdminActionIcon action="edit" />
                     {copy.settings}
                   </Dropdown.Item>
-                  <Dropdown.Divider />
-                  <Dropdown.Item
-                    className="text-danger"
-                    disabled={saving}
-                    onClick={() => setGroupToDelete(group)}
-                  >
-                    <AdminActionIcon action="delete" />
-                    {copy.delete}
-                  </Dropdown.Item>
+                  {access?.manageUsers && (
+                    <>
+                      <Dropdown.Divider />
+                      <Dropdown.Item
+                        className="text-danger"
+                        disabled={saving}
+                        onClick={() => setGroupToDelete(group)}
+                      >
+                        <AdminActionIcon action="delete" />
+                        {copy.delete}
+                      </Dropdown.Item>
+                    </>
+                  )}
                 </RowActions>
               </td>
             </tr>

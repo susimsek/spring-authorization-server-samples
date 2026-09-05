@@ -5,7 +5,9 @@ import { adminRequest } from "@/lib/admin-api";
 import { GroupDetail } from "./GroupDetail";
 
 jest.mock("@/lib/admin-api", () => ({ adminRequest: jest.fn() }));
-jest.mock("./AdminAuthProvider", () => ({ useAdminAuth: () => ({ accessToken: "token" }) }));
+jest.mock("./AdminAuthProvider", () => ({
+  useAdminAuth: () => ({ accessToken: "token", access: { manageUsers: true } }),
+}));
 jest.mock("@/components/auth/ConsoleAlerts", () => ({
   useConsoleAlerts: () => ({ addAlert: jest.fn(), addError: jest.fn() }),
 }));

@@ -1,6 +1,7 @@
 package io.github.susimsek.springauthserversamples.web.admin;
 
 import io.github.susimsek.springauthserversamples.dto.admin.AdminWhoAmIDTO;
+import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
 import io.github.susimsek.springauthserversamples.web.ApiController;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -36,49 +37,68 @@ public class AdminWhoAmIController {
                 authentication.getName(),
                 authorities.stream().sorted().toList(),
                 Map.ofEntries(
-                        Map.entry("isAdmin", hasAny(authorities, "ROLE_ADMIN")),
+                        Map.entry("isAdmin", hasAny(authorities, AuthoritiesConstants.ADMIN)),
                         Map.entry(
                                 "viewClients",
                                 hasAny(
                                         authorities,
-                                        "ROLE_ADMIN",
-                                        "ROLE_CLIENT_VIEWER",
-                                        "ROLE_CLIENT_MANAGER")),
+                                        AuthoritiesConstants.ADMIN,
+                                        AuthoritiesConstants.CLIENT_VIEWER,
+                                        AuthoritiesConstants.CLIENT_MANAGER)),
                         Map.entry(
                                 "manageClients",
-                                hasAny(authorities, "ROLE_ADMIN", "ROLE_CLIENT_MANAGER")),
+                                hasAny(
+                                        authorities,
+                                        AuthoritiesConstants.ADMIN,
+                                        AuthoritiesConstants.CLIENT_MANAGER)),
                         Map.entry(
                                 "viewUsers",
                                 hasAny(
                                         authorities,
-                                        "ROLE_ADMIN",
-                                        "ROLE_USER_VIEWER",
-                                        "ROLE_USER_MANAGER")),
+                                        AuthoritiesConstants.ADMIN,
+                                        AuthoritiesConstants.USER_VIEWER,
+                                        AuthoritiesConstants.USER_MANAGER)),
                         Map.entry(
                                 "manageUsers",
-                                hasAny(authorities, "ROLE_ADMIN", "ROLE_USER_MANAGER")),
+                                hasAny(
+                                        authorities,
+                                        AuthoritiesConstants.ADMIN,
+                                        AuthoritiesConstants.USER_MANAGER)),
                         Map.entry(
                                 "viewRoles",
-                                hasAny(authorities, "ROLE_ADMIN", "ROLE_USER_MANAGER")),
-                        Map.entry("manageRoles", hasAny(authorities, "ROLE_ADMIN")),
+                                hasAny(
+                                        authorities,
+                                        AuthoritiesConstants.ADMIN,
+                                        AuthoritiesConstants.USER_MANAGER)),
+                        Map.entry("manageRoles", hasAny(authorities, AuthoritiesConstants.ADMIN)),
                         Map.entry(
                                 "viewSessions",
-                                hasAny(authorities, "ROLE_ADMIN", "ROLE_SESSION_MANAGER")),
+                                hasAny(
+                                        authorities,
+                                        AuthoritiesConstants.ADMIN,
+                                        AuthoritiesConstants.USER_VIEWER,
+                                        AuthoritiesConstants.USER_MANAGER)),
                         Map.entry(
                                 "manageSessions",
-                                hasAny(authorities, "ROLE_ADMIN", "ROLE_SESSION_MANAGER")),
+                                hasAny(
+                                        authorities,
+                                        AuthoritiesConstants.ADMIN,
+                                        AuthoritiesConstants.USER_MANAGER)),
                         Map.entry(
                                 "viewConsents",
                                 hasAny(
                                         authorities,
-                                        "ROLE_ADMIN",
-                                        "ROLE_USER_VIEWER",
-                                        "ROLE_USER_MANAGER")),
+                                        AuthoritiesConstants.ADMIN,
+                                        AuthoritiesConstants.USER_VIEWER,
+                                        AuthoritiesConstants.USER_MANAGER)),
                         Map.entry(
                                 "manageConsents",
-                                hasAny(authorities, "ROLE_ADMIN", "ROLE_USER_MANAGER")),
-                        Map.entry("viewKeys", hasAny(authorities, "ROLE_ADMIN")),
-                        Map.entry("manageKeys", hasAny(authorities, "ROLE_ADMIN"))));
+                                hasAny(
+                                        authorities,
+                                        AuthoritiesConstants.ADMIN,
+                                        AuthoritiesConstants.USER_MANAGER)),
+                        Map.entry("viewKeys", hasAny(authorities, AuthoritiesConstants.ADMIN)),
+                        Map.entry("manageKeys", hasAny(authorities, AuthoritiesConstants.ADMIN))));
     }
 
     private static boolean hasAny(Set<String> authorities, String... candidates) {

@@ -149,10 +149,7 @@ class AdminRoleController {
     @Operation(summary = "Delete role", description = "Deletes a non-protected realm role.")
     @ApiResponse(responseCode = "204", description = "Role deleted.")
     ResponseEntity<Void> deleteRole(
-            @Parameter(
-                            description = "Realm role name.",
-                            example = "ROLE_REPORT_VIEWER",
-                            required = true)
+            @Parameter(description = "Realm role name.", example = "ROLE_AUDITOR", required = true)
                     @PathVariable
                     String name) {
         adminRoleService.deleteRole(name);

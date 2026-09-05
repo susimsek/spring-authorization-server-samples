@@ -1,5 +1,6 @@
 package io.github.susimsek.springauthserversamples.config.openapi;
 
+import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.examples.Example;
@@ -91,7 +92,7 @@ final class ApplicationApiOpenApiCustomizer implements OpenApiCustomizer {
                                         "enabled",
                                         true,
                                         "roles",
-                                        List.of("ROLE_USER"))),
+                                        List.of(AuthoritiesConstants.USER))),
                         "page",
                         Map.of("size", 20, "number", 0, "totalElements", 1)));
     }

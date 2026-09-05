@@ -28,7 +28,7 @@ export type AdminClient = {
 };
 
 export function ClientsTable({ dictionary }: { locale: Locale; dictionary: Dictionary }) {
-  const { accessToken } = useAdminAuth();
+  const { access, accessToken } = useAdminAuth();
   const [clients, setClients] = useState<AdminClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -102,10 +102,12 @@ export function ClientsTable({ dictionary }: { locale: Locale; dictionary: Dicti
           setQuery(v);
         }}
       >
-        <Link href={`/admin/clients/new`} className="btn btn-primary text-nowrap">
-          <AdminActionIcon action="add" />
-          {dictionary.admin.clients.create}
-        </Link>
+        {access?.manageClients && (
+          <Link href={`/admin/clients/new`} className="btn btn-primary text-nowrap">
+            <AdminActionIcon action="add" />
+            {dictionary.admin.clients.create}
+          </Link>
+        )}
       </ResourceFilters>
       <DataTable
         isEmpty={clients.length === 0}

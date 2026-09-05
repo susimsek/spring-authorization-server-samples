@@ -10,15 +10,14 @@
 	<property name="blobType" value="bytea" dbms="postgresql"/>
 
 	<include file="db/changelog/changes/001-create-users.xml"/>
-	<include file="db/changelog/changes/002-create-authorization-server.xml"/>
-	<include file="db/changelog/changes/003-create-user-session.xml"/>
-	<include file="db/changelog/changes/007-create-user-avatars.xml"/>
-	<include file="db/changelog/changes/008-create-admin-events.xml"/>
-	<include file="db/changelog/changes/009-add-group-hierarchy.xml"/>
-	<include file="db/changelog/changes/010-add-user-actions.xml"/>
-	<include file="db/changelog/changes/012-required-actions-and-impersonation.xml"/>
-	<include file="db/changelog/changes/013-password-security.xml"/>
-	<include file="db/changelog/changes/014-login-settings.xml"/>
-	<include file="db/changelog/changes/015-email-settings.xml"/>
-    <include file="db/changelog/changes/011-unprefix-console-routes.xml"/>
+	<include file="db/changelog/changes/002-create-groups.xml"/>
+	<include file="db/changelog/changes/003-create-authorization-server.xml"/>
+	<include file="db/changelog/changes/004-create-user-session.xml"/>
+	<include file="db/changelog/changes/005-create-user-avatars.xml"/>
+	<include file="db/changelog/changes/006-create-admin-events.xml"/>
+	<include file="db/changelog/changes/007-add-user-actions.xml"/>
+	<include file="db/changelog/changes/008-required-actions-impersonation.xml"/>
+	<include file="db/changelog/changes/009-password-security.xml"/>
+	<include file="db/changelog/changes/010-login-settings.xml"/>
+	<include file="db/changelog/changes/011-email-settings.xml"/>
 </databaseChangeLog>
