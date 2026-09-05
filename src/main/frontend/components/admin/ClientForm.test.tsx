@@ -11,7 +11,7 @@ const mockAdminRequest = adminRequest as jest.MockedFunction<typeof adminRequest
 
 jest.mock("@/lib/admin-api", () => ({ adminRequest: jest.fn() }));
 jest.mock("./AdminAuthProvider", () => ({
-  useAdminAuth: () => ({ accessToken: "token" }),
+  useAdminAuth: () => ({ accessToken: "token", access: { manageClients: true } }),
 }));
 jest.mock("@/routing/navigation", () => ({
   useParams: () => ({ lang: "en" }),

@@ -3,6 +3,8 @@ package io.github.susimsek.springauthserversamples.config.security;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
+import io.github.susimsek.springauthserversamples.domain.GroupEntity;
+import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
 import io.github.susimsek.springauthserversamples.repository.UserAvatarRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
@@ -11,6 +13,7 @@ import io.github.susimsek.springauthserversamples.security.LocalizedOAuth2ErrorR
 import io.github.susimsek.springauthserversamples.security.OAuth2KeyJwkSource;
 import io.github.susimsek.springauthserversamples.security.OidcSessionIdentifier;
 import io.github.susimsek.springauthserversamples.service.OAuth2KeyService;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -190,9 +193,17 @@ public class AuthorizationServerConfig {
             UserAvatarRepository userAvatarRepository,
             AuthorizationRepository authorizationRepository) {
         return context -> {
+            boolean adminAccessToken =
+                    OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())
+                            && ConsoleClients.ADMIN.equals(
+                                    context.getRegisteredClient().getClientId());
+            Optional<UserEntity> tokenUser = Optional.empty();
+            if (isUserProfileToken(context) || isUserEmailToken(context) || adminAccessToken) {
+                tokenUser = userRepository.findByUsername(context.getPrincipal().getName());
+            }
+
             if (isUserProfileToken(context)) {
-                userRepository
-                        .findByUsername(context.getPrincipal().getName())
+                tokenUser
                         .flatMap(user -> userAvatarRepository.findVersionByUserId(user.getId()))
                         .ifPresent(
                                 avatar ->
@@ -210,20 +221,16 @@ public class AuthorizationServerConfig {
             }
 
             if (isUserEmailToken(context)) {
-                userRepository
-                        .findByUsername(context.getPrincipal().getName())
-                        .ifPresent(
-                                user -> {
-                                    if (user.getEmail() != null) {
-                                        context.getClaims().claim("email", user.getEmail());
-                                        context.getClaims()
-                                                .claim("email_verified", user.isEmailVerified());
-                                    }
-                                });
+                tokenUser.ifPresent(
+                        user -> {
+                            if (user.getEmail() != null) {
+                                context.getClaims().claim("email", user.getEmail());
+                                context.getClaims().claim("email_verified", user.isEmailVerified());
+                            }
+                        });
             }
 
-            if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())
-                    && ConsoleClients.ADMIN.equals(context.getRegisteredClient().getClientId())) {
+            if (adminAccessToken) {
                 context.getClaims()
                         .claim(
                                 "roles",
@@ -231,6 +238,15 @@ public class AuthorizationServerConfig {
                                         .map(authority -> authority.getAuthority())
                                         .sorted()
                                         .collect(Collectors.toList()));
+                tokenUser.ifPresent(
+                        user ->
+                                context.getClaims()
+                                        .claim(
+                                                "groups",
+                                                user.getGroups().stream()
+                                                        .map(AuthorizationServerConfig::groupPath)
+                                                        .sorted()
+                                                        .collect(Collectors.toList())));
             }
 
             if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())
@@ -260,6 +276,16 @@ public class AuthorizationServerConfig {
                                 context.getAuthorizationGrantType())
                         || AuthorizationGrantType.REFRESH_TOKEN.equals(
                                 context.getAuthorizationGrantType()));
+    }
+
+    private static String groupPath(GroupEntity group) {
+        StringBuilder path = new StringBuilder(group.getName());
+        GroupEntity parent = group.getParent();
+        while (parent != null) {
+            path.insert(0, parent.getName() + "/");
+            parent = parent.getParent();
+        }
+        return "/" + path;
     }
 
     private static java.util.Optional<String> authorizationSessionId(

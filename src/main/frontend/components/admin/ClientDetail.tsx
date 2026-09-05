@@ -68,7 +68,7 @@ export function ClientDetail({
       .catch(() => setError(true));
   }, [accessToken, id]);
   const remove = async () => {
-    if (!id || !accessToken) return;
+    if (!access?.manageClients || !id || !accessToken) return;
     const r = await adminRequest(accessToken, {
       url: `/api/admin/clients/${encodeURIComponent(id)}`,
       method: "DELETE",
@@ -78,7 +78,7 @@ export function ClientDetail({
     } else setError(true);
   };
   const regenerateSecret = async () => {
-    if (!id || !accessToken) return;
+    if (!access?.manageClients || !id || !accessToken) return;
     setSecretError(false);
     const r = await adminRequest<{ clientSecret: string }>(accessToken, {
       url: `/api/admin/clients/${encodeURIComponent(id)}/secret`,
@@ -123,12 +123,14 @@ export function ClientDetail({
           <h1 className="h3 mb-1">{client.clientName}</h1>
           <div className="font-monospace text-body-secondary">{client.clientId}</div>
         </div>
-        <div className="d-flex flex-wrap gap-2">
-          <Button variant="danger" onClick={() => setShowDeleteConfirm(true)}>
-            <AdminActionIcon action="delete" />
-            {dictionary.admin.clients.delete}
-          </Button>
-        </div>
+        {access?.manageClients && (
+          <div className="d-flex flex-wrap gap-2">
+            <Button variant="danger" onClick={() => setShowDeleteConfirm(true)}>
+              <AdminActionIcon action="delete" />
+              {dictionary.admin.clients.delete}
+            </Button>
+          </div>
+        )}
       </div>
       <DetailTabs tabs={tabs} active={activeTab} />
       {secretError && <Alert variant="danger">{dictionary.admin.clients.secretError}</Alert>}

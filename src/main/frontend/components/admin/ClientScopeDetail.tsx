@@ -92,7 +92,7 @@ export function ClientScopeDetail({
   }, [load]);
 
   const save = async (values: Values) => {
-    if (!accessToken || !scope) return;
+    if (!access?.manageClients || !accessToken || !scope) return;
     const response = await adminRequest<ClientScope>(accessToken, {
       url: `/api/admin/client-scopes/${encodeURIComponent(scope.id)}`,
       method: "PUT",
@@ -112,7 +112,7 @@ export function ClientScopeDetail({
   };
 
   const remove = async () => {
-    if (!accessToken || !scope) return;
+    if (!access?.manageClients || !accessToken || !scope) return;
     const response = await adminRequest(accessToken, {
       url: `/api/admin/client-scopes/${encodeURIComponent(scope.id)}`,
       method: "DELETE",

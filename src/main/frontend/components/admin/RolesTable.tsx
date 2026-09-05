@@ -51,7 +51,7 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
   }, [accessToken, page, query, refresh, size, sort]);
 
   const deleteRole = async (role: string) => {
-    if (!accessToken) return;
+    if (!access?.manageRoles || !accessToken) return;
     setSaving(true);
     try {
       const response = await adminRequest(accessToken, {

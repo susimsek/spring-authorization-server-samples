@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
+import io.github.susimsek.springauthserversamples.domain.GroupEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
 import io.github.susimsek.springauthserversamples.repository.UserAvatarRepository;
@@ -72,6 +73,9 @@ class AuthorizationServerConfigTest {
     void addsProfilePictureAndAdminRolesToAccessToken() {
         UserEntity user = new UserEntity();
         user.setId(42L);
+        GroupEntity group = new GroupEntity();
+        group.setName("platform-administrators");
+        user.setGroups(Set.of(group));
         UserRepository userRepository = mock(UserRepository.class);
         when(userRepository.findByUsername("admin")).thenReturn(Optional.of(user));
         UserAvatarRepository.AvatarVersion avatar = mock(UserAvatarRepository.AvatarVersion.class);
@@ -97,6 +101,7 @@ class AuthorizationServerConfigTest {
                 .containsEntry(
                         "picture", "https://issuer.example/avatars/avatar-id?v=1767225600000")
                 .containsEntry("roles", List.of("ROLE_ADMIN", "ROLE_USER"))
+                .containsEntry("groups", List.of("/platform-administrators"))
                 .containsEntry(
                         "sid",
                         io.github.susimsek.springauthserversamples.security.OidcSessionIdentifier

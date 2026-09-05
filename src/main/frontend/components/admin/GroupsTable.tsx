@@ -51,7 +51,7 @@ export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
   }, [accessToken, page, query, refresh, size, sort]);
 
   const remove = async (group: Group) => {
-    if (!accessToken) return;
+    if (!access?.manageUsers || !accessToken) return;
     setSaving(true);
     try {
       const response = await adminRequest(accessToken, {

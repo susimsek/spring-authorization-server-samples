@@ -162,7 +162,8 @@ export function ClientForm({
   embedded?: boolean;
 }) {
   const router = useRouter();
-  const { accessToken } = useAdminAuth();
+  const { access, accessToken } = useAdminAuth();
+  const canManageClients = Boolean(access?.manageClients);
   const alerts = useConsoleAlerts();
   const missingId = mode === "edit" && !id;
   const [loading, setLoading] = useState(mode === "edit" && Boolean(id));
@@ -264,6 +265,7 @@ export function ClientForm({
     field: "clientAuthenticationMethods" | "authorizationGrantTypes",
     value: string,
   ) => {
+    if (!canManageClients) return;
     const selected = getValues(field) as string[];
     const next = selected.includes(value)
       ? selected.filter((item) => item !== value)
@@ -272,6 +274,7 @@ export function ClientForm({
   };
 
   const toggleScope = (scope: string) => {
+    if (!canManageClients) return;
     const selected = words(getValues("scopes"));
     const next = selected.includes(scope)
       ? selected.filter((item) => item !== scope)
@@ -280,6 +283,7 @@ export function ClientForm({
   };
 
   const submit = async (values: FormState) => {
+    if (!canManageClients) return;
     setSaving(true);
     setError(false);
     setErrorMessage(null);
@@ -399,6 +403,7 @@ export function ClientForm({
           {stepLabels.map((label, index) => (
             <button
               className={`admin-step ${index === step ? "active" : ""} ${index < step ? "complete" : ""}`}
+              disabled={!canManageClients}
               key={label}
               onClick={() => index < step && setStep(index)}
               type="button"
@@ -422,14 +427,22 @@ export function ClientForm({
             <Row className="g-3">
               <Col md={6}>
                 <Form.Label>{dictionary.admin.clients.clientId}</Form.Label>
-                <Form.Control isInvalid={Boolean(errors.clientId)} {...register("clientId")} />
+                <Form.Control
+                  disabled={!canManageClients}
+                  isInvalid={Boolean(errors.clientId)}
+                  {...register("clientId")}
+                />
                 <Form.Control.Feedback type="invalid">
                   {errors.clientId?.message}
                 </Form.Control.Feedback>
               </Col>
               <Col md={6}>
                 <Form.Label>{dictionary.admin.clients.clientName}</Form.Label>
-                <Form.Control isInvalid={Boolean(errors.clientName)} {...register("clientName")} />
+                <Form.Control
+                  disabled={!canManageClients}
+                  isInvalid={Boolean(errors.clientName)}
+                  {...register("clientName")}
+                />
                 <Form.Control.Feedback type="invalid">
                   {errors.clientName?.message}
                 </Form.Control.Feedback>
@@ -461,6 +474,7 @@ export function ClientForm({
                       type="checkbox"
                       label={method}
                       checked={clientAuthenticationMethods.includes(method)}
+                      disabled={!canManageClients}
                       onChange={() => toggle("clientAuthenticationMethods", method)}
                     />
                   ))}
@@ -480,6 +494,7 @@ export function ClientForm({
                       type="checkbox"
                       label={grant}
                       checked={authorizationGrantTypes.includes(grant)}
+                      disabled={!canManageClients}
                       onChange={() => toggle("authorizationGrantTypes", grant)}
                     />
                   ))}
@@ -504,6 +519,7 @@ export function ClientForm({
                   <Form.Check
                     type="switch"
                     checked={requireProofKey}
+                    disabled={!canManageClients}
                     onChange={(e) =>
                       setValue("requireProofKey", e.target.checked, {
                         shouldDirty: true,
@@ -524,6 +540,7 @@ export function ClientForm({
                   <Form.Check
                     type="switch"
                     checked={requireAuthorizationConsent}
+                    disabled={!canManageClients}
                     onChange={(e) =>
                       setValue("requireAuthorizationConsent", e.target.checked, {
                         shouldDirty: true,
@@ -556,6 +573,7 @@ export function ClientForm({
                 </Form.Label>
                 <Form.Control
                   as="textarea"
+                  disabled={!canManageClients}
                   rows={4}
                   placeholder={dictionary.admin.clients.redirectUrisPlaceholder}
                   isInvalid={Boolean(errors.redirectUris)}
@@ -569,6 +587,7 @@ export function ClientForm({
                 <Form.Label>{dictionary.admin.clients.postLogoutUris}</Form.Label>
                 <Form.Control
                   as="textarea"
+                  disabled={!canManageClients}
                   rows={4}
                   isInvalid={Boolean(errors.postLogoutRedirectUris)}
                   {...register("postLogoutRedirectUris")}
@@ -586,6 +605,7 @@ export function ClientForm({
                         <Form.Check
                           type="checkbox"
                           checked={words(selectedScopes).includes(scope.name)}
+                          disabled={!canManageClients}
                           onChange={() => toggleScope(scope.name)}
                         />
                         <span>
@@ -644,7 +664,7 @@ export function ClientForm({
             {nextLabel}
           </Button>
         ) : (
-          <Button type="submit" disabled={saving}>
+          <Button type="submit" disabled={!canManageClients || saving}>
             <AdminActionIcon action="save" />
             {saving ? dictionary.admin.common.saving : dictionary.admin.common.save}
           </Button>

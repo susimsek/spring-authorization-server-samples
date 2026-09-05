@@ -18,7 +18,8 @@ import { AdminActionIcon } from "./AdminActionIcon";
 type Role = { name: string };
 
 export function RoleCreateForm({ dictionary }: { dictionary: Dictionary; locale: Locale }) {
-  const { accessToken } = useAdminAuth();
+  const { access, accessToken } = useAdminAuth();
+  const canManageRoles = Boolean(access?.manageRoles);
   const alerts = useConsoleAlerts();
   const router = useRouter();
   const copy = dictionary.admin.roles;
@@ -42,7 +43,7 @@ export function RoleCreateForm({ dictionary }: { dictionary: Dictionary; locale:
   });
 
   const submit = async ({ name }: z.infer<typeof schema>) => {
-    if (!accessToken) return;
+    if (!accessToken || !canManageRoles) return;
     try {
       const response = await adminRequest<Role>(accessToken, {
         url: "/api/admin/roles",
@@ -79,6 +80,7 @@ export function RoleCreateForm({ dictionary }: { dictionary: Dictionary; locale:
               isInvalid={Boolean(errors.name)}
               maxLength={50}
               placeholder="ROLE_AUDITOR"
+              disabled={!canManageRoles}
               {...register("name")}
             />
             <Form.Control.Feedback type="invalid">{errors.name?.message}</Form.Control.Feedback>
@@ -89,7 +91,7 @@ export function RoleCreateForm({ dictionary }: { dictionary: Dictionary; locale:
               <AdminActionIcon action="cancel" />
               {dictionary.admin.common.cancel}
             </Button>
-            <Button disabled={isSubmitting} type="submit">
+            <Button disabled={!canManageRoles || isSubmitting} type="submit">
               <AdminActionIcon action="add" />
               {isSubmitting ? dictionary.admin.common.saving : copy.create}
             </Button>

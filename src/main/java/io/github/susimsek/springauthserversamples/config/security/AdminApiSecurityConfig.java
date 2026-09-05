@@ -66,6 +66,9 @@ public class AdminApiSecurityConfig {
                                                 AuthoritiesConstants.ADMIN,
                                                 AuthoritiesConstants.USER_VIEWER,
                                                 AuthoritiesConstants.USER_MANAGER)
+                                        .requestMatchers(
+                                                HttpMethod.PUT, "/api/admin/groups/*/roles")
+                                        .hasAuthority(AuthoritiesConstants.ADMIN)
                                         .requestMatchers("/api/admin/groups/**")
                                         .hasAnyAuthority(
                                                 AuthoritiesConstants.ADMIN,
@@ -114,6 +117,10 @@ public class AdminApiSecurityConfig {
                                                 AuthoritiesConstants.ADMIN,
                                                 AuthoritiesConstants.USER_VIEWER,
                                                 AuthoritiesConstants.USER_MANAGER)
+                                        .requestMatchers(HttpMethod.GET, "/api/admin/roles/**")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.USER_MANAGER)
                                         .requestMatchers(HttpMethod.GET, "/api/admin/sessions/**")
                                         .hasAnyAuthority(
                                                 AuthoritiesConstants.ADMIN,
@@ -125,6 +132,11 @@ public class AdminApiSecurityConfig {
                                                 AuthoritiesConstants.ADMIN,
                                                 AuthoritiesConstants.USER_MANAGER)
                                         .requestMatchers(HttpMethod.GET, "/api/admin/consents")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.USER_VIEWER,
+                                                AuthoritiesConstants.USER_MANAGER)
+                                        .requestMatchers(HttpMethod.GET, "/api/admin/consents/**")
                                         .hasAnyAuthority(
                                                 AuthoritiesConstants.ADMIN,
                                                 AuthoritiesConstants.USER_VIEWER,

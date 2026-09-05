@@ -20,7 +20,8 @@ import { AdminActionIcon } from "./AdminActionIcon";
 type Group = { id: number; name: string; path: string };
 
 export function GroupCreateForm({ dictionary }: { dictionary: Dictionary; locale: Locale }) {
-  const { accessToken } = useAdminAuth();
+  const { access, accessToken } = useAdminAuth();
+  const canManageUsers = Boolean(access?.manageUsers);
   const alerts = useConsoleAlerts();
   const router = useRouter();
   const copy = dictionary.admin.groups;
@@ -45,14 +46,14 @@ export function GroupCreateForm({ dictionary }: { dictionary: Dictionary; locale
   });
 
   useEffect(() => {
-    if (!accessToken) return;
+    if (!accessToken || !canManageUsers) return;
     adminRequest<PageResponse<Group>>(accessToken, { url: "/api/admin/groups?page=0&size=100" })
       .then((response) => setGroups(response.status < 300 ? response.data.content : []))
       .catch(() => setGroups([]));
-  }, [accessToken]);
+  }, [accessToken, canManageUsers]);
 
   const submit = async ({ name, parentId }: z.infer<typeof schema>) => {
-    if (!accessToken) return;
+    if (!accessToken || !canManageUsers) return;
     try {
       const response = await adminRequest<Group>(accessToken, {
         url: "/api/admin/groups",
@@ -89,6 +90,7 @@ export function GroupCreateForm({ dictionary }: { dictionary: Dictionary; locale
               isInvalid={Boolean(errors.name)}
               maxLength={100}
               placeholder="finance-operators"
+              disabled={!canManageUsers}
               {...register("name")}
             />
             <Form.Control.Feedback type="invalid">{errors.name?.message}</Form.Control.Feedback>
@@ -96,7 +98,7 @@ export function GroupCreateForm({ dictionary }: { dictionary: Dictionary; locale
           </Form.Group>
           <Form.Group className="mb-3" controlId="group-parent">
             <Form.Label>{copy.parent}</Form.Label>
-            <Form.Select {...register("parentId")}>
+            <Form.Select disabled={!canManageUsers} {...register("parentId")}>
               <option value="">{copy.rootGroup}</option>
               {groups.map((group) => (
                 <option key={group.id} value={group.id}>
@@ -111,7 +113,7 @@ export function GroupCreateForm({ dictionary }: { dictionary: Dictionary; locale
               <AdminActionIcon action="cancel" />
               {dictionary.admin.common.cancel}
             </Button>
-            <Button disabled={isSubmitting} type="submit">
+            <Button disabled={!canManageUsers || isSubmitting} type="submit">
               <AdminActionIcon action="add" />
               {isSubmitting ? dictionary.admin.common.saving : copy.create}
             </Button>

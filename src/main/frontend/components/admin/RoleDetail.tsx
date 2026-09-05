@@ -96,7 +96,7 @@ export function RoleDetail({
   }, [accessToken, actualName, selectedUser, userQuery]);
 
   const assign = async () => {
-    if (!accessToken || !selectedUser) return;
+    if (!access?.manageRoles || !accessToken || !selectedUser) return;
     const response = await adminRequest(accessToken, {
       url: `/api/admin/roles/${encodeURIComponent(actualName)}/users`,
       method: "POST",
@@ -114,7 +114,7 @@ export function RoleDetail({
   };
 
   const remove = async (user: RoleUser) => {
-    if (!accessToken) return;
+    if (!access?.manageRoles || !accessToken) return;
     const response = await adminRequest(accessToken, {
       url: `/api/admin/roles/${encodeURIComponent(actualName)}/users/${user.id}?page=${page}&size=${size}`,
       method: "DELETE",

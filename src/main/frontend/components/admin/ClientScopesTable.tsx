@@ -94,7 +94,7 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
     setShowEditor(true);
   };
   const save = async (values: Values) => {
-    if (!accessToken) return;
+    if (!access?.manageClients || !accessToken) return;
     setSaving(true);
     const response = await adminRequest<ClientScope>(accessToken, {
       url: `/api/admin/client-scopes/${encodeURIComponent(editing?.id ?? "")}`,
@@ -111,7 +111,7 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
     setReload((current) => current + 1);
   };
   const remove = async () => {
-    if (!accessToken || !deleting) return;
+    if (!access?.manageClients || !accessToken || !deleting) return;
     const response = await adminRequest(accessToken, {
       url: `/api/admin/client-scopes/${encodeURIComponent(deleting.id)}`,
       method: "DELETE",

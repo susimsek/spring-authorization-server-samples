@@ -87,7 +87,7 @@ export function EntityRelatedData({
   }, [accessToken, page, size, url, version]);
 
   const removeSession = async (session: Session) => {
-    if (!accessToken) return;
+    if (!canManage || !accessToken) return;
     const response = await adminRequest(accessToken, {
       method: "DELETE",
       url: `/api/admin/sessions/${encodeURIComponent(session.id)}`,
@@ -102,7 +102,7 @@ export function EntityRelatedData({
   };
 
   const revokeConsent = async (consent: Consent) => {
-    if (!accessToken) return;
+    if (!canManage || !accessToken) return;
     const response = await adminRequest(accessToken, {
       method: "DELETE",
       url: `/api/admin/consents/${encodeURIComponent(consent.clientId)}/${encodeURIComponent(consent.principalName)}`,

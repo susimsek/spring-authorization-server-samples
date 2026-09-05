@@ -42,7 +42,8 @@ export function GroupDetail({
   id: string;
 }) {
   const { access, accessToken } = useAdminAuth();
-  const canManage = Boolean(access?.manageUsers);
+  const canManageUsers = Boolean(access?.manageUsers);
+  const canManageRoles = Boolean(access?.manageRoles);
   const alerts = useConsoleAlerts();
   const router = useRouter();
   const groupId = id;
@@ -156,7 +157,7 @@ export function GroupDetail({
   }, [accessToken, groupId, selectedUser, userQuery]);
 
   const saveRoles = async () => {
-    if (!accessToken) return;
+    if (!canManageRoles || !accessToken) return;
     setSaving(true);
     try {
       const response = await adminRequest<Group>(accessToken, {
@@ -175,7 +176,7 @@ export function GroupDetail({
   };
 
   const saveSettings = async ({ name, parentId }: z.infer<typeof groupSettingsSchema>) => {
-    if (!accessToken) return;
+    if (!canManageUsers || !accessToken) return;
     setSaving(true);
     try {
       const response = await adminRequest<Group>(accessToken, {
@@ -198,7 +199,7 @@ export function GroupDetail({
   };
 
   const addMember = async () => {
-    if (!accessToken || !selectedUser) return;
+    if (!canManageUsers || !accessToken || !selectedUser) return;
     setSaving(true);
     try {
       const response = await adminRequest(accessToken, {
@@ -220,7 +221,7 @@ export function GroupDetail({
   };
 
   const removeMember = async (user: User) => {
-    if (!accessToken) return;
+    if (!canManageUsers || !accessToken) return;
     setSaving(true);
     try {
       const response = await adminRequest(accessToken, {
@@ -271,7 +272,7 @@ export function GroupDetail({
               <Form.Control
                 isInvalid={Boolean(groupSettingsErrors.name)}
                 maxLength={100}
-                disabled={!canManage}
+                disabled={!canManageUsers}
                 {...registerGroupSettings("name")}
               />
               <Form.Control.Feedback type="invalid">
@@ -280,7 +281,7 @@ export function GroupDetail({
             </Form.Group>
             <Form.Group className="mb-3" controlId="group-parent">
               <Form.Label>{copy.parent}</Form.Label>
-              <Form.Select disabled={!canManage} {...registerGroupSettings("parentId")}>
+              <Form.Select disabled={!canManageUsers} {...registerGroupSettings("parentId")}>
                 <option value="">{copy.rootGroup}</option>
                 {groups
                   .filter((candidate) => candidate.id !== group.id)
@@ -293,7 +294,7 @@ export function GroupDetail({
               <Form.Text>{copy.parentHelp}</Form.Text>
             </Form.Group>
             <div className="admin-form-actions">
-              {canManage && (
+              {canManageUsers && (
                 <Button disabled={saving || !isGroupSettingsDirty} type="submit">
                   <AdminActionIcon action="save" />
                   {dictionary.admin.common.save}
@@ -314,7 +315,7 @@ export function GroupDetail({
                 id={`role-${role.name}`}
                 label={role.name}
                 type="checkbox"
-                disabled={!canManage}
+                disabled={!canManageRoles}
                 onChange={() =>
                   setSelectedRoles((current) =>
                     current.includes(role.name)
@@ -326,7 +327,7 @@ export function GroupDetail({
             ))}
           </div>
           <div className="admin-form-actions">
-            {canManage && (
+            {canManageRoles && (
               <Button disabled={saving} onClick={() => void saveRoles()}>
                 <AdminActionIcon action="save" />
                 {copy.saveMappings}
@@ -344,7 +345,7 @@ export function GroupDetail({
                 aria-label={copy.assignUser}
                 placeholder={dictionary.admin.resources.search}
                 value={selectedUser?.username ?? userQuery}
-                disabled={!canManage}
+                disabled={!canManageUsers}
                 onChange={(event) => {
                   setSelectedUser(null);
                   setSuggestions([]);
@@ -361,7 +362,7 @@ export function GroupDetail({
                 </ListGroup>
               )}
             </div>
-            {canManage && (
+            {canManageUsers && (
               <Button disabled={!selectedUser || saving} onClick={() => void addMember()}>
                 <AdminActionIcon action="assign" />
                 {copy.assignUser}
@@ -424,7 +425,7 @@ export function GroupDetail({
                 </Badge>
               </td>
               <td className="text-end">
-                {canManage && (
+                {canManageUsers && (
                   <Button
                     disabled={saving}
                     size="sm"

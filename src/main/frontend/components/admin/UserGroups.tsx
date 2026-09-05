@@ -26,7 +26,7 @@ export function UserGroups({ dictionary, userId }: { dictionary: Dictionary; use
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
-  const canManageGroups = Boolean(access?.manageRoles);
+  const canManageGroups = Boolean(access?.manageUsers);
 
   const load = useCallback(async () => {
     if (!accessToken) return;
@@ -77,7 +77,7 @@ export function UserGroups({ dictionary, userId }: { dictionary: Dictionary; use
   }, [accessToken, canManageGroups, groups, query, selectedGroup]);
 
   const join = async () => {
-    if (!accessToken || !selectedGroup) return;
+    if (!canManageGroups || !accessToken || !selectedGroup) return;
     setSaving(true);
     try {
       const response = await adminRequest(accessToken, {
@@ -99,7 +99,7 @@ export function UserGroups({ dictionary, userId }: { dictionary: Dictionary; use
   };
 
   const leave = async (group: Group) => {
-    if (!accessToken) return;
+    if (!canManageGroups || !accessToken) return;
     setSaving(true);
     try {
       const response = await adminRequest(accessToken, {

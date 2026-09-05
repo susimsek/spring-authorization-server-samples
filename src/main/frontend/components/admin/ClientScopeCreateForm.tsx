@@ -18,7 +18,8 @@ import { AdminActionIcon } from "./AdminActionIcon";
 type Values = { name: string; displayName: string; description: string };
 
 export function ClientScopeCreateForm({ dictionary }: { dictionary: Dictionary; locale: Locale }) {
-  const { accessToken } = useAdminAuth();
+  const { access, accessToken } = useAdminAuth();
+  const canManageClients = Boolean(access?.manageClients);
   const alerts = useConsoleAlerts();
   const router = useRouter();
   const copy = dictionary.admin.clientScopes;
@@ -40,7 +41,7 @@ export function ClientScopeCreateForm({ dictionary }: { dictionary: Dictionary; 
   });
 
   const submit = async (values: Values) => {
-    if (!accessToken) return;
+    if (!accessToken || !canManageClients) return;
     try {
       const response = await adminRequest(accessToken, {
         url: "/api/admin/client-scopes",
@@ -76,6 +77,7 @@ export function ClientScopeCreateForm({ dictionary }: { dictionary: Dictionary; 
               autoFocus
               isInvalid={Boolean(errors.name)}
               maxLength={100}
+              disabled={!canManageClients}
               {...register("name")}
             />
             <Form.Control.Feedback type="invalid">{errors.name?.message}</Form.Control.Feedback>
@@ -85,6 +87,7 @@ export function ClientScopeCreateForm({ dictionary }: { dictionary: Dictionary; 
             <Form.Control
               isInvalid={Boolean(errors.displayName)}
               maxLength={200}
+              disabled={!canManageClients}
               {...register("displayName")}
             />
             <Form.Control.Feedback type="invalid">
@@ -98,6 +101,7 @@ export function ClientScopeCreateForm({ dictionary }: { dictionary: Dictionary; 
               isInvalid={Boolean(errors.description)}
               maxLength={500}
               rows={4}
+              disabled={!canManageClients}
               {...register("description")}
             />
             <Form.Control.Feedback type="invalid">
@@ -109,7 +113,7 @@ export function ClientScopeCreateForm({ dictionary }: { dictionary: Dictionary; 
               <AdminActionIcon action="cancel" />
               {common.cancel}
             </Button>
-            <Button disabled={isSubmitting} type="submit">
+            <Button disabled={!canManageClients || isSubmitting} type="submit">
               <AdminActionIcon action="add" />
               {isSubmitting ? common.saving : copy.create}
             </Button>

@@ -52,7 +52,7 @@ export function AdminShell({ locale, dictionary, children }: Props) {
     ["/keys", dictionary.admin.nav.keys, faKey, access?.viewKeys],
     ["/events", dictionary.admin.nav.events, faClockRotateLeft, access?.viewUsers],
     ["/server-info", dictionary.admin.nav.serverInfo, faCircleInfo, access?.viewKeys],
-    ["/settings", dictionary.admin.nav.settings, faSliders, access?.isAdmin ?? access?.manageKeys],
+    ["/settings", dictionary.admin.nav.settings, faSliders, access?.isAdmin],
   ] as const;
 
   return (

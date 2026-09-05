@@ -73,6 +73,7 @@ export function UserForm({
 }) {
   const router = useRouter();
   const { access, accessToken } = useAdminAuth();
+  const canManageUsers = Boolean(access?.manageUsers);
   const copy = dictionary.admin.resources;
   const editing = Boolean(id);
   const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
@@ -182,7 +183,7 @@ export function UserForm({
   }, [accessToken, editing, id, reset]);
 
   const unlockUser = async () => {
-    if (!accessToken || !id) return;
+    if (!canManageUsers || !accessToken || !id) return;
     setError(false);
     try {
       const response = await adminRequest(accessToken, {
@@ -212,6 +213,7 @@ export function UserForm({
   }, [accessToken]);
 
   const toggleRole = (role: string) => {
+    if (!canManageUsers) return;
     const roles = getValues("roles");
     setValue(
       "roles",
@@ -221,7 +223,7 @@ export function UserForm({
   };
 
   const uploadAvatar = async (file: File | undefined) => {
-    if (!file || !accessToken || !id) return;
+    if (!canManageUsers || !file || !accessToken || !id) return;
     setAvatarError(null);
     if (!["image/jpeg", "image/png"].includes(file.type) || file.size > 2 * 1024 * 1024) {
       setAvatarError(copy.avatarHelp);
@@ -266,7 +268,7 @@ export function UserForm({
   };
 
   const removeAvatar = async () => {
-    if (!accessToken || !id) return;
+    if (!canManageUsers || !accessToken || !id) return;
     setAvatarSaving(true);
     setError(false);
     try {
@@ -284,7 +286,7 @@ export function UserForm({
   };
 
   const sendActionEmail = actionForm.handleSubmit(async ({ action, lifespan }) => {
-    if (!accessToken || !id) return;
+    if (!canManageUsers || !accessToken || !id) return;
     setActionSent(false);
     setActionError(false);
     try {
@@ -301,7 +303,7 @@ export function UserForm({
   });
 
   const impersonate = async () => {
-    if (!accessToken || !id || impersonationBusy) return;
+    if (!access?.isAdmin || !accessToken || !id || impersonationBusy) return;
     setImpersonationBusy(true);
     try {
       const response = await adminRequest<{ url: string }>(accessToken, {
@@ -317,7 +319,7 @@ export function UserForm({
   };
 
   const submit = async (values: UserFormValues) => {
-    if (!accessToken) return;
+    if (!canManageUsers || !accessToken) return;
     setSaving(true);
     setError(false);
     try {
@@ -403,7 +405,7 @@ export function UserForm({
   };
 
   const deleteUser = async () => {
-    if (!accessToken || !id) return;
+    if (!canManageUsers || !accessToken || !id) return;
     setSaving(true);
     setError(false);
     try {
@@ -451,15 +453,17 @@ export function UserForm({
             </div>
             {access?.manageUsers && (
               <div className="d-flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="info"
-                  disabled={impersonationBusy}
-                  onClick={() => void impersonate()}
-                >
-                  <AdminActionIcon action="impersonate" />
-                  {impersonationBusy ? dictionary.admin.common.saving : copy.impersonate}
-                </Button>
+                {access.isAdmin && (
+                  <Button
+                    type="button"
+                    variant="info"
+                    disabled={impersonationBusy}
+                    onClick={() => void impersonate()}
+                  >
+                    <AdminActionIcon action="impersonate" />
+                    {impersonationBusy ? dictionary.admin.common.saving : copy.impersonate}
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant={enabled ? "warning" : "success"}
@@ -492,7 +496,11 @@ export function UserForm({
             <Card.Body className="d-grid gap-4">
               <Form.Group>
                 <Form.Label>{copy.username}</Form.Label>
-                <Form.Control isInvalid={Boolean(errors.username)} {...register("username")} />
+                <Form.Control
+                  disabled={!canManageUsers}
+                  isInvalid={Boolean(errors.username)}
+                  {...register("username")}
+                />
                 <Form.Control.Feedback type="invalid">
                   {errors.username?.message}
                 </Form.Control.Feedback>
@@ -501,6 +509,7 @@ export function UserForm({
                 <Form.Label>{copy.email}</Form.Label>
                 <Form.Control
                   type="email"
+                  disabled={!canManageUsers}
                   isInvalid={Boolean(errors.email)}
                   {...register("email")}
                 />
@@ -512,12 +521,14 @@ export function UserForm({
                 type="switch"
                 label={copy.enabled}
                 checked={enabled}
+                disabled={!canManageUsers}
                 onChange={(e) => setValue("enabled", e.target.checked, { shouldDirty: true })}
               />
               <Form.Group>
                 <Form.Label>{copy.password}</Form.Label>
                 <Form.Control
                   type="password"
+                  disabled={!canManageUsers}
                   isInvalid={Boolean(errors.password)}
                   {...register("password")}
                 />
@@ -536,6 +547,7 @@ export function UserForm({
                       <Form.Check
                         type="checkbox"
                         checked={roles.includes(role.name)}
+                        disabled={!canManageUsers}
                         onChange={() => toggleRole(role.name)}
                       />
                       <span className="font-monospace">{role.name}</span>
@@ -580,7 +592,7 @@ export function UserForm({
                     <input
                       className="visually-hidden"
                       accept="image/jpeg,image/png"
-                      disabled={avatarSaving}
+                      disabled={!canManageUsers || avatarSaving}
                       onChange={(e) => uploadAvatar(e.target.files?.[0])}
                       type="file"
                     />
@@ -589,7 +601,7 @@ export function UserForm({
                     <Button
                       size="sm"
                       variant="danger"
-                      disabled={avatarSaving}
+                      disabled={!canManageUsers || avatarSaving}
                       onClick={() => setShowAvatarDeleteConfirm(true)}
                       type="button"
                     >
@@ -626,7 +638,11 @@ export function UserForm({
               </div>
               <Form.Group>
                 <Form.Label>{copy.username}</Form.Label>
-                <Form.Control isInvalid={Boolean(errors.username)} {...register("username")} />
+                <Form.Control
+                  disabled={!canManageUsers}
+                  isInvalid={Boolean(errors.username)}
+                  {...register("username")}
+                />
                 <Form.Control.Feedback type="invalid">
                   {errors.username?.message}
                 </Form.Control.Feedback>
@@ -635,6 +651,7 @@ export function UserForm({
                 <Form.Label>{copy.email}</Form.Label>
                 <Form.Control
                   type="email"
+                  disabled={!canManageUsers}
                   isInvalid={Boolean(errors.email)}
                   {...register("email")}
                 />
@@ -642,11 +659,17 @@ export function UserForm({
                   {errors.email?.message}
                 </Form.Control.Feedback>
               </Form.Group>
-              <Form.Check type="switch" label={copy.emailVerified} {...register("emailVerified")} />
+              <Form.Check
+                type="switch"
+                label={copy.emailVerified}
+                disabled={!canManageUsers}
+                {...register("emailVerified")}
+              />
               <Form.Check
                 type="switch"
                 label={copy.enabled}
                 checked={enabled}
+                disabled={!canManageUsers}
                 onChange={(e) => setValue("enabled", e.target.checked, { shouldDirty: true })}
               />
               {editing && createdAt && updatedAt && (
@@ -675,6 +698,7 @@ export function UserForm({
                   <Form.Label>{editing ? copy.newPassword : copy.password}</Form.Label>
                   <Form.Control
                     type="password"
+                    disabled={!canManageUsers}
                     isInvalid={Boolean(errors.password)}
                     {...register("password")}
                   />
@@ -694,14 +718,14 @@ export function UserForm({
                 {actionError && <Alert variant="danger">{copy.operationError}</Alert>}
                 <Form.Group>
                   <Form.Label>{copy.requiredAction}</Form.Label>
-                  <Form.Select {...actionForm.register("action")}>
+                  <Form.Select disabled={!canManageUsers} {...actionForm.register("action")}>
                     <option value="UPDATE_PASSWORD">{copy.updatePasswordAction}</option>
                     <option value="VERIFY_EMAIL">{copy.verifyEmailAction}</option>
                   </Form.Select>
                 </Form.Group>
                 <Form.Group>
                   <Form.Label>{copy.actionLifespan}</Form.Label>
-                  <Form.Select {...actionForm.register("lifespan")}>
+                  <Form.Select disabled={!canManageUsers} {...actionForm.register("lifespan")}>
                     <option value="1800">{copy.thirtyMinutes}</option>
                     <option value="3600">{copy.oneHour}</option>
                     <option value="43200">{copy.twelveHours}</option>
@@ -712,7 +736,7 @@ export function UserForm({
                   <Button
                     type="button"
                     variant="primary"
-                    disabled={actionForm.formState.isSubmitting}
+                    disabled={!canManageUsers || actionForm.formState.isSubmitting}
                     onClick={() => void sendActionEmail()}
                   >
                     <AdminActionIcon action="send" />
@@ -739,6 +763,7 @@ export function UserForm({
                     <Form.Check
                       type="checkbox"
                       checked={roles.includes(role.name)}
+                      disabled={!canManageUsers}
                       onChange={() => toggleRole(role.name)}
                     />
                     <span className="font-monospace">{role.name}</span>
@@ -790,7 +815,7 @@ export function UserForm({
               <AdminActionIcon action="cancel" />
               {dictionary.admin.common.cancel}
             </Button>
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" disabled={!canManageUsers || saving}>
               <AdminActionIcon action="save" />
               {saving ? dictionary.admin.common.saving : dictionary.admin.common.save}
             </Button>

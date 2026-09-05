@@ -76,7 +76,7 @@ export function ConsentDetail({
   }, [load]);
 
   const revoke = async () => {
-    if (!accessToken || !consent) return;
+    if (!access?.manageConsents || !accessToken || !consent) return;
     const response = await adminRequest(accessToken, {
       url: `/api/admin/consents/${encodeURIComponent(consent.clientId)}/${encodeURIComponent(consent.principalName)}`,
       method: "DELETE",

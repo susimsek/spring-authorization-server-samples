@@ -53,7 +53,7 @@ export function ClientScopeAssignments({ clientId, dictionary, onChanged }: Prop
   }, [data]);
 
   const persist = async (defaultScopes: string[], optionalScopes: string[]) => {
-    if (!accessToken) return;
+    if (!access?.manageClients || !accessToken) return;
     setSaving(true);
     const response = await adminRequest<Assignments>(accessToken, {
       url: `/api/admin/clients/${encodeURIComponent(clientId)}/scope-assignments`,
