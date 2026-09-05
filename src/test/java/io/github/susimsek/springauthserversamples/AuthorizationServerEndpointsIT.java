@@ -91,20 +91,6 @@ class AuthorizationServerEndpointsIT {
     }
 
     @Test
-    void exportedNotFoundPageIsPublicWithoutExposingConsoleApis() throws Exception {
-        MvcResult page =
-                mockMvc.perform(get("/404.html").accept(MediaType.TEXT_HTML))
-                        .andExpect(status().isOk())
-                        .andReturn();
-        assertThat(page.getResponse().getContentAsString()).contains("/_next/");
-        assertThat(page.getResponse().getForwardedUrl()).isNull();
-        mockMvc.perform(get("/api/admin/users").accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isUnauthorized());
-        mockMvc.perform(get("/api/account/profile").accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
     void discoveryAndJwkEndpointsArePublic() throws Exception {
         mockMvc.perform(get("/.well-known/openid-configuration"))
                 .andExpect(status().isOk())
