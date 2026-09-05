@@ -4,12 +4,6 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
-	<changeSet id="012-01-add-pending-email" author="codex">
-		<addColumn tableName="users">
-			<column name="pending_email" type="varchar(200)"/>
-		</addColumn>
-	</changeSet>
-
 	<changeSet id="012-02-required-action-tables" author="codex">
 		<createSequence sequenceName="user_required_action_seq" startValue="1" incrementBy="1"/>
 		<createSequence sequenceName="required_action_completion_seq" startValue="1" incrementBy="1"/>

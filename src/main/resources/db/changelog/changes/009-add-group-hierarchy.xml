@@ -5,9 +5,6 @@
 	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
 	<changeSet id="009-add-group-parent" author="susimsek">
-		<addColumn tableName="groups">
-			<column name="parent_id" type="bigint"/>
-		</addColumn>
 		<addForeignKeyConstraint
 			baseTableName="groups"
 			baseColumnNames="parent_id"

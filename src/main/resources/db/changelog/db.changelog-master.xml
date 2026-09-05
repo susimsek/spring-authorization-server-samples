@@ -20,6 +20,5 @@
 	<include file="db/changelog/changes/013-password-security.xml"/>
 	<include file="db/changelog/changes/014-login-settings.xml"/>
 	<include file="db/changelog/changes/015-email-settings.xml"/>
-	<include file="db/changelog/changes/016-login-policy-settings.xml"/>
     <include file="db/changelog/changes/011-unprefix-console-routes.xml"/>
 </databaseChangeLog>

@@ -5,11 +5,6 @@
 	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
 	<changeSet id="010-01-add-email-verification" author="codex">
-		<addColumn tableName="users">
-			<column name="email_verified" type="boolean" defaultValueBoolean="false">
-				<constraints nullable="false"/>
-			</column>
-		</addColumn>
 		<addUniqueConstraint tableName="users" columnNames="email" constraintName="ux_users_email"/>
 	</changeSet>
 

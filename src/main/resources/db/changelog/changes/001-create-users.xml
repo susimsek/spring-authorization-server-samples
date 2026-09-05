@@ -26,9 +26,31 @@
 			<column name="password" type="varchar(255)">
 				<constraints nullable="false"/>
 			</column>
+			<column name="password_changed_at" type="timestamp"/>
+			<column name="must_change_password" type="boolean" defaultValueBoolean="false">
+				<constraints nullable="false"/>
+			</column>
+			<column name="temporary_password" type="boolean" defaultValueBoolean="false">
+				<constraints nullable="false"/>
+			</column>
+			<column name="failed_login_count" type="bigint" defaultValueNumeric="0">
+				<constraints nullable="false"/>
+			</column>
+			<column name="last_failed_login_at" type="timestamp"/>
+			<column name="locked_until" type="timestamp"/>
+			<column name="temporary_lockout_count" type="bigint" defaultValueNumeric="0">
+				<constraints nullable="false"/>
+			</column>
+			<column name="permanently_locked" type="boolean" defaultValueBoolean="false">
+				<constraints nullable="false"/>
+			</column>
 			<column name="first_name" type="varchar(100)"/>
 			<column name="last_name" type="varchar(100)"/>
 			<column name="email" type="varchar(200)"/>
+			<column name="pending_email" type="varchar(200)"/>
+			<column name="email_verified" type="boolean" defaultValueBoolean="false">
+				<constraints nullable="false"/>
+			</column>
 			<column name="enabled" type="boolean" defaultValueBoolean="true">
 				<constraints nullable="false"/>
 			</column>
@@ -152,6 +174,7 @@
 			<column name="name" type="varchar(100)">
 				<constraints nullable="false" unique="true" uniqueConstraintName="uk_groups_name"/>
 			</column>
+			<column name="parent_id" type="bigint"/>
 		</createTable>
 		<createTable tableName="user_groups">
 			<column name="user_id" type="bigint">

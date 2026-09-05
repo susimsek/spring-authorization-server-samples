@@ -12,12 +12,24 @@
 			<column name="user_registration_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
 			<column name="forgot_password_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
 			<column name="remember_me_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+			<column name="login_with_email" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="verify_email" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="session_timeout_minutes" type="int" defaultValueNumeric="30"><constraints nullable="false"/></column>
+			<column name="password_minimum_length" type="int" defaultValueNumeric="12"><constraints nullable="false"/></column>
+			<column name="brute_force_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+			<column name="brute_force_max_failures" type="int" defaultValueNumeric="5"><constraints nullable="false"/></column>
 		</createTable>
 		<insert tableName="login_settings">
 			<column name="id" valueNumeric="1"/>
 			<column name="user_registration_enabled" valueBoolean="true"/>
 			<column name="forgot_password_enabled" valueBoolean="true"/>
 			<column name="remember_me_enabled" valueBoolean="true"/>
+			<column name="login_with_email" valueBoolean="false"/>
+			<column name="verify_email" valueBoolean="false"/>
+			<column name="session_timeout_minutes" valueNumeric="30"/>
+			<column name="password_minimum_length" valueNumeric="12"/>
+			<column name="brute_force_enabled" valueBoolean="true"/>
+			<column name="brute_force_max_failures" valueNumeric="5"/>
 		</insert>
 	</changeSet>
 </databaseChangeLog>
