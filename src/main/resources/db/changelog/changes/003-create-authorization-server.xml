@@ -112,11 +112,13 @@
 		<createIndex indexName="idx_oauth2_authorization_registered_client" tableName="oauth2_authorization">
 			<column name="registered_client_id"/>
 		</createIndex>
-		<createIndex indexName="idx_oauth2_authorization_principal" tableName="oauth2_authorization">
-			<column name="principal_name"/>
-		</createIndex>
-		<createIndex indexName="idx_oauth2_authorization_session" tableName="oauth2_authorization">
+		<createIndex indexName="idx_oauth2_authorization_session_issued" tableName="oauth2_authorization">
 			<column name="session_id"/>
+			<column name="access_token_issued_at" descending="true"/>
+		</createIndex>
+		<createIndex indexName="idx_oauth2_authorization_principal_client" tableName="oauth2_authorization">
+			<column name="principal_name"/>
+			<column name="registered_client_id"/>
 		</createIndex>
 		<createIndex indexName="idx_oauth2_authorization_state" tableName="oauth2_authorization">
 			<column name="state"/>
@@ -159,6 +161,9 @@
 				<constraints nullable="false"/>
 			</column>
 		</createTable>
+		<createIndex indexName="idx_oauth2_consent_principal" tableName="oauth2_authorization_consent">
+			<column name="principal_name"/>
+		</createIndex>
 		<addPrimaryKey
 			tableName="oauth2_authorization_consent"
 			columnNames="registered_client_id, principal_name"

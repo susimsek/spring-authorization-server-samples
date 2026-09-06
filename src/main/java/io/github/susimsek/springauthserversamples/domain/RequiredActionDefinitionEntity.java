@@ -7,12 +7,15 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 /** Configurable required action policy. Global actions are evaluated by version. */
 @Getter
 @Setter
 @NoArgsConstructor
 @Entity
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 @Table(name = "required_action_definition")
 public class RequiredActionDefinitionEntity extends AuditableEntity {
 

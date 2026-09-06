@@ -22,6 +22,9 @@
 			</column>
 			<column name="parent_id" type="bigint"/>
 		</createTable>
+		<createIndex indexName="idx_groups_parent" tableName="groups">
+			<column name="parent_id"/>
+		</createIndex>
 		<createTable tableName="user_groups">
 			<column name="user_id" type="bigint">
 				<constraints nullable="false"/>

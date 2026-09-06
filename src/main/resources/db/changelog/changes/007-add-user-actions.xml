@@ -45,12 +45,11 @@
 			<column name="action"/>
 			<column name="issued_at" descending="true"/>
 		</createIndex>
+		<createIndex tableName="user_action_token" indexName="ix_user_action_token_active">
+			<column name="user_id"/>
+			<column name="action"/>
+			<column name="consumed_at"/>
+		</createIndex>
 	</changeSet>
 
-	<changeSet id="010-03-add-email-scope" author="susimsek">
-		<update tableName="oauth2_registered_client">
-			<column name="scopes" valueComputed="concat(scopes, ',email')"/>
-			<where>client_id in ('admin-console', 'account-console') and scopes not like '%email%'</where>
-		</update>
-	</changeSet>
 </databaseChangeLog>

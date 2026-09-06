@@ -75,6 +75,7 @@ public class AdminClientScopeService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = ClientScopeRepository.CLIENT_SCOPE_BY_NAME_CACHE, allEntries = true)
     public AdminClientScopeDTO create(AdminClientScopeRequestDTO request) {
         String name = normalizeName(request.name());
         if (clientScopeRepository.existsByName(name)) {
@@ -94,7 +95,10 @@ public class AdminClientScopeService {
 
     @Transactional
     @CacheEvict(
-            cacheNames = ClientRepository.REGISTERED_CLIENT_BY_CLIENT_ID_CACHE,
+            cacheNames = {
+                ClientRepository.REGISTERED_CLIENT_BY_CLIENT_ID_CACHE,
+                ClientScopeRepository.CLIENT_SCOPE_BY_NAME_CACHE
+            },
             allEntries = true)
     public AdminClientScopeDTO update(String id, AdminClientScopeRequestDTO request) {
         ClientScopeEntity entity = required(id);
@@ -120,6 +124,7 @@ public class AdminClientScopeService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = ClientScopeRepository.CLIENT_SCOPE_BY_NAME_CACHE, allEntries = true)
     public void delete(String id) {
         ClientScopeEntity entity = required(id);
         boolean assigned =

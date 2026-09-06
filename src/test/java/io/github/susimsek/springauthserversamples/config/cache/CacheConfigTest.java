@@ -7,8 +7,12 @@ import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
 import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentEntity;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationEntity;
+import io.github.susimsek.springauthserversamples.domain.EmailSettingsEntity;
+import io.github.susimsek.springauthserversamples.domain.GroupEntity;
+import io.github.susimsek.springauthserversamples.domain.LoginSettingsEntity;
 import io.github.susimsek.springauthserversamples.domain.OAuth2KeyEntity;
 import io.github.susimsek.springauthserversamples.domain.RegisteredClientEntity;
+import io.github.susimsek.springauthserversamples.domain.RequiredActionDefinitionEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.repository.OAuth2KeyRepository;
@@ -65,10 +69,17 @@ class CacheConfigTest {
         assertThat(cacheManager.getCache(AuthorizationConsentEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(AuthorizationEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(AuthorityEntity.class.getName())).isNotNull();
+        assertThat(cacheManager.getCache(EmailSettingsEntity.class.getName())).isNotNull();
+        assertThat(cacheManager.getCache(GroupEntity.class.getName())).isNotNull();
+        assertThat(cacheManager.getCache(GroupEntity.class.getName() + ".authorities")).isNotNull();
+        assertThat(cacheManager.getCache(LoginSettingsEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(OAuth2KeyEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(RegisteredClientEntity.class.getName())).isNotNull();
+        assertThat(cacheManager.getCache(RequiredActionDefinitionEntity.class.getName()))
+                .isNotNull();
         assertThat(cacheManager.getCache(UserEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(UserEntity.class.getName() + ".authorities")).isNotNull();
+        assertThat(cacheManager.getCache(UserEntity.class.getName() + ".groups")).isNotNull();
         assertThat(cacheManager.getCache(ClientRepository.REGISTERED_CLIENT_BY_CLIENT_ID_CACHE))
                 .isNotNull();
         assertThat(cacheManager.getCache(OAuth2KeyRepository.OAUTH2_KEYS_CACHE)).isNotNull();

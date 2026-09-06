@@ -191,6 +191,9 @@ public class RequiredActionService {
     }
 
     @Transactional
+    @CacheEvict(
+            cacheNames = RequiredActionDefinitionRepository.ENABLED_REQUIRED_ACTIONS_CACHE,
+            allEntries = true)
     public AdminRequiredActionDTO updateDefinition(
             String actionKey, AdminRequiredActionRequestDTO request) {
         RequiredActionDefinitionEntity definition =

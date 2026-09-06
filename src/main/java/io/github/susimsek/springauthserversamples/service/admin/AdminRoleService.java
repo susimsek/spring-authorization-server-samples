@@ -14,6 +14,7 @@ import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import io.github.susimsek.springauthserversamples.service.security.EffectiveRoleService;
 import lombok.RequiredArgsConstructor;
 import org.mapstruct.factory.Mappers;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -168,11 +169,13 @@ public class AdminRoleService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = AuthorityRepository.AUTHORITY_BY_NAME_CACHE, allEntries = true)
     public AdminRoleDTO createRole(String name) {
         return createRole(name, null);
     }
 
     @Transactional
+    @CacheEvict(cacheNames = AuthorityRepository.AUTHORITY_BY_NAME_CACHE, allEntries = true)
     public AdminRoleDTO createRole(String name, String description) {
         validateRoleName(name);
         if (authorityRepository.existsByName(name)) {
@@ -188,6 +191,7 @@ public class AdminRoleService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = AuthorityRepository.AUTHORITY_BY_NAME_CACHE, allEntries = true)
     public AdminRoleDTO updateRole(String name, String description) {
         AuthorityEntity role =
                 authorityRepository
@@ -199,6 +203,7 @@ public class AdminRoleService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = AuthorityRepository.AUTHORITY_BY_NAME_CACHE, allEntries = true)
     public void deleteRole(String name) {
         AuthorityEntity role =
                 authorityRepository

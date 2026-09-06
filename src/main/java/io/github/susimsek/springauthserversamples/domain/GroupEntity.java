@@ -16,11 +16,14 @@ import java.util.Set;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @Entity
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 @Table(name = "groups")
 public class GroupEntity {
 
@@ -37,6 +40,7 @@ public class GroupEntity {
     private GroupEntity parent;
 
     @ManyToMany
+    @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
     @JoinTable(
             name = "group_authorities",
             joinColumns = @JoinColumn(name = "group_id"),

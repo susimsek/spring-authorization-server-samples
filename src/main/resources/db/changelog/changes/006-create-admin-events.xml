@@ -30,5 +30,12 @@
 			<column name="target_id"/>
 			<column name="occurred_at" descending="true"/>
 		</createIndex>
+		<createIndex indexName="idx_admin_events_occurred_at" tableName="admin_events">
+			<column name="occurred_at" descending="true"/>
+		</createIndex>
+		<createIndex indexName="idx_admin_events_action_occurred_at" tableName="admin_events">
+			<column name="action"/>
+			<column name="occurred_at" descending="true"/>
+		</createIndex>
 	</changeSet>
 </databaseChangeLog>

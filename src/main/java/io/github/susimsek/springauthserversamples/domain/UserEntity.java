@@ -127,6 +127,7 @@ public class UserEntity extends AuditableEntity {
     private Set<AuthorityEntity> authorities = new HashSet<>();
 
     @ManyToMany
+    @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
     @JoinTable(
             name = "user_groups",
             joinColumns = @JoinColumn(name = "user_id"),

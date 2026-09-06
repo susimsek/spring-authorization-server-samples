@@ -36,9 +36,10 @@
                                  referencedColumnNames="id" onDelete="CASCADE"/>
         <addUniqueConstraint tableName="user_recovery_code" columnNames="user_id, code_index"
                              constraintName="uk_user_recovery_code_index"/>
-        <createIndex tableName="user_recovery_code" indexName="idx_user_recovery_code_user_unused">
+        <createIndex tableName="user_recovery_code" indexName="idx_user_recovery_code_user_unused_index">
             <column name="user_id"/>
             <column name="used_at"/>
+            <column name="code_index"/>
         </createIndex>
     </changeSet>
 </databaseChangeLog>

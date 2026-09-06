@@ -21,6 +21,11 @@
 			<column name="last_modified_by" type="varchar(100)"/>
 			<column name="updated_at" type="timestamp"><constraints nullable="false"/></column>
 		</createTable>
+		<createIndex tableName="required_action_definition" indexName="ix_required_action_definition_enabled_priority">
+			<column name="enabled"/>
+			<column name="priority"/>
+			<column name="action_key"/>
+		</createIndex>
 		<createTable tableName="user_required_action">
 			<column name="id" type="bigint"><constraints primaryKey="true" nullable="false" primaryKeyName="pk_user_required_action"/></column>
 			<column name="user_id" type="bigint"><constraints nullable="false"/></column>
