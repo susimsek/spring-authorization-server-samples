@@ -286,8 +286,8 @@ curl http://localhost:9090/actuator/health/readiness
 
 ### Caching and indexing
 
-- Keep Hibernate second-level caching enabled for stable, read-heavy reference and configuration entities: users and their authority/group collections, groups and authority collections, registered clients, client scopes, authorities, signing keys, required-action definitions, login settings, email settings, authorization records, and authorization consents.
-- Do not cache high-churn or one-time data such as sessions, audit events, password history, recovery codes, action tokens, impersonation tickets, or login-rate-limit windows. Keep Hibernate query cache disabled for dynamic, filtered, and paginated queries.
+- Keep Hibernate second-level caching enabled for stable, read-heavy reference and configuration entities: users and their authority/group collections, groups and authority collections, registered clients, client scopes, authorities, signing keys, required-action definitions, login settings, email settings, and authorization consents.
+- Do not cache high-churn or one-time data such as authorization records, sessions, audit events, password history, recovery codes, action tokens, impersonation tickets, or login-rate-limit windows. Keep Hibernate query cache disabled for dynamic, filtered, and paginated queries.
 - Cache repository lookups only when the key and invalidation path are explicit. Every administration update that changes cached configuration or reference data must evict the corresponding Spring cache in the same service transaction; user permission changes must also invalidate affected sessions as described above.
 - Add indexes for foreign-key join columns and for frequently combined filter/order predicates used by repository queries. Keep the index in the existing table create changelog for bootstrap changes, avoid duplicate indexes already provided by primary or unique constraints, and use lowercase Liquibase types.
 

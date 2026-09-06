@@ -6,7 +6,6 @@ import com.github.benmanes.caffeine.jcache.spi.CaffeineCachingProvider;
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
 import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentEntity;
-import io.github.susimsek.springauthserversamples.domain.AuthorizationEntity;
 import io.github.susimsek.springauthserversamples.domain.ClientScopeEntity;
 import io.github.susimsek.springauthserversamples.domain.EmailSettingsEntity;
 import io.github.susimsek.springauthserversamples.domain.GroupEntity;
@@ -88,7 +87,6 @@ public class CacheConfig {
         JCacheManagerCustomizer cacheManagerCustomizer() {
             return cacheManager -> {
                 createCache(cacheManager, AuthorizationConsentEntity.class.getName());
-                createCache(cacheManager, AuthorizationEntity.class.getName());
                 createCache(cacheManager, ClientScopeEntity.class.getName());
                 createCache(cacheManager, EmailSettingsEntity.class.getName());
                 createCache(cacheManager, GroupEntity.class.getName());

@@ -6,7 +6,6 @@ import com.github.benmanes.caffeine.jcache.spi.CaffeineCachingProvider;
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
 import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentEntity;
-import io.github.susimsek.springauthserversamples.domain.AuthorizationEntity;
 import io.github.susimsek.springauthserversamples.domain.EmailSettingsEntity;
 import io.github.susimsek.springauthserversamples.domain.GroupEntity;
 import io.github.susimsek.springauthserversamples.domain.LoginSettingsEntity;
@@ -70,7 +69,6 @@ class CacheConfigTest {
 
         CacheManager cacheManager = configuration.jcacheManager(customizer);
         assertThat(cacheManager.getCache(AuthorizationConsentEntity.class.getName())).isNotNull();
-        assertThat(cacheManager.getCache(AuthorizationEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(AuthorityEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(EmailSettingsEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(GroupEntity.class.getName())).isNotNull();
