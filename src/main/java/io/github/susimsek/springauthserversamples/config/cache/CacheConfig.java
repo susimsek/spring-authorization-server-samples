@@ -15,8 +15,11 @@ import io.github.susimsek.springauthserversamples.domain.OAuth2KeyEntity;
 import io.github.susimsek.springauthserversamples.domain.RegisteredClientEntity;
 import io.github.susimsek.springauthserversamples.domain.RequiredActionDefinitionEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
+import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
+import io.github.susimsek.springauthserversamples.repository.ClientScopeRepository;
 import io.github.susimsek.springauthserversamples.repository.OAuth2KeyRepository;
+import io.github.susimsek.springauthserversamples.repository.RequiredActionDefinitionRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import java.util.OptionalLong;
 import javax.cache.Cache;
@@ -99,7 +102,12 @@ public class CacheConfig {
                 createCache(cacheManager, UserEntity.class.getName() + ".groups");
                 createCache(cacheManager, RequiredActionDefinitionEntity.class.getName());
                 createCache(cacheManager, ClientRepository.REGISTERED_CLIENT_BY_CLIENT_ID_CACHE);
+                createCache(cacheManager, AuthorityRepository.AUTHORITY_BY_NAME_CACHE);
+                createCache(cacheManager, ClientScopeRepository.CLIENT_SCOPE_BY_NAME_CACHE);
                 createCache(cacheManager, OAuth2KeyRepository.OAUTH2_KEYS_CACHE);
+                createCache(
+                        cacheManager,
+                        RequiredActionDefinitionRepository.ENABLED_REQUIRED_ACTIONS_CACHE);
                 createCache(cacheManager, UserRepository.USER_BY_USERNAME_CACHE);
             };
         }

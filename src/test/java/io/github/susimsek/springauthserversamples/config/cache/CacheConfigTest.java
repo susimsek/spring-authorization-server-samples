@@ -14,8 +14,11 @@ import io.github.susimsek.springauthserversamples.domain.OAuth2KeyEntity;
 import io.github.susimsek.springauthserversamples.domain.RegisteredClientEntity;
 import io.github.susimsek.springauthserversamples.domain.RequiredActionDefinitionEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
+import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
+import io.github.susimsek.springauthserversamples.repository.ClientScopeRepository;
 import io.github.susimsek.springauthserversamples.repository.OAuth2KeyRepository;
+import io.github.susimsek.springauthserversamples.repository.RequiredActionDefinitionRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import java.time.Duration;
 import java.util.HashMap;
@@ -82,7 +85,14 @@ class CacheConfigTest {
         assertThat(cacheManager.getCache(UserEntity.class.getName() + ".groups")).isNotNull();
         assertThat(cacheManager.getCache(ClientRepository.REGISTERED_CLIENT_BY_CLIENT_ID_CACHE))
                 .isNotNull();
+        assertThat(cacheManager.getCache(AuthorityRepository.AUTHORITY_BY_NAME_CACHE)).isNotNull();
+        assertThat(cacheManager.getCache(ClientScopeRepository.CLIENT_SCOPE_BY_NAME_CACHE))
+                .isNotNull();
         assertThat(cacheManager.getCache(OAuth2KeyRepository.OAUTH2_KEYS_CACHE)).isNotNull();
+        assertThat(
+                        cacheManager.getCache(
+                                RequiredActionDefinitionRepository.ENABLED_REQUIRED_ACTIONS_CACHE))
+                .isNotNull();
         assertThat(cacheManager.getCache(UserRepository.USER_BY_USERNAME_CACHE)).isNotNull();
     }
 
