@@ -287,6 +287,11 @@
     "loginSettings": {
       "title": "Giriş ayarları",
       "subtitle": "Genel giriş sayfasında görünecek hesap seçeneklerini yönetin.",
+      "sectionLogin": "Giriş",
+      "sectionSessions": "Oturumlar",
+      "sectionPasswordPolicy": "Parola politikası",
+      "sectionBruteForce": "Brute-force koruması",
+      "sectionOtpPolicy": "OTP politikası",
       "userRegistration": "Kullanıcı kaydı",
       "userRegistrationHelp": "Ziyaretçilerin yeni hesap oluşturmasına izin verin.",
       "forgotPassword": "Şifremi unuttum",
@@ -389,7 +394,22 @@
     },
     "settings": {
       "title": "Ayarlar",
-      "subtitle": "Giriş deneyimini, oturumları, güvenlik politikalarını ve e-posta gönderimini yapılandırın."
+      "subtitle": "Giriş deneyimini, oturumları, güvenlik politikalarını ve e-posta gönderimini yapılandırın.",
+      "navigation": "Ayar bölümleri",
+      "issuer": "Yayıncı",
+      "generalTitle": "Genel ayarlar",
+      "generalDescription": "OAuth ve OpenID Connect üst verilerinde kullanılan sunucu kimliğini inceleyin.",
+      "generalReadOnly": "Yayıncı application config içinde tutulur ve buradan değiştirilemez.",
+      "generalError": "Genel ayarlar yüklenemedi.",
+      "sections": {
+        "general": "Genel",
+        "login": "Giriş",
+        "email": "E-posta",
+        "passwordPolicy": "Parola politikası",
+        "otpPolicy": "OTP politikası",
+        "bruteForce": "Brute force",
+        "sessions": "Oturumlar"
+      }
     },
     "clients": {
       "title": "İstemciler",

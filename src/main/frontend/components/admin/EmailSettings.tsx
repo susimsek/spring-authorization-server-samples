@@ -164,6 +164,7 @@ export default function EmailSettingsPage({ embedded = false }: { embedded?: boo
             <div role="status">{copy.loading}</div>
           ) : (
             <Form noValidate onSubmit={submit}>
+              {embedded && <h2 className="h5 mb-3">{copy.title}</h2>}
               <Form.Check
                 className="mb-4"
                 type="switch"

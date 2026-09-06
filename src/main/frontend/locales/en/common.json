@@ -287,6 +287,11 @@
     "loginSettings": {
       "title": "Login settings",
       "subtitle": "Control which account options appear on the public sign-in page.",
+      "sectionLogin": "Login",
+      "sectionSessions": "Sessions",
+      "sectionPasswordPolicy": "Password policy",
+      "sectionBruteForce": "Brute-force protection",
+      "sectionOtpPolicy": "OTP policy",
       "userRegistration": "User registration",
       "userRegistrationHelp": "Allow visitors to create a new account.",
       "forgotPassword": "Forgot password",
@@ -389,7 +394,22 @@
     },
     "settings": {
       "title": "Settings",
-      "subtitle": "Configure the sign-in experience, sessions, security policies and email delivery."
+      "subtitle": "Configure the sign-in experience, sessions, security policies and email delivery.",
+      "navigation": "Settings sections",
+      "issuer": "Issuer",
+      "generalTitle": "General settings",
+      "generalDescription": "Review the server identity used in OAuth and OpenID Connect metadata.",
+      "generalReadOnly": "The issuer is kept in application configuration and cannot be changed here.",
+      "generalError": "General settings could not be loaded.",
+      "sections": {
+        "general": "General",
+        "login": "Login",
+        "email": "Email",
+        "passwordPolicy": "Password policy",
+        "otpPolicy": "OTP policy",
+        "bruteForce": "Brute force",
+        "sessions": "Sessions"
+      }
     },
     "clients": {
       "title": "Clients",

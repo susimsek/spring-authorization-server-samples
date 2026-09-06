@@ -66,6 +66,29 @@ describe("admin console", () => {
     });
   });
 
+  it("opens each settings section with its own route and save action", () => {
+    const sections = [
+      ["General", "/admin/settings", null],
+      ["Login", "/admin/settings/login", "Save settings"],
+      ["Email", "/admin/settings/email", "Save email settings"],
+      ["Password policy", "/admin/settings/password-policy", "Save settings"],
+      ["OTP policy", "/admin/settings/otp-policy", "Save settings"],
+      ["Brute force", "/admin/settings/brute-force", "Save settings"],
+      ["Sessions", "/admin/settings/sessions", "Save settings"],
+    ] as const;
+
+    signInAdmin();
+    cy.contains(".admin-sidebar a", "Settings").click();
+    cy.location("pathname").should("match", /^\/admin\/settings\/?$/);
+
+    sections.forEach(([label, path, saveLabel]) => {
+      cy.contains(".admin-settings-nav a", label).click();
+      cy.location("pathname", { timeout: 15_000 }).should("eq", path);
+      cy.get('.admin-settings-nav a[aria-current="page"]').should("contain.text", label);
+      if (saveLabel) cy.contains("button", saveLabel, { timeout: 15_000 }).should("be.visible");
+    });
+  });
+
   it("opens the create forms and validates required fields", () => {
     signInAdmin();
 
