@@ -15,8 +15,10 @@ import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventS
 import io.github.susimsek.springauthserversamples.service.admin.UserAccessInvalidationService;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
+import io.github.susimsek.springauthserversamples.service.security.MfaBruteForceService;
 import io.github.susimsek.springauthserversamples.service.security.TotpService;
 import java.util.Optional;
+import java.util.OptionalLong;
 import org.junit.jupiter.api.Test;
 
 class MfaServiceTest {
@@ -28,6 +30,7 @@ class MfaServiceTest {
     private final AdminAuditEventService auditEventService = mock(AdminAuditEventService.class);
     private final UserAccessInvalidationService invalidationService =
             mock(UserAccessInvalidationService.class);
+    private final MfaBruteForceService mfaBruteForceService = mock(MfaBruteForceService.class);
 
     @Test
     void enablingMfaInvalidatesUserAccess() {
@@ -41,9 +44,10 @@ class MfaServiceTest {
         settings.setOtpDigits(6);
         settings.setOtpPeriodSeconds(30);
         settings.setOtpLookAheadWindow(1);
-        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(userRepository.findForMfaUpdate("alice")).thenReturn(Optional.of(user));
         when(loginSettingsRepository.findById(1L)).thenReturn(Optional.of(settings));
-        when(totpService.matches("SECRET", "123456", "SHA1", 6, 30, 1)).thenReturn(true);
+        when(totpService.matchingCounter("SECRET", "123456", "SHA1", 6, 30, 1))
+                .thenReturn(OptionalLong.of(100L));
 
         service().enable("alice", "123456");
 
@@ -64,7 +68,7 @@ class MfaServiceTest {
         settings.setOtpAlgorithm("SHA1");
         settings.setOtpDigits(6);
         settings.setOtpPeriodSeconds(30);
-        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(userRepository.findForMfaUpdate("alice")).thenReturn(Optional.of(user));
         when(loginSettingsRepository.findById(1L)).thenReturn(Optional.of(settings));
 
         assertThat(service().setup("alice").secret()).isEqualTo("SECRET");
@@ -83,7 +87,7 @@ class MfaServiceTest {
         settings.setOtpDigits(6);
         settings.setOtpPeriodSeconds(30);
         settings.setOtpLookAheadWindow(1);
-        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(userRepository.findForMfaUpdate("alice")).thenReturn(Optional.of(user));
         when(loginSettingsRepository.findById(1L)).thenReturn(Optional.of(settings));
 
         assertThatThrownBy(() -> service().enable("alice", "000000"))
@@ -96,6 +100,7 @@ class MfaServiceTest {
         assertThat(user.isTotpEnabled()).isFalse();
         verify(userRepository, never()).save(user);
         verify(invalidationService, never()).invalidate("alice");
+        verify(mfaBruteForceService).recordFailure("alice");
     }
 
     @Test
@@ -110,7 +115,7 @@ class MfaServiceTest {
         settings.setOtpDigits(6);
         settings.setOtpPeriodSeconds(30);
         settings.setOtpLookAheadWindow(1);
-        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(userRepository.findForMfaUpdate("alice")).thenReturn(Optional.of(user));
         when(loginSettingsRepository.findById(1L)).thenReturn(Optional.of(settings));
 
         assertThatThrownBy(() -> service().disable("alice", "000000"))
@@ -136,11 +141,73 @@ class MfaServiceTest {
         settings.setOtpDigits(6);
         settings.setOtpPeriodSeconds(30);
         settings.setOtpLookAheadWindow(1);
-        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(userRepository.findForMfaUpdate("alice")).thenReturn(Optional.of(user));
         when(loginSettingsRepository.findById(1L)).thenReturn(Optional.of(settings));
 
         assertThat(service().valid("alice", "123456")).isFalse();
-        verify(totpService, never()).matches("SECRET", "123456", "SHA1", 6, 30, 1);
+        verify(totpService, never()).matchingCounter("SECRET", "123456", "SHA1", 6, 30, 1);
+    }
+
+    @Test
+    void rejectsTheSameCodeTwiceDuringOneTimeStep() {
+        UserEntity user = new UserEntity();
+        user.setUsername("alice");
+        user.setTotpSecret("SECRET");
+        user.setTotpEnabled(true);
+        LoginSettingsEntity settings = new LoginSettingsEntity();
+        settings.setOtpAlgorithm("SHA1");
+        settings.setOtpDigits(6);
+        settings.setOtpPeriodSeconds(30);
+        settings.setOtpLookAheadWindow(1);
+        when(userRepository.findForMfaUpdate("alice")).thenReturn(Optional.of(user));
+        when(loginSettingsRepository.findById(1L)).thenReturn(Optional.of(settings));
+        when(totpService.matchingCounter("SECRET", "123456", "SHA1", 6, 30, 1))
+                .thenReturn(OptionalLong.of(100L));
+
+        assertThat(service().valid("alice", "123456")).isTrue();
+        assertThat(service().valid("alice", "123456")).isFalse();
+    }
+
+    @Test
+    void recordsInvalidMfaAttemptsForBruteForceProtection() {
+        UserEntity user = new UserEntity();
+        user.setUsername("alice");
+        user.setTotpSecret("SECRET");
+        user.setTotpEnabled(true);
+        LoginSettingsEntity settings = new LoginSettingsEntity();
+        settings.setOtpAlgorithm("SHA1");
+        settings.setOtpDigits(6);
+        settings.setOtpPeriodSeconds(30);
+        settings.setOtpLookAheadWindow(1);
+        when(userRepository.findForMfaUpdate("alice")).thenReturn(Optional.of(user));
+        when(loginSettingsRepository.findById(1L)).thenReturn(Optional.of(settings));
+        when(totpService.matchingCounter("SECRET", "000000", "SHA1", 6, 30, 1))
+                .thenReturn(OptionalLong.empty());
+
+        assertThat(service().valid("alice", "000000")).isFalse();
+
+        verify(mfaBruteForceService).recordFailure("alice");
+    }
+
+    @Test
+    void acceptsTheSameCodeTwiceWhenCodeReuseIsEnabled() {
+        UserEntity user = new UserEntity();
+        user.setUsername("alice");
+        user.setTotpSecret("SECRET");
+        user.setTotpEnabled(true);
+        LoginSettingsEntity settings = new LoginSettingsEntity();
+        settings.setOtpAlgorithm("SHA1");
+        settings.setOtpDigits(6);
+        settings.setOtpPeriodSeconds(30);
+        settings.setOtpLookAheadWindow(1);
+        settings.setOtpCodeReusable(true);
+        when(userRepository.findForMfaUpdate("alice")).thenReturn(Optional.of(user));
+        when(loginSettingsRepository.findById(1L)).thenReturn(Optional.of(settings));
+        when(totpService.matchingCounter("SECRET", "123456", "SHA1", 6, 30, 1))
+                .thenReturn(OptionalLong.of(100L));
+
+        assertThat(service().valid("alice", "123456")).isTrue();
+        assertThat(service().valid("alice", "123456")).isTrue();
     }
 
     private MfaService service() {
@@ -149,6 +216,8 @@ class MfaServiceTest {
                 loginSettingsRepository,
                 totpService,
                 auditEventService,
-                invalidationService);
+                invalidationService,
+                null,
+                mfaBruteForceService);
     }
 }

@@ -4,12 +4,14 @@ import io.github.susimsek.springauthserversamples.domain.LoginSettingsEntity;
 import io.github.susimsek.springauthserversamples.dto.account.LoginSettingsDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminLoginSettingsDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminLoginSettingsRequestDTO;
+import io.github.susimsek.springauthserversamples.mapper.LoginSettingsMapper;
 import io.github.susimsek.springauthserversamples.repository.LoginSettingsRepository;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
 import io.github.susimsek.springauthserversamples.session.JpaIndexedSessionRepository;
 import java.time.Duration;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.factory.Mappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,70 +23,48 @@ public class LoginSettingsService {
     private final LoginSettingsRepository repository;
     private final AdminAuditEventService auditEventService;
     private final JpaIndexedSessionRepository sessionRepository;
+    private final LoginSettingsMapper loginSettingsMapper;
 
     public LoginSettingsService(
             LoginSettingsRepository repository, AdminAuditEventService auditEventService) {
-        this(repository, auditEventService, null);
+        this(repository, auditEventService, null, Mappers.getMapper(LoginSettingsMapper.class));
+    }
+
+    public LoginSettingsService(
+            LoginSettingsRepository repository,
+            AdminAuditEventService auditEventService,
+            JpaIndexedSessionRepository sessionRepository) {
+        this(
+                repository,
+                auditEventService,
+                sessionRepository,
+                Mappers.getMapper(LoginSettingsMapper.class));
     }
 
     @Transactional(readOnly = true)
     public LoginSettingsDTO publicLoginSettings() {
         LoginSettingsEntity settings = settings();
-        return new LoginSettingsDTO(
-                settings.isUserRegistrationEnabled(),
-                settings.isForgotPasswordEnabled(),
-                settings.isRememberMeEnabled());
+        return loginSettingsMapper.toPublicDTO(settings);
     }
 
     @Transactional(readOnly = true)
     public AdminLoginSettingsDTO adminLoginSettings() {
         LoginSettingsEntity settings = settings();
-        return new AdminLoginSettingsDTO(
-                settings.isUserRegistrationEnabled(),
-                settings.isForgotPasswordEnabled(),
-                settings.isRememberMeEnabled(),
-                settings.isLoginWithEmail(),
-                settings.isVerifyEmail(),
-                settings.getSessionTimeoutMinutes(),
-                settings.getPasswordMinimumLength(),
-                settings.isBruteForceEnabled(),
-                settings.getBruteForceMaxFailures(),
-                settings.isOtpEnabled(),
-                settings.isOtpRequired(),
-                settings.getOtpIssuer(),
-                settings.getOtpAlgorithm(),
-                settings.getOtpDigits(),
-                settings.getOtpPeriodSeconds(),
-                settings.getOtpLookAheadWindow());
+        return loginSettingsMapper.toAdminDTO(settings);
     }
 
     @Transactional
     public AdminLoginSettingsDTO update(AdminLoginSettingsRequestDTO request) {
         validateOtpPolicy(request);
         LoginSettingsEntity settings = settings();
-        settings.setUserRegistrationEnabled(request.userRegistration());
-        settings.setForgotPasswordEnabled(request.forgotPassword());
-        settings.setRememberMeEnabled(request.rememberMe());
-        settings.setLoginWithEmail(request.loginWithEmail());
-        settings.setVerifyEmail(request.verifyEmail());
-        settings.setSessionTimeoutMinutes(request.sessionTimeoutMinutes());
-        settings.setPasswordMinimumLength(request.passwordMinimumLength());
-        settings.setBruteForceEnabled(request.bruteForceEnabled());
-        settings.setBruteForceMaxFailures(request.bruteForceMaxFailures());
-        settings.setOtpEnabled(request.otpEnabled());
-        settings.setOtpRequired(request.otpRequired());
-        settings.setOtpIssuer(request.otpIssuer().trim());
-        settings.setOtpAlgorithm(request.otpAlgorithm().toUpperCase(Locale.ROOT));
-        settings.setOtpDigits(request.otpDigits());
-        settings.setOtpPeriodSeconds(request.otpPeriodSeconds());
-        settings.setOtpLookAheadWindow(request.otpLookAheadWindow());
+        loginSettingsMapper.update(request, settings);
         repository.save(settings);
         if (sessionRepository != null) {
             sessionRepository.setDefaultMaxInactiveInterval(
                     Duration.ofMinutes(settings.getSessionTimeoutMinutes()));
         }
         auditEventService.record("login.settings.updated", "login-settings", "default");
-        return adminLoginSettings();
+        return loginSettingsMapper.toAdminDTO(settings);
     }
 
     @Transactional(readOnly = true)
@@ -128,6 +108,16 @@ public class LoginSettingsService {
     }
 
     @Transactional(readOnly = true)
+    public int bruteForceMaxSecondaryFailures() {
+        return settings().getBruteForceMaxSecondaryFailures();
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isOtpAddRecoveryCodesEnabled() {
+        return settings().isOtpAddRecoveryCodes();
+    }
+
+    @Transactional(readOnly = true)
     public boolean isOtpEnabled() {
         return settings().isOtpEnabled();
     }
@@ -160,6 +150,11 @@ public class LoginSettingsService {
     @Transactional(readOnly = true)
     public int otpLookAheadWindow() {
         return settings().getOtpLookAheadWindow();
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isOtpCodeReusable() {
+        return settings().isOtpCodeReusable();
     }
 
     private LoginSettingsEntity settings() {

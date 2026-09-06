@@ -90,6 +90,7 @@ management:
 
 app:
   security:
+    mfa-verification-timeout: ${APP_MFA_VERIFICATION_TIMEOUT:PT5M}
     password-policy:
       minimum-length: ${APP_PASSWORD_MINIMUM_LENGTH:12}
       maximum-length: ${APP_PASSWORD_MAXIMUM_LENGTH:128}

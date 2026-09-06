@@ -4,9 +4,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Alert, Button, Card, Form } from "react-bootstrap";
+import { Alert, Button, Card, Form, Spinner } from "react-bootstrap";
 
 import { useDictionary } from "@/i18n/client";
+import { problemViolations } from "@/lib/problem-detail";
 import { useAdminAuth } from "./AdminAuthProvider";
 import { adminRequest } from "@/lib/admin-api";
 import { AdminActionIcon } from "./AdminActionIcon";
@@ -36,12 +37,33 @@ export default function EmailSettingsPage({ embedded = false }: { embedded?: boo
   const [passwordConfigured, setPasswordConfigured] = useState(false);
   const schema = z.object({
     enabled: z.boolean(),
-    fromAddress: z.string().trim().email(validation.email),
-    baseUrl: z.string().trim().url(validation.uri),
-    host: z.string().trim().min(1, validation.required),
-    port: z.number().int().min(1).max(65535),
-    username: z.string(),
-    password: z.string(),
+    fromAddress: z
+      .string()
+      .trim()
+      .min(1, validation.required)
+      .email(validation.email)
+      .max(255, validation.max255),
+    baseUrl: z
+      .string()
+      .trim()
+      .min(1, validation.required)
+      .url(validation.uri)
+      .refine((value) => {
+        try {
+          return !new URL(value).hash;
+        } catch {
+          return false;
+        }
+      }, validation.uri)
+      .max(255, validation.max255),
+    host: z.string().trim().min(1, validation.required).max(255, validation.max255),
+    port: z
+      .number({ error: validation.invalid })
+      .int()
+      .min(1, validation.positiveNumber)
+      .max(65535),
+    username: z.string().max(255, validation.max255),
+    password: z.string().max(1000, validation.max1000),
     smtpAuth: z.boolean(),
     starttls: z.boolean(),
     ssl: z.boolean(),
@@ -50,6 +72,7 @@ export default function EmailSettingsPage({ embedded = false }: { embedded?: boo
     register,
     reset,
     handleSubmit,
+    setError: setFieldError,
     formState: { errors, isSubmitting },
   } = useForm<Settings>({
     resolver: zodResolver(schema),
@@ -90,7 +113,37 @@ export default function EmailSettingsPage({ embedded = false }: { embedded?: boo
         url: "/api/admin/settings/email",
         data: values,
       });
-      if (response.status >= 300) throw new Error();
+      if (response.status >= 300) {
+        problemViolations(response.data).forEach(({ field, message: serverMessage }) => {
+          const value = values[field as keyof Settings];
+          const message =
+            field === "fromAddress"
+              ? !String(value ?? "").trim()
+                ? validation.required
+                : String(value).length > 255
+                  ? validation.max255
+                  : validation.email
+              : field === "baseUrl"
+                ? !String(value ?? "").trim()
+                  ? validation.required
+                  : String(value).length > 255
+                    ? validation.max255
+                    : validation.uri
+                : field === "host"
+                  ? !String(value ?? "").trim()
+                    ? validation.required
+                    : validation.max255
+                  : field === "username"
+                    ? validation.max255
+                    : field === "password"
+                      ? validation.max1000
+                      : field === "port"
+                        ? validation.positiveNumber
+                        : validation.invalid;
+          setFieldError(field as keyof Settings, { message: serverMessage ?? message });
+        });
+        throw new Error();
+      }
       reset({ ...response.data, password: "" } as Settings);
       setPasswordConfigured(Boolean(response.data.passwordConfigured));
       setSaved(true);
@@ -147,15 +200,22 @@ export default function EmailSettingsPage({ embedded = false }: { embedded?: boo
                 </Form.Group>
                 <Form.Group controlId="email-username">
                   <Form.Label>{copy.username}</Form.Label>
-                  <Form.Control {...register("username")} />
+                  <Form.Control isInvalid={Boolean(errors.username)} {...register("username")} />
+                  <Form.Control.Feedback type="invalid">
+                    {errors.username?.message}
+                  </Form.Control.Feedback>
                 </Form.Group>
                 <Form.Group controlId="email-password">
                   <Form.Label>{copy.password}</Form.Label>
                   <Form.Control
                     type="password"
                     autoComplete="new-password"
+                    isInvalid={Boolean(errors.password)}
                     {...register("password")}
                   />
+                  <Form.Control.Feedback type="invalid">
+                    {errors.password?.message}
+                  </Form.Control.Feedback>
                   {passwordConfigured && <Form.Text>{copy.passwordConfigured}</Form.Text>}
                 </Form.Group>
                 <Form.Group controlId="email-base-url">
@@ -173,8 +233,12 @@ export default function EmailSettingsPage({ embedded = false }: { embedded?: boo
               </div>
               <div className="admin-form-actions">
                 <Button disabled={isSubmitting} type="submit">
-                  <AdminActionIcon action="save" />
-                  {isSubmitting ? copy.saving : copy.save}
+                  {isSubmitting ? (
+                    <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                  ) : (
+                    <AdminActionIcon action="save" />
+                  )}
+                  {copy.save}
                 </Button>
               </div>
             </Form>

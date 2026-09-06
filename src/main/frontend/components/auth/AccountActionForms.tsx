@@ -5,13 +5,14 @@ import Link from "@/routing/Link";
 import { useSearchParams } from "@/routing/navigation";
 import { usePathname } from "@/routing/navigation";
 import { useState, type ReactNode } from "react";
-import { Alert, Button, Card, Form, Stack } from "react-bootstrap";
+import { Alert, Button, Card, Form, Spinner, Stack } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { accountActionError, submitAccountAction } from "@/lib/account-actions-api";
+import { problemViolations } from "@/lib/problem-detail";
 import { ActionIcon } from "@/components/shared/ActionIcon";
 
 type Props = { locale: Locale; dictionary: Dictionary };
@@ -41,6 +42,7 @@ export function ForgotPasswordForm({ locale, dictionary }: Props) {
   const {
     register,
     handleSubmit,
+    setError: setFieldError,
     formState: { errors, isSubmitting },
   } = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
@@ -53,7 +55,14 @@ export function ForgotPasswordForm({ locale, dictionary }: Props) {
       await submitAccountAction("forgot-password", { ...values, locale });
       setSent(true);
     } catch (failure) {
-      setError(accountActionError(failure, dictionary));
+      const violation = problemViolations(failure).find(
+        ({ field, message }) => field === "identifier" && message,
+      );
+      if (violation?.message) {
+        setFieldError("identifier", { type: "server", message: violation.message });
+      } else {
+        setError(accountActionError(failure, dictionary));
+      }
     }
   });
 
@@ -77,7 +86,11 @@ export function ForgotPasswordForm({ locale, dictionary }: Props) {
             </Form.Control.Feedback>
           </Form.Group>
           <Button className="w-100" size="lg" type="submit" disabled={isSubmitting}>
-            <ActionIcon action="send" />
+            {isSubmitting ? (
+              <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+            ) : (
+              <ActionIcon action="send" />
+            )}
             {copy.send}
           </Button>
         </Form>
@@ -110,22 +123,31 @@ export function ResetPasswordForm({ dictionary }: Props) {
     register,
     handleSubmit,
     reset,
+    setError: setFieldError,
     formState: { errors, isSubmitting },
   } = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: { newPassword: "", confirmPassword: "" },
   });
 
-  const submit = handleSubmit(async ({ newPassword }) => {
+  const submit = handleSubmit(async (values) => {
     if (!token) return;
     setError(null);
     try {
-      await submitAccountAction("reset-password", { token, newPassword });
+      await submitAccountAction("reset-password", { token, newPassword: values.newPassword });
       reset();
       setDone(true);
       window.history.replaceState(null, "", window.location.pathname);
     } catch (failure) {
-      setError(accountActionError(failure, dictionary));
+      const violations = problemViolations(failure);
+      let fieldError = false;
+      violations.forEach(({ field, message }) => {
+        if ((field === "newPassword" || field === "confirmPassword") && message) {
+          setFieldError(field, { type: "server", message });
+          fieldError = true;
+        }
+      });
+      if (!fieldError) setError(accountActionError(failure, dictionary));
     }
   });
 
@@ -163,7 +185,11 @@ export function ResetPasswordForm({ dictionary }: Props) {
               </Form.Control.Feedback>
             </Form.Group>
             <Button type="submit" size="lg" disabled={isSubmitting}>
-              <ActionIcon action="save" />
+              {isSubmitting ? (
+                <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+              ) : (
+                <ActionIcon action="save" />
+              )}
               {copy.reset}
             </Button>
           </Stack>
@@ -210,8 +236,12 @@ export function VerifyEmailView({ dictionary }: Props) {
           <p>{copy.verifyHelp}</p>
           {error && <Alert variant="danger">{error}</Alert>}
           <Button className="w-100" type="button" disabled={busy} onClick={() => void verify()}>
-            <ActionIcon action="verify" />
-            {busy ? copy.verifyWorking : copy.verifyTitle}
+            {busy ? (
+              <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+            ) : (
+              <ActionIcon action="verify" />
+            )}
+            {copy.verifyTitle}
           </Button>
         </>
       )}

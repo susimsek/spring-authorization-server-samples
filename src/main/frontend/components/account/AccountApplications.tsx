@@ -1,7 +1,5 @@
 "use client";
 
-import { faCube, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useState } from "react";
 import { Badge, Button, Card } from "react-bootstrap";
 
@@ -18,6 +16,7 @@ import { PaginationControls } from "@/components/admin/PaginationControls";
 import { useAdminTableState } from "@/components/admin/useAdminTableState";
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import { ActionIcon } from "@/components/shared/ActionIcon";
+import { Icon } from "@/components/shared/Icon";
 import { useAccountAuth } from "./AccountAuthProvider";
 
 export function AccountApplications({ dictionary }: { dictionary: Dictionary }) {
@@ -76,7 +75,7 @@ export function AccountApplications({ dictionary }: { dictionary: Dictionary }) 
                   data-cy="application-row"
                 >
                   <div className="account-application-icon">
-                    <FontAwesomeIcon icon={faCube} />
+                    <Icon icon="cube" />
                   </div>
                   <div className="flex-grow-1 min-w-0">
                     <div className="fw-semibold">{application.clientName}</div>
@@ -84,12 +83,12 @@ export function AccountApplications({ dictionary }: { dictionary: Dictionary }) 
                       {application.clientId}
                     </div>
                     <div className="small text-body-secondary mt-3 mb-2">
-                      <FontAwesomeIcon className="me-2" icon={faShieldHalved} />
+                      <Icon className="me-2" icon="shieldHalved" />
                       {copy.applications.access}
                     </div>
                     <div className="d-flex flex-wrap gap-1">
                       {application.scopes.map((scope) => (
-                        <Badge key={scope} bg="light" text="dark" className="border">
+                        <Badge key={scope} bg="secondary">
                           {scope.replace(/^SCOPE_/, "")}
                         </Badge>
                       ))}

@@ -14,8 +14,10 @@ public record ResetPasswordRequestDTO(
                 @Size(max = 200)
                 String token,
         @Schema(
-                        description = "New password; must contain at least 8 characters.",
-                        example = "new-password",
+                        description =
+                                "New password; must contain at least 12 characters and meet the"
+                                        + " configured complexity rules.",
+                        example = "Change-me12!",
                         format = "password",
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 @NotBlank

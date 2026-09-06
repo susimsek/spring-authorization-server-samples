@@ -102,6 +102,11 @@ This repo is a Java 25 + Spring Boot 4.1 sample application for the Authorizatio
 - Avoid global coverage excludes for handwritten code.
 - Do not edit generated or build output under `target/`.
 - When you change code: apply formatting and ensure tests pass (`./mvnw spotless:apply` and `./mvnw test`).
+- Every frontend button that starts an asynchronous operation must show an inline progress spinner
+  and disable repeated submission while the operation is pending. Keep the button's existing label
+  while it is busy; do not add a separate "Saving..." or "Signing in..." label. Restore the normal
+  icon when the operation completes. This applies to login, account, administration, MFA, and
+  required-action flows, including save, create, delete, and verification actions.
 
 ## Testing Guidelines
 

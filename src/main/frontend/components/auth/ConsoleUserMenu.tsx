@@ -1,10 +1,10 @@
 "use client";
 
-import { faRightFromBracket, faUser } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Image from "next/image";
 import { useState } from "react";
 import { Dropdown } from "react-bootstrap";
+import { ActionIcon } from "@/components/shared/ActionIcon";
+import { Icon } from "@/components/shared/Icon";
 
 export function ConsoleUserMenu({
   username,
@@ -55,12 +55,12 @@ export function ConsoleUserMenu({
           <div className="fw-semibold text-truncate">{username}</div>
         </div>
         <Dropdown.Item href={accountHref}>
-          <FontAwesomeIcon icon={faUser} className="me-2" />
+          <Icon icon="user" className="me-2" />
           {accountLabel}
         </Dropdown.Item>
         <Dropdown.Divider />
         <Dropdown.Item onClick={onLogout}>
-          <FontAwesomeIcon icon={faRightFromBracket} className="me-2" />
+          <ActionIcon action="logout" />
           {logoutLabel}
         </Dropdown.Item>
       </Dropdown.Menu>

@@ -3,6 +3,7 @@ package io.github.susimsek.springauthserversamples.service.security;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
+import java.util.Base64;
 import org.junit.jupiter.api.Test;
 
 class TotpServiceTest {
@@ -69,5 +70,14 @@ class TotpServiceTest {
                         service.matchesAt(
                                 secret, "94287082", "SHA1", 8, 30, 1, Instant.ofEpochSecond(119)))
                 .isFalse();
+    }
+
+    @Test
+    void generatesBackendQrCodeDataUri() {
+        String dataUri = service.qrCodeDataUri("otpauth://totp/Authorization%20Server:admin");
+
+        assertThat(dataUri).startsWith("data:image/png;base64,");
+        byte[] png = Base64.getDecoder().decode(dataUri.substring(dataUri.indexOf(',') + 1));
+        assertThat(png).startsWith((byte) 0x89, (byte) 0x50, (byte) 0x4e, (byte) 0x47);
     }
 }

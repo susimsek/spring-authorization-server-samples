@@ -2,21 +2,24 @@
 
 import { useEffect, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Alert, Button, Card, Form, Stack } from "react-bootstrap";
+import { Alert, Button, Card, Form, Spinner, Stack } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useSearchParams } from "@/routing/navigation";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { ActionIcon } from "@/components/shared/ActionIcon";
+import { RecoveryCodesActions } from "@/components/shared/RecoveryCodesActions";
+import { TotpSetupDetails } from "@/components/shared/TotpSetupDetails";
 
 type Action = { key: string; displayName: string; description: string; version: number };
 type TotpSetup = {
   secret: string;
-  otpauthUri: string;
+  qrCode: string;
   algorithm: string;
   digits: number;
   periodSeconds: number;
 };
+type RecoveryCodesSetup = { codes: string[]; remaining: number };
 
 export function RequiredActionsPage({ dictionary }: { dictionary: Dictionary }) {
   const copy = dictionary.requiredActions;
@@ -28,6 +31,9 @@ export function RequiredActionsPage({ dictionary }: { dictionary: Dictionary }) 
   const [busy, setBusy] = useState(false);
   const [totpSetup, setTotpSetup] = useState<TotpSetup | null>(null);
   const totpSetupRequested = useRef(false);
+  const [recoverySetup, setRecoverySetup] = useState<RecoveryCodesSetup | null>(null);
+  const [recoverySaved, setRecoverySaved] = useState(false);
+  const recoverySetupRequested = useRef(false);
   const profileSchema = z.object({
     firstName: z
       .string()
@@ -110,6 +116,22 @@ export function RequiredActionsPage({ dictionary }: { dictionary: Dictionary }) 
       .then(setTotpSetup)
       .catch((cause) => {
         setTotpSetup(null);
+        setFatalError(cause instanceof Error ? cause.message : copy.error);
+      });
+  }, [actions, copy.error]);
+
+  useEffect(() => {
+    if (actions[0]?.key !== "RECOVERY_CODES") return;
+    if (recoverySetupRequested.current) return;
+    recoverySetupRequested.current = true;
+    fetch("/api/required-actions/RECOVERY_CODES/setup", { credentials: "same-origin" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(await responseError(response, copy.error));
+        return (await response.json()) as RecoveryCodesSetup;
+      })
+      .then(setRecoverySetup)
+      .catch((cause) => {
+        setRecoverySetup(null);
         setFatalError(cause instanceof Error ? cause.message : copy.error);
       });
   }, [actions, copy.error]);
@@ -224,8 +246,12 @@ export function RequiredActionsPage({ dictionary }: { dictionary: Dictionary }) 
                   </Form.Control.Feedback>
                 </Form.Group>
                 <Button type="submit" disabled={busy}>
-                  <ActionIcon action="next" />
-                  {busy ? copy.saving : copy.continue}
+                  {busy ? (
+                    <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                  ) : (
+                    <ActionIcon action="next" />
+                  )}
+                  {copy.continue}
                 </Button>
               </Stack>
             </Form>
@@ -276,8 +302,12 @@ export function RequiredActionsPage({ dictionary }: { dictionary: Dictionary }) 
                   )}
                 </Form.Group>
                 <Button type="submit" disabled={busy || passwordForm.formState.isSubmitting}>
-                  <ActionIcon action="next" />
-                  {busy ? copy.saving : copy.continue}
+                  {busy ? (
+                    <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                  ) : (
+                    <ActionIcon action="next" />
+                  )}
+                  {copy.continue}
                 </Button>
               </Stack>
             </Form>
@@ -285,12 +315,20 @@ export function RequiredActionsPage({ dictionary }: { dictionary: Dictionary }) 
             <Form onSubmit={totpForm.handleSubmit(completeTotp)} noValidate>
               <Stack gap={3}>
                 {totpSetup && (
-                  <div className="small">
-                    <div className="fw-semibold mb-1">{copy.totpSecret}</div>
-                    <code className="d-block text-break">{totpSetup.secret}</code>
-                    <div className="text-body-secondary mt-2">{copy.totpUriHelp}</div>
-                    <code className="d-block text-break">{totpSetup.otpauthUri}</code>
-                  </div>
+                  <TotpSetupDetails
+                    setup={totpSetup}
+                    copy={{
+                      qrTitle: copy.totpQrTitle,
+                      unableToScan: copy.totpUnableToScan,
+                      scanBarcode: copy.totpScanBarcode,
+                      secret: copy.totpSecret,
+                      type: copy.totpType,
+                      typeTotp: copy.totpTypeTotp,
+                      algorithm: copy.totpAlgorithm,
+                      digits: copy.totpDigits,
+                      period: copy.totpPeriod,
+                    }}
+                  />
                 )}
                 <Form.Group controlId="required-action-totp-code">
                   <Form.Label>{copy.totpCode}</Form.Label>
@@ -306,7 +344,62 @@ export function RequiredActionsPage({ dictionary }: { dictionary: Dictionary }) 
                   </Form.Control.Feedback>
                 </Form.Group>
                 <Button type="submit" disabled={busy || !totpSetup}>
-                  <ActionIcon action="check" /> {busy ? copy.saving : copy.continue}
+                  {busy ? (
+                    <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                  ) : (
+                    <ActionIcon action="check" />
+                  )}
+                  {copy.continue}
+                </Button>
+              </Stack>
+            </Form>
+          ) : action.key === "RECOVERY_CODES" ? (
+            <Form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void complete({ accepted: recoverySaved, version: action.version });
+              }}
+              noValidate
+            >
+              <Stack gap={3}>
+                {recoverySetup && (
+                  <>
+                    <Alert variant="warning" className="mb-0">
+                      {copy.recoveryWarning}
+                    </Alert>
+                    <div
+                      className="bg-body-tertiary rounded p-3 font-monospace small"
+                      aria-label={copy.recoveryCodes}
+                    >
+                      {recoverySetup.codes.map((code) => (
+                        <div key={code}>{code}</div>
+                      ))}
+                    </div>
+                    <RecoveryCodesActions
+                      codes={recoverySetup.codes}
+                      labels={{
+                        copy: copy.recoveryCopy,
+                        copied: copy.recoveryCopied,
+                        download: copy.recoveryDownload,
+                        print: copy.recoveryPrint,
+                      }}
+                    />
+                    <Form.Check
+                      id="required-action-recovery-saved"
+                      type="checkbox"
+                      label={copy.recoverySaved}
+                      checked={recoverySaved}
+                      onChange={(event) => setRecoverySaved(event.target.checked)}
+                    />
+                  </>
+                )}
+                <Button type="submit" disabled={busy || !recoverySetup || !recoverySaved}>
+                  {busy ? (
+                    <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                  ) : (
+                    <ActionIcon action="check" />
+                  )}
+                  {copy.continue}
                 </Button>
               </Stack>
             </Form>
@@ -317,8 +410,12 @@ export function RequiredActionsPage({ dictionary }: { dictionary: Dictionary }) 
               disabled={busy}
               onClick={() => void complete({ accepted: true, version: action.version })}
             >
-              <ActionIcon action="check" />
-              {busy ? copy.saving : copy.accept}
+              {busy ? (
+                <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+              ) : (
+                <ActionIcon action="check" />
+              )}
+              {copy.accept}
             </Button>
           )}
         </Stack>

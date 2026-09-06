@@ -91,7 +91,7 @@ export default function AdminEventsPage() {
         title={copy.title}
         description={copy.subtitle}
         status={
-          <Badge bg="light" text="dark" className="border">
+          <Badge bg="secondary">
             {total} {copy.records}
           </Badge>
         }
@@ -214,7 +214,7 @@ export default function AdminEventsPage() {
             <tr className="admin-clickable-row" key={e.id} onClick={() => setSelected(e)}>
               <td>{new Date(e.occurredAt).toLocaleString(locale)}</td>
               <td>
-                <Badge bg="light" text="dark" className="border font-monospace">
+                <Badge bg="secondary" className="font-monospace">
                   {e.action}
                 </Badge>
               </td>

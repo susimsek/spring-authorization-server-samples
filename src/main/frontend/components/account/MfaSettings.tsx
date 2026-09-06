@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, Form, Stack } from "react-bootstrap";
+import { Alert, Button, Card, Form, Spinner, Stack } from "react-bootstrap";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { ActionIcon } from "@/components/shared/ActionIcon";
+import { RecoveryCodesActions } from "@/components/shared/RecoveryCodesActions";
+import {
+  TotpSetupDetails,
+  type TotpSetupDetails as TotpSetupDetailsData,
+} from "@/components/shared/TotpSetupDetails";
 import { useAccountAuth } from "./AccountAuthProvider";
 
 type Status = {
@@ -12,8 +17,9 @@ type Status = {
   required: boolean;
   issuer: string;
   digits: number;
+  warningThreshold?: number;
 };
-type Setup = { secret: string; otpauthUri: string; digits: number };
+type Setup = TotpSetupDetailsData;
 
 export function MfaSettings({ dictionary }: { dictionary: Dictionary }) {
   const { accessToken, clearLocalSession } = useAccountAuth();
@@ -24,6 +30,9 @@ export function MfaSettings({ dictionary }: { dictionary: Dictionary }) {
   const [error, setError] = useState<string | null>(null);
   const [codeError, setCodeError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [recoveryRemaining, setRecoveryRemaining] = useState<number | null>(null);
+  const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
+  const [recoveryBusy, setRecoveryBusy] = useState(false);
   useEffect(() => {
     if (!accessToken) return;
     fetch("/api/account/mfa", {
@@ -31,7 +40,23 @@ export function MfaSettings({ dictionary }: { dictionary: Dictionary }) {
     })
       .then(async (response) => {
         if (!response.ok) throw new Error();
-        setStatus(await response.json());
+        const value = (await response.json()) as Status;
+        setStatus(value);
+        if (!value.enabled) return null;
+        return fetch("/api/account/mfa/recovery-codes", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+      })
+      .then(async (response) => {
+        if (!response || !response.ok) return;
+        const value = (await response.json()) as {
+          remaining: number;
+          warningThreshold: number;
+        };
+        setRecoveryRemaining(value.remaining);
+        setStatus((current) =>
+          current ? { ...current, warningThreshold: value.warningThreshold } : current,
+        );
       })
       .catch(() => setError(copy.error));
   }, [accessToken, copy.error]);
@@ -53,6 +78,26 @@ export function MfaSettings({ dictionary }: { dictionary: Dictionary }) {
       setBusy(false);
     }
   };
+  const generateRecoveryCodes = async () => {
+    if (!accessToken || !status.enabled) return;
+    setRecoveryBusy(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/account/mfa/recovery-codes", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!response.ok) throw new Error(await responseError(response, copy.recoveryError));
+      const value = (await response.json()) as { codes: string[]; remaining: number };
+      setRecoveryCodes(value.codes);
+      setRecoveryRemaining(value.remaining);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : copy.recoveryError);
+    } finally {
+      setRecoveryBusy(false);
+    }
+  };
+
   const mutate = async (url: string) => {
     const expectedDigits = setup?.digits ?? status.digits;
     if (!accessToken || !new RegExp(`^\\d{${expectedDigits}}$`).test(code)) {
@@ -114,23 +159,40 @@ export function MfaSettings({ dictionary }: { dictionary: Dictionary }) {
                 disabled={busy}
                 onClick={() => void mutate("/api/account/mfa/disable")}
               >
-                <ActionIcon action="delete" /> {copy.disable}
+                {busy ? (
+                  <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                ) : (
+                  <ActionIcon action="delete" />
+                )}
+                {copy.disable}
               </Button>
             </>
           ) : (
             <>
               {!setup && (
                 <Button disabled={busy} onClick={() => void setupMfa()}>
+                  {busy ? (
+                    <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                  ) : null}
                   {copy.setup}
                 </Button>
               )}
               {setup && (
                 <>
-                  <div className="small">
-                    <div className="fw-semibold">{copy.secret}</div>
-                    <code className="d-block text-break">{setup.secret}</code>
-                    <code className="d-block text-break mt-2">{setup.otpauthUri}</code>
-                  </div>
+                  <TotpSetupDetails
+                    setup={setup}
+                    copy={{
+                      qrTitle: copy.qrTitle,
+                      unableToScan: copy.unableToScan,
+                      scanBarcode: copy.scanBarcode,
+                      secret: copy.secret,
+                      type: copy.type,
+                      typeTotp: copy.typeTotp,
+                      algorithm: copy.algorithm,
+                      digits: copy.digits,
+                      period: copy.period,
+                    }}
+                  />
                   <Form.Control
                     inputMode="numeric"
                     autoComplete="one-time-code"
@@ -145,12 +207,74 @@ export function MfaSettings({ dictionary }: { dictionary: Dictionary }) {
                   />
                   <Form.Control.Feedback type="invalid">{codeError}</Form.Control.Feedback>
                   <Button disabled={busy} onClick={() => void mutate("/api/account/mfa/enable")}>
-                    <ActionIcon action="check" /> {copy.enable}
+                    {busy ? (
+                      <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                    ) : (
+                      <ActionIcon action="check" />
+                    )}
+                    {copy.enable}
                   </Button>
                 </>
               )}
             </>
           )}
+          <hr className="my-1" />
+          <div>
+            <h3 className="h6 mb-1">{copy.recoveryTitle}</h3>
+            <p className="small text-body-secondary mb-3">{copy.recoveryHelp}</p>
+            {!status.enabled ? (
+              <Alert variant="info" className="mb-0">
+                {copy.recoveryDisabled}
+              </Alert>
+            ) : (
+              <Stack gap={2}>
+                {recoveryCodes ? (
+                  <>
+                    <Alert variant="warning" className="mb-0">
+                      {copy.recoveryCodesReady}
+                    </Alert>
+                    <div className="bg-body-tertiary rounded p-3 font-monospace small">
+                      {recoveryCodes.map((value) => (
+                        <div key={value}>{value}</div>
+                      ))}
+                    </div>
+                    <RecoveryCodesActions
+                      codes={recoveryCodes}
+                      labels={{
+                        copy: copy.recoveryCopy,
+                        copied: copy.recoveryCopied,
+                        download: copy.recoveryDownload,
+                        print: copy.recoveryPrint,
+                      }}
+                    />
+                  </>
+                ) : recoveryRemaining !== null ? (
+                  <>
+                    <div className="small text-body-secondary">
+                      {copy.recoveryRemaining.replace("{{count}}", String(recoveryRemaining))}
+                    </div>
+                    {recoveryRemaining <= (status.warningThreshold ?? 0) && (
+                      <Alert variant="warning" className="mb-0">
+                        {copy.recoveryWarning.replace("{{count}}", String(recoveryRemaining))}
+                      </Alert>
+                    )}
+                  </>
+                ) : null}
+                <Button
+                  variant="primary"
+                  disabled={recoveryBusy}
+                  onClick={() => void generateRecoveryCodes()}
+                >
+                  {recoveryBusy ? (
+                    <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                  ) : (
+                    <ActionIcon action="regenerate" />
+                  )}
+                  {recoveryCodes ? copy.recoveryRegenerate : copy.recoveryGenerate}
+                </Button>
+              </Stack>
+            )}
+          </div>
         </Stack>
       </Card.Body>
     </Card>

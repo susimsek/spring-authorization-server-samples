@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { Alert, Button, Card, Form } from "react-bootstrap";
+import { Alert, Button, Card, Form, Spinner } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -43,7 +43,12 @@ export function AccountDeleteForm({ dictionary }: { dictionary: Dictionary }) {
           ({ field }) => field === "currentPassword",
         )
       ) {
-        setError("currentPassword", { message: copy.validation.currentPassword });
+        const violation = problemViolations((error as AccountApiError).data).find(
+          ({ field }) => field === "currentPassword",
+        );
+        setError("currentPassword", {
+          message: violation?.message ?? copy.validation.currentPassword,
+        });
       }
     }
   });
@@ -72,8 +77,12 @@ export function AccountDeleteForm({ dictionary }: { dictionary: Dictionary }) {
           </Form.Group>
           <div className="account-form-actions">
             <Button type="submit" variant="danger" disabled={isSubmitting}>
-              <ActionIcon action="delete" />
-              {isSubmitting ? copy.common.saving : copy.deleteAccount.submit}
+              {isSubmitting ? (
+                <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+              ) : (
+                <ActionIcon action="delete" />
+              )}
+              {copy.deleteAccount.submit}
             </Button>
             <Button
               type="button"

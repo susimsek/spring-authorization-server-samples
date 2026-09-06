@@ -103,11 +103,20 @@ public class UserEntity extends AuditableEntity {
     @Column(name = "permanently_locked", nullable = false)
     private boolean permanentlyLocked;
 
+    @Column(name = "mfa_failed_attempt_count", nullable = false)
+    private int mfaFailedAttemptCount;
+
+    @Column(name = "mfa_permanently_locked", nullable = false)
+    private boolean mfaPermanentlyLocked;
+
     @Column(name = "totp_secret", length = 64)
     private String totpSecret;
 
     @Column(name = "totp_enabled", nullable = false)
     private boolean totpEnabled;
+
+    @Column(name = "totp_last_used_counter")
+    private Long totpLastUsedCounter;
 
     @ManyToMany
     @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)

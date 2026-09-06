@@ -20,6 +20,7 @@ import {
   faCopy,
   faCube,
   faDesktop,
+  faDownload,
   faEllipsisVertical,
   faEnvelope,
   faEye,
@@ -37,10 +38,12 @@ import {
   faMoon,
   faPen,
   faPlus,
+  faPrint,
   faRightFromBracket,
   faRightToBracket,
   faRotate,
   faShieldHalved,
+  faSliders,
   faSun,
   faTrash,
   faUnlock,
@@ -64,16 +67,22 @@ export type ActionIconName =
   | "cancel"
   | "check"
   | "copy"
+  | "download"
   | "delete"
   | "disable"
   | "edit"
   | "enable"
   | "filter"
+  | "firstPage"
+  | "lastPage"
   | "impersonate"
   | "login"
   | "logout"
   | "manage"
   | "next"
+  | "nextPage"
+  | "print"
+  | "previousPage"
   | "regenerate"
   | "remove"
   | "retry"
@@ -82,11 +91,43 @@ export type ActionIconName =
   | "save"
   | "search"
   | "send"
+  | "show"
   | "submit"
+  | "hide"
   | "unlock"
   | "upload"
   | "verify"
   | "view";
+
+export type IconName =
+  | "addressCard"
+  | "anglesLeft"
+  | "anglesRight"
+  | "bars"
+  | "circle"
+  | "circleInfo"
+  | "circleQuestion"
+  | "clock"
+  | "clockRotateLeft"
+  | "compass"
+  | "cube"
+  | "desktop"
+  | "ellipsisVertical"
+  | "globe"
+  | "gaugeHigh"
+  | "heartPulse"
+  | "key"
+  | "laptop"
+  | "layerGroup"
+  | "lock"
+  | "moon"
+  | "shieldHalved"
+  | "sliders"
+  | "sun"
+  | "user"
+  | "userShield"
+  | "users"
+  | "xmark";
 
 export const actionIcons: Record<ActionIconName, IconDefinition> = {
   add: faPlus,
@@ -95,16 +136,22 @@ export const actionIcons: Record<ActionIconName, IconDefinition> = {
   cancel: faXmark,
   check: faCheck,
   copy: faCopy,
+  download: faDownload,
   delete: faTrash,
   disable: faUserSlash,
   edit: faPen,
   enable: faUserCheck,
   filter: faFilter,
+  firstPage: faAnglesLeft,
   impersonate: faUser,
   login: faRightToBracket,
   logout: faRightFromBracket,
   manage: faKey,
   next: faArrowRight,
+  nextPage: faChevronRight,
+  lastPage: faAnglesRight,
+  print: faPrint,
+  previousPage: faChevronLeft,
   regenerate: faArrowsRotate,
   remove: faUserMinus,
   retry: faRotate,
@@ -113,11 +160,44 @@ export const actionIcons: Record<ActionIconName, IconDefinition> = {
   save: faFloppyDisk,
   search: faMagnifyingGlass,
   send: faEnvelope,
+  show: faEye,
   submit: faArrowRight,
+  hide: faEyeSlash,
   unlock: faUnlock,
   upload: faUpload,
   verify: faCircleCheck,
   view: faEye,
+};
+
+export const icons: Record<IconName, IconDefinition> = {
+  addressCard: faAddressCard,
+  anglesLeft: faAnglesLeft,
+  anglesRight: faAnglesRight,
+  bars: faBars,
+  circle: faCircle,
+  circleInfo: faCircleInfo,
+  circleQuestion: faCircleQuestion,
+  clock: faClock,
+  clockRotateLeft: faClockRotateLeft,
+  compass: faCompass,
+  cube: faCube,
+  desktop: faDesktop,
+  ellipsisVertical: faEllipsisVertical,
+  globe: faGlobe,
+  gaugeHigh: faGaugeHigh,
+  heartPulse: faHeartPulse,
+  key: faKey,
+  laptop: faLaptop,
+  layerGroup: faLayerGroup,
+  lock: faLock,
+  moon: faMoon,
+  shieldHalved: faShieldHalved,
+  sliders: faSliders,
+  sun: faSun,
+  user: faUser,
+  userShield: faUserShield,
+  users: faUsers,
+  xmark: faXmark,
 };
 
 let loaded = false;
@@ -147,6 +227,7 @@ export const loadIcons = () => {
     faCopy,
     faCube,
     faDesktop,
+    faDownload,
     faEllipsisVertical,
     faEnvelope,
     faEye,
@@ -164,10 +245,12 @@ export const loadIcons = () => {
     faMoon,
     faPen,
     faPlus,
+    faPrint,
     faRightFromBracket,
     faRightToBracket,
     faRotate,
     faShieldHalved,
+    faSliders,
     faSun,
     faTrash,
     faUnlock,

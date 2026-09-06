@@ -33,6 +33,11 @@ public interface AdminUserMapper {
     @Mapping(target = "lockedUntil", ignore = true)
     @Mapping(target = "temporaryLockoutCount", ignore = true)
     @Mapping(target = "permanentlyLocked", ignore = true)
+    @Mapping(target = "mfaFailedAttemptCount", ignore = true)
+    @Mapping(target = "mfaPermanentlyLocked", ignore = true)
+    @Mapping(target = "totpSecret", ignore = true)
+    @Mapping(target = "totpEnabled", ignore = true)
+    @Mapping(target = "totpLastUsedCounter", ignore = true)
     @Mapping(
             target = "emailVerified",
             expression = "java(normalizedEmail != null && emailVerified)")
@@ -52,12 +57,14 @@ public interface AdminUserMapper {
                 entity.isEmailVerified(),
                 entity.isEnabled(),
                 entity.isPermanentlyLocked()
+                        || entity.isMfaPermanentlyLocked()
                         || (entity.getLockedUntil() != null
                                 && entity.getLockedUntil().isAfter(java.time.Instant.now())),
                 entity.getLockedUntil(),
                 entity.getFailedLoginCount(),
                 entity.isMustChangePassword(),
                 entity.isTemporaryPassword(),
+                entity.isTotpEnabled(),
                 avatarUrl,
                 authorities(entity),
                 entity.getCreatedAt(),
@@ -84,6 +91,11 @@ public interface AdminUserMapper {
     @Mapping(target = "lockedUntil", ignore = true)
     @Mapping(target = "temporaryLockoutCount", ignore = true)
     @Mapping(target = "permanentlyLocked", ignore = true)
+    @Mapping(target = "mfaFailedAttemptCount", ignore = true)
+    @Mapping(target = "mfaPermanentlyLocked", ignore = true)
+    @Mapping(target = "totpSecret", ignore = true)
+    @Mapping(target = "totpEnabled", ignore = true)
+    @Mapping(target = "totpLastUsedCounter", ignore = true)
     @Mapping(
             target = "emailVerified",
             expression = "java(normalizedEmail != null && emailVerified)")

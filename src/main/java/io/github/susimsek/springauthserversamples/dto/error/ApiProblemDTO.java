@@ -40,9 +40,14 @@ public record ApiProblemDTO(
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 String errorCode,
         @Schema(
+                        description = "JSON field associated with a field-specific business error.",
+                        example = "username",
+                        requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+                String field,
+        @Schema(
                         description = "Request fields that failed validation.",
                         example =
-                                "[{\"field\":\"email\",\"message\":\"must be a well-formed email"
-                                        + " address\"}]",
+                                "[{\"field\":\"email\",\"message\":\"Enter a valid email"
+                                        + " address.\"}]",
                         requiredMode = Schema.RequiredMode.NOT_REQUIRED)
                 List<ApiViolationDTO> violations) {}

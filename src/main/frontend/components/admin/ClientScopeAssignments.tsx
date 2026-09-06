@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Badge, Button } from "react-bootstrap";
+import { Badge, Button, Spinner } from "react-bootstrap";
 
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import type { Dictionary } from "@/i18n/get-dictionary";
@@ -55,19 +55,24 @@ export function ClientScopeAssignments({ clientId, dictionary, onChanged }: Prop
   const persist = async (defaultScopes: string[], optionalScopes: string[]) => {
     if (!access?.manageClients || !accessToken) return;
     setSaving(true);
-    const response = await adminRequest<Assignments>(accessToken, {
-      url: `/api/admin/clients/${encodeURIComponent(clientId)}/scope-assignments`,
-      method: "PUT",
-      data: { defaultScopes, optionalScopes },
-    });
-    setSaving(false);
-    if (response.status >= 300) {
+    try {
+      const response = await adminRequest<Assignments>(accessToken, {
+        url: `/api/admin/clients/${encodeURIComponent(clientId)}/scope-assignments`,
+        method: "PUT",
+        data: { defaultScopes, optionalScopes },
+      });
+      if (response.status >= 300) {
+        addError(copy.operationError);
+        return;
+      }
+      setData(response.data);
+      onChanged?.([...response.data.defaultScopes, ...response.data.optionalScopes]);
+      addAlert(copy.assignmentSaved);
+    } catch {
       addError(copy.operationError);
-      return;
+    } finally {
+      setSaving(false);
     }
-    setData(response.data);
-    onChanged?.([...response.data.defaultScopes, ...response.data.optionalScopes]);
-    addAlert(copy.assignmentSaved);
   };
 
   const move = (scope: string, target: "default" | "optional" | "available") => {
@@ -102,7 +107,11 @@ export function ClientScopeAssignments({ clientId, dictionary, onChanged }: Prop
               disabled={saving}
               onClick={() => move(scope.name, "default")}
             >
-              <AdminActionIcon action="add" />
+              {saving ? (
+                <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+              ) : (
+                <AdminActionIcon action="add" />
+              )}
               {copy.addDefault}
             </Button>
           )}
@@ -113,7 +122,11 @@ export function ClientScopeAssignments({ clientId, dictionary, onChanged }: Prop
               disabled={saving}
               onClick={() => move(scope.name, "optional")}
             >
-              <AdminActionIcon action="add" />
+              {saving ? (
+                <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+              ) : (
+                <AdminActionIcon action="add" />
+              )}
               {copy.addOptional}
             </Button>
           )}
@@ -125,7 +138,11 @@ export function ClientScopeAssignments({ clientId, dictionary, onChanged }: Prop
               disabled={saving}
               onClick={() => move(scope.name, "available")}
             >
-              <AdminActionIcon action="remove" />
+              {saving ? (
+                <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+              ) : (
+                <AdminActionIcon action="remove" />
+              )}
               {copy.remove}
             </Button>
           )}
@@ -183,7 +200,7 @@ export function ClientScopeAssignments({ clientId, dictionary, onChanged }: Prop
       <section className="client-scope-assignment-section">
         <div className="d-flex justify-content-between align-items-center gap-3 mb-3">
           <h2 className="h5 mb-0">{copy.availableScopes}</h2>
-          <Badge bg="light" text="dark" className="border" pill>
+          <Badge bg="secondary" pill>
             {available.length}
           </Badge>
         </div>

@@ -1,11 +1,5 @@
 import { Button, Form } from "react-bootstrap";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faAnglesLeft,
-  faAnglesRight,
-  faChevronLeft,
-  faChevronRight,
-} from "@fortawesome/free-solid-svg-icons";
+import { ActionIcon } from "@/components/shared/ActionIcon";
 
 export function PaginationControls({
   page,
@@ -72,7 +66,7 @@ export function PaginationControls({
           disabled={safePage === 0}
           onClick={() => onPageChange(0)}
         >
-          <FontAwesomeIcon icon={faAnglesLeft} />
+          <ActionIcon action="firstPage" className="m-0" />
         </Button>
         <Button
           size="sm"
@@ -83,7 +77,7 @@ export function PaginationControls({
           disabled={safePage === 0}
           onClick={() => onPageChange(safePage - 1)}
         >
-          <FontAwesomeIcon icon={faChevronLeft} />
+          <ActionIcon action="previousPage" className="m-0" />
         </Button>
         <span className="admin-pagination-page-indicator">
           {pageLabel} <strong>{safePage + 1}</strong> / {Math.max(totalPages, 1)}
@@ -97,7 +91,7 @@ export function PaginationControls({
           disabled={safePage + 1 >= totalPages}
           onClick={() => onPageChange(safePage + 1)}
         >
-          <FontAwesomeIcon icon={faChevronRight} />
+          <ActionIcon action="nextPage" className="m-0" />
         </Button>
         <Button
           size="sm"
@@ -108,7 +102,7 @@ export function PaginationControls({
           disabled={safePage + 1 >= totalPages}
           onClick={() => onPageChange(Math.max(totalPages - 1, 0))}
         >
-          <FontAwesomeIcon icon={faAnglesRight} />
+          <ActionIcon action="lastPage" className="m-0" />
         </Button>
       </div>
     </div>

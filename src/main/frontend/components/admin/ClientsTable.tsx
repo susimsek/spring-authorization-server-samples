@@ -167,7 +167,7 @@ export function ClientsTable({ dictionary }: { locale: Locale; dictionary: Dicti
               </td>
               <td>
                 {c.scopes.slice(0, 4).map((s) => (
-                  <Badge bg="light" text="dark" className="border me-1" key={s}>
+                  <Badge bg="secondary" className="me-1" key={s}>
                     {s}
                   </Badge>
                 ))}

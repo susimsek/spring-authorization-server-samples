@@ -1,13 +1,26 @@
 package io.github.susimsek.springauthserversamples.service.security;
 
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.EncodeHintType;
+import com.google.zxing.MultiFormatWriter;
+import com.google.zxing.WriterException;
+import com.google.zxing.common.BitMatrix;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.Base64;
+import java.util.EnumMap;
 import java.util.Locale;
+import java.util.OptionalLong;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import javax.imageio.ImageIO;
 import org.springframework.stereotype.Service;
 
 /** Small RFC 6238 TOTP implementation used for account MFA. */
@@ -30,7 +43,19 @@ public class TotpService {
             int digits,
             int periodSeconds,
             int lookAheadWindow) {
-        return matchesAt(
+        return matchingCounter(secret, code, algorithm, digits, periodSeconds, lookAheadWindow)
+                .isPresent();
+    }
+
+    /** Returns the time-step represented by a valid code, or empty when the code is invalid. */
+    public OptionalLong matchingCounter(
+            String secret,
+            String code,
+            String algorithm,
+            int digits,
+            int periodSeconds,
+            int lookAheadWindow) {
+        return matchingCounterAt(
                 secret, code, algorithm, digits, periodSeconds, lookAheadWindow, Instant.now());
     }
 
@@ -42,16 +67,41 @@ public class TotpService {
             int periodSeconds,
             int lookAheadWindow,
             Instant now) {
-        if (secret == null || code == null || !code.matches("\\d{" + digits + "}")) {
-            return false;
+        return matchingCounterAt(
+                        secret, code, algorithm, digits, periodSeconds, lookAheadWindow, now)
+                .isPresent();
+    }
+
+    OptionalLong matchingCounterAt(
+            String secret,
+            String code,
+            String algorithm,
+            int digits,
+            int periodSeconds,
+            int lookAheadWindow,
+            Instant now) {
+        if (secret == null
+                || code == null
+                || (digits != 6 && digits != 8)
+                || periodSeconds <= 0
+                || lookAheadWindow < 0
+                || !code.matches("\\d{" + digits + "}")) {
+            return OptionalLong.empty();
         }
         long counter = now.getEpochSecond() / periodSeconds;
         for (long offset = -lookAheadWindow; offset <= lookAheadWindow; offset++) {
-            if (generate(secret, counter + offset, algorithm, digits).equals(code)) {
-                return true;
+            try {
+                String generated = generate(secret, counter + offset, algorithm, digits);
+                if (MessageDigest.isEqual(
+                        generated.getBytes(java.nio.charset.StandardCharsets.US_ASCII),
+                        code.getBytes(java.nio.charset.StandardCharsets.US_ASCII))) {
+                    return OptionalLong.of(counter + offset);
+                }
+            } catch (IllegalArgumentException ex) {
+                return OptionalLong.empty();
             }
         }
-        return false;
+        return OptionalLong.empty();
     }
 
     public String otpauthUri(
@@ -74,6 +124,32 @@ public class TotpService {
                 + digits
                 + "&period="
                 + periodSeconds;
+    }
+
+    public String qrCodeDataUri(String value) {
+        try {
+            var hints = new EnumMap<EncodeHintType, Object>(EncodeHintType.class);
+            hints.put(EncodeHintType.MARGIN, 4);
+            BitMatrix matrix =
+                    new MultiFormatWriter().encode(value, BarcodeFormat.QR_CODE, 220, 220, hints);
+            BufferedImage image =
+                    new BufferedImage(
+                            matrix.getWidth(), matrix.getHeight(), BufferedImage.TYPE_INT_RGB);
+            for (int y = 0; y < matrix.getHeight(); y++) {
+                for (int x = 0; x < matrix.getWidth(); x++) {
+                    image.setRGB(x, y, matrix.get(x, y) ? 0xFF000000 : 0xFFFFFFFF);
+                }
+            }
+            try (var output = new ByteArrayOutputStream()) {
+                if (!ImageIO.write(image, "PNG", output)) {
+                    throw new IllegalStateException("PNG writer is unavailable");
+                }
+                return "data:image/png;base64,"
+                        + Base64.getEncoder().encodeToString(output.toByteArray());
+            }
+        } catch (WriterException | IOException ex) {
+            throw new IllegalStateException("TOTP QR code could not be generated", ex);
+        }
     }
 
     private static String generate(String secret, long counter, String algorithm, int digits) {

@@ -1,11 +1,10 @@
 "use client";
 
-import { faCompass } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Card } from "react-bootstrap";
 import { useTranslation } from "react-i18next";
 import Link from "@/routing/Link";
 import { ActionIcon } from "@/components/shared/ActionIcon";
+import { Icon } from "@/components/shared/Icon";
 
 /** Shared by Next's exported 404 and the browser router's unmatched routes. */
 export function NotFoundView() {
@@ -13,7 +12,7 @@ export function NotFoundView() {
   return (
     <Card className="border-0 shadow-sm text-center" data-cy="not-found">
       <Card.Body className="p-4 p-md-5">
-        <FontAwesomeIcon icon={faCompass} className="text-primary mb-3" size="3x" />
+        <Icon icon="compass" className="text-primary mb-3" size="3x" />
         <div className="display-1 fw-bold text-primary" aria-hidden="true">
           404
         </div>

@@ -180,9 +180,7 @@ export default function ServerInfoPage() {
                     <div className="d-flex flex-wrap gap-2 align-items-center">
                       <code>{info.activeSigningKey.kid}</code>
                       <Badge bg="success">{copy.active}</Badge>
-                      <Badge bg="light" text="dark" className="border">
-                        {info.activeSigningKey.algorithm}
-                      </Badge>
+                      <Badge bg="secondary">{info.activeSigningKey.algorithm}</Badge>
                       <span className="text-body-secondary small">
                         {new Date(info.activeSigningKey.createdAt).toLocaleString(locale)}
                       </span>

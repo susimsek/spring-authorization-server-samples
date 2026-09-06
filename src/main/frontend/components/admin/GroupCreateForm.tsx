@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useRouter } from "@/routing/navigation";
-import { Button, Card, Form } from "react-bootstrap";
+import { Button, Card, Form, Spinner } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -61,12 +61,14 @@ export function GroupCreateForm({ dictionary }: { dictionary: Dictionary; locale
         data: { name, parentId: parentId ? Number(parentId) : null },
       });
       if (response.status >= 300) {
-        if (problemViolations(response.data).some(({ field }) => field === "name")) {
+        const violation = problemViolations(response.data).find(({ field }) => field === "name");
+        if (violation) {
           setError("name", {
             message:
-              problemErrorCode(response.data) === "group_duplicate_name"
+              violation.message ??
+              (problemErrorCode(response.data) === "group_duplicate_name"
                 ? dictionary.admin.common.validation.groupDuplicate
-                : dictionary.admin.common.validation.required,
+                : dictionary.admin.common.validation.required),
           });
           return;
         }
@@ -114,8 +116,12 @@ export function GroupCreateForm({ dictionary }: { dictionary: Dictionary; locale
               {dictionary.admin.common.cancel}
             </Button>
             <Button disabled={!canManageUsers || isSubmitting} type="submit">
-              <AdminActionIcon action="add" />
-              {isSubmitting ? dictionary.admin.common.saving : copy.create}
+              {isSubmitting ? (
+                <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+              ) : (
+                <AdminActionIcon action="add" />
+              )}
+              {copy.create}
             </Button>
           </div>
         </Form>

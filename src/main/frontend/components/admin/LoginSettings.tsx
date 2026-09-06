@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { z } from "zod";
-import { Alert, Button, Card, Form } from "react-bootstrap";
+import { Alert, Button, Card, Form, Spinner } from "react-bootstrap";
 
 import { useDictionary } from "@/i18n/client";
 import { adminRequest } from "@/lib/admin-api";
@@ -23,6 +23,7 @@ type Settings = {
   passwordMinimumLength: number;
   bruteForceEnabled: boolean;
   bruteForceMaxFailures: number;
+  bruteForceMaxSecondaryFailures: number;
   otpEnabled: boolean;
   otpRequired: boolean;
   otpIssuer: string;
@@ -30,6 +31,9 @@ type Settings = {
   otpDigits: number;
   otpPeriodSeconds: number;
   otpLookAheadWindow: number;
+  otpCodeReusable: boolean;
+  otpAddRecoveryCodes: boolean;
+  recoveryCodeWarningThreshold: number;
 };
 
 export default function LoginSettingsPage({ embedded = false }: { embedded?: boolean }) {
@@ -50,6 +54,7 @@ export default function LoginSettingsPage({ embedded = false }: { embedded?: boo
     passwordMinimumLength: z.number().int().min(8, validation.minimumPasswordLength),
     bruteForceEnabled: z.boolean(),
     bruteForceMaxFailures: z.number().int().min(1, validation.positiveNumber),
+    bruteForceMaxSecondaryFailures: z.number().int().min(0, validation.positiveNumber),
     otpEnabled: z.boolean(),
     otpRequired: z.boolean(),
     otpIssuer: z.string().trim().min(1, validation.required).max(100),
@@ -60,6 +65,9 @@ export default function LoginSettingsPage({ embedded = false }: { embedded?: boo
       .refine((value) => value === 6 || value === 8, validation.positiveNumber),
     otpPeriodSeconds: z.number().int().min(15, validation.positiveNumber),
     otpLookAheadWindow: z.number().int().min(0, validation.positiveNumber),
+    otpCodeReusable: z.boolean(),
+    otpAddRecoveryCodes: z.boolean(),
+    recoveryCodeWarningThreshold: z.number().int().min(0, validation.positiveNumber),
   });
   const {
     register,
@@ -160,6 +168,14 @@ export default function LoginSettingsPage({ embedded = false }: { embedded?: boo
                   error={errors.bruteForceMaxFailures?.message}
                   registration={register("bruteForceMaxFailures", { valueAsNumber: true })}
                 />
+                <NumberField
+                  id="login-mfa-brute-force-failures"
+                  label={copy.bruteForceMaxSecondaryFailures}
+                  error={errors.bruteForceMaxSecondaryFailures?.message}
+                  registration={register("bruteForceMaxSecondaryFailures", {
+                    valueAsNumber: true,
+                  })}
+                />
               </div>
               <Form.Check
                 className="mb-4"
@@ -214,11 +230,31 @@ export default function LoginSettingsPage({ embedded = false }: { embedded?: boo
                   error={errors.otpLookAheadWindow?.message}
                   registration={register("otpLookAheadWindow", { valueAsNumber: true })}
                 />
+                <Form.Check
+                  type="switch"
+                  label={copy.otpCodeReusable}
+                  {...register("otpCodeReusable")}
+                />
+                <Form.Check
+                  type="switch"
+                  label={copy.otpAddRecoveryCodes}
+                  {...register("otpAddRecoveryCodes")}
+                />
+                <NumberField
+                  id="login-recovery-code-warning-threshold"
+                  label={copy.recoveryCodeWarningThreshold}
+                  error={errors.recoveryCodeWarningThreshold?.message}
+                  registration={register("recoveryCodeWarningThreshold", { valueAsNumber: true })}
+                />
               </div>
               <div className="admin-form-actions">
                 <Button disabled={isSubmitting} type="submit">
-                  <AdminActionIcon action="save" />
-                  {isSubmitting ? copy.saving : copy.save}
+                  {isSubmitting ? (
+                    <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                  ) : (
+                    <AdminActionIcon action="save" />
+                  )}
+                  {copy.save}
                 </Button>
               </div>
             </Form>

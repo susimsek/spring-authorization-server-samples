@@ -20,6 +20,12 @@ public record AdminLoginSettingsDTO(
                 boolean bruteForceEnabled,
         @Schema(description = "Failed login threshold before throttling.", minimum = "1")
                 int bruteForceMaxFailures,
+        @Schema(
+                        description =
+                                "Maximum failed MFA challenges before permanent account lockout."
+                                        + " Set to zero to disable.",
+                        minimum = "0")
+                int bruteForceMaxSecondaryFailures,
         @Schema(description = "Allow users to enroll a TOTP authenticator.") boolean otpEnabled,
         @Schema(description = "Require TOTP after password authentication.") boolean otpRequired,
         @Schema(description = "Issuer label shown in authenticator applications.") String otpIssuer,
@@ -28,4 +34,12 @@ public record AdminLoginSettingsDTO(
                 int otpDigits,
         @Schema(description = "TOTP period in seconds.", minimum = "15") int otpPeriodSeconds,
         @Schema(description = "Accepted clock drift window in adjacent periods.", minimum = "0")
-                int otpLookAheadWindow) {}
+                int otpLookAheadWindow,
+        @Schema(description = "Allow the same TOTP code to be used more than once.")
+                boolean otpCodeReusable,
+        @Schema(description = "Request recovery codes after OTP setup.")
+                boolean otpAddRecoveryCodes,
+        @Schema(
+                        description = "Show a warning when unused recovery codes reach this count.",
+                        minimum = "0")
+                int recoveryCodeWarningThreshold) {}

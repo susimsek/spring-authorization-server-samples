@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Badge, Button, Card, Form, ListGroup } from "react-bootstrap";
+import { Badge, Button, Card, Form, ListGroup, Spinner } from "react-bootstrap";
 
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import type { Dictionary } from "@/i18n/get-dictionary";
@@ -154,7 +154,11 @@ export function UserGroups({ dictionary, userId }: { dictionary: Dictionary; use
                 )}
               </div>
               <Button disabled={!selectedGroup || saving} onClick={() => void join()} type="button">
-                <AdminActionIcon action="add" />
+                {saving ? (
+                  <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                ) : (
+                  <AdminActionIcon action="add" />
+                )}
                 {copy.assignGroup}
               </Button>
             </div>
@@ -191,7 +195,11 @@ export function UserGroups({ dictionary, userId }: { dictionary: Dictionary; use
                     type="button"
                     variant="danger"
                   >
-                    <AdminActionIcon action="remove" />
+                    {saving ? (
+                      <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                    ) : (
+                      <AdminActionIcon action="remove" />
+                    )}
                     {copy.removeGroup}
                   </Button>
                 )}

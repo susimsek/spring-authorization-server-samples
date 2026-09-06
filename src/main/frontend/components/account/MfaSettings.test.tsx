@@ -42,8 +42,10 @@ describe("MFA account settings", () => {
       .mockResolvedValueOnce(
         response(200, {
           secret: "SECRET",
-          otpauthUri: "otpauth://totp/example",
+          qrCode: "data:image/png;base64,iVBORw0KGgo=",
+          algorithm: "SHA1",
           digits: 6,
+          periodSeconds: 30,
         }),
       )
       .mockResolvedValueOnce(response(400, { detail: serverMessage }))
@@ -54,6 +56,9 @@ describe("MFA account settings", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: dictionary.account.security.mfa.setup }),
     );
+    expect(
+      await screen.findByRole("img", { name: dictionary.account.security.mfa.qrTitle }),
+    ).toBeVisible();
     const input = await screen.findByPlaceholderText(dictionary.account.security.mfa.code);
     fireEvent.change(input, { target: { value: "000000" } });
     fireEvent.click(screen.getByRole("button", { name: dictionary.account.security.mfa.enable }));
@@ -82,7 +87,7 @@ describe("MFA account settings", () => {
       .mockResolvedValueOnce(
         response(200, {
           secret: "SECRET",
-          otpauthUri: "otpauth://totp/example",
+          qrCode: "data:image/png;base64,iVBORw0KGgo=",
           digits: 8,
         }),
       );

@@ -56,7 +56,7 @@ public record AdminUserRequestDTO(
                         description =
                                 "Initial or replacement password; at least 12 characters when"
                                         + " required.",
-                        example = "change-me-123",
+                        example = "Change-me12!",
                         format = "password",
                         nullable = true,
                         requiredMode = Schema.RequiredMode.NOT_REQUIRED)

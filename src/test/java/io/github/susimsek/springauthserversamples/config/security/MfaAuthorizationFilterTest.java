@@ -9,6 +9,8 @@ import static org.mockito.Mockito.when;
 import io.github.susimsek.springauthserversamples.dto.account.MfaStatusDTO;
 import io.github.susimsek.springauthserversamples.service.account.MfaService;
 import io.github.susimsek.springauthserversamples.service.requiredaction.RequiredActionService;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -54,12 +56,43 @@ class MfaAuthorizationFilterTest {
         when(requiredActionService.pending("alice")).thenReturn(List.of());
         when(mfaService.status("alice")).thenReturn(status(true, true));
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/oauth2/authorize");
-        request.getSession().setAttribute(MfaAuthorizationFilter.MFA_VERIFIED, true);
+        request.setQueryString("client_id=account-console&state=request-state");
+        request.getSession()
+                .setAttribute(
+                        MfaAuthorizationFilter.MFA_PENDING_REQUEST,
+                        "/oauth2/authorize?client_id=account-console&state=request-state");
+        MfaAuthorizationFilter.markVerified(request.getSession());
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         filter.doFilter(request, response, filterChain);
 
         verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void redirectsWhenVerificationExpiredOrBoundToAnotherRequest() throws Exception {
+        authenticate("alice");
+        when(requiredActionService.pending("alice")).thenReturn(List.of());
+        when(mfaService.status("alice")).thenReturn(status(true, true));
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/oauth2/authorize");
+        request.setQueryString("client_id=account-console&state=new-state");
+        request.getSession().setAttribute(MfaAuthorizationFilter.MFA_VERIFIED, true);
+        request.getSession()
+                .setAttribute(
+                        MfaAuthorizationFilter.MFA_VERIFIED_AT,
+                        Instant.now().minus(Duration.ofMinutes(6)).toEpochMilli());
+        request.getSession()
+                .setAttribute(
+                        MfaAuthorizationFilter.MFA_VERIFIED_REQUEST,
+                        "/oauth2/authorize?client_id=account-console&state=old-state");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, filterChain);
+
+        assertThat(response.getRedirectedUrl())
+                .isEqualTo(
+                        "/mfa?return_to=%2Foauth2%2Fauthorize%3Fclient_id%3Daccount-console%26state%3Dnew-state");
+        verifyNoInteractions(filterChain);
     }
 
     @Test

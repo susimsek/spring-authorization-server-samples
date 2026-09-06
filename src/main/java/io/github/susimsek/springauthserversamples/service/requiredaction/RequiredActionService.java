@@ -12,6 +12,7 @@ import io.github.susimsek.springauthserversamples.repository.RequiredActionCompl
 import io.github.susimsek.springauthserversamples.repository.RequiredActionDefinitionRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRequiredActionRepository;
+import io.github.susimsek.springauthserversamples.service.LoginSettingsService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
@@ -38,6 +39,7 @@ public class RequiredActionService {
     private final List<RequiredActionHandler> handlers;
     private final AdminAuditEventService auditEventService;
     private final RequiredActionMapper requiredActionMapper;
+    private final LoginSettingsService loginSettingsService;
 
     public RequiredActionService(
             UserRepository userRepository,
@@ -53,7 +55,27 @@ public class RequiredActionService {
                 completionRepository,
                 handlers,
                 auditEventService,
-                Mappers.getMapper(RequiredActionMapper.class));
+                Mappers.getMapper(RequiredActionMapper.class),
+                null);
+    }
+
+    public RequiredActionService(
+            UserRepository userRepository,
+            RequiredActionDefinitionRepository definitionRepository,
+            UserRequiredActionRepository assignmentRepository,
+            RequiredActionCompletionRepository completionRepository,
+            List<RequiredActionHandler> handlers,
+            AdminAuditEventService auditEventService,
+            RequiredActionMapper requiredActionMapper) {
+        this(
+                userRepository,
+                definitionRepository,
+                assignmentRepository,
+                completionRepository,
+                handlers,
+                auditEventService,
+                requiredActionMapper,
+                null);
     }
 
     @Transactional(readOnly = true)
@@ -100,7 +122,7 @@ public class RequiredActionService {
                 .toList();
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ApiException.class)
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public void complete(
             String username,
@@ -111,7 +133,7 @@ public class RequiredActionService {
         completeInSession(username, actionKey, values, ipAddress, userAgent, null);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ApiException.class)
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public boolean completeInSession(
             String username,
@@ -141,12 +163,30 @@ public class RequiredActionService {
         } else {
             actionHandler.complete(user, values == null ? Map.of() : values);
         }
+        addRecoveryCodesActionAfterTotp(user, actionKey);
         RequiredActionCompletionEntity completion =
                 requiredActionMapper.toCompletion(
                         user, actionKey, version, Instant.now(), ipAddress, userAgent);
         completionRepository.save(completion);
         auditEventService.record("user.required-action.completed", "user", user.getId().toString());
         return true;
+    }
+
+    private void addRecoveryCodesActionAfterTotp(UserEntity user, String actionKey) {
+        if (!"CONFIGURE_TOTP".equals(actionKey)
+                || loginSettingsService == null
+                || !loginSettingsService.isOtpAddRecoveryCodesEnabled()
+                || definitionRepository.findById("RECOVERY_CODES").isEmpty()
+                || assignmentRepository
+                        .findByUserIdAndActionKey(user.getId(), "RECOVERY_CODES")
+                        .isPresent()) {
+            return;
+        }
+        RequiredActionDefinitionEntity recoveryDefinition =
+                definitionRepository.findById("RECOVERY_CODES").orElseThrow();
+        assignmentRepository.save(
+                requiredActionMapper.toAssignment(
+                        user, "RECOVERY_CODES", recoveryDefinition.getVersion(), Instant.now()));
     }
 
     @Transactional

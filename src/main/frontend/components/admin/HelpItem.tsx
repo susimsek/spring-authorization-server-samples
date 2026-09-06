@@ -1,8 +1,7 @@
 "use client";
 
-import { faCircleQuestion } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { OverlayTrigger, Tooltip } from "react-bootstrap";
+import { Icon } from "@/components/shared/Icon";
 
 export function HelpItem({ label, help }: { label: string; help: string }) {
   return (
@@ -10,7 +9,7 @@ export function HelpItem({ label, help }: { label: string; help: string }) {
       <span>{label}</span>
       <OverlayTrigger placement="top" overlay={<Tooltip>{help}</Tooltip>}>
         <button className="console-help-button" type="button" aria-label={`${label} help`}>
-          <FontAwesomeIcon icon={faCircleQuestion} />
+          <Icon icon="circleQuestion" />
         </button>
       </OverlayTrigger>
     </span>

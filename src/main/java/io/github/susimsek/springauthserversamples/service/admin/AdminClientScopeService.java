@@ -79,7 +79,7 @@ public class AdminClientScopeService {
         String name = normalizeName(request.name());
         if (clientScopeRepository.existsByName(name)) {
             throw ApiException.conflict(
-                    ApiErrorCode.CLIENT_SCOPE_DUPLICATE, "Client scope already exists");
+                    "name", ApiErrorCode.CLIENT_SCOPE_DUPLICATE, "Client scope already exists");
         }
         ClientScopeEntity entity =
                 adminClientScopeMapper.toEntity(
@@ -105,6 +105,7 @@ public class AdminClientScopeService {
                 .ifPresent(
                         ignored -> {
                             throw ApiException.conflict(
+                                    "name",
                                     ApiErrorCode.CLIENT_SCOPE_DUPLICATE,
                                     "Client scope already exists");
                         });

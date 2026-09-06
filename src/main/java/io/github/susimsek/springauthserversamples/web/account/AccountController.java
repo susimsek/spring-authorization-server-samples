@@ -10,11 +10,14 @@ import io.github.susimsek.springauthserversamples.dto.account.AccountSessionDTO;
 import io.github.susimsek.springauthserversamples.dto.account.MfaCodeRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.account.MfaSetupDTO;
 import io.github.susimsek.springauthserversamples.dto.account.MfaStatusDTO;
+import io.github.susimsek.springauthserversamples.dto.account.RecoveryCodesDTO;
+import io.github.susimsek.springauthserversamples.dto.account.RecoveryCodesStatusDTO;
 import io.github.susimsek.springauthserversamples.service.account.AccountApplicationService;
 import io.github.susimsek.springauthserversamples.service.account.AccountDeletionService;
 import io.github.susimsek.springauthserversamples.service.account.AccountProfileService;
 import io.github.susimsek.springauthserversamples.service.account.AccountSessionService;
 import io.github.susimsek.springauthserversamples.service.account.MfaService;
+import io.github.susimsek.springauthserversamples.service.account.RecoveryCodeService;
 import io.github.susimsek.springauthserversamples.web.ApiController;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -55,6 +58,7 @@ public class AccountController {
     private final AccountApplicationService accountApplicationService;
     private final AccountDeletionService accountDeletionService;
     private final MfaService mfaService;
+    private final RecoveryCodeService recoveryCodeService;
 
     @GetMapping("/mfa")
     @Operation(
@@ -65,8 +69,32 @@ public class AccountController {
         return mfaService.status(authentication.getName());
     }
 
+    @GetMapping("/mfa/recovery-codes")
+    @Operation(
+            summary = "Read recovery code status",
+            description =
+                    "Returns the number of unused one-time MFA recovery codes and the configured"
+                            + " warning threshold.")
+    @ApiResponse(responseCode = "200", description = "Recovery code status returned.")
+    RecoveryCodesStatusDTO recoveryCodes(Authentication authentication) {
+        return recoveryCodeService.status(authentication.getName());
+    }
+
+    @PostMapping("/mfa/recovery-codes")
+    @Operation(
+            summary = "Generate recovery codes",
+            description =
+                    "Replaces existing MFA recovery codes and returns the new codes once."
+                            + " The codes are stored as hashes and cannot be read again.")
+    @ApiResponse(responseCode = "200", description = "New recovery codes returned.")
+    RecoveryCodesDTO generateRecoveryCodes(Authentication authentication) {
+        return recoveryCodeService.generate(authentication.getName());
+    }
+
     @PostMapping("/mfa/setup")
-    @Operation(summary = "Start MFA setup", description = "Creates a new TOTP enrollment secret.")
+    @Operation(
+            summary = "Start MFA setup",
+            description = "Creates a new TOTP enrollment secret and backend-generated QR code.")
     @ApiResponse(responseCode = "200", description = "TOTP setup details returned.")
     MfaSetupDTO setupMfa(Authentication authentication) {
         return mfaService.setup(authentication.getName());

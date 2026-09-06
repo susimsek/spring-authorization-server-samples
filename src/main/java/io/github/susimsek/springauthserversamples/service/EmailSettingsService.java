@@ -3,33 +3,32 @@ package io.github.susimsek.springauthserversamples.service;
 import io.github.susimsek.springauthserversamples.domain.EmailSettingsEntity;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminEmailSettingsDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminEmailSettingsRequestDTO;
+import io.github.susimsek.springauthserversamples.mapper.EmailSettingsMapper;
 import io.github.susimsek.springauthserversamples.repository.EmailSettingsRepository;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.factory.Mappers;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class EmailSettingsService {
     private static final long SETTINGS_ID = 1L;
     private final EmailSettingsRepository repository;
     private final AdminAuditEventService auditEventService;
+    private final EmailSettingsMapper emailSettingsMapper;
+
+    public EmailSettingsService(
+            EmailSettingsRepository repository, AdminAuditEventService auditEventService) {
+        this(repository, auditEventService, Mappers.getMapper(EmailSettingsMapper.class));
+    }
 
     @Transactional(readOnly = true)
     public AdminEmailSettingsDTO get() {
         EmailSettingsEntity e = entity();
-        return new AdminEmailSettingsDTO(
-                e.isEnabled(),
-                e.getFromAddress(),
-                e.getBaseUrl(),
-                e.getHost(),
-                e.getPort(),
-                e.getUsername(),
-                e.getPassword() != null && !e.getPassword().isBlank(),
-                e.isSmtpAuth(),
-                e.isStarttls(),
-                e.isSsl());
+        return emailSettingsMapper.toDTO(e);
     }
 
     @Transactional(readOnly = true)
@@ -51,15 +50,7 @@ public class EmailSettingsService {
     @Transactional
     public AdminEmailSettingsDTO update(AdminEmailSettingsRequestDTO request) {
         EmailSettingsEntity e = entity();
-        e.setEnabled(request.enabled());
-        e.setFromAddress(request.fromAddress().trim());
-        e.setBaseUrl(request.baseUrl().trim());
-        e.setHost(request.host().trim());
-        e.setPort(request.port());
-        e.setUsername(request.username());
-        e.setSmtpAuth(request.smtpAuth());
-        e.setStarttls(request.starttls());
-        e.setSsl(request.ssl());
+        emailSettingsMapper.update(request, e);
         if (request.password() != null && !request.password().isBlank()) {
             e.setPassword(request.password());
         }

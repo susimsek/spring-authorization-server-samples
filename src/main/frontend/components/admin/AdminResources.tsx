@@ -799,7 +799,7 @@ function ConsentsTable({
               <td data-label={copy.grantedScopes}>
                 <div className="d-flex flex-wrap gap-1">
                   {consent.authorities.map((scope) => (
-                    <Badge bg="light" text="dark" className="border" key={scope}>
+                    <Badge bg="secondary" key={scope}>
                       {scope.replace("SCOPE_", "")}
                     </Badge>
                   ))}

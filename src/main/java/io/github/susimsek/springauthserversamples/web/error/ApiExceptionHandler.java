@@ -1,16 +1,19 @@
 package io.github.susimsek.springauthserversamples.web.error;
 
+import io.github.susimsek.springauthserversamples.dto.error.ApiViolationDTO;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import io.github.susimsek.springauthserversamples.web.ApiController;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import java.net.URI;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
 import org.springframework.context.MessageSource;
+import org.springframework.context.MessageSourceResolvable;
+import org.springframework.context.NoSuchMessageException;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -18,7 +21,6 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
 import org.springframework.validation.method.ParameterValidationResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -39,10 +41,6 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return problemDetail(exception, request);
     }
 
-    public ProblemDetail handleApiException(ApiException exception) {
-        return problemDetail(exception, null);
-    }
-
     @ExceptionHandler(Exception.class)
     public @Nullable ResponseEntity<Object> handleUnhandled(
             Exception exception, WebRequest request) {
@@ -60,15 +58,19 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
             HttpHeaders headers,
             HttpStatusCode status,
             WebRequest request) {
-        List<String> fields =
+        List<ApiViolationDTO> violations =
                 exception.getBindingResult().getAllErrors().stream()
-                        .map(ApiExceptionHandler::field)
+                        .map(this::violation)
                         .collect(
-                                java.util.stream.Collectors.collectingAndThen(
-                                        java.util.stream.Collectors.toCollection(
-                                                LinkedHashSet::new),
-                                        List::copyOf));
-        return validationProblem(fields, headers, status, request);
+                                java.util.stream.Collectors.toMap(
+                                        ApiViolationDTO::field,
+                                        violation -> violation,
+                                        (first, ignored) -> first,
+                                        LinkedHashMap::new))
+                        .values()
+                        .stream()
+                        .toList();
+        return validationProblem(violations, headers, status, request);
     }
 
     @Override
@@ -77,15 +79,11 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
             HttpHeaders headers,
             HttpStatusCode status,
             WebRequest request) {
-        List<String> fields =
+        List<ApiViolationDTO> violations =
                 exception.getParameterValidationResults().stream()
-                        .map(ParameterValidationResult::getMethodParameter)
-                        .map(parameter -> parameter.getParameterName())
-                        .map(field -> field == null ? "request" : field)
-                        .distinct()
+                        .flatMap(result -> violations(result).stream())
                         .toList();
-        return validationProblem(
-                fields.isEmpty() ? List.of("request") : fields, headers, status, request);
+        return validationProblem(violations, headers, status, request);
     }
 
     @Override
@@ -94,7 +92,18 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
             HttpHeaders headers,
             HttpStatusCode status,
             WebRequest request) {
-        return validationProblem(List.of("request"), headers, status, request);
+        return validationProblem(null, headers, status, request);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Object> handleConstraintViolation(
+            ConstraintViolationException exception, WebRequest request) {
+        List<ApiViolationDTO> violations =
+                exception.getConstraintViolations().stream()
+                        .map(ApiViolationDTO::from)
+                        .distinct()
+                        .toList();
+        return validationProblem(violations, HttpHeaders.EMPTY, HttpStatus.BAD_REQUEST, request);
     }
 
     private ProblemDetail problemDetail(ApiException exception, HttpServletRequest request) {
@@ -104,18 +113,22 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
             problemDetail.setInstance(URI.create(request.getRequestURI()));
         }
         if (exception.getField() != null) {
-            problemDetail.setProperty("violations", List.of(Map.of("field", exception.getField())));
+            problemDetail.setProperty("field", exception.getField());
         }
         return problemDetail;
     }
 
     private ResponseEntity<Object> validationProblem(
-            List<String> fields, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+            @Nullable List<ApiViolationDTO> violations,
+            HttpHeaders headers,
+            HttpStatusCode status,
+            WebRequest request) {
         ProblemDetail problemDetail =
                 createProblemDetail(HttpStatus.BAD_REQUEST, ApiErrorCode.VALIDATION_FAILED);
         requestUri(request).ifPresent(problemDetail::setInstance);
-        problemDetail.setProperty(
-                "violations", fields.stream().map(field -> Map.of("field", field)).toList());
+        if (violations != null) {
+            problemDetail.setProperty("violations", violations);
+        }
         return createResponseEntity(problemDetail, headers, status, request);
     }
 
@@ -129,29 +142,29 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return problemDetail;
     }
 
-    private static String field(ObjectError error) {
-        if (!(error instanceof FieldError fieldError)) {
-            return "request";
-        }
-        String field = fieldError.getField();
-        int indexedField = field.indexOf('[');
-        int nestedField = field.indexOf('.');
-        int end = field.length();
-        if (indexedField >= 0) {
-            end = indexedField;
-        }
-        if (nestedField >= 0) {
-            end = Math.min(end, nestedField);
-        }
-        return field.substring(0, end);
+    private ApiViolationDTO violation(ObjectError error) {
+        return ApiViolationDTO.from(error, error.getDefaultMessage());
     }
 
-    private static java.util.Optional<URI> requestUri(WebRequest request) {
-        if (request instanceof ServletWebRequest servletWebRequest) {
-            return java.util.Optional.of(
-                    URI.create(servletWebRequest.getRequest().getRequestURI()));
+    private List<ApiViolationDTO> violations(ParameterValidationResult result) {
+        String field = result.getMethodParameter().getParameterName();
+        String resolvedField = field == null ? "request" : field;
+        return result.getResolvableErrors().stream()
+                .map(error -> new ApiViolationDTO(resolvedField, message(error)))
+                .toList();
+    }
+
+    private String message(MessageSourceResolvable error) {
+        MessageSource messageSource = getMessageSource();
+        if (messageSource == null) {
+            return error.getDefaultMessage();
         }
-        return java.util.Optional.empty();
+        String defaultMessage = error.getDefaultMessage();
+        try {
+            return messageSource.getMessage(error, LocaleContextHolder.getLocale());
+        } catch (NoSuchMessageException exception) {
+            return defaultMessage == null ? "The request contains invalid data." : defaultMessage;
+        }
     }
 
     private String message(String code, String defaultMessage) {
@@ -160,5 +173,13 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
                 ? defaultMessage
                 : messageSource.getMessage(
                         code, null, defaultMessage, LocaleContextHolder.getLocale());
+    }
+
+    private static java.util.Optional<URI> requestUri(WebRequest request) {
+        if (request instanceof ServletWebRequest servletWebRequest) {
+            return java.util.Optional.of(
+                    URI.create(servletWebRequest.getRequest().getRequestURI()));
+        }
+        return java.util.Optional.empty();
     }
 }

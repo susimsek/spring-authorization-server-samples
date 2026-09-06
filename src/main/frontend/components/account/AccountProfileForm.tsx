@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
-import { Badge, Button, Card, Col, Form, Row } from "react-bootstrap";
+import { Badge, Button, Card, Col, Form, Row, Spinner } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -88,10 +88,10 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
     } catch (error) {
       const violations = problemViolations((error as AccountApiError).data);
       let firstInvalid: keyof Values | undefined;
-      violations.forEach(({ field }) => {
+      violations.forEach(({ field, message }) => {
         if (field === "firstName" || field === "lastName" || field === "email") {
           firstInvalid ??= field;
-          setError(field, { message: copy.validation.invalid });
+          setError(field, { message: message ?? copy.validation.invalid });
         }
       });
       if (firstInvalid) setFocus(firstInvalid);
@@ -191,7 +191,16 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
                         disabled={verificationSending}
                         onClick={() => void requestVerification()}
                       >
-                        <ActionIcon action="verify" />
+                        {verificationSending ? (
+                          <Spinner
+                            animation="border"
+                            aria-hidden="true"
+                            className="me-2"
+                            size="sm"
+                          />
+                        ) : (
+                          <ActionIcon action="verify" />
+                        )}
                         {copy.profile.sendVerification}
                       </Button>
                     )}
@@ -219,8 +228,12 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
           </Row>
           <div className="account-form-actions mt-4 pt-4 border-top">
             <Button type="submit" disabled={!isDirty || isSubmitting} data-cy="save-profile">
-              <ActionIcon action="save" />
-              {isSubmitting ? copy.common.saving : copy.common.save}
+              {isSubmitting ? (
+                <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+              ) : (
+                <ActionIcon action="save" />
+              )}
+              {copy.common.save}
             </Button>
             <Button
               type="button"

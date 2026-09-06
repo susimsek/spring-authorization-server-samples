@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Alert, Button, Card, Form } from "react-bootstrap";
+import { Alert, Button, Card, Form, Spinner } from "react-bootstrap";
 import { useRouter } from "@/routing/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
@@ -35,6 +35,7 @@ type User = {
   failedLoginCount: number;
   mustChangePassword: boolean;
   temporaryPassword: boolean;
+  totpEnabled: boolean;
   avatarUrl: string | null;
   authorities: string[];
   createdAt: string;
@@ -88,9 +89,14 @@ export function UserForm({
     temporaryPassword: false,
   });
   const [avatarSaving, setAvatarSaving] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [showAvatarDeleteConfirm, setShowAvatarDeleteConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showTotpResetConfirm, setShowTotpResetConfirm] = useState(false);
+  const [totpEnabled, setTotpEnabled] = useState(false);
+  const [totpResetting, setTotpResetting] = useState(false);
+  const [totpResetError, setTotpResetError] = useState(false);
   const [loading, setLoading] = useState(editing);
   const [saving, setSaving] = useState(false);
   const actionForm = useForm<{
@@ -168,6 +174,7 @@ export function UserForm({
           roles: response.data.authorities,
         });
         setAvatarUrl(response.data.avatarUrl);
+        setTotpEnabled(response.data.totpEnabled);
         setCreatedAt(response.data.createdAt);
         setUpdatedAt(response.data.updatedAt);
         setSecurityState({
@@ -184,6 +191,7 @@ export function UserForm({
 
   const unlockUser = async () => {
     if (!canManageUsers || !accessToken || !id) return;
+    setUnlocking(true);
     setError(false);
     try {
       const response = await adminRequest(accessToken, {
@@ -199,6 +207,8 @@ export function UserForm({
       }));
     } catch {
       setError(true);
+    } finally {
+      setUnlocking(false);
     }
   };
 
@@ -302,6 +312,25 @@ export function UserForm({
     }
   });
 
+  const resetTotp = async () => {
+    if (!canManageUsers || !accessToken || !id) return;
+    setTotpResetting(true);
+    setTotpResetError(false);
+    try {
+      const response = await adminRequest(accessToken, {
+        url: `/api/admin/users/${encodeURIComponent(id)}/totp`,
+        method: "DELETE",
+      });
+      if (response.status >= 300) throw new Error();
+      setTotpEnabled(false);
+    } catch {
+      setTotpResetError(true);
+    } finally {
+      setTotpResetting(false);
+      setShowTotpResetConfirm(false);
+    }
+  };
+
   const impersonate = async () => {
     if (!access?.isAdmin || !accessToken || !id || impersonationBusy) return;
     setImpersonationBusy(true);
@@ -337,9 +366,10 @@ export function UserForm({
       });
       if (response.status >= 300) {
         const errorCode = problemErrorCode(response.data);
-        problemViolations(response.data).forEach(({ field }) => {
+        problemViolations(response.data).forEach(({ field, message: serverMessage }) => {
           const message =
-            errorCode === "user_duplicate_username"
+            serverMessage ??
+            (errorCode === "user_duplicate_username"
               ? validation.usernameDuplicate
               : errorCode === "user_duplicate_email"
                 ? validation.emailDuplicate
@@ -347,7 +377,7 @@ export function UserForm({
                   ? validation.password
                   : field === "roles"
                     ? validation.roles
-                    : validation.required;
+                    : validation.required);
           setFieldError(field as keyof UserFormValues, { message });
         });
         throw new Error();
@@ -359,8 +389,11 @@ export function UserForm({
           data: { password: values.password },
         });
         if (passwordResponse.status >= 300) {
-          if (problemViolations(passwordResponse.data).some(({ field }) => field === "password")) {
-            setFieldError("password", { message: validation.password });
+          const violation = problemViolations(passwordResponse.data).find(
+            ({ field }) => field === "password",
+          );
+          if (violation) {
+            setFieldError("password", { message: violation.message ?? validation.password });
           }
           throw new Error();
         }
@@ -460,8 +493,12 @@ export function UserForm({
                     disabled={impersonationBusy}
                     onClick={() => void impersonate()}
                   >
-                    <AdminActionIcon action="impersonate" />
-                    {impersonationBusy ? dictionary.admin.common.saving : copy.impersonate}
+                    {impersonationBusy ? (
+                      <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                    ) : (
+                      <AdminActionIcon action="impersonate" />
+                    )}
+                    {copy.impersonate}
                   </Button>
                 )}
                 <Button
@@ -470,7 +507,11 @@ export function UserForm({
                   disabled={saving}
                   onClick={() => void toggleEnabled()}
                 >
-                  <AdminActionIcon action={enabled ? "disable" : "enable"} />
+                  {saving ? (
+                    <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                  ) : (
+                    <AdminActionIcon action={enabled ? "disable" : "enable"} />
+                  )}
                   {enabled ? copy.disable : copy.enable}
                 </Button>
                 <Button
@@ -630,8 +671,17 @@ export function UserForm({
                   )}
                 </div>
                 {securityState.locked && access?.manageUsers && (
-                  <Button type="button" variant="primary" onClick={() => void unlockUser()}>
-                    <AdminActionIcon action="unlock" />
+                  <Button
+                    type="button"
+                    variant="primary"
+                    disabled={unlocking}
+                    onClick={() => void unlockUser()}
+                  >
+                    {unlocking ? (
+                      <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                    ) : (
+                      <AdminActionIcon action="unlock" />
+                    )}
                     {copy.unlock}
                   </Button>
                 )}
@@ -739,10 +789,36 @@ export function UserForm({
                     disabled={!canManageUsers || actionForm.formState.isSubmitting}
                     onClick={() => void sendActionEmail()}
                   >
-                    <AdminActionIcon action="send" />
-                    {actionForm.formState.isSubmitting
-                      ? dictionary.admin.common.saving
-                      : copy.sendActionEmail}
+                    {actionForm.formState.isSubmitting ? (
+                      <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                    ) : (
+                      <AdminActionIcon action="send" />
+                    )}
+                    {copy.sendActionEmail}
+                  </Button>
+                </div>
+              </Card.Body>
+            </Card>
+            <Card className="admin-panel-card">
+              <Card.Body className="d-grid gap-3">
+                <div>
+                  <h2 className="h5 mb-1">{copy.resetAuthenticator}</h2>
+                  <p className="small text-body-secondary mb-0">{copy.resetAuthenticatorHelp}</p>
+                </div>
+                {totpResetError && (
+                  <Alert variant="danger" className="mb-0">
+                    {copy.operationError}
+                  </Alert>
+                )}
+                <div>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    disabled={!canManageUsers || !totpEnabled || totpResetting}
+                    onClick={() => setShowTotpResetConfirm(true)}
+                  >
+                    <AdminActionIcon action="delete" />
+                    {copy.resetAuthenticator}
                   </Button>
                 </div>
               </Card.Body>
@@ -816,8 +892,12 @@ export function UserForm({
               {dictionary.admin.common.cancel}
             </Button>
             <Button type="submit" disabled={!canManageUsers || saving}>
-              <AdminActionIcon action="save" />
-              {saving ? dictionary.admin.common.saving : dictionary.admin.common.save}
+              {saving ? (
+                <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+              ) : (
+                <AdminActionIcon action="save" />
+              )}
+              {dictionary.admin.common.save}
             </Button>
           </div>
         )}
@@ -842,6 +922,15 @@ export function UserForm({
         onCancel={() => setShowDeleteConfirm(false)}
         onConfirm={() => void deleteUser()}
         show={showDeleteConfirm}
+      />
+      <ConfirmModal
+        busy={totpResetting}
+        cancelLabel={dictionary.admin.common.cancel}
+        confirmLabel={copy.resetAuthenticator}
+        message={copy.resetAuthenticatorConfirm}
+        onCancel={() => setShowTotpResetConfirm(false)}
+        onConfirm={() => void resetTotp()}
+        show={showTotpResetConfirm}
       />
     </>
   );

@@ -96,6 +96,8 @@ class AdminControllerDelegationTest {
         assertThat(controller.updateAvatar(1L, file, authentication)).isSameAs(avatar);
         assertThat(controller.changePassword(1L, request, authentication).getStatusCode())
                 .isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(controller.resetTotp(1L, authentication).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
         assertThat(controller.deleteUser(1L, authentication).getStatusCode())
                 .isEqualTo(HttpStatus.NO_CONTENT);
         assertThat(
@@ -105,6 +107,7 @@ class AdminControllerDelegationTest {
                                 .getStatusCode())
                 .isEqualTo(HttpStatus.NO_CONTENT);
         verify(userService).changePassword(1L, "password123", "admin");
+        verify(userService).resetTotp(1L, "admin");
         verify(userService).deleteUser(1L, "admin");
         verify(userService).setUserEnabled(1L, false, "admin");
     }

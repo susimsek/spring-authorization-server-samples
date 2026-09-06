@@ -3,9 +3,11 @@ package io.github.susimsek.springauthserversamples.web.account;
 import io.github.susimsek.springauthserversamples.config.openapi.OpenApiConfig;
 import io.github.susimsek.springauthserversamples.config.security.MfaAuthorizationFilter;
 import io.github.susimsek.springauthserversamples.dto.account.MfaSetupDTO;
+import io.github.susimsek.springauthserversamples.dto.account.RecoveryCodesDTO;
 import io.github.susimsek.springauthserversamples.dto.account.RequiredActionCompleteRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.account.RequiredActionDTO;
 import io.github.susimsek.springauthserversamples.service.account.MfaService;
+import io.github.susimsek.springauthserversamples.service.account.RecoveryCodeService;
 import io.github.susimsek.springauthserversamples.service.requiredaction.RequiredActionService;
 import io.github.susimsek.springauthserversamples.web.ApiController;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,7 +19,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,21 +32,50 @@ import org.springframework.web.bind.annotation.RestController;
 @ApiController
 @RestController
 @RequestMapping("/api/required-actions")
-@RequiredArgsConstructor
 @Tag(name = "Required actions", description = "Actions required before OAuth authorization.")
 @SecurityRequirement(name = OpenApiConfig.BROWSER_SESSION)
 public class RequiredActionController {
 
     private final RequiredActionService requiredActionService;
     private final MfaService mfaService;
+    private final RecoveryCodeService recoveryCodeService;
+
+    @Autowired
+    RequiredActionController(
+            RequiredActionService requiredActionService,
+            MfaService mfaService,
+            RecoveryCodeService recoveryCodeService) {
+        this.requiredActionService = requiredActionService;
+        this.mfaService = mfaService;
+        this.recoveryCodeService = recoveryCodeService;
+    }
+
+    RequiredActionController(RequiredActionService requiredActionService, MfaService mfaService) {
+        this(requiredActionService, mfaService, null);
+    }
 
     @GetMapping("/CONFIGURE_TOTP/setup")
     @Operation(
             summary = "Start TOTP required action",
-            description = "Creates a TOTP setup secret for the authenticated account.")
+            description =
+                    "Creates a TOTP setup secret and backend-generated QR code for the"
+                            + " authenticated account.")
     @ApiResponse(responseCode = "200", description = "TOTP setup details returned.")
     MfaSetupDTO setupTotp(Authentication authentication) {
         return mfaService.setup(authentication.getName());
+    }
+
+    @GetMapping("/RECOVERY_CODES/setup")
+    @Operation(
+            summary = "Start recovery codes required action",
+            description =
+                    "Generates a new one-time recovery code set for the authenticated account.")
+    @ApiResponse(responseCode = "200", description = "Recovery codes returned once.")
+    RecoveryCodesDTO setupRecoveryCodes(Authentication authentication) {
+        if (recoveryCodeService == null) {
+            throw new IllegalStateException("Recovery code service is unavailable");
+        }
+        return recoveryCodeService.generate(authentication.getName());
     }
 
     @GetMapping
@@ -88,7 +119,7 @@ public class RequiredActionController {
                         servletRequest.getHeader("User-Agent"),
                         session == null ? null : session.getId());
         if (completed && session != null && "CONFIGURE_TOTP".equals(key)) {
-            session.setAttribute(MfaAuthorizationFilter.MFA_VERIFIED, true);
+            MfaAuthorizationFilter.markVerified(session);
         }
         return ResponseEntity.noContent().build();
     }

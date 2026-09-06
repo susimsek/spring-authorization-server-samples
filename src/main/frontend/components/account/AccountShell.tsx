@@ -1,14 +1,5 @@
 "use client";
 
-import {
-  faAddressCard,
-  faBars,
-  faDesktop,
-  faKey,
-  faShieldHalved,
-  faXmark,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "@/routing/Link";
 import { usePathname } from "@/routing/navigation";
 import { useState } from "react";
@@ -17,6 +8,7 @@ import { LanguageSwitcher } from "@/components/auth/LanguageSwitcher";
 import { ThemeSwitcher } from "@/components/auth/ThemeSwitcher";
 import { ConsoleUserMenu } from "@/components/auth/ConsoleUserMenu";
 import { ConsoleAlertsProvider } from "@/components/auth/ConsoleAlerts";
+import { Icon, type IconName } from "@/components/shared/Icon";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { useAccountAuth } from "./AccountAuthProvider";
@@ -33,12 +25,12 @@ export function AccountShell({
   const pathname = usePathname();
   const { idTokenParsed, logout, tokenParsed, username } = useAccountAuth();
   const [open, setOpen] = useState(false);
-  const items = [
-    ["/personal-info", dictionary.account.nav.personalInfo, faAddressCard],
-    ["/security", dictionary.account.nav.security, faKey],
-    ["/sessions", dictionary.account.nav.sessions, faDesktop],
-    ["/applications", dictionary.account.nav.applications, faShieldHalved],
-  ] as const;
+  const items: ReadonlyArray<readonly [string, string, IconName]> = [
+    ["/personal-info", dictionary.account.nav.personalInfo, "addressCard"],
+    ["/security", dictionary.account.nav.security, "key"],
+    ["/sessions", dictionary.account.nav.sessions, "desktop"],
+    ["/applications", dictionary.account.nav.applications, "shieldHalved"],
+  ];
   return (
     <ConsoleAlertsProvider>
       <div className="admin-app account-app min-vh-100 bg-body-tertiary">
@@ -51,7 +43,7 @@ export function AccountShell({
                 aria-label={dictionary.admin.common.toggleNavigation}
                 onClick={() => setOpen((v) => !v)}
               >
-                <FontAwesomeIcon icon={open ? faXmark : faBars} />
+                <Icon icon={open ? "xmark" : "bars"} />
               </Button>
               <Navbar.Brand
                 as={Link}
@@ -59,7 +51,7 @@ export function AccountShell({
                 className="admin-brand d-flex align-items-center gap-2 fw-semibold mb-0"
               >
                 <span className="admin-brand-mark">
-                  <FontAwesomeIcon icon={faShieldHalved} />
+                  <Icon icon="shieldHalved" />
                 </span>
                 <span>{dictionary.account.product}</span>
               </Navbar.Brand>
@@ -115,7 +107,7 @@ export function AccountShell({
                     onClick={() => setOpen(false)}
                   >
                     <span className="admin-nav-icon-wrap">
-                      <FontAwesomeIcon icon={icon} />
+                      <Icon icon={icon} />
                     </span>
                     <span>{label}</span>
                   </Nav.Link>

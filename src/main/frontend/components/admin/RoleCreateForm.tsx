@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "@/routing/navigation";
-import { Button, Card, Form } from "react-bootstrap";
+import { Button, Card, Form, Spinner } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -51,12 +51,14 @@ export function RoleCreateForm({ dictionary }: { dictionary: Dictionary; locale:
         data: { name },
       });
       if (response.status >= 300) {
-        if (problemViolations(response.data).some(({ field }) => field === "name")) {
+        const violation = problemViolations(response.data).find(({ field }) => field === "name");
+        if (violation) {
           setError("name", {
             message:
-              problemErrorCode(response.data) === "admin_role_duplicate_name"
+              violation.message ??
+              (problemErrorCode(response.data) === "admin_role_duplicate_name"
                 ? dictionary.admin.common.validation.roleDuplicate
-                : dictionary.admin.common.validation.roleFormat,
+                : dictionary.admin.common.validation.roleFormat),
           });
           return;
         }
@@ -92,8 +94,12 @@ export function RoleCreateForm({ dictionary }: { dictionary: Dictionary; locale:
               {dictionary.admin.common.cancel}
             </Button>
             <Button disabled={!canManageRoles || isSubmitting} type="submit">
-              <AdminActionIcon action="add" />
-              {isSubmitting ? dictionary.admin.common.saving : copy.create}
+              {isSubmitting ? (
+                <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+              ) : (
+                <AdminActionIcon action="add" />
+              )}
+              {copy.create}
             </Button>
           </div>
         </Form>

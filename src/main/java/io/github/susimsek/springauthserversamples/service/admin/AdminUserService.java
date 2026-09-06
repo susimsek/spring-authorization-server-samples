@@ -10,6 +10,7 @@ import io.github.susimsek.springauthserversamples.mapper.AdminGroupMapper;
 import io.github.susimsek.springauthserversamples.mapper.AdminUserMapper;
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
 import io.github.susimsek.springauthserversamples.repository.GroupRepository;
+import io.github.susimsek.springauthserversamples.repository.RecoveryCodeRepository;
 import io.github.susimsek.springauthserversamples.repository.UserAvatarRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
@@ -46,6 +47,7 @@ public class AdminUserService {
     private final UserActionService userActionService;
     private final AdminUserMapper adminUserMapper;
     private final AdminGroupMapper adminGroupMapper;
+    private final RecoveryCodeRepository recoveryCodeRepository;
 
     public AdminUserService(
             UserRepository userRepository,
@@ -68,7 +70,8 @@ public class AdminUserService {
                 adminAuditEventService,
                 userActionService,
                 Mappers.getMapper(AdminUserMapper.class),
-                Mappers.getMapper(AdminGroupMapper.class));
+                Mappers.getMapper(AdminGroupMapper.class),
+                null);
     }
 
     @Transactional(readOnly = true)
@@ -196,6 +199,24 @@ public class AdminUserService {
         userAccessInvalidationService.invalidate(user.getUsername());
         userActionService.invalidateActions(user.getId());
         adminAuditEventService.record("user.password.updated", "user", user.getId().toString());
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
+    public void resetTotp(Long id, String currentUsername) {
+        UserEntity user = findUser(id);
+        assertCanManageUser(user, currentUsername);
+        user.setTotpSecret(null);
+        user.setTotpEnabled(false);
+        user.setTotpLastUsedCounter(null);
+        user.setMfaFailedAttemptCount(0);
+        user.setMfaPermanentlyLocked(false);
+        if (recoveryCodeRepository != null) {
+            recoveryCodeRepository.deleteByUserId(id);
+        }
+        userActionService.invalidateActions(id);
+        userAccessInvalidationService.invalidate(user.getUsername());
+        adminAuditEventService.record("user.totp.reset", "user", user.getId().toString());
     }
 
     @Transactional

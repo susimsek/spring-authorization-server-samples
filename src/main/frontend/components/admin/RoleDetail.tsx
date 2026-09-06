@@ -44,6 +44,7 @@ export function RoleDetail({
   const [suggestions, setSuggestions] = useState<RoleUser[]>([]);
   const [selectedUser, setSelectedUser] = useState<RoleUser | null>(null);
   const [searchingUsers, setSearchingUsers] = useState(false);
+  const [saving, setSaving] = useState(false);
   const { page, query, setPage, setQuery, setSize, size } = useAdminTableState();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -97,34 +98,44 @@ export function RoleDetail({
 
   const assign = async () => {
     if (!access?.manageRoles || !accessToken || !selectedUser) return;
-    const response = await adminRequest(accessToken, {
-      url: `/api/admin/roles/${encodeURIComponent(actualName)}/users`,
-      method: "POST",
-      data: { userId: selectedUser.id },
-    });
-    if (response.status >= 300) {
-      alerts.addError(dictionary.admin.roles.assignmentSaveError);
-      return;
+    setSaving(true);
+    try {
+      const response = await adminRequest(accessToken, {
+        url: `/api/admin/roles/${encodeURIComponent(actualName)}/users`,
+        method: "POST",
+        data: { userId: selectedUser.id },
+      });
+      if (response.status >= 300) {
+        alerts.addError(dictionary.admin.roles.assignmentSaveError);
+        return;
+      }
+      alerts.addAlert(dictionary.admin.roles.assignmentSaved);
+      setSelectedUser(null);
+      setUserQuery("");
+      setSuggestions([]);
+      await load();
+    } finally {
+      setSaving(false);
     }
-    alerts.addAlert(dictionary.admin.roles.assignmentSaved);
-    setSelectedUser(null);
-    setUserQuery("");
-    setSuggestions([]);
-    await load();
   };
 
   const remove = async (user: RoleUser) => {
     if (!access?.manageRoles || !accessToken) return;
-    const response = await adminRequest(accessToken, {
-      url: `/api/admin/roles/${encodeURIComponent(actualName)}/users/${user.id}?page=${page}&size=${size}`,
-      method: "DELETE",
-    });
-    if (response.status >= 300) {
-      alerts.addError(dictionary.admin.roles.assignmentRemoveError);
-      return;
+    setSaving(true);
+    try {
+      const response = await adminRequest(accessToken, {
+        url: `/api/admin/roles/${encodeURIComponent(actualName)}/users/${user.id}?page=${page}&size=${size}`,
+        method: "DELETE",
+      });
+      if (response.status >= 300) {
+        alerts.addError(dictionary.admin.roles.assignmentRemoveError);
+        return;
+      }
+      alerts.addAlert(dictionary.admin.roles.assignmentRemoved);
+      await load();
+    } finally {
+      setSaving(false);
     }
-    alerts.addAlert(dictionary.admin.roles.assignmentRemoved);
-    await load();
   };
 
   if (loading && !detail) return <LoadingState />;
@@ -214,8 +225,12 @@ export function RoleDetail({
               )}
             </div>
             {access?.manageRoles && (
-              <Button disabled={!selectedUser} onClick={() => void assign()}>
-                <AdminActionIcon action="assign" />
+              <Button disabled={!selectedUser || saving} onClick={() => void assign()}>
+                {saving ? (
+                  <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                ) : (
+                  <AdminActionIcon action="assign" />
+                )}
                 {dictionary.admin.roles.assign}
               </Button>
             )}
@@ -285,8 +300,17 @@ export function RoleDetail({
               </td>
               <td className="text-end">
                 {access?.manageRoles && (
-                  <Button size="sm" variant="danger" onClick={() => void remove(user)}>
-                    <AdminActionIcon action="remove" />
+                  <Button
+                    disabled={saving}
+                    size="sm"
+                    variant="danger"
+                    onClick={() => void remove(user)}
+                  >
+                    {saving ? (
+                      <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                    ) : (
+                      <AdminActionIcon action="remove" />
+                    )}
                     {dictionary.admin.roles.remove}
                   </Button>
                 )}

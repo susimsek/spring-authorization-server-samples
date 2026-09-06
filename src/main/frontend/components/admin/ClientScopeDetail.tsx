@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, Card, Form } from "react-bootstrap";
+import { Button, Card, Form, Spinner } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { useRouter } from "@/routing/navigation";
 import { z } from "zod";
@@ -177,8 +177,12 @@ export function ClientScopeDetail({
             </Form.Group>
             <div className="admin-form-actions">
               <Button disabled={isSubmitting || !access?.manageClients} type="submit">
-                <AdminActionIcon action="save" />
-                {isSubmitting ? common.saving : common.save}
+                {isSubmitting ? (
+                  <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                ) : (
+                  <AdminActionIcon action="save" />
+                )}
+                {common.save}
               </Button>
             </div>
           </Form>

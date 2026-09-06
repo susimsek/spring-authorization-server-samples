@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Alert, Button, Card, Form, Stack } from "react-bootstrap";
+import { Alert, Button, Card, Form, Spinner, Stack } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useSearchParams } from "@/routing/navigation";
@@ -14,7 +14,8 @@ export function MfaChallengePage({ dictionary }: { dictionary: Dictionary }) {
   const returnTo = safeReturnTo(useSearchParams().get("return_to"));
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const schema = z.object({ code: z.string().regex(/^\d{6,8}$/, copy.invalidCode) });
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const schema = z.object({ code: z.string().min(1, copy.invalidCode) });
   const {
     register,
     handleSubmit,
@@ -25,16 +26,29 @@ export function MfaChallengePage({ dictionary }: { dictionary: Dictionary }) {
     resolver: zodResolver(schema),
   });
   const submit = handleSubmit(async ({ code }) => {
+    const valid = recoveryMode
+      ? /^[A-Za-z0-9]{4}(?:[- ]?[A-Za-z0-9]{4}){2}$/.test(code)
+      : /^\d{6,8}$/.test(code);
+    if (!valid) {
+      setError("code", {
+        type: "validate",
+        message: recoveryMode ? copy.invalidRecoveryCode : copy.invalidCode,
+      });
+      return;
+    }
     setBusy(true);
     setFailed(null);
     clearErrors("code");
     try {
-      const response = await fetch("/api/auth/mfa/verify", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
-      });
+      const response = await fetch(
+        recoveryMode ? "/api/auth/mfa/recovery-code" : "/api/auth/mfa/verify",
+        {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code }),
+        },
+      );
       if (response.status === 401) {
         window.location.assign(returnTo);
         return;
@@ -63,20 +77,37 @@ export function MfaChallengePage({ dictionary }: { dictionary: Dictionary }) {
           {failed && <Alert variant="danger">{failed}</Alert>}
           <Form onSubmit={submit} noValidate>
             <Form.Group className="mb-4" controlId="mfa-code">
-              <Form.Label>{copy.code}</Form.Label>
+              <Form.Label>{recoveryMode ? copy.recoveryCode : copy.code}</Form.Label>
               <Form.Control
-                inputMode="numeric"
+                inputMode={recoveryMode ? "text" : "numeric"}
                 autoComplete="one-time-code"
                 autoFocus
+                maxLength={recoveryMode ? 14 : 8}
                 isInvalid={Boolean(errors.code)}
                 {...register("code")}
               />
               <Form.Control.Feedback type="invalid">{errors.code?.message}</Form.Control.Feedback>
             </Form.Group>
             <Button type="submit" disabled={busy} className="w-100">
-              <ActionIcon action="check" /> {busy ? copy.verifying : copy.verify}
+              {busy ? (
+                <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+              ) : (
+                <ActionIcon action="check" />
+              )}
+              {copy.verify}
             </Button>
           </Form>
+          <Button
+            variant="link"
+            className="px-0 align-self-start"
+            type="button"
+            onClick={() => {
+              setRecoveryMode((value) => !value);
+              clearErrors("code");
+            }}
+          >
+            {recoveryMode ? copy.useAuthenticatorCode : copy.useRecoveryCode}
+          </Button>
         </Stack>
       </Card.Body>
     </Card>

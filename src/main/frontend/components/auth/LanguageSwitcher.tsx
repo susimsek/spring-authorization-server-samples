@@ -1,11 +1,10 @@
 "use client";
 
-import { faGlobe } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useTranslation } from "react-i18next";
 import { useLocale } from "@/i18n/client";
 import { persistLocale } from "@/i18n/locale-cookie";
 import { Dropdown } from "react-bootstrap";
+import { Icon } from "@/components/shared/Icon";
 
 import type { Locale } from "@/i18n/config";
 
@@ -36,7 +35,7 @@ export function LanguageSwitcher({ label }: LanguageSwitcherProps) {
         className="console-navbar-control"
         aria-label={label}
       >
-        <FontAwesomeIcon icon={faGlobe} className="me-2" />
+        <Icon icon="globe" className="me-2" />
         {languageNames[activeLocale]}
       </Dropdown.Toggle>
       <Dropdown.Menu>

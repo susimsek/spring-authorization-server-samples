@@ -40,8 +40,10 @@ public record AccountRegistrationRequestDTO(
         @NotBlank
                 @Size(min = 12, max = 128)
                 @Schema(
-                        description = "Account password; must contain at least 8 characters.",
-                        example = "change-me-123",
+                        description =
+                                "Account password; must contain at least 12 characters and meet"
+                                        + " the configured complexity rules.",
+                        example = "Change-me12!",
                         format = "password",
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 String password,
@@ -49,7 +51,7 @@ public record AccountRegistrationRequestDTO(
                 @Size(min = 12, max = 128)
                 @Schema(
                         description = "Password confirmation; must match `password`.",
-                        example = "change-me-123",
+                        example = "Change-me12!",
                         format = "password",
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 String confirmPassword,

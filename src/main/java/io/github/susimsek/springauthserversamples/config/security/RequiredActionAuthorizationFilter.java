@@ -35,6 +35,8 @@ public class RequiredActionAuthorizationFilter extends OncePerRequestFilter {
                 if (request.getQueryString() != null) {
                     current += "?" + request.getQueryString();
                 }
+                request.getSession(true)
+                        .setAttribute(MfaAuthorizationFilter.MFA_PENDING_REQUEST, current);
                 response.sendRedirect(
                         "/required-actions?return_to="
                                 + URLEncoder.encode(current, StandardCharsets.UTF_8));

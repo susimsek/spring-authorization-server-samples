@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "@/routing/Link";
-import { Badge, Button } from "react-bootstrap";
+import { Badge, Button, Spinner } from "react-bootstrap";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
@@ -68,6 +68,7 @@ export function EntityRelatedData({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [version, setVersion] = useState(0);
+  const [actionBusy, setActionBusy] = useState<string | null>(null);
   const copy = dictionary.admin.resources;
 
   useEffect(() => {
@@ -88,32 +89,43 @@ export function EntityRelatedData({
 
   const removeSession = async (session: Session) => {
     if (!canManage || !accessToken) return;
-    const response = await adminRequest(accessToken, {
-      method: "DELETE",
-      url: `/api/admin/sessions/${encodeURIComponent(session.id)}`,
-    });
-    if (response.status >= 300) {
-      alerts.addError(copy.operationError);
-      return;
+    setActionBusy(session.id);
+    try {
+      const response = await adminRequest(accessToken, {
+        method: "DELETE",
+        url: `/api/admin/sessions/${encodeURIComponent(session.id)}`,
+      });
+      if (response.status >= 300) {
+        alerts.addError(copy.operationError);
+        return;
+      }
+      alerts.addAlert(copy.sessionTerminated);
+      setLoading(true);
+      setVersion((current) => current + 1);
+    } finally {
+      setActionBusy(null);
     }
-    alerts.addAlert(copy.sessionTerminated);
-    setLoading(true);
-    setVersion((current) => current + 1);
   };
 
   const revokeConsent = async (consent: Consent) => {
     if (!canManage || !accessToken) return;
-    const response = await adminRequest(accessToken, {
-      method: "DELETE",
-      url: `/api/admin/consents/${encodeURIComponent(consent.clientId)}/${encodeURIComponent(consent.principalName)}`,
-    });
-    if (response.status >= 300) {
-      alerts.addError(copy.operationError);
-      return;
+    const actionKey = `${consent.clientId}:${consent.principalName}`;
+    setActionBusy(actionKey);
+    try {
+      const response = await adminRequest(accessToken, {
+        method: "DELETE",
+        url: `/api/admin/consents/${encodeURIComponent(consent.clientId)}/${encodeURIComponent(consent.principalName)}`,
+      });
+      if (response.status >= 300) {
+        alerts.addError(copy.operationError);
+        return;
+      }
+      alerts.addAlert(copy.consentRevoked);
+      setLoading(true);
+      setVersion((current) => current + 1);
+    } finally {
+      setActionBusy(null);
     }
-    alerts.addAlert(copy.consentRevoked);
-    setLoading(true);
-    setVersion((current) => current + 1);
   };
 
   if (loading) return <LoadingState />;
@@ -186,9 +198,14 @@ export function EntityRelatedData({
                       type="button"
                       variant="danger"
                       size="sm"
+                      disabled={actionBusy !== null}
                       onClick={() => void removeSession(session)}
                     >
-                      <AdminActionIcon action="remove" />
+                      {actionBusy === session.id ? (
+                        <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                      ) : (
+                        <AdminActionIcon action="remove" />
+                      )}
                       {copy.signOut}
                     </Button>
                   </td>
@@ -228,7 +245,7 @@ export function EntityRelatedData({
                 <td>
                   <div className="d-flex flex-wrap gap-1">
                     {consent.authorities.map((authority) => (
-                      <Badge bg="light" text="dark" className="border" key={authority}>
+                      <Badge bg="secondary" key={authority}>
                         {authority}
                       </Badge>
                     ))}
@@ -248,9 +265,19 @@ export function EntityRelatedData({
                         type="button"
                         variant="danger"
                         size="sm"
+                        disabled={actionBusy !== null}
                         onClick={() => void revokeConsent(consent)}
                       >
-                        <AdminActionIcon action="revoke" />
+                        {actionBusy === `${consent.clientId}:${consent.principalName}` ? (
+                          <Spinner
+                            animation="border"
+                            aria-hidden="true"
+                            className="me-2"
+                            size="sm"
+                          />
+                        ) : (
+                          <AdminActionIcon action="revoke" />
+                        )}
                         {copy.revoke}
                       </Button>
                     )}

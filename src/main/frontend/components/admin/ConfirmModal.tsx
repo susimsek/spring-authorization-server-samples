@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Modal } from "react-bootstrap";
+import { Button, Modal, Spinner } from "react-bootstrap";
 
 import { ActionIcon } from "@/components/shared/ActionIcon";
 
@@ -30,7 +30,11 @@ export function ConfirmModal({
           {cancelLabel}
         </Button>
         <Button disabled={busy} onClick={onConfirm} type="button" variant="danger">
-          <ActionIcon action="check" />
+          {busy ? (
+            <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+          ) : (
+            <ActionIcon action="check" />
+          )}
           {confirmLabel}
         </Button>
       </Modal.Footer>

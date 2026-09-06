@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Badge, Button, Card, Form, ListGroup } from "react-bootstrap";
+import { Badge, Button, Card, Form, ListGroup, Spinner } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { useRouter } from "@/routing/navigation";
 import { z } from "zod";
@@ -296,7 +296,11 @@ export function GroupDetail({
             <div className="admin-form-actions">
               {canManageUsers && (
                 <Button disabled={saving || !isGroupSettingsDirty} type="submit">
-                  <AdminActionIcon action="save" />
+                  {saving ? (
+                    <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                  ) : (
+                    <AdminActionIcon action="save" />
+                  )}
                   {dictionary.admin.common.save}
                 </Button>
               )}
@@ -329,7 +333,11 @@ export function GroupDetail({
           <div className="admin-form-actions">
             {canManageRoles && (
               <Button disabled={saving} onClick={() => void saveRoles()}>
-                <AdminActionIcon action="save" />
+                {saving ? (
+                  <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                ) : (
+                  <AdminActionIcon action="save" />
+                )}
                 {copy.saveMappings}
               </Button>
             )}
@@ -364,7 +372,11 @@ export function GroupDetail({
             </div>
             {canManageUsers && (
               <Button disabled={!selectedUser || saving} onClick={() => void addMember()}>
-                <AdminActionIcon action="assign" />
+                {saving ? (
+                  <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                ) : (
+                  <AdminActionIcon action="assign" />
+                )}
                 {copy.assignUser}
               </Button>
             )}
@@ -432,7 +444,11 @@ export function GroupDetail({
                     variant="danger"
                     onClick={() => void removeMember(user)}
                   >
-                    <AdminActionIcon action="remove" />
+                    {saving ? (
+                      <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                    ) : (
+                      <AdminActionIcon action="remove" />
+                    )}
                     {copy.removeUser}
                   </Button>
                 )}

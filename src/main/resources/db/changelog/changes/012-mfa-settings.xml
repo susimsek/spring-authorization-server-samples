@@ -8,6 +8,12 @@
             <column name="totp_enabled" type="boolean" defaultValueBoolean="false">
                 <constraints nullable="false"/>
             </column>
+            <column name="mfa_failed_attempt_count" type="bigint" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="mfa_permanently_locked" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
         </addColumn>
         <addColumn tableName="login_settings">
             <column name="otp_enabled" type="boolean" defaultValueBoolean="false">
@@ -29,6 +35,23 @@
                 <constraints nullable="false"/>
             </column>
             <column name="otp_look_ahead_window" type="int" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="012-02-mfa-reusable-code" author="susimsek">
+        <addColumn tableName="login_settings">
+            <column name="otp_code_reusable" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="brute_force_max_secondary_failures" type="int" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="otp_add_recovery_codes" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="recovery_code_warning_threshold" type="int" defaultValueNumeric="2">
                 <constraints nullable="false"/>
             </column>
         </addColumn>

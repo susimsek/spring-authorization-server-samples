@@ -5,3 +5,4 @@ UPDATE_EMAIL;Confirm your new email address;Confirm the email address waiting fo
 DELETE_ACCOUNT;Confirm account deletion;Confirm the requested account deletion.;false;false;1;40;system;2026-01-01T00:00:00;2026-01-01T00:00:00
 UPDATE_PASSWORD;Update password;Choose a new password before continuing.;true;true;1;5;system;2026-01-01T00:00:00;2026-01-01T00:00:00
 CONFIGURE_TOTP;Configure authenticator app;Register an authenticator app and verify a code.;true;true;1;15;system;2026-01-01T00:00:00;2026-01-01T00:00:00
+RECOVERY_CODES;Set up recovery codes;Generate one-time recovery codes and confirm that you saved them.;true;false;1;16;system;2026-01-01T00:00:00;2026-01-01T00:00:00

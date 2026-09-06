@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "@/routing/Link";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, Dropdown, Form, Modal } from "react-bootstrap";
+import { Button, Dropdown, Form, Modal, Spinner } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -288,8 +288,12 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
             {common.cancel}
           </Button>
           <Button disabled={saving} form="client-scope-form" type="submit">
-            <AdminActionIcon action="save" />
-            {saving ? common.saving : common.save}
+            {saving ? (
+              <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+            ) : (
+              <AdminActionIcon action="save" />
+            )}
+            {common.save}
           </Button>
         </Modal.Footer>
       </Modal>

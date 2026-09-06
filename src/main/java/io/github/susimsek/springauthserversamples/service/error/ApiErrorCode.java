@@ -11,6 +11,8 @@ public enum ApiErrorCode {
     RATE_LIMIT_EXCEEDED("rate_limit_exceeded", "Too many requests. Please try again later."),
     INVALID_CURRENT_PASSWORD("invalid_current_password", "Current password is invalid."),
     INVALID_TOTP_CODE("invalid_totp_code", "Authenticator code is invalid."),
+    INVALID_RECOVERY_CODE(
+            "invalid_recovery_code", "Recovery code is invalid or has already been used."),
     INVALID_PASSWORD(
             "invalid_password",
             "Password must be at least 12 characters and include uppercase, lowercase, a number,"

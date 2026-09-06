@@ -5,19 +5,20 @@ import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.dto.account.MfaSetupDTO;
 import io.github.susimsek.springauthserversamples.dto.account.MfaStatusDTO;
 import io.github.susimsek.springauthserversamples.repository.LoginSettingsRepository;
+import io.github.susimsek.springauthserversamples.repository.RecoveryCodeRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
 import io.github.susimsek.springauthserversamples.service.admin.UserAccessInvalidationService;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
+import io.github.susimsek.springauthserversamples.service.security.MfaBruteForceService;
 import io.github.susimsek.springauthserversamples.service.security.TotpService;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
 public class MfaService {
 
     private final UserRepository userRepository;
@@ -25,6 +26,42 @@ public class MfaService {
     private final TotpService totpService;
     private final AdminAuditEventService auditEventService;
     private final UserAccessInvalidationService userAccessInvalidationService;
+    private final RecoveryCodeRepository recoveryCodeRepository;
+    private final MfaBruteForceService mfaBruteForceService;
+
+    @Autowired
+    MfaService(
+            UserRepository userRepository,
+            LoginSettingsRepository loginSettingsRepository,
+            TotpService totpService,
+            AdminAuditEventService auditEventService,
+            UserAccessInvalidationService userAccessInvalidationService,
+            RecoveryCodeRepository recoveryCodeRepository,
+            MfaBruteForceService mfaBruteForceService) {
+        this.userRepository = userRepository;
+        this.loginSettingsRepository = loginSettingsRepository;
+        this.totpService = totpService;
+        this.auditEventService = auditEventService;
+        this.userAccessInvalidationService = userAccessInvalidationService;
+        this.recoveryCodeRepository = recoveryCodeRepository;
+        this.mfaBruteForceService = mfaBruteForceService;
+    }
+
+    MfaService(
+            UserRepository userRepository,
+            LoginSettingsRepository loginSettingsRepository,
+            TotpService totpService,
+            AdminAuditEventService auditEventService,
+            UserAccessInvalidationService userAccessInvalidationService) {
+        this(
+                userRepository,
+                loginSettingsRepository,
+                totpService,
+                auditEventService,
+                userAccessInvalidationService,
+                null,
+                null);
+    }
 
     @Transactional(readOnly = true)
     public MfaStatusDTO status(String username) {
@@ -48,92 +85,158 @@ public class MfaService {
             throw ApiException.badRequest(
                     ApiErrorCode.INVALID_REQUEST, "TOTP enrollment is disabled");
         }
-        UserEntity user = user(username);
+        UserEntity user = userForMfaUpdate(username);
         String secret = user.getTotpSecret();
         if (secret == null || user.isTotpEnabled()) {
             secret = totpService.newSecret();
             user.setTotpSecret(secret);
             user.setTotpEnabled(false);
+            user.setTotpLastUsedCounter(null);
             userRepository.save(user);
         }
         return new MfaSetupDTO(
                 secret,
-                totpService.otpauthUri(
-                        settings.getOtpIssuer(),
-                        user.getUsername(),
-                        secret,
-                        settings.getOtpAlgorithm(),
-                        settings.getOtpDigits(),
-                        settings.getOtpPeriodSeconds()),
+                totpService.qrCodeDataUri(
+                        totpService.otpauthUri(
+                                settings.getOtpIssuer(),
+                                user.getUsername(),
+                                secret,
+                                settings.getOtpAlgorithm(),
+                                settings.getOtpDigits(),
+                                settings.getOtpPeriodSeconds())),
                 settings.getOtpAlgorithm(),
                 settings.getOtpDigits(),
                 settings.getOtpPeriodSeconds());
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ApiException.class)
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public void enable(String username, String code) {
+        rejectIfMfaLocked(username);
         LoginSettingsEntity settings = settings();
-        UserEntity user = user(username);
-        if (!settings.isOtpEnabled()
-                || user.getTotpSecret() == null
-                || !totpService.matches(
-                        user.getTotpSecret(),
-                        code,
-                        settings.getOtpAlgorithm(),
-                        settings.getOtpDigits(),
-                        settings.getOtpPeriodSeconds(),
-                        settings.getOtpLookAheadWindow())) {
+        UserEntity user = userForMfaUpdate(username);
+        if (user.isMfaPermanentlyLocked()) {
+            throw ApiException.badRequest(
+                    ApiErrorCode.INVALID_TOTP_CODE, "The authenticator code is invalid");
+        }
+        if (!settings.isOtpEnabled() || !consumeCode(user, settings, code)) {
+            recordMfaFailure(username);
             throw ApiException.badRequest(
                     ApiErrorCode.INVALID_TOTP_CODE, "The authenticator code is invalid");
         }
         user.setTotpEnabled(true);
         userRepository.save(user);
+        recordMfaSuccess(username);
         userAccessInvalidationService.invalidate(user.getUsername());
         auditEventService.record("account.mfa.enabled", "user", user.getId().toString());
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ApiException.class)
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public void disable(String username, String code) {
+        rejectIfMfaLocked(username);
         LoginSettingsEntity settings = settings();
-        UserEntity user = user(username);
-        if (user.getTotpSecret() == null
-                || !totpService.matches(
-                        user.getTotpSecret(),
-                        code,
-                        settings.getOtpAlgorithm(),
-                        settings.getOtpDigits(),
-                        settings.getOtpPeriodSeconds(),
-                        settings.getOtpLookAheadWindow())) {
+        UserEntity user = userForMfaUpdate(username);
+        if (user.isMfaPermanentlyLocked()) {
+            throw ApiException.badRequest(
+                    ApiErrorCode.INVALID_TOTP_CODE, "The authenticator code is invalid");
+        }
+        if (!consumeCode(user, settings, code)) {
+            recordMfaFailure(username);
             throw ApiException.badRequest(
                     ApiErrorCode.INVALID_TOTP_CODE, "The authenticator code is invalid");
         }
         user.setTotpSecret(null);
         user.setTotpEnabled(false);
+        user.setTotpLastUsedCounter(null);
+        user.setMfaFailedAttemptCount(0);
+        user.setMfaPermanentlyLocked(false);
+        if (recoveryCodeRepository != null) {
+            recoveryCodeRepository.deleteByUserId(user.getId());
+        }
         userRepository.save(user);
+        recordMfaSuccess(username);
         userAccessInvalidationService.invalidate(user.getUsername());
         auditEventService.record("account.mfa.disabled", "user", user.getId().toString());
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
+    @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, key = "#username")
     public boolean valid(String username, String code) {
+        if (isMfaLocked(username)) {
+            return false;
+        }
         LoginSettingsEntity settings = settings();
-        UserEntity user = user(username);
-        return user.isTotpEnabled()
-                && totpService.matches(
-                        user.getTotpSecret(),
-                        code,
-                        settings.getOtpAlgorithm(),
-                        settings.getOtpDigits(),
-                        settings.getOtpPeriodSeconds(),
-                        settings.getOtpLookAheadWindow());
+        UserEntity user = userForMfaUpdate(username);
+        if (user.isMfaPermanentlyLocked()) {
+            return false;
+        }
+        boolean valid = user.isTotpEnabled() && consumeCode(user, settings, code);
+        if (valid) {
+            recordMfaSuccess(username);
+        } else {
+            recordMfaFailure(username);
+        }
+        return valid;
+    }
+
+    private void rejectIfMfaLocked(String username) {
+        if (isMfaLocked(username)) {
+            throw ApiException.badRequest(
+                    ApiErrorCode.INVALID_TOTP_CODE, "The authenticator code is invalid");
+        }
+    }
+
+    private boolean isMfaLocked(String username) {
+        return mfaBruteForceService != null && mfaBruteForceService.isLocked(username);
+    }
+
+    private void recordMfaFailure(String username) {
+        if (mfaBruteForceService != null) {
+            mfaBruteForceService.recordFailure(username);
+        }
+    }
+
+    private void recordMfaSuccess(String username) {
+        if (mfaBruteForceService != null) {
+            mfaBruteForceService.recordSuccess(username);
+        }
     }
 
     private UserEntity user(String username) {
         return userRepository
                 .findByUsername(username)
                 .orElseThrow(() -> ApiException.notFound("User not found"));
+    }
+
+    private UserEntity userForMfaUpdate(String username) {
+        return userRepository
+                .findForMfaUpdate(username)
+                .orElseThrow(() -> ApiException.notFound("User not found"));
+    }
+
+    private boolean consumeCode(UserEntity user, LoginSettingsEntity settings, String code) {
+        if (user.getTotpSecret() == null) {
+            return false;
+        }
+        var counter =
+                totpService.matchingCounter(
+                        user.getTotpSecret(),
+                        code,
+                        settings.getOtpAlgorithm(),
+                        settings.getOtpDigits(),
+                        settings.getOtpPeriodSeconds(),
+                        settings.getOtpLookAheadWindow());
+        if (counter.isEmpty()
+                || (!settings.isOtpCodeReusable()
+                        && counter.getAsLong()
+                                == (user.getTotpLastUsedCounter() == null
+                                        ? Long.MIN_VALUE
+                                        : user.getTotpLastUsedCounter()))) {
+            return false;
+        }
+        user.setTotpLastUsedCounter(counter.getAsLong());
+        return true;
     }
 
     private LoginSettingsEntity settings() {

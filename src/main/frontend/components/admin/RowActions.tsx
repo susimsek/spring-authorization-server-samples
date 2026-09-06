@@ -3,8 +3,7 @@ import { useDictionary } from "@/i18n/client";
 
 import type { ReactNode } from "react";
 import { Dropdown } from "react-bootstrap";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEllipsisVertical } from "@fortawesome/free-solid-svg-icons";
+import { Icon } from "@/components/shared/Icon";
 
 export function RowActions({ label, children }: { label?: string; children: ReactNode }) {
   const defaultLabel = useDictionary().admin.common.actions;
@@ -16,7 +15,7 @@ export function RowActions({ label, children }: { label?: string; children: Reac
         size="sm"
         variant="link"
       >
-        <FontAwesomeIcon icon={faEllipsisVertical} />
+        <Icon icon="ellipsisVertical" />
       </Dropdown.Toggle>
       <Dropdown.Menu>{children}</Dropdown.Menu>
     </Dropdown>

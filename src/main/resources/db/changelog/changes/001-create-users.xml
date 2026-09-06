@@ -44,6 +44,7 @@
 			<column name="permanently_locked" type="boolean" defaultValueBoolean="false">
 				<constraints nullable="false"/>
 			</column>
+			<column name="totp_last_used_counter" type="bigint"/>
 			<column name="first_name" type="varchar(100)"/>
 			<column name="last_name" type="varchar(100)"/>
 			<column name="email" type="varchar(200)"/>

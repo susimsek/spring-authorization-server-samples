@@ -1,5 +1,5 @@
 import type { Dictionary } from "@/i18n/get-dictionary";
-import { problemErrorCode } from "@/lib/problem-detail";
+import { problemErrorCode, problemViolations } from "@/lib/problem-detail";
 
 type AccountAction =
   "forgot-password" | "reset-password" | "register" | "verify-email" | "confirm-email";
@@ -17,6 +17,10 @@ export async function submitAccountAction(action: AccountAction, body: unknown) 
 
 export function accountActionError(error: unknown, dictionary: Dictionary) {
   const copy = dictionary.accountActions;
+  const serverMessage = problemViolations(error).find(
+    (violation) => typeof violation.message === "string" && violation.message.trim(),
+  )?.message;
+  if (serverMessage) return serverMessage;
   switch (problemErrorCode(error)) {
     case "user_duplicate_username":
       return dictionary.registration.validation.usernameDuplicate;

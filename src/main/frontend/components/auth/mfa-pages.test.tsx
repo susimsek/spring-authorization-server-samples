@@ -43,7 +43,7 @@ describe("MFA authentication pages", () => {
       .mockResolvedValueOnce(
         response(200, {
           secret: "SECRET",
-          otpauthUri: "otpauth://totp/example",
+          qrCode: "data:image/png;base64,iVBORw0KGgo=",
           algorithm: "SHA1",
           digits: 6,
           periodSeconds: 30,
@@ -52,6 +52,9 @@ describe("MFA authentication pages", () => {
 
     render(<RequiredActionsPage dictionary={dictionary} />);
 
+    expect(
+      await screen.findByRole("img", { name: dictionary.requiredActions.totpQrTitle }),
+    ).toBeVisible();
     const input = await screen.findByLabelText(dictionary.requiredActions.totpCode);
     fireEvent.change(input, { target: { value: "12345" } });
     fireEvent.submit(input.closest("form")!);
@@ -77,7 +80,7 @@ describe("MFA authentication pages", () => {
       .mockResolvedValueOnce(
         response(200, {
           secret: "SECRET",
-          otpauthUri: "otpauth://totp/example",
+          qrCode: "data:image/png;base64,iVBORw0KGgo=",
           algorithm: "SHA1",
           digits: 6,
           periodSeconds: 30,
@@ -95,6 +98,42 @@ describe("MFA authentication pages", () => {
     expect(input).toHaveClass("is-invalid");
     expect(input).toHaveValue("000000");
     expect(screen.getByRole("button", { name: dictionary.requiredActions.continue })).toBeEnabled();
+  });
+
+  it("requires saving recovery codes before submitting the required action", async () => {
+    const serverMessage = "Save the recovery codes before completing this action";
+    fetchMock
+      .mockResolvedValueOnce(
+        response(200, [
+          {
+            key: "RECOVERY_CODES",
+            displayName: "Set up recovery codes",
+            description: "Generate and save recovery codes.",
+            version: 1,
+          },
+        ]),
+      )
+      .mockResolvedValueOnce(
+        response(200, {
+          codes: ["ABCD-EFGH-IJKL", "MNOP-QRST-UVWX"],
+          remaining: 2,
+        }),
+      )
+      .mockResolvedValueOnce(response(400, { detail: serverMessage }));
+
+    render(<RequiredActionsPage dictionary={dictionary} />);
+
+    expect(await screen.findByText("ABCD-EFGH-IJKL")).toBeVisible();
+    const continueButton = screen.getByRole("button", {
+      name: dictionary.requiredActions.continue,
+    });
+    expect(continueButton).toBeDisabled();
+    fireEvent.click(screen.getByLabelText(dictionary.requiredActions.recoverySaved));
+    expect(continueButton).toBeEnabled();
+    fireEvent.click(continueButton);
+
+    expect(await screen.findByText(serverMessage)).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("rejects a malformed login challenge code before sending it", async () => {

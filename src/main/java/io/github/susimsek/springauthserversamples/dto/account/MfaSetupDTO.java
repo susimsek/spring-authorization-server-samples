@@ -10,10 +10,10 @@ public record MfaSetupDTO(
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 String secret,
         @Schema(
-                        description = "otpauth URI that can be rendered as a QR code.",
-                        example = "otpauth://totp/Example%3Aalice?secret=JBSWY3DPEHPK3PXP",
+                        description = "Backend-generated QR code data URI for authenticator setup.",
+                        example = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
                         requiredMode = Schema.RequiredMode.REQUIRED)
-                String otpauthUri,
+                String qrCode,
         @Schema(
                         description = "Configured TOTP algorithm.",
                         example = "SHA1",

@@ -1,21 +1,5 @@
 "use client";
 
-import {
-  faAddressCard,
-  faBars,
-  faGaugeHigh,
-  faClockRotateLeft,
-  faCircleInfo,
-  faKey,
-  faLaptop,
-  faLayerGroup,
-  faShieldHalved,
-  faUserShield,
-  faUsers,
-  faSliders,
-  faXmark,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "@/routing/Link";
 import { usePathname } from "@/routing/navigation";
 import { useState } from "react";
@@ -25,6 +9,7 @@ import { LanguageSwitcher } from "@/components/auth/LanguageSwitcher";
 import { ThemeSwitcher } from "@/components/auth/ThemeSwitcher";
 import { ConsoleUserMenu } from "@/components/auth/ConsoleUserMenu";
 import { ConsoleAlertsProvider } from "@/components/auth/ConsoleAlerts";
+import { Icon, type IconName } from "@/components/shared/Icon";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 
@@ -40,20 +25,20 @@ export function AdminShell({ locale, dictionary, children }: Props) {
   const pathname = usePathname();
   const { access, idTokenParsed, logout, tokenParsed, username } = useAdminAuth();
   const [navigationOpen, setNavigationOpen] = useState(false);
-  const items = [
-    ["", dictionary.admin.nav.dashboard, faGaugeHigh, access?.isAdmin],
-    ["/clients", dictionary.admin.nav.clients, faAddressCard, access?.viewClients],
-    ["/client-scopes", dictionary.admin.nav.clientScopes, faLayerGroup, access?.viewClients],
-    ["/users", dictionary.admin.nav.users, faUsers, access?.viewUsers],
-    ["/roles", dictionary.admin.nav.roles, faUserShield, access?.viewRoles],
-    ["/groups", dictionary.admin.nav.groups, faLayerGroup, access?.viewUsers],
-    ["/sessions", dictionary.admin.nav.sessions, faLaptop, access?.viewSessions],
-    ["/consents", dictionary.admin.nav.consents, faShieldHalved, access?.viewConsents],
-    ["/keys", dictionary.admin.nav.keys, faKey, access?.viewKeys],
-    ["/events", dictionary.admin.nav.events, faClockRotateLeft, access?.viewUsers],
-    ["/server-info", dictionary.admin.nav.serverInfo, faCircleInfo, access?.viewKeys],
-    ["/settings", dictionary.admin.nav.settings, faSliders, access?.isAdmin],
-  ] as const;
+  const items: ReadonlyArray<readonly [string, string, IconName, boolean | undefined]> = [
+    ["", dictionary.admin.nav.dashboard, "gaugeHigh", access?.isAdmin],
+    ["/clients", dictionary.admin.nav.clients, "addressCard", access?.viewClients],
+    ["/client-scopes", dictionary.admin.nav.clientScopes, "layerGroup", access?.viewClients],
+    ["/users", dictionary.admin.nav.users, "users", access?.viewUsers],
+    ["/roles", dictionary.admin.nav.roles, "userShield", access?.viewRoles],
+    ["/groups", dictionary.admin.nav.groups, "layerGroup", access?.viewUsers],
+    ["/sessions", dictionary.admin.nav.sessions, "laptop", access?.viewSessions],
+    ["/consents", dictionary.admin.nav.consents, "shieldHalved", access?.viewConsents],
+    ["/keys", dictionary.admin.nav.keys, "key", access?.viewKeys],
+    ["/events", dictionary.admin.nav.events, "clockRotateLeft", access?.viewUsers],
+    ["/server-info", dictionary.admin.nav.serverInfo, "circleInfo", access?.viewKeys],
+    ["/settings", dictionary.admin.nav.settings, "sliders", access?.isAdmin],
+  ];
 
   return (
     <ConsoleAlertsProvider>
@@ -68,7 +53,7 @@ export function AdminShell({ locale, dictionary, children }: Props) {
                 aria-expanded={navigationOpen}
                 onClick={() => setNavigationOpen((current) => !current)}
               >
-                <FontAwesomeIcon icon={navigationOpen ? faXmark : faBars} />
+                <Icon icon={navigationOpen ? "xmark" : "bars"} />
               </Button>
               <Navbar.Brand
                 as={Link}
@@ -76,7 +61,7 @@ export function AdminShell({ locale, dictionary, children }: Props) {
                 className="admin-brand d-flex align-items-center gap-2 fw-semibold mb-0"
               >
                 <span className="admin-brand-mark">
-                  <FontAwesomeIcon icon={faShieldHalved} />
+                  <Icon icon="shieldHalved" />
                 </span>
                 <span className="admin-brand-copy text-truncate">{dictionary.admin.product}</span>
               </Navbar.Brand>
@@ -135,7 +120,7 @@ export function AdminShell({ locale, dictionary, children }: Props) {
                       onClick={() => setNavigationOpen(false)}
                     >
                       <span className="admin-nav-icon-wrap">
-                        <FontAwesomeIcon icon={icon} className="admin-nav-icon" />
+                        <Icon icon={icon} className="admin-nav-icon" />
                       </span>
                       <span>{label}</span>
                     </Nav.Link>

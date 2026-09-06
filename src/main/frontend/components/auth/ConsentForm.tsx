@@ -1,7 +1,5 @@
 "use client";
 
-import { faShieldHalved } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
 import { type FormEvent, useEffect, useState } from "react";
@@ -11,6 +9,7 @@ import { z } from "zod";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { ActionIcon } from "@/components/shared/ActionIcon";
+import { Icon } from "@/components/shared/Icon";
 
 type ConsentFormProps = {
   dictionary: Dictionary;
@@ -104,7 +103,7 @@ function ConsentRequest({ dictionary, consent }: ConsentFormProps & { consent: C
       <div className="bg-body-tertiary rounded-3 p-3 mb-4">
         <div className="d-flex align-items-center gap-3">
           <div className="consent-client-icon d-flex align-items-center justify-content-center rounded-circle bg-primary-subtle text-primary">
-            <FontAwesomeIcon icon={faShieldHalved} />
+            <Icon icon="shieldHalved" />
           </div>
           <div className="min-w-0">
             <div className="small text-body-secondary">{dictionary.consent.clientLabel}</div>

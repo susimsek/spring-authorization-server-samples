@@ -4,8 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.github.susimsek.springauthserversamples.dto.error.ApiViolationDTO;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Validation;
+import jakarta.validation.constraints.NotBlank;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Locale;
@@ -63,16 +67,18 @@ class ApiExceptionHandlerTest {
         assertThat(problem.getInstance()).hasToString("/api/admin/users");
         assertThat(problem.getProperties())
                 .containsEntry("errorCode", "user_invalid_username")
-                .containsEntry(
-                        "violations", java.util.List.of(java.util.Map.of("field", "username")));
+                .containsEntry("field", "username")
+                .doesNotContainKey("violations");
     }
 
     @Test
     void returnsProblemWithoutViolationsWhenFieldIsMissing() {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/admin");
         var problem =
                 handler(new StaticMessageSource())
                         .handleApiException(
-                                ApiException.forbidden(ApiErrorCode.FORBIDDEN, "Access denied"));
+                                ApiException.forbidden(ApiErrorCode.FORBIDDEN, "Access denied"),
+                                request);
 
         assertThat(problem.getStatus()).isEqualTo(403);
         assertThat(problem.getDetail()).isEqualTo("You are not allowed to perform this operation.");
@@ -130,8 +136,9 @@ class ApiExceptionHandlerTest {
                 .containsEntry(
                         "violations",
                         java.util.List.of(
-                                java.util.Map.of("field", "redirectUris"),
-                                java.util.Map.of("field", "request")));
+                                new ApiViolationDTO(
+                                        "redirectUris", "Geçerli mutlak URI değerleri girin."),
+                                new ApiViolationDTO("request", "İstek geçersiz.")));
     }
 
     @Test
@@ -155,8 +162,7 @@ class ApiExceptionHandlerTest {
         assertThat(problem.getInstance()).hasToString("/api/admin/clients");
         assertThat(problem.getProperties())
                 .containsEntry("errorCode", "validation_failed")
-                .containsEntry(
-                        "violations", java.util.List.of(java.util.Map.of("field", "request")));
+                .doesNotContainKey("violations");
     }
 
     @Test
@@ -198,8 +204,32 @@ class ApiExceptionHandlerTest {
                 .containsEntry(
                         "violations",
                         java.util.List.of(
-                                java.util.Map.of("field", "clientId"),
-                                java.util.Map.of("field", "request")));
+                                new ApiViolationDTO(
+                                        "clientId", "The request contains invalid data."),
+                                new ApiViolationDTO(
+                                        "request", "The request contains invalid data.")));
+    }
+
+    @Test
+    void handlesConstraintViolationsFromValidatedMethods() throws NoSuchMethodException {
+        ValidatedTarget target = new ValidatedTarget();
+        Method method = ValidatedTarget.class.getDeclaredMethod("update", String.class);
+        var validator = Validation.buildDefaultValidatorFactory().getValidator().forExecutables();
+        var violations = validator.validateParameters(target, method, new Object[] {""});
+        ConstraintViolationException exception = new ConstraintViolationException(violations);
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/admin/users");
+
+        var response =
+                handler(new StaticMessageSource())
+                        .handleConstraintViolation(exception, new ServletWebRequest(request));
+        var problem = (org.springframework.http.ProblemDetail) response.getBody();
+
+        assertThat(problem).isNotNull();
+        assertThat(problem.getStatus()).isEqualTo(400);
+        assertThat(problem.getProperties())
+                .containsEntry(
+                        "violations",
+                        java.util.List.of(new ApiViolationDTO("clientId", "must not be blank")));
     }
 
     @Test
@@ -232,6 +262,11 @@ class ApiExceptionHandlerTest {
 
     @SuppressWarnings("unused")
     private void validatedRequest(String clientId, String ignored) {}
+
+    private static class ValidatedTarget {
+        @SuppressWarnings("unused")
+        void update(@NotBlank String clientId) {}
+    }
 
     private static ParameterValidationResult parameterResult(MethodParameter parameter) {
         return new ParameterValidationResult(

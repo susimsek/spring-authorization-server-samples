@@ -55,11 +55,19 @@ public class AccountLockService {
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public void unlock(Long userId) {
-        userRepository.findForActionById(userId).ifPresent(this::resetFailures);
+        userRepository
+                .findForActionById(userId)
+                .ifPresent(
+                        user -> {
+                            resetFailures(user);
+                            user.setMfaFailedAttemptCount(0);
+                            user.setMfaPermanentlyLocked(false);
+                        });
     }
 
     public boolean isLocked(UserEntity user, Instant now) {
         return user.isPermanentlyLocked()
+                || user.isMfaPermanentlyLocked()
                 || (user.getLockedUntil() != null && user.getLockedUntil().isAfter(now));
     }
 

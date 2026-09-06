@@ -4,9 +4,11 @@ import io.github.susimsek.springauthserversamples.domain.RequiredActionDefinitio
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.dto.account.AccountProfileRequestDTO;
 import io.github.susimsek.springauthserversamples.service.LoginSettingsService;
+import io.github.susimsek.springauthserversamples.service.account.RecoveryCodeService;
 import io.github.susimsek.springauthserversamples.service.admin.UserAccessInvalidationService;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
+import io.github.susimsek.springauthserversamples.service.security.MfaBruteForceService;
 import io.github.susimsek.springauthserversamples.service.security.PasswordPolicyService;
 import io.github.susimsek.springauthserversamples.service.security.PasswordService;
 import io.github.susimsek.springauthserversamples.service.security.TotpService;
@@ -26,6 +28,8 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
     private final UserAccessInvalidationService userAccessInvalidationService;
     private final LoginSettingsService loginSettingsService;
     private final TotpService totpService;
+    private final RecoveryCodeService recoveryCodeService;
+    private final MfaBruteForceService mfaBruteForceService;
 
     @Autowired
     StandardRequiredActionHandler(
@@ -34,13 +38,54 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
             PasswordService passwordService,
             UserAccessInvalidationService userAccessInvalidationService,
             LoginSettingsService loginSettingsService,
-            TotpService totpService) {
+            TotpService totpService,
+            RecoveryCodeService recoveryCodeService,
+            MfaBruteForceService mfaBruteForceService) {
         this.validator = validator;
         this.passwordPolicyService = passwordPolicyService;
         this.passwordService = passwordService;
         this.userAccessInvalidationService = userAccessInvalidationService;
         this.loginSettingsService = loginSettingsService;
         this.totpService = totpService;
+        this.recoveryCodeService = recoveryCodeService;
+        this.mfaBruteForceService = mfaBruteForceService;
+    }
+
+    StandardRequiredActionHandler(
+            Validator validator,
+            PasswordPolicyService passwordPolicyService,
+            PasswordService passwordService,
+            UserAccessInvalidationService userAccessInvalidationService,
+            LoginSettingsService loginSettingsService,
+            TotpService totpService) {
+        this(
+                validator,
+                passwordPolicyService,
+                passwordService,
+                userAccessInvalidationService,
+                loginSettingsService,
+                totpService,
+                null,
+                null);
+    }
+
+    StandardRequiredActionHandler(
+            Validator validator,
+            PasswordPolicyService passwordPolicyService,
+            PasswordService passwordService,
+            UserAccessInvalidationService userAccessInvalidationService,
+            LoginSettingsService loginSettingsService,
+            TotpService totpService,
+            RecoveryCodeService recoveryCodeService) {
+        this(
+                validator,
+                passwordPolicyService,
+                passwordService,
+                userAccessInvalidationService,
+                loginSettingsService,
+                totpService,
+                recoveryCodeService,
+                null);
     }
 
     StandardRequiredActionHandler(Validator validator) {
@@ -50,6 +95,8 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
         this.userAccessInvalidationService = null;
         this.loginSettingsService = null;
         this.totpService = null;
+        this.recoveryCodeService = null;
+        this.mfaBruteForceService = null;
     }
 
     @Override
@@ -75,6 +122,7 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
                     loginSettingsService != null
                             && loginSettingsService.isOtpRequired()
                             && !user.isTotpEnabled();
+            case "RECOVERY_CODES" -> !completed;
             default -> !completed;
         };
     }
@@ -144,18 +192,25 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
             }
             case "CONFIGURE_TOTP" -> {
                 String code = value(submitted, "code");
-                if (totpService == null
-                        || loginSettingsService == null
-                        || user.getTotpSecret() == null
-                        || !totpService.matches(
-                                user.getTotpSecret(),
-                                code,
-                                loginSettingsService.otpAlgorithm(),
-                                loginSettingsService.otpDigits(),
-                                loginSettingsService.otpPeriodSeconds(),
-                                loginSettingsService.otpLookAheadWindow())) {
+                if (mfaBruteForceService != null
+                        && mfaBruteForceService.isLocked(user.getUsername())) {
                     throw ApiException.badRequest(
                             ApiErrorCode.INVALID_TOTP_CODE, "The authenticator code is invalid");
+                }
+                boolean validTotp =
+                        totpService != null
+                                && loginSettingsService != null
+                                && user.getTotpSecret() != null
+                                && consumeTotpCode(user, code);
+                if (!validTotp) {
+                    if (mfaBruteForceService != null) {
+                        mfaBruteForceService.recordFailure(user.getUsername());
+                    }
+                    throw ApiException.badRequest(
+                            ApiErrorCode.INVALID_TOTP_CODE, "The authenticator code is invalid");
+                }
+                if (mfaBruteForceService != null) {
+                    mfaBruteForceService.recordSuccess(user.getUsername());
                 }
                 user.setTotpEnabled(true);
                 if (userAccessInvalidationService != null) {
@@ -163,11 +218,41 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
                             user.getUsername(), currentSessionId);
                 }
             }
+            case "RECOVERY_CODES" -> {
+                if (!Boolean.TRUE.equals(submitted.get("accepted"))
+                        || recoveryCodeService == null
+                        || recoveryCodeService.status(user.getUsername()).remaining() == 0) {
+                    throw ApiException.badRequest(
+                            ApiErrorCode.INVALID_REQUEST,
+                            "Save the recovery codes before completing this action");
+                }
+            }
             default ->
                     throw ApiException.badRequest(
                             ApiErrorCode.ACTION_UNSUPPORTED,
                             "The required action is not supported");
         }
+    }
+
+    private boolean consumeTotpCode(UserEntity user, String code) {
+        var counter =
+                totpService.matchingCounter(
+                        user.getTotpSecret(),
+                        code,
+                        loginSettingsService.otpAlgorithm(),
+                        loginSettingsService.otpDigits(),
+                        loginSettingsService.otpPeriodSeconds(),
+                        loginSettingsService.otpLookAheadWindow());
+        if (counter.isEmpty()
+                || (!loginSettingsService.isOtpCodeReusable()
+                        && counter.getAsLong()
+                                == (user.getTotpLastUsedCounter() == null
+                                        ? Long.MIN_VALUE
+                                        : user.getTotpLastUsedCounter()))) {
+            return false;
+        }
+        user.setTotpLastUsedCounter(counter.getAsLong());
+        return true;
     }
 
     private static String value(Map<String, Object> values, String key) {

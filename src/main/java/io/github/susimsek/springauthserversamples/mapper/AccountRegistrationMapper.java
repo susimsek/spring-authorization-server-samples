@@ -28,6 +28,11 @@ public interface AccountRegistrationMapper {
     @Mapping(target = "lockedUntil", ignore = true)
     @Mapping(target = "temporaryLockoutCount", ignore = true)
     @Mapping(target = "permanentlyLocked", ignore = true)
+    @Mapping(target = "mfaFailedAttemptCount", ignore = true)
+    @Mapping(target = "mfaPermanentlyLocked", ignore = true)
+    @Mapping(target = "totpSecret", ignore = true)
+    @Mapping(target = "totpEnabled", ignore = true)
+    @Mapping(target = "totpLastUsedCounter", ignore = true)
     UserEntity toEntity(
             String username,
             String firstName,

@@ -20,7 +20,7 @@ public record AccountPasswordRequestDTO(
                         description =
                                 "The new password; must contain at least 12 characters and"
                                         + " complexity rules.",
-                        example = "new-password",
+                        example = "Change-me12!",
                         format = "password",
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 @NotBlank

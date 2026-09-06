@@ -406,6 +406,26 @@ class AdminUserServiceTest {
     }
 
     @Test
+    void resetTotpRemovesAuthenticatorAndInvalidatesAccess() {
+        UserEntity target = user(5L, "alice", AuthoritiesConstants.USER);
+        target.setTotpSecret("JBSWY3DPEHPK3PXP");
+        target.setTotpEnabled(true);
+        target.setTotpLastUsedCounter(123L);
+        UserEntity administrator = user(6L, "administrator", AuthoritiesConstants.ADMIN);
+        when(userRepository.findById(5L)).thenReturn(Optional.of(target));
+        when(userRepository.findByUsername("administrator")).thenReturn(Optional.of(administrator));
+
+        service().resetTotp(5L, "administrator");
+
+        assertThat(target.getTotpSecret()).isNull();
+        assertThat(target.isTotpEnabled()).isFalse();
+        assertThat(target.getTotpLastUsedCounter()).isNull();
+        verify(userActionService).invalidateActions(5L);
+        verify(userAccessInvalidationService).invalidate("alice");
+        verify(adminAuditEventService).record("user.totp.reset", "user", "5");
+    }
+
+    @Test
     void enablingUserDoesNotInvalidateSessions() {
         UserEntity target = user(5L, "alice", AuthoritiesConstants.USER);
         target.setEnabled(false);

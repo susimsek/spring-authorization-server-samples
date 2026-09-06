@@ -141,7 +141,7 @@ export function ConsentDetail({
             <dd className="col-md-9">
               <div className="d-flex flex-wrap gap-1">
                 {consent.authorities.map((authority) => (
-                  <Badge bg="light" text="dark" className="border" key={authority}>
+                  <Badge bg="secondary" key={authority}>
                     {authority.replace("SCOPE_", "")}
                   </Badge>
                 ))}

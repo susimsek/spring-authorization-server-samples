@@ -2,13 +2,14 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { Alert, Button, Card, Form, Stack } from "react-bootstrap";
+import { Alert, Button, Card, Form, Spinner, Stack } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import Link from "@/routing/Link";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { accountActionError, submitAccountAction } from "@/lib/account-actions-api";
+import { problemViolations } from "@/lib/problem-detail";
 import { ActionIcon } from "@/components/shared/ActionIcon";
 
 import { PasswordField } from "./PasswordField";
@@ -52,6 +53,7 @@ export function RegistrationForm({ dictionary }: RegistrationFormProps) {
   const {
     register,
     handleSubmit,
+    setError: setFieldError,
     formState: { errors, isSubmitting },
   } = useForm<Values>({
     resolver: zodResolver(schema),
@@ -74,7 +76,16 @@ export function RegistrationForm({ dictionary }: RegistrationFormProps) {
       });
       setCreated(true);
     } catch (failure) {
-      setError(accountActionError(failure, dictionary));
+      const violations = problemViolations(failure);
+      let fieldError = false;
+      violations.forEach(({ field, message }) => {
+        const fieldName = field as keyof Values;
+        if (fieldName in values && message) {
+          setFieldError(fieldName, { type: "server", message });
+          fieldError = true;
+        }
+      });
+      if (!fieldError) setError(accountActionError(failure, dictionary));
     }
   });
 
@@ -157,8 +168,12 @@ export function RegistrationForm({ dictionary }: RegistrationFormProps) {
               <div className="invalid-feedback d-block">{errors.confirmPassword.message}</div>
             )}
             <Button type="submit" size="lg" className="w-100" disabled={isSubmitting}>
-              <ActionIcon action="add" />
-              {isSubmitting ? copy.creating : copy.submit}
+              {isSubmitting ? (
+                <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+              ) : (
+                <ActionIcon action="add" />
+              )}
+              {copy.submit}
             </Button>
           </Form>
         )}

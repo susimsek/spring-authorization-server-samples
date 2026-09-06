@@ -45,6 +45,9 @@ public class LoginSettingsEntity {
     @Column(name = "brute_force_max_failures", nullable = false)
     private int bruteForceMaxFailures;
 
+    @Column(name = "brute_force_max_secondary_failures", nullable = false)
+    private int bruteForceMaxSecondaryFailures;
+
     @Column(name = "otp_enabled", nullable = false)
     private boolean otpEnabled;
 
@@ -65,4 +68,13 @@ public class LoginSettingsEntity {
 
     @Column(name = "otp_look_ahead_window", nullable = false)
     private int otpLookAheadWindow;
+
+    @Column(name = "otp_code_reusable", nullable = false)
+    private boolean otpCodeReusable;
+
+    @Column(name = "otp_add_recovery_codes", nullable = false)
+    private boolean otpAddRecoveryCodes;
+
+    @Column(name = "recovery_code_warning_threshold", nullable = false)
+    private int recoveryCodeWarningThreshold;
 }

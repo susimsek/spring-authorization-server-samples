@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, Col, Form, Row } from "react-bootstrap";
+import { Alert, Button, Card, Col, Form, Row, Spinner } from "react-bootstrap";
 import { useRouter } from "@/routing/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch, type FieldErrors } from "react-hook-form";
@@ -317,10 +317,11 @@ export function ClientForm({
       );
       if (response.status >= 300) {
         const errorCode = problemErrorCode(response.data);
-        problemViolations(response.data).forEach(({ field }) =>
+        problemViolations(response.data).forEach(({ field, message: serverMessage }) =>
           setFieldError(field as keyof FormState, {
             message:
-              errorCode === "admin_client_duplicate_client_id"
+              serverMessage ??
+              (errorCode === "admin_client_duplicate_client_id"
                 ? dictionary.admin.common.validation.clientIdDuplicate
                 : field === "scopes"
                   ? dictionary.admin.common.validation.scope
@@ -328,7 +329,7 @@ export function ClientForm({
                     ? dictionary.admin.common.validation.uri
                     : field === "clientAuthenticationMethods" || field === "authorizationGrantTypes"
                       ? dictionary.admin.common.validation.selection
-                      : dictionary.admin.common.validation.required,
+                      : dictionary.admin.common.validation.required),
           }),
         );
         throw new Error(
@@ -665,8 +666,12 @@ export function ClientForm({
           </Button>
         ) : (
           <Button type="submit" disabled={!canManageClients || saving}>
-            <AdminActionIcon action="save" />
-            {saving ? dictionary.admin.common.saving : dictionary.admin.common.save}
+            {saving ? (
+              <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+            ) : (
+              <AdminActionIcon action="save" />
+            )}
+            {dictionary.admin.common.save}
           </Button>
         )}
       </div>

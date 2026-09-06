@@ -1,18 +1,17 @@
 "use client";
 
-import { faUser } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useSearchParams } from "@/routing/navigation";
 import Link from "@/routing/Link";
 import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Alert, Button, Card, Form, InputGroup, Stack } from "react-bootstrap";
+import { Alert, Button, Card, Form, InputGroup, Spinner, Stack } from "react-bootstrap";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
 import type { Locale } from "@/i18n/config";
 import { ActionIcon } from "@/components/shared/ActionIcon";
+import { Icon } from "@/components/shared/Icon";
 
 import { PasswordField } from "./PasswordField";
 
@@ -22,6 +21,7 @@ type LoginFormProps = {
 };
 
 export function LoginForm({ dictionary }: LoginFormProps) {
+  const [submitting, setSubmitting] = useState(false);
   const [settings, setSettings] = useState({
     userRegistration: true,
     forgotPassword: true,
@@ -52,7 +52,10 @@ export function LoginForm({ dictionary }: LoginFormProps) {
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
-    void handleSubmit(() => form.submit())(event);
+    void handleSubmit(() => {
+      setSubmitting(true);
+      form.submit();
+    })(event);
   };
 
   return (
@@ -75,7 +78,7 @@ export function LoginForm({ dictionary }: LoginFormProps) {
             <Form.Label>{dictionary.login.username}</Form.Label>
             <InputGroup>
               <InputGroup.Text>
-                <FontAwesomeIcon icon={faUser} />
+                <Icon icon="user" />
               </InputGroup.Text>
               <Form.Control
                 type="text"
@@ -118,8 +121,12 @@ export function LoginForm({ dictionary }: LoginFormProps) {
             </div>
           )}
 
-          <Button type="submit" size="lg" className="w-100">
-            <ActionIcon action="login" />
+          <Button type="submit" size="lg" className="w-100" disabled={submitting}>
+            {submitting ? (
+              <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+            ) : (
+              <ActionIcon action="login" />
+            )}
             {dictionary.login.submit}
           </Button>
         </Form>

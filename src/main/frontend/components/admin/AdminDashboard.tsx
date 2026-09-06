@@ -1,15 +1,5 @@
 "use client";
 
-import {
-  faAddressCard,
-  faClockRotateLeft,
-  faLaptop,
-  faShieldHalved,
-  faUsers,
-  faKey,
-  faHeartPulse,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useState } from "react";
 import Link from "@/routing/Link";
 import type { Dictionary } from "@/i18n/get-dictionary";
@@ -18,6 +8,7 @@ import { adminRequest } from "@/lib/admin-api";
 import type { PageResponse } from "@/lib/api-types";
 import { useAdminAuth } from "./AdminAuthProvider";
 import { ActionIcon } from "@/components/shared/ActionIcon";
+import { Icon, type IconName } from "@/components/shared/Icon";
 
 type Dashboard = { clients: number; users: number; sessions: number; consents: number };
 type ServerInfo = {
@@ -70,12 +61,12 @@ export function AdminDashboard({ dictionary }: { dictionary: Dictionary }) {
       .catch(() => {});
     return () => c.abort();
   }, [accessToken]);
-  const cards = [
-    [dictionary.admin.nav.clients, dashboard?.clients, faAddressCard],
-    [dictionary.admin.nav.users, dashboard?.users, faUsers],
-    [dictionary.admin.nav.sessions, dashboard?.sessions, faLaptop],
-    [dictionary.admin.nav.consents, dashboard?.consents, faShieldHalved],
-  ] as const;
+  const cards: ReadonlyArray<readonly [string, number | undefined, IconName]> = [
+    [dictionary.admin.nav.clients, dashboard?.clients, "addressCard"],
+    [dictionary.admin.nav.users, dashboard?.users, "users"],
+    [dictionary.admin.nav.sessions, dashboard?.sessions, "laptop"],
+    [dictionary.admin.nav.consents, dashboard?.consents, "shieldHalved"],
+  ];
   return (
     <div className="d-grid gap-4">
       <div className="row g-3 g-xl-4">
@@ -88,7 +79,7 @@ export function AdminDashboard({ dictionary }: { dictionary: Dictionary }) {
                   <div className="admin-stat-value fw-semibold">{count ?? "-"}</div>
                 </div>
                 <span className="admin-stat-icon">
-                  <FontAwesomeIcon icon={icon} />
+                  <Icon icon={icon} />
                 </span>
               </div>
             </div>
@@ -100,7 +91,7 @@ export function AdminDashboard({ dictionary }: { dictionary: Dictionary }) {
           <div className="admin-panel-card card h-100">
             <div className="card-body">
               <div className="d-flex align-items-center gap-2 fw-semibold mb-3">
-                <FontAwesomeIcon icon={faHeartPulse} />
+                <Icon icon="heartPulse" />
                 {dictionary.admin.dashboard.serverHealth}
               </div>
               <div className="d-flex align-items-center gap-2 mb-2">
@@ -125,7 +116,7 @@ export function AdminDashboard({ dictionary }: { dictionary: Dictionary }) {
           <div className="admin-panel-card card h-100">
             <div className="card-body">
               <div className="d-flex align-items-center gap-2 fw-semibold mb-3">
-                <FontAwesomeIcon icon={faKey} />
+                <Icon icon="key" />
                 {dictionary.admin.dashboard.activeSigningKey}
               </div>
               {serverInfo?.activeSigningKey ? (
@@ -155,7 +146,7 @@ export function AdminDashboard({ dictionary }: { dictionary: Dictionary }) {
         <div className="card-header bg-body d-flex justify-content-between align-items-center py-3">
           <div>
             <div className="d-flex align-items-center gap-2 fw-semibold">
-              <FontAwesomeIcon icon={faClockRotateLeft} />
+              <Icon icon="clockRotateLeft" />
               {dictionary.admin.dashboard.recentEvents}
             </div>
             <div className="small text-body-secondary">

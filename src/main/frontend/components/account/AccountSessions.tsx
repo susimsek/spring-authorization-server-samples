@@ -1,7 +1,5 @@
 "use client";
 
-import { faClock, faDesktop, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useState } from "react";
 import { Badge, Button, Card } from "react-bootstrap";
 
@@ -20,6 +18,7 @@ import { PaginationControls } from "@/components/admin/PaginationControls";
 import { useAdminTableState } from "@/components/admin/useAdminTableState";
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import { ActionIcon } from "@/components/shared/ActionIcon";
+import { Icon } from "@/components/shared/Icon";
 import { useAccountAuth } from "./AccountAuthProvider";
 
 type PendingAction =
@@ -150,7 +149,7 @@ export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
                   data-cy="session-row"
                 >
                   <div className="account-session-icon">
-                    <FontAwesomeIcon icon={session.current ? faShieldHalved : faDesktop} />
+                    <Icon icon={session.current ? "shieldHalved" : "desktop"} />
                   </div>
                   <div className="flex-grow-1 min-w-0">
                     <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -164,7 +163,7 @@ export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
                     </div>
                     <div className="account-session-meta">
                       <span>
-                        <FontAwesomeIcon icon={faClock} />
+                        <Icon icon="clock" />
                         {copy.sessions.created}: {formatDateTime(session.createdAt)}
                       </span>
                       <span>
@@ -181,13 +180,7 @@ export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
                         </div>
                         <div className="d-flex flex-wrap gap-1">
                           {session.clients.map((client) => (
-                            <Badge
-                              key={client.clientId}
-                              bg="light"
-                              text="dark"
-                              className="border"
-                              title={client.clientId}
-                            >
+                            <Badge key={client.clientId} bg="secondary" title={client.clientId}>
                               {client.clientName}
                             </Badge>
                           ))}

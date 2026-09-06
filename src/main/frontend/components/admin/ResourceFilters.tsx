@@ -1,7 +1,5 @@
 import { useEffect, useEffectEvent, useState } from "react";
 import { Badge, Button, Form, InputGroup } from "react-bootstrap";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 
 import { ActionIcon } from "@/components/shared/ActionIcon";
 
@@ -49,7 +47,7 @@ export function ResourceFilters({
       <div className="d-flex flex-wrap align-items-center gap-2">
         <InputGroup className="admin-search-input">
           <InputGroup.Text>
-            <FontAwesomeIcon icon={faMagnifyingGlass} />
+            <ActionIcon action="search" className="m-0" />
           </InputGroup.Text>
           <Form.Control
             aria-label={searchLabel}
@@ -87,12 +85,7 @@ export function ResourceFilters({
             </span>
           )}
           {activeFilters.map((filter) => (
-            <Badge
-              bg="light"
-              text="dark"
-              className="border"
-              key={`${filter.label}-${filter.value}`}
-            >
+            <Badge bg="secondary" key={`${filter.label}-${filter.value}`}>
               {filter.label}: {filter.value}
               <button
                 aria-label={`${filter.label}: ${filter.value}`}

@@ -1,13 +1,22 @@
 export type ApiProblem = {
   detail?: string;
   errorCode?: string;
-  violations?: Array<{ field: string }>;
+  field?: string;
+  violations?: Array<{ field: string; message?: string | null }>;
 };
 
 export function problemViolations(data: unknown) {
-  if (typeof data !== "object" || data === null || !("violations" in data)) return [];
-  const violations = (data as ApiProblem).violations;
-  return Array.isArray(violations) ? violations : [];
+  if (typeof data !== "object" || data === null) return [];
+  const problem = data as ApiProblem;
+  if (Array.isArray(problem.violations)) return problem.violations;
+  return typeof problem.field === "string"
+    ? [
+        {
+          field: problem.field,
+          message: typeof problem.detail === "string" ? problem.detail : undefined,
+        },
+      ]
+    : [];
 }
 
 export function problemErrorCode(data: unknown) {

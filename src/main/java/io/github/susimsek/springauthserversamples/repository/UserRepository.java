@@ -36,6 +36,10 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Query("select u from UserEntity u where lower(u.username) = lower(:username)")
     Optional<UserEntity> findForLoginUpdate(@Param("username") String username);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from UserEntity u where lower(u.username) = lower(:username)")
+    Optional<UserEntity> findForMfaUpdate(@Param("username") String username);
+
     Optional<UserEntity> findByEmailIgnoreCase(String email);
 
     boolean existsByEmailIgnoreCase(String email);

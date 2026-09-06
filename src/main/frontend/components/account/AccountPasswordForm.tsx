@@ -1,15 +1,14 @@
 "use client";
 
-import { faCheck, faCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { Button, Card, Form } from "react-bootstrap";
+import { Button, Card, Form, Spinner } from "react-bootstrap";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import { ActionIcon } from "@/components/shared/ActionIcon";
+import { Icon } from "@/components/shared/Icon";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { problemViolations } from "@/lib/problem-detail";
 import { type AccountApiError, useUpdateAccountPasswordMutation } from "@/store/account-api-slice";
@@ -68,14 +67,16 @@ export function AccountPasswordForm({ dictionary }: { dictionary: Dictionary }) 
       alerts.addAlert(copy.security.saved);
     } catch (error) {
       let firstInvalid: "currentPassword" | "newPassword" | undefined;
-      problemViolations((error as AccountApiError).data).forEach(({ field }) => {
+      problemViolations((error as AccountApiError).data).forEach(({ field, message }) => {
         if (field === "currentPassword") {
           firstInvalid ??= "currentPassword";
-          setError("currentPassword", { message: copy.validation.currentPassword });
+          setError("currentPassword", {
+            message: message ?? copy.validation.currentPassword,
+          });
         }
         if (field === "newPassword") {
           firstInvalid ??= "newPassword";
-          setError("newPassword", { message: copy.validation.password });
+          setError("newPassword", { message: message ?? copy.validation.password });
         }
       });
       if (firstInvalid) setFocus(firstInvalid);
@@ -150,8 +151,12 @@ export function AccountPasswordForm({ dictionary }: { dictionary: Dictionary }) 
           </Form.Group>
           <div className="account-form-actions pt-4 border-top">
             <Button type="submit" disabled={!isDirty || isSubmitting} data-cy="save-password">
-              <ActionIcon action="save" />
-              {isSubmitting ? copy.common.saving : copy.common.save}
+              {isSubmitting ? (
+                <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+              ) : (
+                <ActionIcon action="save" />
+              )}
+              {copy.common.save}
             </Button>
             <Button
               type="button"
@@ -175,7 +180,7 @@ export function AccountPasswordForm({ dictionary }: { dictionary: Dictionary }) 
 function PolicyItem({ passed, label }: { passed: boolean; label: string }) {
   return (
     <div className={`account-policy-item ${passed ? "is-valid" : ""}`}>
-      <FontAwesomeIcon icon={passed ? faCheck : faCircle} aria-hidden="true" />
+      {passed ? <ActionIcon action="check" className="m-0" /> : <Icon icon="circle" />}
       <span>{label}</span>
     </div>
   );

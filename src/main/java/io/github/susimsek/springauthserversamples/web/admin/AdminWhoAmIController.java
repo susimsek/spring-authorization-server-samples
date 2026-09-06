@@ -1,10 +1,12 @@
 package io.github.susimsek.springauthserversamples.web.admin;
 
+import io.github.susimsek.springauthserversamples.config.openapi.OpenApiConfig;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminWhoAmIDTO;
 import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
 import io.github.susimsek.springauthserversamples.web.ApiController;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Map;
 import java.util.Set;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 @ApiController
 @RequestMapping("/api/admin")
 @Tag(name = "Admin - Identity", description = "Current administrator identity and access flags.")
+@SecurityRequirement(name = OpenApiConfig.ADMIN_BEARER)
 public class AdminWhoAmIController {
 
     @GetMapping("/whoami")

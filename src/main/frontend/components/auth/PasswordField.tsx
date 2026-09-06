@@ -1,9 +1,10 @@
 "use client";
 
-import { faEye, faEyeSlash, faLock } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { type ComponentProps, useState } from "react";
 import { Button, Form, InputGroup } from "react-bootstrap";
+
+import { ActionIcon } from "@/components/shared/ActionIcon";
+import { Icon } from "@/components/shared/Icon";
 
 type PasswordFieldProps = {
   controlId?: string;
@@ -31,7 +32,7 @@ export function PasswordField({
       <Form.Label>{label}</Form.Label>
       <InputGroup>
         <InputGroup.Text>
-          <FontAwesomeIcon icon={faLock} />
+          <Icon icon="lock" />
         </InputGroup.Text>
         <Form.Control
           type={visible ? "text" : "password"}
@@ -46,7 +47,7 @@ export function PasswordField({
           aria-label={visible ? hideLabel : showLabel}
           onClick={() => setVisible((value) => !value)}
         >
-          <FontAwesomeIcon icon={visible ? faEyeSlash : faEye} />
+          <ActionIcon action={visible ? "hide" : "show"} className="m-0" />
         </Button>
       </InputGroup>
     </Form.Group>

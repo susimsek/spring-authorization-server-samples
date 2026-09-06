@@ -50,6 +50,8 @@ public record AdminUserDTO(
                         description = "Whether the current password was assigned temporarily.",
                         example = "false")
                 boolean temporaryPassword,
+        @Schema(description = "Whether a TOTP authenticator is configured.", example = "true")
+                boolean totpEnabled,
         @Schema(
                         description = "Public avatar URL, if available.",
                         example = "/avatars/user-avatar-123?v=1725438600000",
@@ -92,6 +94,7 @@ public record AdminUserDTO(
                 false,
                 null,
                 0,
+                false,
                 false,
                 false,
                 avatarUrl,

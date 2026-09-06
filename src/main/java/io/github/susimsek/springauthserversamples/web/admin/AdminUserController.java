@@ -19,6 +19,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.util.Locale;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -201,6 +203,22 @@ class AdminUserController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/{id}/totp")
+    @Operation(
+            summary = "Reset user authenticator",
+            description =
+                    "Removes the user's current TOTP authenticator and invalidates affected"
+                            + " access.")
+    @ApiResponse(responseCode = "204", description = "Authenticator reset completed.")
+    ResponseEntity<Void> resetTotp(
+            @Parameter(description = "Internal user identifier.", example = "2", required = true)
+                    @PathVariable
+                    Long id,
+            Authentication authentication) {
+        adminUserService.resetTotp(id, authentication.getName());
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/{id}/unlock")
     @Operation(
             summary = "Unlock user account",
@@ -273,8 +291,12 @@ class AdminUserController {
                                                     @io.swagger.v3.oas.annotations.media.Schema(
                                                             type = "array",
                                                             example = "[\"VERIFY_EMAIL\"]")))
+                    @Valid
+                    @NotNull(message = "{app.api.problem.violation.required}")
+                    @Size(min = 1, max = 1, message = "{app.api.problem.violation.selection}")
                     @RequestBody
-                    Set<UserAction> actions,
+                    Set<@NotNull(message = "{app.api.problem.violation.required}") UserAction>
+                            actions,
             Locale locale,
             Authentication authentication) {
         if (actions == null || actions.size() != 1) {
