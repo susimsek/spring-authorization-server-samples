@@ -20,20 +20,6 @@ spring:
       max-request-size: 2MB
   messages:
     basename: i18n/messages
-  mail:
-    host: ${SPRING_MAIL_HOST:localhost}
-    port: ${SPRING_MAIL_PORT:1025}
-    username: ${SPRING_MAIL_USERNAME:}
-    password: ${SPRING_MAIL_PASSWORD:}
-    properties:
-      mail.smtp:
-        auth: ${SPRING_MAIL_SMTP_AUTH:false}
-        connectiontimeout: ${SPRING_MAIL_SMTP_CONNECTION_TIMEOUT:5000}
-        timeout: ${SPRING_MAIL_SMTP_TIMEOUT:5000}
-        writetimeout: ${SPRING_MAIL_SMTP_WRITE_TIMEOUT:5000}
-        starttls:
-          enable: ${SPRING_MAIL_SMTP_STARTTLS_ENABLE:false}
-          required: ${SPRING_MAIL_SMTP_STARTTLS_REQUIRED:false}
   profiles:
     active: '@spring.profiles.active@'
   docker:
@@ -89,37 +75,6 @@ management:
       show-details: never
 
 app:
-  security:
-    mfa-verification-timeout: ${APP_MFA_VERIFICATION_TIMEOUT:PT5M}
-    password-policy:
-      minimum-length: ${APP_PASSWORD_MINIMUM_LENGTH:12}
-      maximum-length: ${APP_PASSWORD_MAXIMUM_LENGTH:128}
-      minimum-uppercase: ${APP_PASSWORD_MINIMUM_UPPERCASE:1}
-      minimum-lowercase: ${APP_PASSWORD_MINIMUM_LOWERCASE:1}
-      minimum-digits: ${APP_PASSWORD_MINIMUM_DIGITS:1}
-      minimum-special-characters: ${APP_PASSWORD_MINIMUM_SPECIAL_CHARACTERS:1}
-      reject-username: ${APP_PASSWORD_REJECT_USERNAME:true}
-      reject-email: ${APP_PASSWORD_REJECT_EMAIL:true}
-      reject-common-passwords: ${APP_PASSWORD_REJECT_COMMON_PASSWORDS:true}
-      history-size: ${APP_PASSWORD_HISTORY_SIZE:5}
-      expiration-days: ${APP_PASSWORD_EXPIRATION_DAYS:90}
-      common-passwords: ${APP_PASSWORD_COMMON_PASSWORDS:password,123456,12345678,qwerty,qwerty123,admin,letmein}
-    brute-force:
-      enabled: ${APP_BRUTE_FORCE_ENABLED:true}
-      max-failures: ${APP_BRUTE_FORCE_MAX_FAILURES:5}
-      quick-login-window: ${APP_BRUTE_FORCE_QUICK_LOGIN_WINDOW:PT1S}
-      minimum-quick-login-wait: ${APP_BRUTE_FORCE_MINIMUM_QUICK_LOGIN_WAIT:PT1M}
-      wait-increment: ${APP_BRUTE_FORCE_WAIT_INCREMENT:PT1M}
-      max-wait: ${APP_BRUTE_FORCE_MAX_WAIT:PT15M}
-      failure-reset-time: ${APP_BRUTE_FORCE_FAILURE_RESET_TIME:PT12H}
-      max-temporary-lockouts: ${APP_BRUTE_FORCE_MAX_TEMPORARY_LOCKOUTS:3}
-      permanent-lockout: ${APP_BRUTE_FORCE_PERMANENT_LOCKOUT:false}
-      ip-requests-per-minute: ${APP_LOGIN_IP_REQUESTS_PER_MINUTE:30}
-      username-ip-requests-per-minute: ${APP_LOGIN_USERNAME_IP_REQUESTS_PER_MINUTE:5}
-  mail:
-    enabled: ${APP_MAIL_ENABLED:false}
-    from: ${APP_MAIL_FROM:Spring Authorization Server <no-reply@localhost>}
-    base-url: ${APP_MAIL_BASE_URL:http://127.0.0.1:9090}
   session:
     cleanup-cron: "0 * * * * *"
   authorization-server:

@@ -25,6 +25,27 @@ type Settings = {
   bruteForceEnabled: boolean;
   bruteForceMaxFailures: number;
   bruteForceMaxSecondaryFailures: number;
+  mfaVerificationTimeoutSeconds: number;
+  passwordMaximumLength: number;
+  passwordMinimumUppercase: number;
+  passwordMinimumLowercase: number;
+  passwordMinimumDigits: number;
+  passwordMinimumSpecialCharacters: number;
+  passwordRejectUsername: boolean;
+  passwordRejectEmail: boolean;
+  passwordRejectCommonPasswords: boolean;
+  passwordHistorySize: number;
+  passwordExpirationDays: number;
+  passwordCommonPasswords: string;
+  bruteForceQuickLoginWindowMillis: number;
+  bruteForceMinimumQuickLoginWaitSeconds: number;
+  bruteForceWaitIncrementSeconds: number;
+  bruteForceMaxWaitSeconds: number;
+  bruteForceFailureResetTimeSeconds: number;
+  bruteForceMaxTemporaryLockouts: number;
+  bruteForcePermanentLockout: boolean;
+  bruteForceIpRequestsPerMinute: number;
+  bruteForceUsernameIpRequestsPerMinute: number;
   otpEnabled: boolean;
   otpRequired: boolean;
   otpIssuer: string;
@@ -56,6 +77,27 @@ export default function LoginSettingsPage({ embedded = false }: { embedded?: boo
     bruteForceEnabled: z.boolean(),
     bruteForceMaxFailures: z.number().int().min(1, validation.positiveNumber),
     bruteForceMaxSecondaryFailures: z.number().int().min(0, validation.positiveNumber),
+    mfaVerificationTimeoutSeconds: z.number().int().min(1, validation.positiveNumber),
+    passwordMaximumLength: z.number().int().min(8, validation.maximumPasswordLength),
+    passwordMinimumUppercase: z.number().int().min(0, validation.positiveNumber),
+    passwordMinimumLowercase: z.number().int().min(0, validation.positiveNumber),
+    passwordMinimumDigits: z.number().int().min(0, validation.positiveNumber),
+    passwordMinimumSpecialCharacters: z.number().int().min(0, validation.positiveNumber),
+    passwordRejectUsername: z.boolean(),
+    passwordRejectEmail: z.boolean(),
+    passwordRejectCommonPasswords: z.boolean(),
+    passwordHistorySize: z.number().int().min(0, validation.positiveNumber),
+    passwordExpirationDays: z.number().int().min(0, validation.positiveNumber),
+    passwordCommonPasswords: z.string().trim().min(1, validation.required).max(4000),
+    bruteForceQuickLoginWindowMillis: z.number().int().min(0, validation.positiveNumber),
+    bruteForceMinimumQuickLoginWaitSeconds: z.number().int().min(0, validation.positiveNumber),
+    bruteForceWaitIncrementSeconds: z.number().int().min(0, validation.positiveNumber),
+    bruteForceMaxWaitSeconds: z.number().int().min(0, validation.positiveNumber),
+    bruteForceFailureResetTimeSeconds: z.number().int().min(0, validation.positiveNumber),
+    bruteForceMaxTemporaryLockouts: z.number().int().min(0, validation.positiveNumber),
+    bruteForcePermanentLockout: z.boolean(),
+    bruteForceIpRequestsPerMinute: z.number().int().min(1, validation.positiveNumber),
+    bruteForceUsernameIpRequestsPerMinute: z.number().int().min(1, validation.positiveNumber),
     otpEnabled: z.boolean(),
     otpRequired: z.boolean(),
     otpIssuer: z.string().trim().min(1, validation.required).max(100),
@@ -164,6 +206,77 @@ export default function LoginSettingsPage({ embedded = false }: { embedded?: boo
                   registration={register("passwordMinimumLength", { valueAsNumber: true })}
                 />
                 <NumberField
+                  id="login-password-maximum"
+                  label={copy.passwordMaximumLength}
+                  error={errors.passwordMaximumLength?.message}
+                  registration={register("passwordMaximumLength", { valueAsNumber: true })}
+                />
+                <NumberField
+                  id="login-password-uppercase"
+                  label={copy.passwordMinimumUppercase}
+                  error={errors.passwordMinimumUppercase?.message}
+                  registration={register("passwordMinimumUppercase", { valueAsNumber: true })}
+                />
+                <NumberField
+                  id="login-password-lowercase"
+                  label={copy.passwordMinimumLowercase}
+                  error={errors.passwordMinimumLowercase?.message}
+                  registration={register("passwordMinimumLowercase", { valueAsNumber: true })}
+                />
+                <NumberField
+                  id="login-password-digits"
+                  label={copy.passwordMinimumDigits}
+                  error={errors.passwordMinimumDigits?.message}
+                  registration={register("passwordMinimumDigits", { valueAsNumber: true })}
+                />
+                <NumberField
+                  id="login-password-special"
+                  label={copy.passwordMinimumSpecialCharacters}
+                  error={errors.passwordMinimumSpecialCharacters?.message}
+                  registration={register("passwordMinimumSpecialCharacters", {
+                    valueAsNumber: true,
+                  })}
+                />
+                <Form.Check
+                  type="switch"
+                  label={copy.passwordRejectUsername}
+                  {...register("passwordRejectUsername")}
+                />
+                <Form.Check
+                  type="switch"
+                  label={copy.passwordRejectEmail}
+                  {...register("passwordRejectEmail")}
+                />
+                <Form.Check
+                  type="switch"
+                  label={copy.passwordRejectCommonPasswords}
+                  {...register("passwordRejectCommonPasswords")}
+                />
+                <NumberField
+                  id="login-password-history"
+                  label={copy.passwordHistorySize}
+                  error={errors.passwordHistorySize?.message}
+                  registration={register("passwordHistorySize", { valueAsNumber: true })}
+                />
+                <NumberField
+                  id="login-password-expiration"
+                  label={copy.passwordExpirationDays}
+                  error={errors.passwordExpirationDays?.message}
+                  registration={register("passwordExpirationDays", { valueAsNumber: true })}
+                />
+                <Form.Group controlId="login-password-common-list">
+                  <Form.Label>{copy.passwordCommonPasswords}</Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={3}
+                    isInvalid={Boolean(errors.passwordCommonPasswords)}
+                    {...register("passwordCommonPasswords")}
+                  />
+                  <Form.Control.Feedback type="invalid">
+                    {errors.passwordCommonPasswords?.message}
+                  </Form.Control.Feedback>
+                </Form.Group>
+                <NumberField
                   id="login-brute-force-failures"
                   label={copy.bruteForceMaxFailures}
                   error={errors.bruteForceMaxFailures?.message}
@@ -177,6 +290,14 @@ export default function LoginSettingsPage({ embedded = false }: { embedded?: boo
                     valueAsNumber: true,
                   })}
                 />
+                <NumberField
+                  id="login-mfa-verification-timeout"
+                  label={copy.mfaVerificationTimeout}
+                  error={errors.mfaVerificationTimeoutSeconds?.message}
+                  registration={register("mfaVerificationTimeoutSeconds", {
+                    valueAsNumber: true,
+                  })}
+                />
               </div>
               <Form.Check
                 className="mb-4"
@@ -184,6 +305,75 @@ export default function LoginSettingsPage({ embedded = false }: { embedded?: boo
                 label={copy.bruteForceEnabled}
                 {...register("bruteForceEnabled")}
               />
+              <div className="d-grid gap-3 mb-4">
+                <NumberField
+                  id="login-quick-window"
+                  label={copy.bruteForceQuickLoginWindowMillis}
+                  error={errors.bruteForceQuickLoginWindowMillis?.message}
+                  registration={register("bruteForceQuickLoginWindowMillis", {
+                    valueAsNumber: true,
+                  })}
+                />
+                <NumberField
+                  id="login-quick-wait"
+                  label={copy.bruteForceMinimumQuickLoginWaitSeconds}
+                  error={errors.bruteForceMinimumQuickLoginWaitSeconds?.message}
+                  registration={register("bruteForceMinimumQuickLoginWaitSeconds", {
+                    valueAsNumber: true,
+                  })}
+                />
+                <NumberField
+                  id="login-wait-increment"
+                  label={copy.bruteForceWaitIncrementSeconds}
+                  error={errors.bruteForceWaitIncrementSeconds?.message}
+                  registration={register("bruteForceWaitIncrementSeconds", {
+                    valueAsNumber: true,
+                  })}
+                />
+                <NumberField
+                  id="login-max-wait"
+                  label={copy.bruteForceMaxWaitSeconds}
+                  error={errors.bruteForceMaxWaitSeconds?.message}
+                  registration={register("bruteForceMaxWaitSeconds", { valueAsNumber: true })}
+                />
+                <NumberField
+                  id="login-failure-reset"
+                  label={copy.bruteForceFailureResetTimeSeconds}
+                  error={errors.bruteForceFailureResetTimeSeconds?.message}
+                  registration={register("bruteForceFailureResetTimeSeconds", {
+                    valueAsNumber: true,
+                  })}
+                />
+                <NumberField
+                  id="login-max-temporary-lockouts"
+                  label={copy.bruteForceMaxTemporaryLockouts}
+                  error={errors.bruteForceMaxTemporaryLockouts?.message}
+                  registration={register("bruteForceMaxTemporaryLockouts", {
+                    valueAsNumber: true,
+                  })}
+                />
+                <Form.Check
+                  type="switch"
+                  label={copy.bruteForcePermanentLockout}
+                  {...register("bruteForcePermanentLockout")}
+                />
+                <NumberField
+                  id="login-ip-rate-limit"
+                  label={copy.bruteForceIpRequestsPerMinute}
+                  error={errors.bruteForceIpRequestsPerMinute?.message}
+                  registration={register("bruteForceIpRequestsPerMinute", {
+                    valueAsNumber: true,
+                  })}
+                />
+                <NumberField
+                  id="login-user-ip-rate-limit"
+                  label={copy.bruteForceUsernameIpRequestsPerMinute}
+                  error={errors.bruteForceUsernameIpRequestsPerMinute?.message}
+                  registration={register("bruteForceUsernameIpRequestsPerMinute", {
+                    valueAsNumber: true,
+                  })}
+                />
+              </div>
               <hr className="my-4" />
               <Form.Check
                 className="mb-3"

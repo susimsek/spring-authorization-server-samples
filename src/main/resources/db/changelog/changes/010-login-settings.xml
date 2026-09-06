@@ -18,6 +18,38 @@
 			<column name="password_minimum_length" type="int" defaultValueNumeric="12"><constraints nullable="false"/></column>
 			<column name="brute_force_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
 			<column name="brute_force_max_failures" type="int" defaultValueNumeric="5"><constraints nullable="false"/></column>
+			<column name="brute_force_max_secondary_failures" type="int" defaultValueNumeric="0"><constraints nullable="false"/></column>
+			<column name="mfa_verification_timeout_seconds" type="int" defaultValueNumeric="300"><constraints nullable="false"/></column>
+			<column name="password_maximum_length" type="int" defaultValueNumeric="128"><constraints nullable="false"/></column>
+			<column name="password_minimum_uppercase" type="int" defaultValueNumeric="1"><constraints nullable="false"/></column>
+			<column name="password_minimum_lowercase" type="int" defaultValueNumeric="1"><constraints nullable="false"/></column>
+			<column name="password_minimum_digits" type="int" defaultValueNumeric="1"><constraints nullable="false"/></column>
+			<column name="password_minimum_special_characters" type="int" defaultValueNumeric="1"><constraints nullable="false"/></column>
+			<column name="password_reject_username" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+			<column name="password_reject_email" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+			<column name="password_reject_common_passwords" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+			<column name="password_history_size" type="int" defaultValueNumeric="5"><constraints nullable="false"/></column>
+			<column name="password_expiration_days" type="int" defaultValueNumeric="90"><constraints nullable="false"/></column>
+			<column name="password_common_passwords" type="varchar(4000)" defaultValue="password,123456,12345678,qwerty,qwerty123,admin,letmein"><constraints nullable="false"/></column>
+			<column name="brute_force_quick_login_window_millis" type="int" defaultValueNumeric="1000"><constraints nullable="false"/></column>
+			<column name="brute_force_minimum_quick_login_wait_seconds" type="int" defaultValueNumeric="60"><constraints nullable="false"/></column>
+			<column name="brute_force_wait_increment_seconds" type="int" defaultValueNumeric="60"><constraints nullable="false"/></column>
+			<column name="brute_force_max_wait_seconds" type="int" defaultValueNumeric="900"><constraints nullable="false"/></column>
+			<column name="brute_force_failure_reset_time_seconds" type="int" defaultValueNumeric="43200"><constraints nullable="false"/></column>
+			<column name="brute_force_max_temporary_lockouts" type="int" defaultValueNumeric="3"><constraints nullable="false"/></column>
+			<column name="brute_force_permanent_lockout" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="brute_force_ip_requests_per_minute" type="int" defaultValueNumeric="30"><constraints nullable="false"/></column>
+			<column name="brute_force_username_ip_requests_per_minute" type="int" defaultValueNumeric="5"><constraints nullable="false"/></column>
+			<column name="otp_enabled" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="otp_required" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="otp_issuer" type="varchar(100)" defaultValue="Spring Authorization Server"><constraints nullable="false"/></column>
+			<column name="otp_algorithm" type="varchar(10)" defaultValue="SHA1"><constraints nullable="false"/></column>
+			<column name="otp_digits" type="int" defaultValueNumeric="6"><constraints nullable="false"/></column>
+			<column name="otp_period_seconds" type="int" defaultValueNumeric="30"><constraints nullable="false"/></column>
+			<column name="otp_look_ahead_window" type="int" defaultValueNumeric="1"><constraints nullable="false"/></column>
+			<column name="otp_code_reusable" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="otp_add_recovery_codes" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="recovery_code_warning_threshold" type="int" defaultValueNumeric="2"><constraints nullable="false"/></column>
 		</createTable>
 		<loadData encoding="UTF-8" file="db/data/login-settings.csv" separator=";" tableName="login_settings" usePreparedStatements="true">
 			<column header="id" type="numeric"/>
@@ -30,6 +62,38 @@
 			<column header="password_minimum_length" type="numeric"/>
 			<column header="brute_force_enabled" type="boolean"/>
 			<column header="brute_force_max_failures" type="numeric"/>
+			<column header="brute_force_max_secondary_failures" type="numeric"/>
+			<column header="mfa_verification_timeout_seconds" type="numeric"/>
+			<column header="password_maximum_length" type="numeric"/>
+			<column header="password_minimum_uppercase" type="numeric"/>
+			<column header="password_minimum_lowercase" type="numeric"/>
+			<column header="password_minimum_digits" type="numeric"/>
+			<column header="password_minimum_special_characters" type="numeric"/>
+			<column header="password_reject_username" type="boolean"/>
+			<column header="password_reject_email" type="boolean"/>
+			<column header="password_reject_common_passwords" type="boolean"/>
+			<column header="password_history_size" type="numeric"/>
+			<column header="password_expiration_days" type="numeric"/>
+			<column header="password_common_passwords" type="string"/>
+			<column header="brute_force_quick_login_window_millis" type="numeric"/>
+			<column header="brute_force_minimum_quick_login_wait_seconds" type="numeric"/>
+			<column header="brute_force_wait_increment_seconds" type="numeric"/>
+			<column header="brute_force_max_wait_seconds" type="numeric"/>
+			<column header="brute_force_failure_reset_time_seconds" type="numeric"/>
+			<column header="brute_force_max_temporary_lockouts" type="numeric"/>
+			<column header="brute_force_permanent_lockout" type="boolean"/>
+			<column header="brute_force_ip_requests_per_minute" type="numeric"/>
+			<column header="brute_force_username_ip_requests_per_minute" type="numeric"/>
+			<column header="otp_enabled" type="boolean"/>
+			<column header="otp_required" type="boolean"/>
+			<column header="otp_issuer" type="string"/>
+			<column header="otp_algorithm" type="string"/>
+			<column header="otp_digits" type="numeric"/>
+			<column header="otp_period_seconds" type="numeric"/>
+			<column header="otp_look_ahead_window" type="numeric"/>
+			<column header="otp_code_reusable" type="boolean"/>
+			<column header="otp_add_recovery_codes" type="boolean"/>
+			<column header="recovery_code_warning_threshold" type="numeric"/>
 		</loadData>
 	</changeSet>
 </databaseChangeLog>

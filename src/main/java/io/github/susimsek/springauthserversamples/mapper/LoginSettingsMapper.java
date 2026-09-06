@@ -30,6 +30,37 @@ public interface LoginSettingsMapper {
     @Mapping(target = "bruteForceEnabled", source = "bruteForceEnabled")
     @Mapping(target = "bruteForceMaxFailures", source = "bruteForceMaxFailures")
     @Mapping(target = "bruteForceMaxSecondaryFailures", source = "bruteForceMaxSecondaryFailures")
+    @Mapping(target = "mfaVerificationTimeoutSeconds", source = "mfaVerificationTimeoutSeconds")
+    @Mapping(target = "passwordMaximumLength", source = "passwordMaximumLength")
+    @Mapping(target = "passwordMinimumUppercase", source = "passwordMinimumUppercase")
+    @Mapping(target = "passwordMinimumLowercase", source = "passwordMinimumLowercase")
+    @Mapping(target = "passwordMinimumDigits", source = "passwordMinimumDigits")
+    @Mapping(
+            target = "passwordMinimumSpecialCharacters",
+            source = "passwordMinimumSpecialCharacters")
+    @Mapping(target = "passwordRejectUsername", source = "passwordRejectUsername")
+    @Mapping(target = "passwordRejectEmail", source = "passwordRejectEmail")
+    @Mapping(target = "passwordRejectCommonPasswords", source = "passwordRejectCommonPasswords")
+    @Mapping(target = "passwordHistorySize", source = "passwordHistorySize")
+    @Mapping(target = "passwordExpirationDays", source = "passwordExpirationDays")
+    @Mapping(target = "passwordCommonPasswords", source = "passwordCommonPasswords")
+    @Mapping(
+            target = "bruteForceQuickLoginWindowMillis",
+            source = "bruteForceQuickLoginWindowMillis")
+    @Mapping(
+            target = "bruteForceMinimumQuickLoginWaitSeconds",
+            source = "bruteForceMinimumQuickLoginWaitSeconds")
+    @Mapping(target = "bruteForceWaitIncrementSeconds", source = "bruteForceWaitIncrementSeconds")
+    @Mapping(target = "bruteForceMaxWaitSeconds", source = "bruteForceMaxWaitSeconds")
+    @Mapping(
+            target = "bruteForceFailureResetTimeSeconds",
+            source = "bruteForceFailureResetTimeSeconds")
+    @Mapping(target = "bruteForceMaxTemporaryLockouts", source = "bruteForceMaxTemporaryLockouts")
+    @Mapping(target = "bruteForcePermanentLockout", source = "bruteForcePermanentLockout")
+    @Mapping(target = "bruteForceIpRequestsPerMinute", source = "bruteForceIpRequestsPerMinute")
+    @Mapping(
+            target = "bruteForceUsernameIpRequestsPerMinute",
+            source = "bruteForceUsernameIpRequestsPerMinute")
     @Mapping(target = "otpEnabled", source = "otpEnabled")
     @Mapping(target = "otpRequired", source = "otpRequired")
     @Mapping(target = "otpIssuer", source = "otpIssuer")
@@ -53,6 +84,37 @@ public interface LoginSettingsMapper {
     @Mapping(target = "bruteForceEnabled", source = "bruteForceEnabled")
     @Mapping(target = "bruteForceMaxFailures", source = "bruteForceMaxFailures")
     @Mapping(target = "bruteForceMaxSecondaryFailures", source = "bruteForceMaxSecondaryFailures")
+    @Mapping(target = "mfaVerificationTimeoutSeconds", source = "mfaVerificationTimeoutSeconds")
+    @Mapping(target = "passwordMaximumLength", source = "passwordMaximumLength")
+    @Mapping(target = "passwordMinimumUppercase", source = "passwordMinimumUppercase")
+    @Mapping(target = "passwordMinimumLowercase", source = "passwordMinimumLowercase")
+    @Mapping(target = "passwordMinimumDigits", source = "passwordMinimumDigits")
+    @Mapping(
+            target = "passwordMinimumSpecialCharacters",
+            source = "passwordMinimumSpecialCharacters")
+    @Mapping(target = "passwordRejectUsername", source = "passwordRejectUsername")
+    @Mapping(target = "passwordRejectEmail", source = "passwordRejectEmail")
+    @Mapping(target = "passwordRejectCommonPasswords", source = "passwordRejectCommonPasswords")
+    @Mapping(target = "passwordHistorySize", source = "passwordHistorySize")
+    @Mapping(target = "passwordExpirationDays", source = "passwordExpirationDays")
+    @Mapping(target = "passwordCommonPasswords", source = "passwordCommonPasswords")
+    @Mapping(
+            target = "bruteForceQuickLoginWindowMillis",
+            source = "bruteForceQuickLoginWindowMillis")
+    @Mapping(
+            target = "bruteForceMinimumQuickLoginWaitSeconds",
+            source = "bruteForceMinimumQuickLoginWaitSeconds")
+    @Mapping(target = "bruteForceWaitIncrementSeconds", source = "bruteForceWaitIncrementSeconds")
+    @Mapping(target = "bruteForceMaxWaitSeconds", source = "bruteForceMaxWaitSeconds")
+    @Mapping(
+            target = "bruteForceFailureResetTimeSeconds",
+            source = "bruteForceFailureResetTimeSeconds")
+    @Mapping(target = "bruteForceMaxTemporaryLockouts", source = "bruteForceMaxTemporaryLockouts")
+    @Mapping(target = "bruteForcePermanentLockout", source = "bruteForcePermanentLockout")
+    @Mapping(target = "bruteForceIpRequestsPerMinute", source = "bruteForceIpRequestsPerMinute")
+    @Mapping(
+            target = "bruteForceUsernameIpRequestsPerMinute",
+            source = "bruteForceUsernameIpRequestsPerMinute")
     @Mapping(target = "otpEnabled", source = "otpEnabled")
     @Mapping(target = "otpRequired", source = "otpRequired")
     @Mapping(target = "otpIssuer", source = "otpIssuer", qualifiedByName = "trim")

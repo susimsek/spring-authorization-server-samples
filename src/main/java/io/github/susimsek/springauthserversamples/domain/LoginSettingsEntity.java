@@ -48,6 +48,69 @@ public class LoginSettingsEntity {
     @Column(name = "brute_force_max_secondary_failures", nullable = false)
     private int bruteForceMaxSecondaryFailures;
 
+    @Column(name = "mfa_verification_timeout_seconds", nullable = false)
+    private int mfaVerificationTimeoutSeconds;
+
+    @Column(name = "password_maximum_length", nullable = false)
+    private int passwordMaximumLength;
+
+    @Column(name = "password_minimum_uppercase", nullable = false)
+    private int passwordMinimumUppercase;
+
+    @Column(name = "password_minimum_lowercase", nullable = false)
+    private int passwordMinimumLowercase;
+
+    @Column(name = "password_minimum_digits", nullable = false)
+    private int passwordMinimumDigits;
+
+    @Column(name = "password_minimum_special_characters", nullable = false)
+    private int passwordMinimumSpecialCharacters;
+
+    @Column(name = "password_reject_username", nullable = false)
+    private boolean passwordRejectUsername;
+
+    @Column(name = "password_reject_email", nullable = false)
+    private boolean passwordRejectEmail;
+
+    @Column(name = "password_reject_common_passwords", nullable = false)
+    private boolean passwordRejectCommonPasswords;
+
+    @Column(name = "password_history_size", nullable = false)
+    private int passwordHistorySize;
+
+    @Column(name = "password_expiration_days", nullable = false)
+    private int passwordExpirationDays;
+
+    @Column(name = "password_common_passwords", nullable = false, length = 4000)
+    private String passwordCommonPasswords;
+
+    @Column(name = "brute_force_quick_login_window_millis", nullable = false)
+    private int bruteForceQuickLoginWindowMillis;
+
+    @Column(name = "brute_force_minimum_quick_login_wait_seconds", nullable = false)
+    private int bruteForceMinimumQuickLoginWaitSeconds;
+
+    @Column(name = "brute_force_wait_increment_seconds", nullable = false)
+    private int bruteForceWaitIncrementSeconds;
+
+    @Column(name = "brute_force_max_wait_seconds", nullable = false)
+    private int bruteForceMaxWaitSeconds;
+
+    @Column(name = "brute_force_failure_reset_time_seconds", nullable = false)
+    private int bruteForceFailureResetTimeSeconds;
+
+    @Column(name = "brute_force_max_temporary_lockouts", nullable = false)
+    private int bruteForceMaxTemporaryLockouts;
+
+    @Column(name = "brute_force_permanent_lockout", nullable = false)
+    private boolean bruteForcePermanentLockout;
+
+    @Column(name = "brute_force_ip_requests_per_minute", nullable = false)
+    private int bruteForceIpRequestsPerMinute;
+
+    @Column(name = "brute_force_username_ip_requests_per_minute", nullable = false)
+    private int bruteForceUsernameIpRequestsPerMinute;
+
     @Column(name = "otp_enabled", nullable = false)
     private boolean otpEnabled;
 

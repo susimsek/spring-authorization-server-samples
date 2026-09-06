@@ -57,7 +57,7 @@ public class PasswordPolicyService {
     private void validate(UserEntity user, String rawPassword, boolean checkCurrentPassword) {
         ApplicationProperties.PasswordPolicy policy = policy();
         if (!StringUtils.hasText(rawPassword)
-                || rawPassword.length() < minimumLength(policy)
+                || rawPassword.length() < policy.minimumLength()
                 || rawPassword.length() > policy.maximumLength()) {
             reject("Password does not meet the configured length policy");
         }
@@ -122,13 +122,9 @@ public class PasswordPolicyService {
     }
 
     public ApplicationProperties.PasswordPolicy policy() {
-        return applicationProperties.security().passwordPolicy();
-    }
-
-    private int minimumLength(ApplicationProperties.PasswordPolicy policy) {
         return loginSettingsService == null
-                ? policy.minimumLength()
-                : loginSettingsService.passwordMinimumLength();
+                ? applicationProperties.security().passwordPolicy()
+                : loginSettingsService.passwordPolicy();
     }
 
     private void trimHistory(Long userId, int limit) {

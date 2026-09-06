@@ -224,7 +224,7 @@ public class UserActionService {
                     case UPDATE_PASSWORD -> "reset-password";
                 };
         String url =
-                UriComponentsBuilder.fromUriString(applicationProperties.mail().baseUrl())
+                UriComponentsBuilder.fromUriString(baseUrl())
                         .pathSegment(route)
                         .queryParam("token", rawToken)
                         .build()
@@ -245,6 +245,12 @@ public class UserActionService {
         return emailSettingsService == null
                 ? applicationProperties.mail().enabled()
                 : emailSettingsService.current().enabled();
+    }
+
+    private String baseUrl() {
+        return emailSettingsService == null
+                ? applicationProperties.mail().baseUrl()
+                : emailSettingsService.current().baseUrl();
     }
 
     private UserActionTokenEntity requireToken(String rawToken, UserAction expectedAction) {

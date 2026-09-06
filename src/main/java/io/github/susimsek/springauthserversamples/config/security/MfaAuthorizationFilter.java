@@ -1,5 +1,6 @@
 package io.github.susimsek.springauthserversamples.config.security;
 
+import io.github.susimsek.springauthserversamples.service.LoginSettingsService;
 import io.github.susimsek.springauthserversamples.service.account.MfaService;
 import io.github.susimsek.springauthserversamples.service.requiredaction.RequiredActionService;
 import jakarta.servlet.FilterChain;
@@ -13,7 +14,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -31,20 +31,25 @@ public class MfaAuthorizationFilter extends OncePerRequestFilter {
 
     private final MfaService mfaService;
     private final RequiredActionService requiredActionService;
-    private final Duration verificationTimeout;
+    private final LoginSettingsService loginSettingsService;
+    private final Duration fallbackVerificationTimeout;
 
     @Autowired
     MfaAuthorizationFilter(
             MfaService mfaService,
             RequiredActionService requiredActionService,
-            @Value("${app.security.mfa-verification-timeout:PT5M}") Duration verificationTimeout) {
+            LoginSettingsService loginSettingsService) {
         this.mfaService = mfaService;
         this.requiredActionService = requiredActionService;
-        this.verificationTimeout = verificationTimeout;
+        this.loginSettingsService = loginSettingsService;
+        this.fallbackVerificationTimeout = DEFAULT_VERIFICATION_TIMEOUT;
     }
 
     MfaAuthorizationFilter(MfaService mfaService, RequiredActionService requiredActionService) {
-        this(mfaService, requiredActionService, DEFAULT_VERIFICATION_TIMEOUT);
+        this.mfaService = mfaService;
+        this.requiredActionService = requiredActionService;
+        this.loginSettingsService = null;
+        this.fallbackVerificationTimeout = DEFAULT_VERIFICATION_TIMEOUT;
     }
 
     @Override
@@ -104,7 +109,11 @@ public class MfaAuthorizationFilter extends OncePerRequestFilter {
             return false;
         }
         long age = Instant.now().toEpochMilli() - ((Number) verifiedAt).longValue();
-        return age >= 0 && age <= verificationTimeout.toMillis();
+        Duration timeout =
+                loginSettingsService == null
+                        ? fallbackVerificationTimeout
+                        : loginSettingsService.mfaVerificationTimeout();
+        return age >= 0 && age <= timeout.toMillis();
     }
 
     private static void clearVerification(HttpSession session) {

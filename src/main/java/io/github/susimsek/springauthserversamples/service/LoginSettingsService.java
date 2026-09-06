@@ -1,5 +1,6 @@
 package io.github.susimsek.springauthserversamples.service;
 
+import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
 import io.github.susimsek.springauthserversamples.domain.LoginSettingsEntity;
 import io.github.susimsek.springauthserversamples.dto.account.LoginSettingsDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminLoginSettingsDTO;
@@ -110,6 +111,46 @@ public class LoginSettingsService {
     @Transactional(readOnly = true)
     public int bruteForceMaxSecondaryFailures() {
         return settings().getBruteForceMaxSecondaryFailures();
+    }
+
+    @Transactional(readOnly = true)
+    public Duration mfaVerificationTimeout() {
+        return Duration.ofSeconds(settings().getMfaVerificationTimeoutSeconds());
+    }
+
+    @Transactional(readOnly = true)
+    public ApplicationProperties.PasswordPolicy passwordPolicy() {
+        LoginSettingsEntity value = settings();
+        return new ApplicationProperties.PasswordPolicy(
+                value.getPasswordMinimumLength(),
+                value.getPasswordMaximumLength(),
+                value.getPasswordMinimumUppercase(),
+                value.getPasswordMinimumLowercase(),
+                value.getPasswordMinimumDigits(),
+                value.getPasswordMinimumSpecialCharacters(),
+                value.isPasswordRejectUsername(),
+                value.isPasswordRejectEmail(),
+                value.isPasswordRejectCommonPasswords(),
+                value.getPasswordHistorySize(),
+                value.getPasswordExpirationDays(),
+                value.getPasswordCommonPasswords());
+    }
+
+    @Transactional(readOnly = true)
+    public ApplicationProperties.BruteForce bruteForcePolicy() {
+        LoginSettingsEntity value = settings();
+        return new ApplicationProperties.BruteForce(
+                value.isBruteForceEnabled(),
+                value.getBruteForceMaxFailures(),
+                Duration.ofMillis(value.getBruteForceQuickLoginWindowMillis()),
+                Duration.ofSeconds(value.getBruteForceMinimumQuickLoginWaitSeconds()),
+                Duration.ofSeconds(value.getBruteForceWaitIncrementSeconds()),
+                Duration.ofSeconds(value.getBruteForceMaxWaitSeconds()),
+                Duration.ofSeconds(value.getBruteForceFailureResetTimeSeconds()),
+                value.getBruteForceMaxTemporaryLockouts(),
+                value.isBruteForcePermanentLockout(),
+                value.getBruteForceIpRequestsPerMinute(),
+                value.getBruteForceUsernameIpRequestsPerMinute());
     }
 
     @Transactional(readOnly = true)

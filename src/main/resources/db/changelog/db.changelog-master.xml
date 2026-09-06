@@ -20,6 +20,5 @@
 	<include file="db/changelog/changes/009-password-security.xml"/>
 	<include file="db/changelog/changes/010-login-settings.xml"/>
 	<include file="db/changelog/changes/011-email-settings.xml"/>
-	<include file="db/changelog/changes/012-mfa-settings.xml"/>
 	<include file="db/changelog/changes/013-recovery-codes.xml"/>
 </databaseChangeLog>

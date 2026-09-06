@@ -31,11 +31,7 @@ public class AccountLockService {
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public void recordFailure(String username, String ipAddress) {
-        if ((!applicationProperties.security().bruteForce().enabled()
-                        && loginSettingsService == null)
-                || (loginSettingsService != null && !loginSettingsService.isBruteForceEnabled())
-                || username == null
-                || username.isBlank()) {
+        if (!policy().enabled() || username == null || username.isBlank()) {
             return;
         }
         userRepository
@@ -72,7 +68,7 @@ public class AccountLockService {
     }
 
     private void recordFailure(UserEntity user, Instant now, String ipAddress) {
-        ApplicationProperties.BruteForce policy = applicationProperties.security().bruteForce();
+        ApplicationProperties.BruteForce policy = policy();
         if (!user.isEnabled() || user.isPermanentlyLocked()) {
             return;
         }
@@ -88,11 +84,7 @@ public class AccountLockService {
         int failures = user.getFailedLoginCount() + 1;
         user.setFailedLoginCount(failures);
         user.setLastFailedLoginAt(now);
-        int maxFailures =
-                loginSettingsService == null
-                        ? policy.maxFailures()
-                        : loginSettingsService.bruteForceMaxFailures();
-        if (failures < Math.max(1, maxFailures)) {
+        if (failures < Math.max(1, policy.maxFailures())) {
             if (previousFailure != null
                     && now.minus(policy.quickLoginWindow()).isBefore(previousFailure)) {
                 user.setLockedUntil(now.plus(policy.minimumQuickLoginWait()));
@@ -126,5 +118,11 @@ public class AccountLockService {
         user.setLockedUntil(null);
         user.setTemporaryLockoutCount(0);
         user.setPermanentlyLocked(false);
+    }
+
+    private ApplicationProperties.BruteForce policy() {
+        return loginSettingsService == null
+                ? applicationProperties.security().bruteForce()
+                : loginSettingsService.bruteForcePolicy();
     }
 }

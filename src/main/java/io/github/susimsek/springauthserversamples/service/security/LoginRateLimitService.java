@@ -27,10 +27,10 @@ public class LoginRateLimitService {
     }
 
     public RateLimitDecision check(String username, String ipAddress) {
-        ApplicationProperties.BruteForce policy = applicationProperties.security().bruteForce();
-        if (loginSettingsService != null && !loginSettingsService.isBruteForceEnabled()) {
-            return new RateLimitDecision(true, -1, -1, 0);
-        }
+        ApplicationProperties.BruteForce policy =
+                loginSettingsService == null
+                        ? applicationProperties.security().bruteForce()
+                        : loginSettingsService.bruteForcePolicy();
         if (!policy.enabled()) {
             return new RateLimitDecision(true, -1, -1, 0);
         }
