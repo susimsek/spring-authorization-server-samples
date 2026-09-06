@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "@/routing/Link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Dropdown, Form, Modal, Spinner } from "react-bootstrap";
-import { useForm } from "react-hook-form";
+import { useForm } from "@/lib/form";
 import { z } from "zod";
 
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";

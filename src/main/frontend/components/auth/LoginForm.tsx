@@ -4,7 +4,7 @@ import { useSearchParams } from "@/routing/navigation";
 import Link from "@/routing/Link";
 import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm } from "@/lib/form";
 import { z } from "zod";
 import { Alert, Button, Card, Form, InputGroup, Spinner, Stack } from "react-bootstrap";
 

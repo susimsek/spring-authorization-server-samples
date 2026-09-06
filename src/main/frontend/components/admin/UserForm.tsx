@@ -5,7 +5,8 @@ import Image from "next/image";
 import { Alert, Button, Card, Form, Spinner } from "react-bootstrap";
 import { useRouter } from "@/routing/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "@/lib/form";
+import { useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import type { Locale } from "@/i18n/config";

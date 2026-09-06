@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { Alert, Button, Card, Form, Spinner } from "react-bootstrap";
-import { useForm } from "react-hook-form";
+import { useForm } from "@/lib/form";
 import { z } from "zod";
 
 import type { Dictionary } from "@/i18n/get-dictionary";

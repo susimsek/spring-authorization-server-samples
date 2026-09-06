@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
 import { type FormEvent, useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm } from "@/lib/form";
 import { Alert, Badge, Button, Card, Form, Spinner, Stack } from "react-bootstrap";
 import { z } from "zod";
 

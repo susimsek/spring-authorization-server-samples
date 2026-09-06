@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { Alert, Button, Card, Col, Form, Row, Spinner } from "react-bootstrap";
 import { useRouter } from "@/routing/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useWatch, type FieldErrors } from "react-hook-form";
+import { useForm } from "@/lib/form";
+import { useWatch, type FieldErrors } from "react-hook-form";
 import { z } from "zod";
 
 import type { Locale } from "@/i18n/config";

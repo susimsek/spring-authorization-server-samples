@@ -69,6 +69,7 @@ These instructions apply to `src/main/frontend/**` and supplement the repository
 - Use `noValidate` with React Hook Form, render field-level errors through the shared Bootstrap invalid-control pattern, and ensure submit validation focuses or navigates to the first invalid field/step.
 - Do not manage submitted field values or validation errors with component-local state. Keep only transient UI state local, such as search input, selected table row, modal visibility, and loading state.
 - Form validation messages must come from the localized dictionary. Map backend `ProblemDetail` violations to the matching React Hook Form fields where applicable.
+- Clear a server-side field error as soon as the user changes that field, including forms using `onBlur` or the default `onSubmit` mode, so stale backend errors do not remain visible after the value is edited.
 - Disable submission while a mutation is pending, show localized success/error feedback, and reset form values only after a successful server response.
 - Keep frontend validation consistent with backend constraints, but treat backend validation and authorization as authoritative; never remove server-side checks because a client schema exists.
 - Administration settings forms keep editable controls in a single vertical column, matching the Keycloak-style settings layout; do not place settings inputs side by side in grid columns.

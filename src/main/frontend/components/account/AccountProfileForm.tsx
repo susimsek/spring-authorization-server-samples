@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { Badge, Button, Card, Col, Form, Row, Spinner } from "react-bootstrap";
-import { useForm } from "react-hook-form";
+import { useForm } from "@/lib/form";
 import { z } from "zod";
 
 import { DetailLoadingState, ErrorState } from "@/components/admin/AsyncState";

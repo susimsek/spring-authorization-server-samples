@@ -3,7 +3,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { Button, Card, Form, Spinner } from "react-bootstrap";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "@/lib/form";
+import { useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Card, Form, Spinner } from "react-bootstrap";
-import { useForm } from "react-hook-form";
+import { useForm } from "@/lib/form";
 import { useRouter } from "@/routing/navigation";
 import { z } from "zod";
 

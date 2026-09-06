@@ -6,7 +6,7 @@ import { useSearchParams } from "@/routing/navigation";
 import { usePathname } from "@/routing/navigation";
 import { useState, type ReactNode } from "react";
 import { Alert, Button, Card, Form, Spinner, Stack } from "react-bootstrap";
-import { useForm } from "react-hook-form";
+import { useForm } from "@/lib/form";
 import { z } from "zod";
 
 import type { Locale } from "@/i18n/config";
