@@ -11,6 +11,12 @@ public record AdminRoleDetailDTO(
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 String name,
         @Schema(
+                        description = "Human-readable role description.",
+                        example = "Allows viewing user accounts.",
+                        nullable = true,
+                        requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+                String description,
+        @Schema(
                         description = "Number of users assigned to the role.",
                         example = "3",
                         format = "int64",
@@ -25,4 +31,10 @@ public record AdminRoleDetailDTO(
                         description = "Users assigned to this role.",
                         example = "{\"content\":[],\"totalElements\":0,\"totalPages\":0}",
                         requiredMode = Schema.RequiredMode.REQUIRED)
-                Page<AdminRoleUserDTO> users) {}
+                Page<AdminRoleUserDTO> users) {
+
+    public AdminRoleDetailDTO(
+            String name, long userCount, boolean protectedRole, Page<AdminRoleUserDTO> users) {
+        this(name, null, userCount, protectedRole, users);
+    }
+}

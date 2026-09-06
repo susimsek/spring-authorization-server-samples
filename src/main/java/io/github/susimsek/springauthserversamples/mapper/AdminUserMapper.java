@@ -3,8 +3,9 @@ package io.github.susimsek.springauthserversamples.mapper;
 import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminUserDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminUserGroupRoleDTO;
+import io.github.susimsek.springauthserversamples.service.security.EffectiveRoleService;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.mapstruct.Context;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -14,8 +15,8 @@ import org.mapstruct.MappingConstants;
 public interface AdminUserMapper {
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "firstName", ignore = true)
-    @Mapping(target = "lastName", ignore = true)
+    @Mapping(target = "firstName", source = "firstName")
+    @Mapping(target = "lastName", source = "lastName")
     @Mapping(target = "email", source = "normalizedEmail")
     @Mapping(target = "password", source = "encodedPassword")
     @Mapping(target = "pendingEmail", ignore = true)
@@ -43,6 +44,8 @@ public interface AdminUserMapper {
             expression = "java(normalizedEmail != null && emailVerified)")
     UserEntity toEntity(
             String username,
+            String firstName,
+            String lastName,
             String normalizedEmail,
             boolean emailVerified,
             boolean enabled,
@@ -50,9 +53,12 @@ public interface AdminUserMapper {
             Set<AuthorityEntity> resolvedAuthorities);
 
     default AdminUserDTO toDTO(UserEntity entity, @Context String avatarUrl) {
+        EffectiveRoleService.EffectiveRoles roleView = EffectiveRoleService.resolve(entity);
         return new AdminUserDTO(
                 entity.getId(),
                 entity.getUsername(),
+                entity.getFirstName(),
+                entity.getLastName(),
                 entity.getEmail(),
                 entity.isEmailVerified(),
                 entity.isEnabled(),
@@ -66,14 +72,25 @@ public interface AdminUserMapper {
                 entity.isTemporaryPassword(),
                 entity.isTotpEnabled(),
                 avatarUrl,
-                authorities(entity),
+                roleView.assignedRoles(),
+                roleView.assignedRoles(),
+                roleView.groupMappings().stream()
+                        .map(
+                                mapping ->
+                                        new AdminUserGroupRoleDTO(
+                                                mapping.groupId(),
+                                                mapping.groupPath(),
+                                                mapping.roles()))
+                        .toList(),
+                roleView.inheritedRoles(),
+                roleView.effectiveRoles(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt());
     }
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "firstName", ignore = true)
-    @Mapping(target = "lastName", ignore = true)
+    @Mapping(target = "firstName", source = "firstName")
+    @Mapping(target = "lastName", source = "lastName")
     @Mapping(target = "email", source = "normalizedEmail")
     @Mapping(target = "password", source = "encodedPassword")
     @Mapping(target = "pendingEmail", ignore = true)
@@ -101,6 +118,8 @@ public interface AdminUserMapper {
             expression = "java(normalizedEmail != null && emailVerified)")
     void update(
             String username,
+            String firstName,
+            String lastName,
             String normalizedEmail,
             boolean emailVerified,
             boolean enabled,
@@ -117,8 +136,6 @@ public interface AdminUserMapper {
     }
 
     default Set<String> authorities(UserEntity entity) {
-        return entity.getAuthorities().stream()
-                .map(AuthorityEntity::getName)
-                .collect(Collectors.toUnmodifiableSet());
+        return EffectiveRoleService.resolve(entity).assignedRoles();
     }
 }

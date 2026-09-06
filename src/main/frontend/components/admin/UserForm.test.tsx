@@ -95,6 +95,11 @@ describe("UserForm", () => {
             username: "ada",
             enabled: true,
             authorities: ["ROLE_USER"],
+            assignedRoles: ["ROLE_USER"],
+            groupMappings: [
+              { groupId: 3, groupPath: "/finance/operations", roles: ["ROLE_ADMIN"] },
+            ],
+            effectiveRoles: ["ROLE_ADMIN", "ROLE_USER"],
             avatarUrl: "/avatar.png",
           },
         } as never;
@@ -107,6 +112,7 @@ describe("UserForm", () => {
     expect(screen.getByAltText("")).toBeVisible();
 
     view.rerender(<UserForm dictionary={dictionary} id="7" locale="en" tab="roles" />);
+    expect(await screen.findByText("/finance/operations")).toBeVisible();
     await waitFor(() => expect(screen.getAllByRole("checkbox")).toHaveLength(2));
     fireEvent.click(screen.getAllByRole("checkbox")[1]);
 

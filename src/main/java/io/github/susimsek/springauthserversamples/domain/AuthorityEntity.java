@@ -33,6 +33,13 @@ public class AuthorityEntity {
     @Column(name = "name", nullable = false, unique = true, length = 50)
     private String name;
 
+    @Column(name = "description", length = 500)
+    private String description;
+
+    public AuthorityEntity(Long id, String name) {
+        this(id, name, null);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

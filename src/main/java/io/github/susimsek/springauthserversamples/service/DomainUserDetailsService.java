@@ -1,10 +1,9 @@
 package io.github.susimsek.springauthserversamples.service;
 
-import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
-import io.github.susimsek.springauthserversamples.domain.GroupEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.service.security.AccountLockService;
+import io.github.susimsek.springauthserversamples.service.security.EffectiveRoleService;
 import java.time.Instant;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.User;
@@ -62,22 +61,6 @@ public class DomainUserDetailsService implements UserDetailsService {
     }
 
     private static String[] authorities(UserEntity user) {
-        return java.util.stream.Stream.concat(
-                        user.getAuthorities().stream(),
-                        user.getGroups().stream()
-                                .flatMap(group -> groupAuthorities(group).stream()))
-                .map(AuthorityEntity::getName)
-                .distinct()
-                .toArray(String[]::new);
-    }
-
-    private static java.util.Set<AuthorityEntity> groupAuthorities(GroupEntity group) {
-        java.util.Set<AuthorityEntity> authorities = new java.util.LinkedHashSet<>();
-        GroupEntity current = group;
-        while (current != null) {
-            authorities.addAll(current.getAuthorities());
-            current = current.getParent();
-        }
-        return authorities;
+        return EffectiveRoleService.effectiveRoleNames(user).toArray(String[]::new);
     }
 }

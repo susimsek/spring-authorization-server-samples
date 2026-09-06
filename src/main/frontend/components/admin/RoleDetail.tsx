@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Badge, Button, Card, Form, ListGroup, Spinner } from "react-bootstrap";
 import { useRouter } from "@/routing/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "@/lib/form";
+import { z } from "zod";
 
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
@@ -22,6 +25,7 @@ import { useAdminTableState } from "./useAdminTableState";
 type RoleUser = { id: number; username: string; enabled: boolean };
 type RoleDetailData = {
   name: string;
+  description?: string | null;
   userCount: number;
   protectedRole: boolean;
   users: PageResponse<RoleUser>;
@@ -48,6 +52,19 @@ export function RoleDetail({
   const { page, query, setPage, setQuery, setSize, size } = useAdminTableState();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const descriptionSchema = z.object({
+    description: z.string().trim().max(500, dictionary.admin.common.validation.max500),
+  });
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors: descriptionErrors, isSubmitting: descriptionSaving },
+  } = useForm<z.infer<typeof descriptionSchema>>({
+    resolver: zodResolver(descriptionSchema),
+    mode: "onBlur",
+    defaultValues: { description: "" },
+  });
 
   const load = useCallback(async () => {
     if (!accessToken) return;
@@ -58,13 +75,32 @@ export function RoleDetail({
       });
       if (roleResponse.status >= 300) throw new Error();
       setDetail(roleResponse.data);
+      reset({ description: roleResponse.data.description ?? "" });
       setError(false);
     } catch {
       setError(true);
     } finally {
       setLoading(false);
     }
-  }, [accessToken, actualName, page, query, size]);
+  }, [accessToken, actualName, page, query, reset, size]);
+
+  const saveDescription = async ({ description }: z.infer<typeof descriptionSchema>) => {
+    if (!access?.manageRoles || !accessToken || !detail) return;
+    try {
+      const response = await adminRequest<RoleDetailData>(accessToken, {
+        url: `/api/admin/roles/${encodeURIComponent(actualName)}`,
+        method: "PUT",
+        data: { name: detail.name, description: description || null },
+      });
+      if (response.status >= 300) throw new Error();
+      setDetail((current) =>
+        current ? { ...current, description: response.data.description } : current,
+      );
+      alerts.addAlert(dictionary.admin.roles.descriptionSaved);
+    } catch {
+      alerts.addError(dictionary.admin.roles.descriptionSaveError);
+    }
+  };
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -159,6 +195,38 @@ export function RoleDetail({
         </div>
         {detail.protectedRole && <Badge bg="secondary">{dictionary.admin.roles.protected}</Badge>}
       </div>
+
+      <Card className="admin-panel-card">
+        <Card.Body>
+          <Form noValidate onSubmit={handleSubmit(saveDescription)}>
+            <Form.Group controlId="role-description-detail">
+              <Form.Label>{dictionary.admin.roles.description}</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                maxLength={500}
+                disabled={!access?.manageRoles || descriptionSaving}
+                isInvalid={Boolean(descriptionErrors.description)}
+                {...register("description")}
+              />
+              <Form.Control.Feedback type="invalid">
+                {descriptionErrors.description?.message}
+              </Form.Control.Feedback>
+              <Form.Text>{dictionary.admin.roles.descriptionHelp}</Form.Text>
+            </Form.Group>
+            {access?.manageRoles && (
+              <Button className="mt-3" disabled={descriptionSaving} type="submit">
+                {descriptionSaving ? (
+                  <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                ) : (
+                  <AdminActionIcon action="save" />
+                )}
+                {dictionary.admin.roles.saveDescription}
+              </Button>
+            )}
+          </Form>
+        </Card.Body>
+      </Card>
 
       <Card className="admin-panel-card">
         <Card.Body>

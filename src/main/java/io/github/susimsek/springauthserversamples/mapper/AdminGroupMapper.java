@@ -6,6 +6,7 @@ import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupUserDTO;
+import io.github.susimsek.springauthserversamples.service.security.EffectiveRoleService;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -45,6 +46,7 @@ public interface AdminGroupMapper {
                         .map(AuthorityEntity::getName)
                         .sorted()
                         .collect(Collectors.toCollection(LinkedHashSet::new)),
+                EffectiveRoleService.effectiveGroupRoleNames(group),
                 userCount == null ? 0L : userCount);
     }
 

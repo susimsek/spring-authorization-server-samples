@@ -12,15 +12,23 @@ import org.springframework.data.domain.Page;
 public interface AdminRoleMapper {
 
     @org.mapstruct.Mapping(target = "id", ignore = true)
-    AuthorityEntity toEntity(String name);
+    AuthorityEntity toEntity(String name, String description);
+
+    default AuthorityEntity toEntity(String name) {
+        return toEntity(name, null);
+    }
 
     AdminRoleDTO toDTO(AuthorityEntity entity);
 
     AdminRoleUserDTO toUserDTO(UserEntity entity);
 
     default io.github.susimsek.springauthserversamples.dto.admin.AdminRoleDetailDTO toDetailDTO(
-            String name, long userCount, boolean protectedRole, Page<AdminRoleUserDTO> users) {
+            String name,
+            String description,
+            long userCount,
+            boolean protectedRole,
+            Page<AdminRoleUserDTO> users) {
         return new io.github.susimsek.springauthserversamples.dto.admin.AdminRoleDetailDTO(
-                name, userCount, protectedRole, users);
+                name, description, userCount, protectedRole, users);
     }
 }

@@ -18,7 +18,7 @@ import { ResourceFilters } from "./ResourceFilters";
 import { RowActions } from "./RowActions";
 import { useAdminTableState } from "./useAdminTableState";
 
-type Role = { name: string };
+type Role = { name: string; description?: string | null };
 
 export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
   const { access, accessToken } = useAdminAuth();
@@ -148,12 +148,15 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
         <tbody>
           {roles.map((role) => (
             <tr key={role.name}>
-              <td className="font-monospace" data-label={copy.name}>
+              <td data-label={copy.name}>
                 <Link
                   className="text-decoration-none"
                   href={`/admin/roles/${encodeURIComponent(role.name)}`}
                 >
-                  {role.name}
+                  <span className="font-monospace d-block">{role.name}</span>
+                  {role.description && (
+                    <span className="small text-body-secondary">{role.description}</span>
+                  )}
                 </Link>
               </td>
               <td className="text-end">

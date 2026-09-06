@@ -28,9 +28,12 @@ import { RowActions } from "./RowActions";
 type User = {
   id: number;
   username: string;
+  firstName?: string | null;
+  lastName?: string | null;
   enabled: boolean;
   avatarUrl: string | null;
   authorities: string[];
+  effectiveRoles?: string[];
 };
 type Session = {
   id: string;
@@ -461,12 +464,17 @@ function UsersTable({
                   className="fw-semibold text-decoration-none"
                   href={`/admin/users/${encodeURIComponent(String(user.id))}/details`}
                 >
-                  {user.username}
+                  {user.firstName || user.lastName
+                    ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()
+                    : user.username}
                 </Link>
+                {(user.firstName || user.lastName) && (
+                  <span className="small text-body-secondary">{user.username}</span>
+                )}
               </div>
             </td>
             <td data-label={copy.roles}>
-              {user.authorities.map((role) => (
+              {(user.effectiveRoles ?? user.authorities).map((role) => (
                 <Badge bg="secondary" className="me-1" key={role}>
                   {role}
                 </Badge>

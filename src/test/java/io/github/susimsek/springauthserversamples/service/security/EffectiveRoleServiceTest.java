@@ -1,0 +1,51 @@
+package io.github.susimsek.springauthserversamples.service.security;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
+import io.github.susimsek.springauthserversamples.domain.GroupEntity;
+import io.github.susimsek.springauthserversamples.domain.UserEntity;
+import java.util.Set;
+import org.junit.jupiter.api.Test;
+
+class EffectiveRoleServiceTest {
+
+    @Test
+    void resolvesAssignedGroupAndParentRoles() {
+        GroupEntity parent = group(1L, "finance", "ROLE_ADMIN");
+        GroupEntity child = group(2L, "operations", "ROLE_USER_VIEWER");
+        child.setParent(parent);
+
+        UserEntity user = new UserEntity();
+        user.setAuthorities(Set.of(authority(3L, "ROLE_USER")));
+        user.setGroups(Set.of(child));
+
+        var roles = EffectiveRoleService.resolve(user);
+
+        assertThat(roles.assignedRoles()).containsExactly("ROLE_USER");
+        assertThat(roles.inheritedRoles())
+                .containsExactlyInAnyOrder("ROLE_ADMIN", "ROLE_USER_VIEWER");
+        assertThat(roles.effectiveRoles())
+                .containsExactlyInAnyOrder("ROLE_ADMIN", "ROLE_USER", "ROLE_USER_VIEWER");
+        assertThat(roles.groupMappings())
+                .singleElement()
+                .satisfies(
+                        mapping -> {
+                            assertThat(mapping.groupPath()).isEqualTo("/finance/operations");
+                            assertThat(mapping.roles())
+                                    .containsExactlyInAnyOrder("ROLE_ADMIN", "ROLE_USER_VIEWER");
+                        });
+    }
+
+    private static GroupEntity group(Long id, String name, String role) {
+        GroupEntity group = new GroupEntity();
+        group.setId(id);
+        group.setName(name);
+        group.setAuthorities(Set.of(authority(id, role)));
+        return group;
+    }
+
+    private static AuthorityEntity authority(Long id, String name) {
+        return new AuthorityEntity(id, name);
+    }
+}

@@ -82,6 +82,29 @@ class AdminRoleServiceTest {
     }
 
     @Test
+    void createsRoleWithNormalizedDescription() {
+        when(authorityRepository.existsByName("ROLE_AUDITOR")).thenReturn(false);
+        when(authorityRepository.save(any(AuthorityEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        AdminRoleDTO created = service().createRole("ROLE_AUDITOR", "  Reviews access  ");
+
+        assertThat(created).isEqualTo(new AdminRoleDTO("ROLE_AUDITOR", "Reviews access"));
+    }
+
+    @Test
+    void updatesRoleDescriptionAndRecordsAuditEvent() {
+        AuthorityEntity role = authority(4L, "ROLE_AUDITOR");
+        when(authorityRepository.findByName("ROLE_AUDITOR")).thenReturn(Optional.of(role));
+
+        AdminRoleDTO updated = service().updateRole("ROLE_AUDITOR", "  Reviews access  ");
+
+        assertThat(role.getDescription()).isEqualTo("Reviews access");
+        assertThat(updated).isEqualTo(new AdminRoleDTO("ROLE_AUDITOR", "Reviews access"));
+        verify(adminAuditEventService).record("role.updated", "role", "ROLE_AUDITOR");
+    }
+
+    @Test
     void deleteRoleRejectsMissingRole() {
         when(authorityRepository.findByName("ROLE_AUDITOR")).thenReturn(Optional.empty());
 
@@ -173,6 +196,24 @@ class AdminRoleServiceTest {
 
         assertThat(service().availableUsers("ROLE_AUDITOR", " bo ", pageable).getContent())
                 .containsExactly(new AdminRoleUserDTO(11L, "bob", true));
+    }
+
+    @Test
+    void excludesUsersWhoAlreadyReceiveRoleFromAGroup() {
+        UserEntity alice = new UserEntity();
+        alice.setId(12L);
+        alice.setUsername("alice");
+        alice.setEnabled(true);
+        AuthorityEntity role = authority(4L, "ROLE_AUDITOR");
+        io.github.susimsek.springauthserversamples.domain.GroupEntity group =
+                new io.github.susimsek.springauthserversamples.domain.GroupEntity();
+        group.setAuthorities(java.util.Set.of(role));
+        alice.setGroups(java.util.Set.of(group));
+        when(authorityRepository.existsByName("ROLE_AUDITOR")).thenReturn(true);
+        when(userRepository.findAllWithEffectiveAuthorities()).thenReturn(List.of(alice));
+
+        assertThat(service().availableUsers("ROLE_AUDITOR", "", PageRequest.of(0, 10))).isEmpty();
+        verify(userRepository, never()).findAvailableRoleUsers(any(), any(), any());
     }
 
     private AdminRoleService service() {

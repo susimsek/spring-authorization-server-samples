@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Button, Stack } from "react-bootstrap";
 
 export type TotpSetupDetails = {
@@ -49,12 +50,13 @@ export function TotpSetupDetails({ setup, copy }: { setup: TotpSetupDetails; cop
   ) : (
     <Stack gap={2} className="align-items-center text-center">
       <div className="fw-semibold">{copy.qrTitle}</div>
-      <img
+      <Image
         src={setup.qrCode}
         width={220}
         height={220}
         role="img"
         alt={copy.qrTitle}
+        unoptimized
         className="border rounded p-2 bg-body"
       />
       <Button variant="link" className="p-0" onClick={() => setManual(true)}>

@@ -30,6 +30,7 @@ export function RoleCreateForm({ dictionary }: { dictionary: Dictionary; locale:
       .min(1, dictionary.admin.common.validation.required)
       .max(50, dictionary.admin.common.validation.max50)
       .regex(/^ROLE_[A-Z0-9_]+$/, dictionary.admin.common.validation.roleFormat),
+    description: z.string().trim().max(500, dictionary.admin.common.validation.max500),
   });
   const {
     register,
@@ -39,16 +40,16 @@ export function RoleCreateForm({ dictionary }: { dictionary: Dictionary; locale:
   } = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     mode: "onBlur",
-    defaultValues: { name: "" },
+    defaultValues: { name: "", description: "" },
   });
 
-  const submit = async ({ name }: z.infer<typeof schema>) => {
+  const submit = async ({ name, description }: z.infer<typeof schema>) => {
     if (!accessToken || !canManageRoles) return;
     try {
       const response = await adminRequest<Role>(accessToken, {
         url: "/api/admin/roles",
         method: "POST",
-        data: { name },
+        data: { name, ...(description ? { description } : {}) },
       });
       if (response.status >= 300) {
         const result = applyProblemToForm(response.data, setError, {
@@ -86,6 +87,20 @@ export function RoleCreateForm({ dictionary }: { dictionary: Dictionary; locale:
             />
             <Form.Control.Feedback type="invalid">{errors.name?.message}</Form.Control.Feedback>
             <Form.Text>{copy.help}</Form.Text>
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="role-description">
+            <Form.Label>{copy.description}</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={3}
+              maxLength={500}
+              isInvalid={Boolean(errors.description)}
+              {...register("description")}
+            />
+            <Form.Control.Feedback type="invalid">
+              {errors.description?.message}
+            </Form.Control.Feedback>
+            <Form.Text>{copy.descriptionHelp}</Form.Text>
           </Form.Group>
           <div className="admin-create-actions">
             <Button variant="secondary" onClick={() => router.push(`/admin/roles`)}>

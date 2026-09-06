@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -137,12 +138,32 @@ class AdminRoleController {
     @ApiResponse(responseCode = "201", description = "Role created and returned.")
     ResponseEntity<AdminRoleDTO> createRole(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                            description = "Role name.",
+                            description = "Role name and optional description.",
                             required = true)
                     @Valid
                     @RequestBody
                     AdminRoleRequestDTO request) {
-        return ResponseEntity.status(201).body(adminRoleService.createRole(request.name()));
+        AdminRoleDTO created =
+                request.description() == null
+                        ? adminRoleService.createRole(request.name())
+                        : adminRoleService.createRole(request.name(), request.description());
+        return ResponseEntity.status(201).body(created);
+    }
+
+    @PutMapping("/{name}")
+    @Operation(summary = "Update role", description = "Updates a realm role description.")
+    @ApiResponse(responseCode = "200", description = "Role updated and returned.")
+    AdminRoleDTO updateRole(
+            @Parameter(description = "Realm role name.", example = "ROLE_AUDITOR", required = true)
+                    @PathVariable
+                    String name,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                            description = "Updated role description.",
+                            required = true)
+                    @Valid
+                    @RequestBody
+                    AdminRoleRequestDTO request) {
+        return adminRoleService.updateRole(name, request.description());
     }
 
     @DeleteMapping("/{name}")

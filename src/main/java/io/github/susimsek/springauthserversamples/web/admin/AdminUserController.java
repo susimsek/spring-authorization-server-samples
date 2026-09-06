@@ -115,16 +115,29 @@ class AdminUserController {
                     @RequestBody
                     AdminUserRequestDTO request,
             Authentication authentication) {
-        return ResponseEntity.status(201)
-                .body(
-                        adminUserService.createUser(
+        AdminUserDTO user =
+                request.firstName() == null
+                                && request.lastName() == null
+                                && request.email() == null
+                                && request.temporary() == null
+                        ? adminUserService.createUser(
                                 request.username(),
-                                request.email(),
-                                Boolean.TRUE.equals(request.emailVerified()),
                                 request.password(),
                                 request.enabled() == null || request.enabled(),
                                 request.roles(),
-                                authentication.getName()));
+                                authentication.getName())
+                        : adminUserService.createUser(
+                                request.username(),
+                                request.firstName(),
+                                request.lastName(),
+                                request.email(),
+                                Boolean.TRUE.equals(request.emailVerified()),
+                                request.password(),
+                                Boolean.TRUE.equals(request.temporary()),
+                                request.enabled() == null || request.enabled(),
+                                request.roles(),
+                                authentication.getName());
+        return ResponseEntity.status(201).body(user);
     }
 
     @PutMapping("/{id}")
@@ -146,6 +159,8 @@ class AdminUserController {
         return adminUserService.updateUser(
                 id,
                 request.username(),
+                request.firstName(),
+                request.lastName(),
                 request.email(),
                 Boolean.TRUE.equals(request.emailVerified()),
                 request.enabled() == null || request.enabled(),
@@ -199,7 +214,12 @@ class AdminUserController {
                     @RequestBody
                     AdminUserRequestDTO request,
             Authentication authentication) {
-        adminUserService.changePassword(id, request.password(), authentication.getName());
+        if (request.temporary() == null) {
+            adminUserService.changePassword(id, request.password(), authentication.getName());
+        } else {
+            adminUserService.changePassword(
+                    id, request.password(), request.temporary(), authentication.getName());
+        }
         return ResponseEntity.noContent().build();
     }
 

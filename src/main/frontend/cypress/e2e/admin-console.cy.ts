@@ -99,6 +99,13 @@ describe("admin console", () => {
     cy.location("pathname").should("match", /^\/admin\/users\/[^/]+\/details\/?$/);
     cy.contains("Created at", { timeout: 15_000 }).should("be.visible");
     cy.contains("Updated at", { timeout: 15_000 }).should("be.visible");
+    cy.get('input[name="firstName"]').should("exist");
+    cy.get('input[name="lastName"]').should("exist");
+    cy.contains("a", "Credentials").click();
+    cy.contains("Required actions", { timeout: 15_000 }).should("be.visible");
+    cy.contains("Temporary password").should("be.visible");
+    cy.contains("a", "Sessions").click();
+    cy.contains("button", "Sign out all sessions", { timeout: 15_000 }).should("be.visible");
   });
 
   it("rejects a callback without a saved authorization transaction", () => {

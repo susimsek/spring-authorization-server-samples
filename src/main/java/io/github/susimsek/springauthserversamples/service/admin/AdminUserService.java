@@ -18,6 +18,7 @@ import io.github.susimsek.springauthserversamples.service.account.UserActionServ
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import io.github.susimsek.springauthserversamples.service.security.AccountLockService;
+import io.github.susimsek.springauthserversamples.service.security.EffectiveRoleService;
 import io.github.susimsek.springauthserversamples.service.security.PasswordService;
 import java.util.List;
 import java.util.Locale;
@@ -102,7 +103,60 @@ public class AdminUserService {
             boolean enabled,
             Set<String> roles,
             String currentUsername) {
+        return createUser(
+                username,
+                null,
+                null,
+                email,
+                emailVerified,
+                password,
+                false,
+                enabled,
+                roles,
+                currentUsername);
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
+    public AdminUserDTO createUser(
+            String username,
+            String firstName,
+            String lastName,
+            String email,
+            boolean emailVerified,
+            String password,
+            boolean enabled,
+            Set<String> roles,
+            String currentUsername) {
+        return createUser(
+                username,
+                firstName,
+                lastName,
+                email,
+                emailVerified,
+                password,
+                false,
+                enabled,
+                roles,
+                currentUsername);
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
+    public AdminUserDTO createUser(
+            String username,
+            String firstName,
+            String lastName,
+            String email,
+            boolean emailVerified,
+            String password,
+            boolean temporary,
+            boolean enabled,
+            Set<String> roles,
+            String currentUsername) {
         validateUser(username, password);
+        firstName = normalizeName(firstName);
+        lastName = normalizeName(lastName);
         String normalizedEmail = normalizeEmail(email);
         assertEmailAvailable(normalizedEmail, null);
         assertRoleAssignmentAllowed(roles, currentUsername);
@@ -115,12 +169,18 @@ public class AdminUserService {
         UserEntity user =
                 adminUserMapper.toEntity(
                         username,
+                        firstName,
+                        lastName,
                         normalizedEmail,
                         emailVerified,
                         enabled,
                         null,
                         resolveAuthorities(roles));
-        passwordService.setInitialPassword(user, password);
+        if (temporary) {
+            passwordService.setTemporaryPassword(user, password);
+        } else {
+            passwordService.setInitialPassword(user, password);
+        }
         UserEntity saved = userRepository.save(user);
         adminAuditEventService.record("user.created", "user", saved.getId().toString());
         return userView(saved, null);
@@ -135,6 +195,8 @@ public class AdminUserService {
         return updateUser(
                 id,
                 username,
+                null,
+                null,
                 existing.getEmail(),
                 existing.isEmailVerified(),
                 enabled,
@@ -152,8 +214,35 @@ public class AdminUserService {
             boolean enabled,
             Set<String> roles,
             String currentUsername) {
+        UserEntity existing = findUser(id);
+        return updateUser(
+                id,
+                username,
+                existing.getFirstName(),
+                existing.getLastName(),
+                email,
+                emailVerified,
+                enabled,
+                roles,
+                currentUsername);
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
+    public AdminUserDTO updateUser(
+            Long id,
+            String username,
+            String firstName,
+            String lastName,
+            String email,
+            boolean emailVerified,
+            boolean enabled,
+            Set<String> roles,
+            String currentUsername) {
         validateUser(username, null);
         UserEntity user = findUser(id);
+        firstName = normalizeName(firstName == null ? user.getFirstName() : firstName);
+        lastName = normalizeName(lastName == null ? user.getLastName() : lastName);
         String normalizedEmail = normalizeEmail(email);
         assertEmailAvailable(normalizedEmail, id);
         assertCanManageUser(user, currentUsername);
@@ -174,6 +263,8 @@ public class AdminUserService {
         userActionService.invalidateActions(user.getId());
         adminUserMapper.update(
                 username,
+                firstName,
+                lastName,
                 normalizedEmail,
                 emailVerified,
                 enabled,
@@ -187,6 +278,13 @@ public class AdminUserService {
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public void changePassword(Long id, String password, String currentUsername) {
+        changePassword(id, password, true, currentUsername);
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
+    public void changePassword(
+            Long id, String password, boolean temporary, String currentUsername) {
         if (password == null || password.length() < 12) {
             throw ApiException.badRequest(
                     "password",
@@ -195,7 +293,11 @@ public class AdminUserService {
         }
         UserEntity user = findUser(id);
         assertCanManageUser(user, currentUsername);
-        passwordService.setTemporaryPassword(user, password);
+        if (temporary) {
+            passwordService.setTemporaryPassword(user, password);
+        } else {
+            passwordService.changePassword(user, password);
+        }
         userAccessInvalidationService.invalidate(user.getUsername());
         userActionService.invalidateActions(user.getId());
         adminAuditEventService.record("user.password.updated", "user", user.getId().toString());
@@ -246,11 +348,15 @@ public class AdminUserService {
     @Transactional(readOnly = true)
     public Page<AdminUserDTO> users(String query, Boolean enabled, Pageable pageable) {
         String searchQuery = AdminSearch.normalize(query);
-        Page<UserEntity> users =
-                enabled == null
-                        ? userRepository.findByUsernameContainingIgnoreCase(searchQuery, pageable)
-                        : userRepository.findByUsernameContainingIgnoreCaseAndEnabled(
-                                searchQuery, enabled, pageable);
+        Page<UserEntity> users = userRepository.searchUsers(searchQuery, enabled, pageable);
+        if (users == null) {
+            users =
+                    enabled == null
+                            ? userRepository.findByUsernameContainingIgnoreCase(
+                                    searchQuery, pageable)
+                            : userRepository.findByUsernameContainingIgnoreCaseAndEnabled(
+                                    searchQuery, enabled, pageable);
+        }
         return new PageImpl<>(userViews(users.getContent()), pageable, users.getTotalElements());
     }
 
@@ -390,10 +496,20 @@ public class AdminUserService {
     private void assertNotLastAdmin(UserEntity user, Set<String> replacementRoles) {
         if (authorities(user).contains(AuthoritiesConstants.ADMIN)
                 && !replacementRoles.contains(AuthoritiesConstants.ADMIN)
-                && userRepository.countByAuthoritiesName(AuthoritiesConstants.ADMIN) <= 1) {
+                && effectiveAdminCount() <= 1) {
             throw ApiException.badRequest(
                     ApiErrorCode.LAST_ADMIN_PROTECTED, "The last administrator must be retained");
         }
+    }
+
+    private long effectiveAdminCount() {
+        List<UserEntity> users = userRepository.findAllWithEffectiveAuthorities();
+        if (users != null && !users.isEmpty()) {
+            return users.stream()
+                    .filter(user -> authorities(user).contains(AuthoritiesConstants.ADMIN))
+                    .count();
+        }
+        return userRepository.countByAuthoritiesName(AuthoritiesConstants.ADMIN);
     }
 
     private List<AdminUserDTO> userViews(List<UserEntity> users) {
@@ -452,9 +568,7 @@ public class AdminUserService {
     }
 
     private static Set<String> authorities(UserEntity user) {
-        return user.getAuthorities().stream()
-                .map(AuthorityEntity::getName)
-                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        return EffectiveRoleService.effectiveRoleNames(user);
     }
 
     private static Set<String> requestedRoleNames(Set<String> roles) {
@@ -490,5 +604,13 @@ public class AdminUserService {
 
     private static String normalizeEmail(String email) {
         return email == null || email.isBlank() ? null : email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static String normalizeName(String name) {
+        if (name == null) {
+            return null;
+        }
+        String normalized = name.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 }

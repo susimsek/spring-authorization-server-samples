@@ -28,6 +28,8 @@ import { UserGroups } from "./UserGroups";
 type User = {
   id: number;
   username: string;
+  firstName: string | null;
+  lastName: string | null;
   email: string | null;
   emailVerified: boolean;
   enabled: boolean;
@@ -39,17 +41,31 @@ type User = {
   totpEnabled: boolean;
   avatarUrl: string | null;
   authorities: string[];
+  assignedRoles?: string[];
+  groupMappings?: { groupId: number | null; groupPath: string; roles: string[] }[];
+  inheritedRoles?: string[];
+  effectiveRoles?: string[];
   createdAt: string;
   updatedAt: string;
 };
 type Role = { name: string };
 type UserFormValues = {
   username: string;
+  firstName: string;
+  lastName: string;
   email: string;
   emailVerified: boolean;
   password: string;
   enabled: boolean;
   roles: string[];
+  temporaryPassword?: boolean;
+};
+type RequiredAction = {
+  key: string;
+  displayName: string;
+  enabled: boolean;
+  globalPolicy: boolean;
+  assigned: boolean;
 };
 
 const USER_DETAIL_TABS = [
@@ -98,6 +114,18 @@ export function UserForm({
   const [totpEnabled, setTotpEnabled] = useState(false);
   const [totpResetting, setTotpResetting] = useState(false);
   const [totpResetError, setTotpResetError] = useState(false);
+  const [requiredActions, setRequiredActions] = useState<RequiredAction[]>([]);
+  const [requiredActionBusy, setRequiredActionBusy] = useState<string | null>(null);
+  const [requiredActionError, setRequiredActionError] = useState(false);
+  const [roleView, setRoleView] = useState<{
+    assignedRoles: string[];
+    groupMappings: { groupId: number | null; groupPath: string; roles: string[] }[];
+    inheritedRoles: string[];
+    effectiveRoles: string[];
+  }>({ assignedRoles: [], groupMappings: [], inheritedRoles: [], effectiveRoles: [] });
+  const [showLogoutAllConfirm, setShowLogoutAllConfirm] = useState(false);
+  const [loggingOutAll, setLoggingOutAll] = useState(false);
+  const [sessionsVersion, setSessionsVersion] = useState(0);
   const [loading, setLoading] = useState(editing);
   const [saving, setSaving] = useState(false);
   const actionForm = useForm<{
@@ -122,6 +150,8 @@ export function UserForm({
   const validation = dictionary.admin.common.validation;
   const schema = z.object({
     username: z.string().trim().min(1, validation.required).max(100, validation.max100),
+    firstName: z.string().trim().max(100, validation.max100),
+    lastName: z.string().trim().max(100, validation.max100),
     email: z
       .string()
       .trim()
@@ -136,6 +166,7 @@ export function UserForm({
       : z.string().min(12, validation.password).max(128, validation.max200),
     enabled: z.boolean(),
     roles: z.array(z.string()).min(1, validation.roles),
+    temporaryPassword: z.boolean().optional(),
   });
   const {
     register,
@@ -145,17 +176,20 @@ export function UserForm({
     setValue,
     setError: setFieldError,
     control,
-    formState: { errors },
+    formState: { errors, dirtyFields },
   } = useForm<UserFormValues>({
     resolver: zodResolver(schema),
     mode: "onBlur",
     defaultValues: {
       username: "",
+      firstName: "",
+      lastName: "",
       email: "",
       emailVerified: false,
       password: "",
       enabled: true,
       roles: ["ROLE_USER"],
+      temporaryPassword: true,
     },
   });
   const enabled = useWatch({ control, name: "enabled", defaultValue: true });
@@ -168,13 +202,22 @@ export function UserForm({
         if (response.status >= 300) throw new Error();
         reset({
           username: response.data.username,
+          firstName: response.data.firstName ?? "",
+          lastName: response.data.lastName ?? "",
           email: response.data.email ?? "",
           emailVerified: response.data.emailVerified ?? false,
           password: "",
           enabled: response.data.enabled,
-          roles: response.data.authorities,
+          roles: response.data.assignedRoles ?? response.data.authorities,
+          temporaryPassword: true,
         });
         setAvatarUrl(response.data.avatarUrl);
+        setRoleView({
+          assignedRoles: response.data.assignedRoles ?? response.data.authorities,
+          groupMappings: response.data.groupMappings ?? [],
+          inheritedRoles: response.data.inheritedRoles ?? [],
+          effectiveRoles: response.data.effectiveRoles ?? response.data.authorities,
+        });
         setTotpEnabled(response.data.totpEnabled);
         setCreatedAt(response.data.createdAt);
         setUpdatedAt(response.data.updatedAt);
@@ -189,6 +232,58 @@ export function UserForm({
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [accessToken, editing, id, reset]);
+
+  useEffect(() => {
+    if (!editing || !id || !accessToken || activeTab !== "credentials") return;
+    adminRequest<RequiredAction[]>(accessToken, {
+      url: `/api/admin/required-actions/users/${encodeURIComponent(id)}`,
+    })
+      .then((response) => {
+        if (response.status >= 300) throw new Error();
+        setRequiredActions(Array.isArray(response.data) ? response.data : []);
+        setRequiredActionError(false);
+      })
+      .catch(() => setRequiredActionError(true));
+  }, [accessToken, activeTab, editing, id]);
+
+  const toggleRequiredAction = async (action: RequiredAction) => {
+    if (!canManageUsers || !accessToken || !id) return;
+    setRequiredActionBusy(action.key);
+    try {
+      const response = await adminRequest(accessToken, {
+        url: `/api/admin/required-actions/users/${encodeURIComponent(id)}/${encodeURIComponent(action.key)}`,
+        method: action.assigned ? "DELETE" : "POST",
+      });
+      if (response.status >= 300) throw new Error();
+      setRequiredActions((current) =>
+        current.map((value) =>
+          value.key === action.key ? { ...value, assigned: !value.assigned } : value,
+        ),
+      );
+    } catch {
+      setRequiredActionError(true);
+    } finally {
+      setRequiredActionBusy(null);
+    }
+  };
+
+  const logoutAllSessions = async () => {
+    if (!canManageUsers || !accessToken || !id) return;
+    setLoggingOutAll(true);
+    try {
+      const response = await adminRequest(accessToken, {
+        url: `/api/admin/users/${encodeURIComponent(getValues("username"))}/sessions`,
+        method: "DELETE",
+      });
+      if (response.status >= 300) throw new Error();
+      setSessionsVersion((value) => value + 1);
+    } catch {
+      setError(true);
+    } finally {
+      setLoggingOutAll(false);
+      setShowLogoutAllConfirm(false);
+    }
+  };
 
   const unlockUser = async () => {
     if (!canManageUsers || !accessToken || !id) return;
@@ -358,16 +453,21 @@ export function UserForm({
         method: editing ? "PUT" : "POST",
         data: {
           username: values.username,
+          firstName: values.firstName.trim(),
+          lastName: values.lastName.trim(),
           email: values.email.trim() || null,
           emailVerified: values.emailVerified,
           password: editing ? undefined : values.password,
+          ...(!editing && values.temporaryPassword !== undefined
+            ? { temporary: values.temporaryPassword }
+            : {}),
           enabled: values.enabled,
           roles: values.roles,
         },
       });
       if (response.status >= 300) {
         applyProblemToForm(response.data, setFieldError, {
-          fields: ["username", "email", "password", "roles"],
+          fields: ["username", "firstName", "lastName", "email", "password", "roles"],
           fallbackMessage: ({ field }, problem) =>
             problem.errorCode === "user_duplicate_username"
               ? validation.usernameDuplicate
@@ -385,7 +485,10 @@ export function UserForm({
         const passwordResponse = await adminRequest(accessToken, {
           url: `/api/admin/users/${encodeURIComponent(id ?? "")}/password`,
           method: "PUT",
-          data: { password: values.password },
+          data: {
+            password: values.password,
+            ...(!dirtyFields.temporaryPassword ? {} : { temporary: values.temporaryPassword }),
+          },
         });
         if (passwordResponse.status >= 300) {
           applyProblemToForm(passwordResponse.data, setFieldError, {
@@ -526,7 +629,11 @@ export function UserForm({
           <DetailTabs tabs={userTabs} active={activeTab} />
         </div>
       )}
-      <Form className={editing ? undefined : "admin-create-form"} onSubmit={handleSubmit(submit)}>
+      <Form
+        className={editing ? undefined : "admin-create-form"}
+        noValidate
+        onSubmit={handleSubmit(submit)}
+      >
         {error && <Alert variant="danger">{copy.saveError}</Alert>}
 
         {!editing && (
@@ -541,6 +648,28 @@ export function UserForm({
                 />
                 <Form.Control.Feedback type="invalid">
                   {errors.username?.message}
+                </Form.Control.Feedback>
+              </Form.Group>
+              <Form.Group>
+                <Form.Label>{copy.firstName}</Form.Label>
+                <Form.Control
+                  disabled={!canManageUsers}
+                  isInvalid={Boolean(errors.firstName)}
+                  {...register("firstName")}
+                />
+                <Form.Control.Feedback type="invalid">
+                  {errors.firstName?.message}
+                </Form.Control.Feedback>
+              </Form.Group>
+              <Form.Group>
+                <Form.Label>{copy.lastName}</Form.Label>
+                <Form.Control
+                  disabled={!canManageUsers}
+                  isInvalid={Boolean(errors.lastName)}
+                  {...register("lastName")}
+                />
+                <Form.Control.Feedback type="invalid">
+                  {errors.lastName?.message}
                 </Form.Control.Feedback>
               </Form.Group>
               <Form.Group>
@@ -597,6 +726,15 @@ export function UserForm({
                   <div className="invalid-feedback d-block">{errors.roles.message}</div>
                 )}
               </Form.Group>
+              <div>
+                <Form.Check
+                  type="switch"
+                  label={copy.temporaryPassword}
+                  disabled={!canManageUsers}
+                  {...register("temporaryPassword")}
+                />
+                <Form.Text>{copy.temporaryPasswordHelp}</Form.Text>
+              </div>
             </Card.Body>
           </Card>
         )}
@@ -706,6 +844,28 @@ export function UserForm({
                   {errors.email?.message}
                 </Form.Control.Feedback>
               </Form.Group>
+              <Form.Group>
+                <Form.Label>{copy.firstName}</Form.Label>
+                <Form.Control
+                  disabled={!canManageUsers}
+                  isInvalid={Boolean(errors.firstName)}
+                  {...register("firstName")}
+                />
+                <Form.Control.Feedback type="invalid">
+                  {errors.firstName?.message}
+                </Form.Control.Feedback>
+              </Form.Group>
+              <Form.Group>
+                <Form.Label>{copy.lastName}</Form.Label>
+                <Form.Control
+                  disabled={!canManageUsers}
+                  isInvalid={Boolean(errors.lastName)}
+                  {...register("lastName")}
+                />
+                <Form.Control.Feedback type="invalid">
+                  {errors.lastName?.message}
+                </Form.Control.Feedback>
+              </Form.Group>
               <Form.Check
                 type="switch"
                 label={copy.emailVerified}
@@ -753,6 +913,37 @@ export function UserForm({
                     {errors.password?.message}
                   </Form.Control.Feedback>
                 </Form.Group>
+                <Form.Check
+                  type="switch"
+                  label={copy.temporaryPassword}
+                  disabled={!canManageUsers}
+                  {...register("temporaryPassword")}
+                />
+                <Form.Text>{copy.temporaryPasswordHelp}</Form.Text>
+              </Card.Body>
+            </Card>
+            <Card className="admin-panel-card">
+              <Card.Body className="d-grid gap-3">
+                <div>
+                  <h2 className="h5 mb-1">{copy.requiredActions}</h2>
+                  <p className="small text-body-secondary mb-0">{copy.requiredActionsHelp}</p>
+                </div>
+                {requiredActionError && <Alert variant="danger">{copy.operationError}</Alert>}
+                {requiredActions.map((action) => (
+                  <Form.Check
+                    key={action.key}
+                    type="switch"
+                    label={action.displayName}
+                    checked={action.assigned}
+                    disabled={
+                      !canManageUsers ||
+                      !action.enabled ||
+                      action.globalPolicy ||
+                      requiredActionBusy !== null
+                    }
+                    onChange={() => void toggleRequiredAction(action)}
+                  />
+                ))}
               </Card.Body>
             </Card>
             <Card className="admin-panel-card">
@@ -827,6 +1018,7 @@ export function UserForm({
           <Card className="admin-panel-card">
             <Card.Body>
               <h2 className="h5 mb-3">{copy.roles}</h2>
+              <p className="small text-body-secondary mb-3">{copy.assignedRolesHelp}</p>
               <div className="admin-role-grid">
                 {availableRoles.map((role) => (
                   <label
@@ -847,6 +1039,54 @@ export function UserForm({
               {errors.roles && (
                 <div className="invalid-feedback d-block">{errors.roles.message}</div>
               )}
+              <div className="mt-4">
+                <h3 className="h6">{copy.groupRoles}</h3>
+                {roleView.groupMappings.length === 0 ? (
+                  <p className="small text-body-secondary mb-0">{copy.noGroupRoles}</p>
+                ) : (
+                  <div className="d-grid gap-2">
+                    {roleView.groupMappings.map((mapping) => (
+                      <div
+                        className="border rounded p-2"
+                        key={`${mapping.groupId}-${mapping.groupPath}`}
+                      >
+                        <div className="small fw-semibold">{mapping.groupPath}</div>
+                        <div>
+                          {mapping.roles.map((role) => (
+                            <span className="badge text-bg-secondary me-1" key={role}>
+                              {role}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="mt-4">
+                <h3 className="h6">{copy.inheritedRoles}</h3>
+                {roleView.inheritedRoles.length === 0 ? (
+                  <p className="small text-body-secondary mb-0">{copy.noInheritedRoles}</p>
+                ) : (
+                  <div>
+                    {roleView.inheritedRoles.map((role) => (
+                      <span className="badge text-bg-secondary me-1" key={role}>
+                        {role}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="mt-4">
+                <h3 className="h6">{copy.effectiveRoles}</h3>
+                <div>
+                  {roleView.effectiveRoles.map((role) => (
+                    <span className="badge text-bg-primary me-1" key={role}>
+                      {role}
+                    </span>
+                  ))}
+                </div>
+              </div>
             </Card.Body>
           </Card>
         )}
@@ -856,13 +1096,33 @@ export function UserForm({
         )}
 
         {editing && id && activeTab === "sessions" && (
-          <EntityRelatedData
-            resource="sessions"
-            url={`/api/admin/users/${encodeURIComponent(id)}/sessions`}
-            locale={locale}
-            dictionary={dictionary}
-            canManage={access?.manageUsers ?? false}
-          />
+          <div className="d-grid gap-3">
+            {access?.manageUsers && (
+              <div className="d-flex justify-content-end">
+                <Button
+                  variant="danger"
+                  type="button"
+                  disabled={loggingOutAll}
+                  onClick={() => setShowLogoutAllConfirm(true)}
+                >
+                  {loggingOutAll ? (
+                    <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                  ) : (
+                    <AdminActionIcon action="logout" />
+                  )}
+                  {copy.signOutAllUser}
+                </Button>
+              </div>
+            )}
+            <EntityRelatedData
+              resource="sessions"
+              url={`/api/admin/users/${encodeURIComponent(id)}/sessions`}
+              locale={locale}
+              dictionary={dictionary}
+              canManage={access?.manageUsers ?? false}
+              refreshKey={sessionsVersion}
+            />
+          </div>
         )}
         {editing && id && activeTab === "consents" && (
           <EntityRelatedData
@@ -928,6 +1188,15 @@ export function UserForm({
         onCancel={() => setShowTotpResetConfirm(false)}
         onConfirm={() => void resetTotp()}
         show={showTotpResetConfirm}
+      />
+      <ConfirmModal
+        busy={loggingOutAll}
+        cancelLabel={dictionary.admin.common.cancel}
+        confirmLabel={copy.signOutAllUser}
+        message={copy.signOutAllConfirm}
+        onCancel={() => setShowLogoutAllConfirm(false)}
+        onConfirm={() => void logoutAllSessions()}
+        show={showLogoutAllConfirm}
       />
     </>
   );

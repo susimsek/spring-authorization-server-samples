@@ -32,6 +32,10 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
                     + " lower(u.email) = lower(:identifier)")
     Optional<UserEntity> findForAuthenticationByIdentifier(@Param("identifier") String identifier);
 
+    @EntityGraph(value = "User.withEffectiveAuthorities")
+    @Query("select u from UserEntity u")
+    List<UserEntity> findAllWithEffectiveAuthorities();
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select u from UserEntity u where lower(u.username) = lower(:username)")
     Optional<UserEntity> findForLoginUpdate(@Param("username") String username);
@@ -53,12 +57,23 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Query("select u from UserEntity u where u.id = :id")
     Optional<UserEntity> findForActionById(Long id);
 
-    @EntityGraph(value = "User.withAuthorities")
+    @EntityGraph(value = "User.withEffectiveAuthorities")
     Page<UserEntity> findByUsernameContainingIgnoreCase(String username, Pageable pageable);
 
-    @EntityGraph(value = "User.withAuthorities")
+    @EntityGraph(value = "User.withEffectiveAuthorities")
     Page<UserEntity> findByUsernameContainingIgnoreCaseAndEnabled(
             String username, boolean enabled, Pageable pageable);
+
+    @EntityGraph(value = "User.withEffectiveAuthorities")
+    @Query(
+            "select u from UserEntity u where"
+                    + " (:query = '' or lower(u.username) like lower(concat('%', :query, '%'))"
+                    + " or lower(coalesce(u.firstName, '')) like lower(concat('%', :query, '%'))"
+                    + " or lower(coalesce(u.lastName, '')) like lower(concat('%', :query, '%'))"
+                    + " or lower(coalesce(u.email, '')) like lower(concat('%', :query, '%')) )"
+                    + " and (:enabled is null or u.enabled = :enabled)")
+    Page<UserEntity> searchUsers(
+            @Param("query") String query, @Param("enabled") Boolean enabled, Pageable pageable);
 
     @EntityGraph(value = "User.withAuthorities")
     java.util.List<UserEntity> findAllByUsernameIn(java.util.Collection<String> usernames);

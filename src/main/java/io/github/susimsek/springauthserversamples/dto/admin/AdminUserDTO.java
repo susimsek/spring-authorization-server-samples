@@ -2,9 +2,10 @@ package io.github.susimsek.springauthserversamples.dto.admin;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 
-@Schema(name = "AdminUser", description = "User account and effective authorities.")
+@Schema(name = "AdminUser", description = "User account and role mappings.")
 public record AdminUserDTO(
         @Schema(
                         description = "Internal user identifier.",
@@ -17,6 +18,18 @@ public record AdminUserDTO(
                         example = "user",
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 String username,
+        @Schema(
+                        description = "Given name.",
+                        example = "Seto",
+                        nullable = true,
+                        requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+                String firstName,
+        @Schema(
+                        description = "Family name.",
+                        example = "Kaiba",
+                        nullable = true,
+                        requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+                String lastName,
         @Schema(
                         description = "Email address.",
                         example = "user@example.test",
@@ -60,10 +73,30 @@ public record AdminUserDTO(
                         requiredMode = Schema.RequiredMode.NOT_REQUIRED)
                 String avatarUrl,
         @Schema(
-                        description = "Effective authorities.",
+                        description = "Roles assigned directly to the user.",
                         example = "[\"ROLE_USER\"]",
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 Set<String> authorities,
+        @Schema(
+                        description = "Roles assigned directly to the user.",
+                        example = "[\"ROLE_USER\"]",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                Set<String> assignedRoles,
+        @Schema(
+                        description = "Role mappings inherited from the user's group memberships.",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                List<AdminUserGroupRoleDTO> groupMappings,
+        @Schema(
+                        description =
+                                "Unique roles inherited from groups and not assigned directly.",
+                        example = "[\"ROLE_ADMIN\"]",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                Set<String> inheritedRoles,
+        @Schema(
+                        description = "All roles effective for the user.",
+                        example = "[\"ROLE_ADMIN\", \"ROLE_USER\"]",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                Set<String> effectiveRoles,
         @Schema(
                         description = "Account creation time.",
                         example = "2026-09-04T08:30:00Z",
@@ -89,6 +122,8 @@ public record AdminUserDTO(
                 id,
                 username,
                 null,
+                null,
+                null,
                 false,
                 enabled,
                 false,
@@ -98,6 +133,10 @@ public record AdminUserDTO(
                 false,
                 false,
                 avatarUrl,
+                authorities,
+                authorities,
+                List.of(),
+                Set.of(),
                 authorities,
                 createdAt,
                 updatedAt);

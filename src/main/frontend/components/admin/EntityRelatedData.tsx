@@ -51,12 +51,14 @@ export function EntityRelatedData({
   locale,
   dictionary,
   canManage = false,
+  refreshKey = 0,
 }: {
   resource: RelatedResource;
   url: string;
   locale: Locale;
   dictionary: Dictionary;
   canManage?: boolean;
+  refreshKey?: number;
 }) {
   const { accessToken } = useAdminAuth();
   const alerts = useConsoleAlerts();
@@ -85,7 +87,7 @@ export function EntityRelatedData({
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [accessToken, page, size, url, version]);
+  }, [accessToken, page, size, url, version, refreshKey]);
 
   const removeSession = async (session: Session) => {
     if (!canManage || !accessToken) return;

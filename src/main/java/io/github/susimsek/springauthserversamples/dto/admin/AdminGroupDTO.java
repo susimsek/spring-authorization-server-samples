@@ -3,7 +3,7 @@ package io.github.susimsek.springauthserversamples.dto.admin;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.Set;
 
-@Schema(name = "AdminGroup", description = "A group and its effective realm-role mapping.")
+@Schema(name = "AdminGroup", description = "A group and its direct and effective role mappings.")
 public record AdminGroupDTO(
         @Schema(
                         description = "Internal group identifier.",
@@ -29,13 +29,24 @@ public record AdminGroupDTO(
                         requiredMode = Schema.RequiredMode.NOT_REQUIRED)
                 Long parentId,
         @Schema(
-                        description = "Realm roles effectively mapped to the group.",
+                        description = "Realm roles assigned directly to the group.",
                         example = "[\"ROLE_USER_VIEWER\", \"ROLE_CLIENT_VIEWER\"]",
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 Set<String> roles,
+        @Schema(
+                        description = "All roles effective for the group, including parent groups.",
+                        example = "[\"ROLE_USER_VIEWER\", \"ROLE_CLIENT_VIEWER\"]",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                Set<String> effectiveRoles,
         @Schema(
                         description = "Number of users in the group.",
                         example = "3",
                         format = "int64",
                         requiredMode = Schema.RequiredMode.REQUIRED)
-                long userCount) {}
+                long userCount) {
+
+    public AdminGroupDTO(
+            Long id, String name, String path, Long parentId, Set<String> roles, long userCount) {
+        this(id, name, path, parentId, roles, roles, userCount);
+    }
+}

@@ -27,6 +27,24 @@ public record AdminUserRequestDTO(
                         example = "new-user",
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 String username,
+        @Size(
+                        max = 100,
+                        groups = {CreateValidation.class, UpdateValidation.class})
+                @Schema(
+                        description = "Given name.",
+                        example = "Seto",
+                        nullable = true,
+                        requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+                String firstName,
+        @Size(
+                        max = 100,
+                        groups = {CreateValidation.class, UpdateValidation.class})
+                @Schema(
+                        description = "Family name.",
+                        example = "Kaiba",
+                        nullable = true,
+                        requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+                String lastName,
         @Email(groups = {CreateValidation.class, UpdateValidation.class})
                 @Size(
                         max = 200,
@@ -61,6 +79,13 @@ public record AdminUserRequestDTO(
                         nullable = true,
                         requiredMode = Schema.RequiredMode.NOT_REQUIRED)
                 String password,
+        @Schema(
+                        description =
+                                "Whether an administrator-set password must be changed at next"
+                                        + " sign-in.",
+                        example = "true",
+                        requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+                Boolean temporary,
         @NotNull(
                         groups = {CreateValidation.class, UpdateValidation.class},
                         message = "{app.api.problem.violation.required}")
@@ -85,6 +110,6 @@ public record AdminUserRequestDTO(
 
     public AdminUserRequestDTO(
             String username, String password, Boolean enabled, Set<String> roles) {
-        this(username, null, false, password, enabled, roles);
+        this(username, null, null, null, false, password, null, enabled, roles);
     }
 }

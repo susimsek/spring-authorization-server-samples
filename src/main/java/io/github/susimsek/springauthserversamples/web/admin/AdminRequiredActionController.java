@@ -3,6 +3,7 @@ package io.github.susimsek.springauthserversamples.web.admin;
 import io.github.susimsek.springauthserversamples.config.openapi.OpenApiConfig;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminRequiredActionDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminRequiredActionRequestDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminUserRequiredActionDTO;
 import io.github.susimsek.springauthserversamples.service.admin.AdminUserService;
 import io.github.susimsek.springauthserversamples.service.requiredaction.RequiredActionService;
 import io.github.susimsek.springauthserversamples.web.ApiController;
@@ -43,6 +44,18 @@ public class AdminRequiredActionController {
     @ApiResponse(responseCode = "200", description = "Required-action policies returned.")
     List<AdminRequiredActionDTO> definitions() {
         return requiredActionService.definitions();
+    }
+
+    @GetMapping("/users/{id}")
+    @Operation(summary = "List a user's required actions")
+    @ApiResponse(responseCode = "200", description = "User required-action assignments returned.")
+    List<AdminUserRequiredActionDTO> userActions(
+            @Parameter(description = "Internal user identifier.", example = "2", required = true)
+                    @PathVariable
+                    Long id,
+            Authentication authentication) {
+        adminUserService.requireManageableUser(id, authentication.getName());
+        return requiredActionService.userActions(id);
     }
 
     @PutMapping("/{key}")
@@ -101,7 +114,9 @@ public class AdminRequiredActionController {
                             example = "UPDATE_PROFILE",
                             required = true)
                     @PathVariable
-                    String key) {
+                    String key,
+            Authentication authentication) {
+        adminUserService.requireManageableUser(id, authentication.getName());
         requiredActionService.unassign(id, key);
         return ResponseEntity.noContent().build();
     }

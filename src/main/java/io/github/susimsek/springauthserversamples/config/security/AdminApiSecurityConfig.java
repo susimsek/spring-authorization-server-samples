@@ -74,7 +74,7 @@ public class AdminApiSecurityConfig {
                                                 AuthoritiesConstants.ADMIN,
                                                 AuthoritiesConstants.USER_MANAGER)
                                         .requestMatchers(
-                                                HttpMethod.GET, "/api/admin/required-actions")
+                                                HttpMethod.GET, "/api/admin/required-actions/**")
                                         .hasAuthority(AuthoritiesConstants.ADMIN)
                                         .requestMatchers(
                                                 HttpMethod.PUT, "/api/admin/required-actions/**")

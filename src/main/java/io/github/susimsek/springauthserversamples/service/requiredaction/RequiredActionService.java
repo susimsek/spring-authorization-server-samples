@@ -7,6 +7,7 @@ import io.github.susimsek.springauthserversamples.domain.UserRequiredActionEntit
 import io.github.susimsek.springauthserversamples.dto.account.RequiredActionDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminRequiredActionDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminRequiredActionRequestDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminUserRequiredActionDTO;
 import io.github.susimsek.springauthserversamples.mapper.RequiredActionMapper;
 import io.github.susimsek.springauthserversamples.repository.RequiredActionCompletionRepository;
 import io.github.susimsek.springauthserversamples.repository.RequiredActionDefinitionRepository;
@@ -209,6 +210,30 @@ public class RequiredActionService {
     @Transactional(readOnly = true)
     public List<AdminRequiredActionDTO> definitions() {
         return definitionRepository.findAll().stream().map(this::toDTO).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminUserRequiredActionDTO> userActions(Long userId) {
+        if (!userRepository.existsById(userId)) {
+            throw ApiException.notFound("User not found");
+        }
+        var assigned =
+                assignmentRepository.findAllByUserId(userId).stream()
+                        .map(UserRequiredActionEntity::getActionKey)
+                        .collect(Collectors.toSet());
+        return definitionRepository.findAll().stream()
+                .sorted(Comparator.comparingInt(RequiredActionDefinitionEntity::getPriority))
+                .map(
+                        definition ->
+                                new AdminUserRequiredActionDTO(
+                                        definition.getActionKey(),
+                                        definition.getDisplayName(),
+                                        definition.isEnabled(),
+                                        definition.isGlobalPolicy(),
+                                        assigned.contains(definition.getActionKey())
+                                                || (definition.isGlobalPolicy()
+                                                        && definition.isEnabled())))
+                .toList();
     }
 
     @Transactional

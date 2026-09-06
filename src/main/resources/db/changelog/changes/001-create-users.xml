@@ -88,6 +88,7 @@
 			<column name="name" type="varchar(50)">
 				<constraints nullable="false" unique="true" uniqueConstraintName="uk_authorities_name"/>
 			</column>
+			<column name="description" type="varchar(500)"/>
 		</createTable>
 	</changeSet>
 
@@ -129,6 +130,7 @@
 			tableName="authorities"
 			usePreparedStatements="true">
 			<column header="name" type="string"/>
+			<column header="description" type="string"/>
 		</loadData>
 	</changeSet>
 
