@@ -8,9 +8,15 @@ import en from "@/locales/en/common.json";
 import { defaultLocale, isLocale } from "./config";
 import type { Dictionary } from "./get-dictionary";
 import { detectLocale, persistLocale } from "./locale-cookie";
+import { setLocale } from "@/store/locale-slice";
+import { useAppDispatch } from "@/store/hooks";
 
 export function ClientI18nProvider({ children }: { children: ReactNode }) {
   const [initialLocale] = useState(() => detectLocale(document.cookie, navigator.languages));
+  const dispatch = useAppDispatch();
+  useEffect(() => {
+    dispatch(setLocale(initialLocale));
+  }, [dispatch, initialLocale]);
   return (
     <I18nProvider
       language={initialLocale}
@@ -27,10 +33,12 @@ export function ClientI18nProvider({ children }: { children: ReactNode }) {
 
 function LocaleEffects() {
   const locale = useLocale();
+  const dispatch = useAppDispatch();
   useEffect(() => {
+    dispatch(setLocale(locale));
     document.documentElement.lang = locale;
     persistLocale(locale);
-  }, [locale]);
+  }, [dispatch, locale]);
   return null;
 }
 

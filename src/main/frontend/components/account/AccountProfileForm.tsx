@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Badge, Button, Card, Col, Form, Row, Spinner } from "react-bootstrap";
 import { useForm } from "@/lib/form";
 import { z } from "zod";
@@ -13,12 +13,7 @@ import { ActionIcon } from "@/components/shared/ActionIcon";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { useDateTimeFormatter } from "@/i18n/useDateTimeFormatter";
 import { applyProblemToForm } from "@/lib/problem-detail";
-import {
-  type AccountApiError,
-  useGetAccountProfileQuery,
-  useSendAccountVerificationEmailMutation,
-  useUpdateAccountProfileMutation,
-} from "@/store/account-api-slice";
+import { requestAccount, type AccountApiError, type AccountProfile } from "@/lib/account-api";
 
 import { useAccountAuth } from "./AccountAuthProvider";
 
@@ -29,14 +24,11 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
   const { accessToken } = useAccountAuth();
   const alerts = useConsoleAlerts();
   const copy = dictionary.account;
-  const {
-    data: profile,
-    isError,
-    isLoading,
-  } = useGetAccountProfileQuery({ accessToken: accessToken ?? "" }, { skip: !accessToken });
-  const [updateProfile] = useUpdateAccountProfileMutation();
-  const [sendVerificationEmail, { isLoading: verificationSending }] =
-    useSendAccountVerificationEmailMutation();
+  const [profile, setProfile] = useState<AccountProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+  const [verificationSending, setVerificationSending] = useState(false);
+  const [profileUpdating, setProfileUpdating] = useState(false);
   const schema = z.object({
     firstName: z.string().trim().max(100, copy.validation.max100),
     lastName: z.string().trim().max(100, copy.validation.max100),
@@ -60,6 +52,17 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
   });
 
   useEffect(() => {
+    if (!accessToken) return;
+    void requestAccount<AccountProfile>(accessToken, { url: "/api/account/profile" })
+      .then((value) => {
+        setProfile(value);
+        setIsError(false);
+      })
+      .catch(() => setIsError(true))
+      .finally(() => setIsLoading(false));
+  }, [accessToken]);
+
+  useEffect(() => {
     if (profile) {
       reset({
         firstName: profile.firstName ?? "",
@@ -72,12 +75,17 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
   const submit = handleSubmit(async (values) => {
     if (!accessToken) return;
     try {
-      const updated = await updateProfile({
-        accessToken,
-        firstName: values.firstName.trim(),
-        lastName: values.lastName.trim(),
-        email: values.email.trim(),
-      }).unwrap();
+      setProfileUpdating(true);
+      const updated = await requestAccount<AccountProfile>(accessToken, {
+        method: "PUT",
+        url: "/api/account/profile",
+        data: {
+          firstName: values.firstName.trim(),
+          lastName: values.lastName.trim(),
+          email: values.email.trim(),
+        },
+      });
+      setProfile(updated);
       reset({
         firstName: updated.firstName ?? "",
         lastName: updated.lastName ?? "",
@@ -91,16 +99,24 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
       });
       if (result.firstField) setFocus(result.firstField as keyof Values);
       alerts.addError(copy.common.operationError);
+    } finally {
+      setProfileUpdating(false);
     }
   });
 
   const requestVerification = async () => {
     if (!accessToken) return;
+    setVerificationSending(true);
     try {
-      await sendVerificationEmail({ accessToken }).unwrap();
+      await requestAccount<void>(accessToken, {
+        method: "POST",
+        url: "/api/account/send-verify-email",
+      });
       alerts.addAlert(copy.profile.verificationSent);
     } catch {
       alerts.addError(copy.common.operationError);
+    } finally {
+      setVerificationSending(false);
     }
   };
 
@@ -215,8 +231,12 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
             </Col>
           </Row>
           <div className="account-form-actions mt-4 pt-4 border-top">
-            <Button type="submit" disabled={!isDirty || isSubmitting} data-cy="save-profile">
-              {isSubmitting ? (
+            <Button
+              type="submit"
+              disabled={!isDirty || isSubmitting || profileUpdating}
+              data-cy="save-profile"
+            >
+              {isSubmitting || profileUpdating ? (
                 <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
               ) : (
                 <ActionIcon action="save" />
@@ -226,7 +246,7 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
             <Button
               type="button"
               variant="secondary"
-              disabled={!isDirty || isSubmitting}
+              disabled={!isDirty || isSubmitting || profileUpdating}
               onClick={() =>
                 reset({
                   firstName: profile.firstName ?? "",

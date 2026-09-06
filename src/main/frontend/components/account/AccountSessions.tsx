@@ -1,17 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge, Button, Card } from "react-bootstrap";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { useLocale } from "@/i18n/client";
 import { useDateTimeFormatter } from "@/i18n/useDateTimeFormatter";
-import {
-  type AccountSession,
-  useGetAccountSessionsQuery,
-  useRemoveAccountSessionMutation,
-  useRemoveOtherAccountSessionsMutation,
-} from "@/store/account-api-slice";
+import { requestAccount, type AccountSession } from "@/lib/account-api";
+import type { PageResponse } from "@/lib/api-types";
 import { DetailLoadingState, EmptyState, ErrorState } from "@/components/admin/AsyncState";
 import { ConfirmModal } from "@/components/admin/ConfirmModal";
 import { PaginationControls } from "@/components/admin/PaginationControls";
@@ -32,35 +28,73 @@ export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
   const copy = dictionary.account;
   const [pending, setPending] = useState<PendingAction>(null);
   const { page, size, setPage, setSize } = useAdminTableState();
-  const { data, isError, isLoading } = useGetAccountSessionsQuery(
-    { accessToken: accessToken ?? "", page, size },
-    { skip: !accessToken },
-  );
-  const [removeSession] = useRemoveAccountSessionMutation();
-  const [removeOtherSessions] = useRemoveOtherAccountSessionsMutation();
+  const [data, setData] = useState<PageResponse<AccountSession> | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+  const [sessionRemoving, setSessionRemoving] = useState(false);
+  const [otherSessionsRemoving, setOtherSessionsRemoving] = useState(false);
   const items = data?.content ?? [];
   const totalPages = data?.totalPages ?? 0;
   const totalElements = data?.totalElements ?? 0;
 
+  useEffect(() => {
+    if (!accessToken) return;
+    void requestAccount<PageResponse<AccountSession>>(accessToken, {
+      url: `/api/account/sessions?page=${page}&size=${size}`,
+    })
+      .then((value) => {
+        setData(value);
+        setIsError(false);
+      })
+      .catch(() => setIsError(true))
+      .finally(() => setIsLoading(false));
+  }, [accessToken, page, size]);
+
   const remove = async (id: string) => {
     if (!accessToken) return;
+    setSessionRemoving(true);
     try {
-      await removeSession({ accessToken, id }).unwrap();
-      if (items.length === 1 && page > 0) setPage(page - 1);
+      await requestAccount<void>(accessToken, {
+        method: "DELETE",
+        url: `/api/account/sessions/${encodeURIComponent(id)}`,
+      });
+      if (items.length === 1 && page > 0) {
+        setPage(page - 1);
+      } else {
+        const refreshed = await requestAccount<PageResponse<AccountSession>>(accessToken, {
+          url: `/api/account/sessions?page=${page}&size=${size}`,
+        });
+        setData(refreshed);
+      }
       alerts.addAlert(copy.sessions.signOut);
     } catch {
       alerts.addError(copy.common.operationError);
+    } finally {
+      setSessionRemoving(false);
     }
   };
 
   const removeOthers = async () => {
     if (!accessToken) return;
+    setOtherSessionsRemoving(true);
     try {
-      await removeOtherSessions({ accessToken }).unwrap();
-      if (items.length === 1 && page > 0) setPage(page - 1);
+      await requestAccount<void>(accessToken, {
+        method: "DELETE",
+        url: "/api/account/sessions/others",
+      });
+      if (items.length === 1 && page > 0) {
+        setPage(page - 1);
+      } else {
+        const refreshed = await requestAccount<PageResponse<AccountSession>>(accessToken, {
+          url: `/api/account/sessions?page=${page}&size=${size}`,
+        });
+        setData(refreshed);
+      }
       alerts.addAlert(copy.sessions.signOutOthers);
     } catch {
       alerts.addError(copy.common.operationError);
+    } finally {
+      setOtherSessionsRemoving(false);
     }
   };
 
@@ -69,7 +103,10 @@ export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
     try {
       // Keep the current authorization alive until OIDC logout consumes its ID-token hint.
       // Deleting the current authorization first makes the end-session request invalid.
-      await removeOtherSessions({ accessToken }).unwrap();
+      await requestAccount<void>(accessToken, {
+        method: "DELETE",
+        url: "/api/account/sessions/others",
+      });
       await logout(locale);
     } catch {
       alerts.addError(copy.common.operationError);
@@ -97,6 +134,14 @@ export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
       : pending?.type === "others"
         ? copy.sessions.signOutOthers
         : copy.sessions.signOut;
+  const confirmBusy =
+    pending?.type === "single"
+      ? sessionRemoving
+      : pending?.type === "others"
+        ? otherSessionsRemoving
+        : pending?.type === "all"
+          ? otherSessionsRemoving
+          : false;
 
   if (isLoading) return <DetailLoadingState />;
   if (isError) return <ErrorState message={copy.common.operationError} />;
@@ -116,6 +161,7 @@ export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
                   <Button
                     variant="danger"
                     size="sm"
+                    disabled={sessionRemoving || otherSessionsRemoving}
                     onClick={() => setPending({ type: "others" })}
                     data-cy="sign-out-others"
                   >
@@ -123,7 +169,12 @@ export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
                     {copy.sessions.signOutOthers}
                   </Button>
                 )}
-                <Button variant="danger" size="sm" onClick={() => setPending({ type: "all" })}>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  disabled={sessionRemoving || otherSessionsRemoving}
+                  onClick={() => setPending({ type: "all" })}
+                >
                   <ActionIcon action="logout" />
                   {copy.sessions.signOutAll}
                 </Button>
@@ -218,6 +269,7 @@ export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
       <ConfirmModal
         cancelLabel={dictionary.admin.common.cancel}
         confirmLabel={confirmLabel}
+        busy={confirmBusy}
         message={confirmMessage}
         onCancel={() => setPending(null)}
         onConfirm={() => void confirm()}

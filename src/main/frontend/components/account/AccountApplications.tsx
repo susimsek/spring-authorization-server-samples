@@ -1,15 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge, Button, Card } from "react-bootstrap";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { useDateTimeFormatter } from "@/i18n/useDateTimeFormatter";
-import {
-  type AccountApplication,
-  useGetAccountApplicationsQuery,
-  useRevokeAccountApplicationMutation,
-} from "@/store/account-api-slice";
+import { requestAccount, type AccountApplication } from "@/lib/account-api";
+import type { PageResponse } from "@/lib/api-types";
 import { DetailLoadingState, EmptyState, ErrorState } from "@/components/admin/AsyncState";
 import { ConfirmModal } from "@/components/admin/ConfirmModal";
 import { PaginationControls } from "@/components/admin/PaginationControls";
@@ -26,23 +23,49 @@ export function AccountApplications({ dictionary }: { dictionary: Dictionary }) 
   const copy = dictionary.account;
   const [pending, setPending] = useState<AccountApplication | null>(null);
   const { page, size, setPage, setSize } = useAdminTableState();
-  const { data, isError, isLoading } = useGetAccountApplicationsQuery(
-    { accessToken: accessToken ?? "", page, size },
-    { skip: !accessToken },
-  );
-  const [revokeApplication] = useRevokeAccountApplicationMutation();
+  const [data, setData] = useState<PageResponse<AccountApplication> | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+  const [applicationRevoking, setApplicationRevoking] = useState(false);
   const items = data?.content ?? [];
   const totalPages = data?.totalPages ?? 0;
   const totalElements = data?.totalElements ?? 0;
 
+  useEffect(() => {
+    if (!accessToken) return;
+    void requestAccount<PageResponse<AccountApplication>>(accessToken, {
+      url: `/api/account/applications?page=${page}&size=${size}`,
+    })
+      .then((value) => {
+        setData(value);
+        setIsError(false);
+      })
+      .catch(() => setIsError(true))
+      .finally(() => setIsLoading(false));
+  }, [accessToken, page, size]);
+
   const revoke = async (application: AccountApplication) => {
     if (!accessToken) return;
+    setApplicationRevoking(true);
     try {
-      await revokeApplication({ accessToken, clientId: application.clientId }).unwrap();
-      if (items.length === 1 && page > 0) setPage(page - 1);
+      await requestAccount<void>(accessToken, {
+        method: "DELETE",
+        url: `/api/account/applications/${encodeURIComponent(application.clientId)}`,
+      });
+      if (items.length === 1 && page > 0) {
+        setPage(page - 1);
+      } else {
+        const refreshed = await requestAccount<PageResponse<AccountApplication>>(accessToken, {
+          url: `/api/account/applications?page=${page}&size=${size}`,
+        });
+        setData(refreshed);
+        setIsError(false);
+      }
       alerts.addAlert(copy.applications.revoke);
     } catch {
       alerts.addError(copy.common.operationError);
+    } finally {
+      setApplicationRevoking(false);
     }
   };
 
@@ -95,7 +118,12 @@ export function AccountApplications({ dictionary }: { dictionary: Dictionary }) 
                       </span>
                     </div>
                   </div>
-                  <Button variant="danger" size="sm" onClick={() => setPending(application)}>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    disabled={applicationRevoking}
+                    onClick={() => setPending(application)}
+                  >
                     <ActionIcon action="revoke" />
                     {copy.applications.revoke}
                   </Button>
@@ -125,6 +153,7 @@ export function AccountApplications({ dictionary }: { dictionary: Dictionary }) 
       <ConfirmModal
         cancelLabel={dictionary.admin.common.cancel}
         confirmLabel={copy.applications.revoke}
+        busy={applicationRevoking}
         message={copy.applications.revokeConfirm}
         onCancel={() => setPending(null)}
         onConfirm={() => {

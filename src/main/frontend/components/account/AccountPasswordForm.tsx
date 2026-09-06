@@ -11,8 +11,8 @@ import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import { ActionIcon } from "@/components/shared/ActionIcon";
 import { Icon } from "@/components/shared/Icon";
 import type { Dictionary } from "@/i18n/get-dictionary";
+import { requestAccount, type AccountApiError } from "@/lib/account-api";
 import { applyProblemToForm } from "@/lib/problem-detail";
-import { type AccountApiError, useUpdateAccountPasswordMutation } from "@/store/account-api-slice";
 
 import { useAccountAuth } from "./AccountAuthProvider";
 
@@ -23,7 +23,7 @@ export function AccountPasswordForm({ dictionary }: { dictionary: Dictionary }) 
   const alerts = useConsoleAlerts();
   const copy = dictionary.account;
   const [failed, setFailed] = useState(false);
-  const [updatePassword] = useUpdateAccountPasswordMutation();
+  const [passwordUpdating, setPasswordUpdating] = useState(false);
   const schema = z
     .object({
       currentPassword: z.string().min(1, copy.validation.required).max(200, copy.validation.max200),
@@ -62,8 +62,13 @@ export function AccountPasswordForm({ dictionary }: { dictionary: Dictionary }) 
   const submit = handleSubmit(async ({ currentPassword, newPassword }) => {
     if (!accessToken) return;
     setFailed(false);
+    setPasswordUpdating(true);
     try {
-      await updatePassword({ accessToken, currentPassword, newPassword }).unwrap();
+      await requestAccount<void>(accessToken, {
+        method: "PUT",
+        url: "/api/account/password",
+        data: { currentPassword, newPassword },
+      });
       reset();
       alerts.addAlert(copy.security.saved);
     } catch (error) {
@@ -76,6 +81,8 @@ export function AccountPasswordForm({ dictionary }: { dictionary: Dictionary }) 
         setFocus(result.firstField as "currentPassword" | "newPassword");
       }
       setFailed(true);
+    } finally {
+      setPasswordUpdating(false);
     }
   });
 
@@ -145,8 +152,12 @@ export function AccountPasswordForm({ dictionary }: { dictionary: Dictionary }) 
             </Form.Control.Feedback>
           </Form.Group>
           <div className="account-form-actions pt-4 border-top">
-            <Button type="submit" disabled={!isDirty || isSubmitting} data-cy="save-password">
-              {isSubmitting ? (
+            <Button
+              type="submit"
+              disabled={!isDirty || isSubmitting || passwordUpdating}
+              data-cy="save-password"
+            >
+              {isSubmitting || passwordUpdating ? (
                 <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
               ) : (
                 <ActionIcon action="save" />
@@ -156,7 +167,7 @@ export function AccountPasswordForm({ dictionary }: { dictionary: Dictionary }) 
             <Button
               type="button"
               variant="secondary"
-              disabled={!isDirty || isSubmitting}
+              disabled={!isDirty || isSubmitting || passwordUpdating}
               onClick={() => {
                 reset();
                 setFailed(false);

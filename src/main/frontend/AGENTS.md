@@ -33,6 +33,7 @@ These instructions apply to `src/main/frontend/**` and supplement the repository
 - `components/auth`: login, consent, locale, theme, and shared authentication UI.
 - `lib/console-auth.ts`: shared browser OIDC Authorization Code + PKCE, refresh-token, and logout adapter.
 - `lib/admin-api.ts` and `lib/account-api.ts`: authenticated Administration and Account Console API clients.
+- `store/reducers.ts` and `store/*-slice.ts`: the JHipster-style root reducer registry for shared auth, locale, and theme state; page-scoped API data stays local to its feature.
 - `locales/en` and `locales/tr`: English and Turkish user-facing messages.
 - `cypress`: browser E2E specifications and support commands.
 
@@ -58,6 +59,7 @@ These instructions apply to `src/main/frontend/**` and supplement the repository
 - Keep console authentication in `lib/console-auth.ts` aligned with the project's Keycloak-style model: Authorization Code + PKCE, namespaced console token records, single-flight refresh near expiry, one retry after a 401, and OIDC logout with an ID-token hint and registered post-logout URI.
 - Persist each console's access, ID, and refresh token set only in its namespaced `localStorage` record. Browser SSO remains supplied by the server-side Spring Session; never copy a token set from one console to the other.
 - Use `adminRequest` for Administration Console APIs and `accountRequest` for Account Console APIs. Do not add parallel Axios clients, custom bearer-token handling, or a second console authentication flow.
+- Do not use RTK Query, SWR, or React Query for server data. Keep authenticated requests in `lib`; use local component or feature-hook state for page-scoped API data and mutations. Use Redux for shared application state such as authentication, theme, and locale, and use a feature-level `createSlice`/`createAsyncThunk` only when data is genuinely shared across routes. Do not build a second global cache layer.
 - Console routes use `/admin/` and `/account/`. Callback routes must remain aligned with registered-client redirect URIs. `next-i18next` manages client locale with `localeInPath: false`: `locale` cookie, browser languages, then English.
 
 ## Development Guidelines

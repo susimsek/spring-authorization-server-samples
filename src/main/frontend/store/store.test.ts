@@ -5,6 +5,7 @@ import {
   setConsoleUsername,
 } from "./auth-slice";
 import { makeStore } from "./store";
+import { setLocale } from "./locale-slice";
 import { setTheme } from "./theme-slice";
 
 describe("Redux application store", () => {
@@ -14,6 +15,14 @@ describe("Redux application store", () => {
     store.dispatch(setTheme("dark"));
 
     expect(store.getState().theme).toEqual({ value: "dark" });
+  });
+
+  it("manages locale centrally", () => {
+    const store = makeStore();
+
+    store.dispatch(setLocale("tr"));
+
+    expect(store.getState().locale).toEqual({ value: "tr" });
   });
 
   it("manages admin and account authentication independently", () => {

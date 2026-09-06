@@ -19,7 +19,17 @@ function renderWithStore(component: React.ReactNode) {
   return render(<StoreProvider>{component}</StoreProvider>);
 }
 
-jest.mock("@/lib/account-api", () => ({ accountRequest: jest.fn() }));
+jest.mock("@/lib/account-api", () => {
+  const request = jest.fn();
+  return {
+    accountRequest: request,
+    requestAccount: async (...args: Parameters<typeof request>) => {
+      const response = await request(...args);
+      if (response.status >= 300) throw { status: response.status, data: response.data };
+      return response.data;
+    },
+  };
+});
 jest.mock("./AccountAuthProvider", () => ({
   useAccountAuth: () => ({
     accessToken: "token",

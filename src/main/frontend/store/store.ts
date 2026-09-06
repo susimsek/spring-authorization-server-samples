@@ -1,17 +1,10 @@
 import { configureStore } from "@reduxjs/toolkit";
 
-import authReducer from "./auth-slice";
-import { accountApi } from "./account-api-slice";
-import themeReducer from "./theme-slice";
+import rootReducer from "./reducers";
 
 export const makeStore = () =>
   configureStore({
-    reducer: {
-      auth: authReducer,
-      [accountApi.reducerPath]: accountApi.reducer,
-      theme: themeReducer,
-    },
-    middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(accountApi.middleware),
+    reducer: rootReducer,
     // Auth state contains bearer/id tokens; never expose them through Redux DevTools.
     devTools: false,
   });

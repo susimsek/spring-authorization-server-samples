@@ -8,15 +8,15 @@ import { z } from "zod";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { ActionIcon } from "@/components/shared/ActionIcon";
+import { requestAccount, type AccountApiError } from "@/lib/account-api";
 import { applyProblemToForm } from "@/lib/problem-detail";
-import { type AccountApiError, useDeleteAccountMutation } from "@/store/account-api-slice";
 
 import { useAccountAuth } from "./AccountAuthProvider";
 
 export function AccountDeleteForm({ dictionary }: { dictionary: Dictionary }) {
   const copy = dictionary.account;
   const { accessToken, clearLocalSession } = useAccountAuth();
-  const [deleteAccount] = useDeleteAccountMutation();
+  const [accountDeleting, setAccountDeleting] = useState(false);
   const [failed, setFailed] = useState(false);
   const schema = z.object({
     currentPassword: z.string().min(1, copy.validation.required).max(200, copy.validation.max200),
@@ -32,8 +32,13 @@ export function AccountDeleteForm({ dictionary }: { dictionary: Dictionary }) {
   const submit = handleSubmit(async ({ currentPassword }) => {
     if (!accessToken) return;
     setFailed(false);
+    setAccountDeleting(true);
     try {
-      await deleteAccount({ accessToken, currentPassword }).unwrap();
+      await requestAccount<void>(accessToken, {
+        method: "DELETE",
+        url: "/api/account",
+        data: { currentPassword },
+      });
       clearLocalSession();
       window.location.replace(`/login?deleted`);
     } catch (error) {
@@ -42,6 +47,8 @@ export function AccountDeleteForm({ dictionary }: { dictionary: Dictionary }) {
         fields: ["currentPassword"],
         fallbackMessage: copy.validation.currentPassword,
       });
+    } finally {
+      setAccountDeleting(false);
     }
   });
 
@@ -68,8 +75,8 @@ export function AccountDeleteForm({ dictionary }: { dictionary: Dictionary }) {
             </Form.Control.Feedback>
           </Form.Group>
           <div className="account-form-actions">
-            <Button type="submit" variant="danger" disabled={isSubmitting}>
-              {isSubmitting ? (
+            <Button type="submit" variant="danger" disabled={isSubmitting || accountDeleting}>
+              {isSubmitting || accountDeleting ? (
                 <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
               ) : (
                 <ActionIcon action="delete" />
@@ -79,7 +86,7 @@ export function AccountDeleteForm({ dictionary }: { dictionary: Dictionary }) {
             <Button
               type="button"
               variant="secondary"
-              disabled={isSubmitting}
+              disabled={isSubmitting || accountDeleting}
               onClick={() => reset()}
             >
               <ActionIcon action="cancel" />
