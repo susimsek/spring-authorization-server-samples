@@ -10,7 +10,7 @@ import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
-import { problemErrorCode, problemViolations } from "@/lib/problem-detail";
+import { applyProblemToForm } from "@/lib/problem-detail";
 
 import { useAdminAuth } from "./AdminAuthProvider";
 import { AdminActionIcon } from "./AdminActionIcon";
@@ -49,15 +49,14 @@ export function ClientScopeCreateForm({ dictionary }: { dictionary: Dictionary; 
         data: values,
       });
       if (response.status >= 300) {
-        const violation = problemViolations(response.data).find(({ field }) => field === "name");
-        if (violation) {
-          setError("name", {
-            message:
-              violation.message ??
-              (problemErrorCode(response.data) === "admin_client_scope_duplicate"
-                ? common.validation.scopeDuplicate
-                : common.validation.required),
-          });
+        const result = applyProblemToForm(response.data, setError, {
+          fields: ["name"],
+          fallbackMessage: (_, problem) =>
+            problem.errorCode === "admin_client_scope_duplicate"
+              ? common.validation.scopeDuplicate
+              : common.validation.required,
+        });
+        if (result.firstField) {
           return;
         }
         throw new Error();

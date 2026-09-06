@@ -7,7 +7,7 @@ import { z } from "zod";
 import { Alert, Button, Card, Form, Spinner } from "react-bootstrap";
 
 import { useDictionary } from "@/i18n/client";
-import { problemViolations } from "@/lib/problem-detail";
+import { applyProblemToForm } from "@/lib/problem-detail";
 import { useAdminAuth } from "./AdminAuthProvider";
 import { adminRequest } from "@/lib/admin-api";
 import { AdminActionIcon } from "./AdminActionIcon";
@@ -114,10 +114,11 @@ export default function EmailSettingsPage({ embedded = false }: { embedded?: boo
         data: values,
       });
       if (response.status >= 300) {
-        problemViolations(response.data).forEach(({ field, message: serverMessage }) => {
-          const value = values[field as keyof Settings];
-          const message =
-            field === "fromAddress"
+        applyProblemToForm(response.data, setFieldError, {
+          fields: ["fromAddress", "baseUrl", "host", "username", "password", "port"],
+          fallbackMessage: ({ field }) => {
+            const value = values[field as keyof Settings];
+            return field === "fromAddress"
               ? !String(value ?? "").trim()
                 ? validation.required
                 : String(value).length > 255
@@ -140,7 +141,7 @@ export default function EmailSettingsPage({ embedded = false }: { embedded?: boo
                       : field === "port"
                         ? validation.positiveNumber
                         : validation.invalid;
-          setFieldError(field as keyof Settings, { message: serverMessage ?? message });
+          },
         });
         throw new Error();
       }

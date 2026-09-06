@@ -8,7 +8,7 @@ import { z } from "zod";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { ActionIcon } from "@/components/shared/ActionIcon";
-import { problemViolations } from "@/lib/problem-detail";
+import { applyProblemToForm } from "@/lib/problem-detail";
 import { type AccountApiError, useDeleteAccountMutation } from "@/store/account-api-slice";
 
 import { useAccountAuth } from "./AccountAuthProvider";
@@ -38,18 +38,10 @@ export function AccountDeleteForm({ dictionary }: { dictionary: Dictionary }) {
       window.location.replace(`/login?deleted`);
     } catch (error) {
       setFailed(true);
-      if (
-        problemViolations((error as AccountApiError).data).some(
-          ({ field }) => field === "currentPassword",
-        )
-      ) {
-        const violation = problemViolations((error as AccountApiError).data).find(
-          ({ field }) => field === "currentPassword",
-        );
-        setError("currentPassword", {
-          message: violation?.message ?? copy.validation.currentPassword,
-        });
-      }
+      applyProblemToForm((error as AccountApiError).data, setError, {
+        fields: ["currentPassword"],
+        fallbackMessage: copy.validation.currentPassword,
+      });
     }
   });
 

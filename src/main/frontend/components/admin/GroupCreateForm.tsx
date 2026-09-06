@@ -12,7 +12,7 @@ import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
 import type { PageResponse } from "@/lib/api-types";
-import { problemErrorCode, problemViolations } from "@/lib/problem-detail";
+import { applyProblemToForm } from "@/lib/problem-detail";
 
 import { useAdminAuth } from "./AdminAuthProvider";
 import { AdminActionIcon } from "./AdminActionIcon";
@@ -61,15 +61,14 @@ export function GroupCreateForm({ dictionary }: { dictionary: Dictionary; locale
         data: { name, parentId: parentId ? Number(parentId) : null },
       });
       if (response.status >= 300) {
-        const violation = problemViolations(response.data).find(({ field }) => field === "name");
-        if (violation) {
-          setError("name", {
-            message:
-              violation.message ??
-              (problemErrorCode(response.data) === "group_duplicate_name"
-                ? dictionary.admin.common.validation.groupDuplicate
-                : dictionary.admin.common.validation.required),
-          });
+        const result = applyProblemToForm(response.data, setError, {
+          fields: ["name"],
+          fallbackMessage: (_, problem) =>
+            problem.errorCode === "group_duplicate_name"
+              ? dictionary.admin.common.validation.groupDuplicate
+              : dictionary.admin.common.validation.required,
+        });
+        if (result.firstField) {
           return;
         }
         throw new Error();

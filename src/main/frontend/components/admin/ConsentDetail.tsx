@@ -91,9 +91,7 @@ export function ConsentDetail({
 
   if (loading && !consent) return <DetailLoadingState />;
   if (error || !consent) {
-    return (
-      <ErrorState message={dictionary.admin.resources.operationError} onRetry={() => void load()} />
-    );
+    return <ErrorState message={dictionary.admin.resources.operationError} />;
   }
 
   return (

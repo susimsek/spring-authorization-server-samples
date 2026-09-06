@@ -11,7 +11,7 @@ import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
 import type { PageResponse } from "@/lib/api-types";
-import { problemErrorCode, problemViolations } from "@/lib/problem-detail";
+import { applyProblemToForm } from "@/lib/problem-detail";
 
 import { useAdminAuth } from "./AdminAuthProvider";
 import { AdminActionIcon } from "./AdminActionIcon";
@@ -316,22 +316,19 @@ export function ClientForm({
         },
       );
       if (response.status >= 300) {
-        const errorCode = problemErrorCode(response.data);
-        problemViolations(response.data).forEach(({ field, message: serverMessage }) =>
-          setFieldError(field as keyof FormState, {
-            message:
-              serverMessage ??
-              (errorCode === "admin_client_duplicate_client_id"
-                ? dictionary.admin.common.validation.clientIdDuplicate
-                : field === "scopes"
-                  ? dictionary.admin.common.validation.scope
-                  : field === "redirectUris"
-                    ? dictionary.admin.common.validation.uri
-                    : field === "clientAuthenticationMethods" || field === "authorizationGrantTypes"
-                      ? dictionary.admin.common.validation.selection
-                      : dictionary.admin.common.validation.required),
-          }),
-        );
+        applyProblemToForm(response.data, setFieldError, {
+          fields: Object.keys(EMPTY),
+          fallbackMessage: ({ field }, problem) =>
+            problem.errorCode === "admin_client_duplicate_client_id"
+              ? dictionary.admin.common.validation.clientIdDuplicate
+              : field === "scopes"
+                ? dictionary.admin.common.validation.scope
+                : field === "redirectUris"
+                  ? dictionary.admin.common.validation.uri
+                  : field === "clientAuthenticationMethods" || field === "authorizationGrantTypes"
+                    ? dictionary.admin.common.validation.selection
+                    : dictionary.admin.common.validation.required,
+        });
         throw new Error(
           typeof response.data === "object" &&
             response.data !== null &&

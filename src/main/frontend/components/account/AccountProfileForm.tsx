@@ -12,7 +12,7 @@ import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import { ActionIcon } from "@/components/shared/ActionIcon";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { useDateTimeFormatter } from "@/i18n/useDateTimeFormatter";
-import { problemViolations } from "@/lib/problem-detail";
+import { applyProblemToForm } from "@/lib/problem-detail";
 import {
   type AccountApiError,
   useGetAccountProfileQuery,
@@ -33,7 +33,6 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
     data: profile,
     isError,
     isLoading,
-    refetch,
   } = useGetAccountProfileQuery({ accessToken: accessToken ?? "" }, { skip: !accessToken });
   const [updateProfile] = useUpdateAccountProfileMutation();
   const [sendVerificationEmail, { isLoading: verificationSending }] =
@@ -86,15 +85,11 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
       });
       alerts.addAlert(copy.profile.saved);
     } catch (error) {
-      const violations = problemViolations((error as AccountApiError).data);
-      let firstInvalid: keyof Values | undefined;
-      violations.forEach(({ field, message }) => {
-        if (field === "firstName" || field === "lastName" || field === "email") {
-          firstInvalid ??= field;
-          setError(field, { message: message ?? copy.validation.invalid });
-        }
+      const result = applyProblemToForm((error as AccountApiError).data, setError, {
+        fields: ["firstName", "lastName", "email"],
+        fallbackMessage: copy.validation.invalid,
       });
-      if (firstInvalid) setFocus(firstInvalid);
+      if (result.firstField) setFocus(result.firstField as keyof Values);
       alerts.addError(copy.common.operationError);
     }
   });
@@ -110,14 +105,7 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
   };
 
   if (isLoading) return <DetailLoadingState />;
-  if (isError && !profile)
-    return (
-      <ErrorState
-        message={copy.common.operationError}
-        retryLabel={copy.common.retry}
-        onRetry={() => void refetch()}
-      />
-    );
+  if (isError && !profile) return <ErrorState message={copy.common.operationError} />;
   if (!profile) return null;
 
   return (

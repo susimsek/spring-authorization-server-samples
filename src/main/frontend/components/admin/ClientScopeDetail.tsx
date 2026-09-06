@@ -128,7 +128,7 @@ export function ClientScopeDetail({
 
   if (loading && !scope) return <DetailLoadingState />;
   if (error || !scope) {
-    return <ErrorState message={copy.operationError} onRetry={() => void load()} />;
+    return <ErrorState message={copy.operationError} />;
   }
 
   return (

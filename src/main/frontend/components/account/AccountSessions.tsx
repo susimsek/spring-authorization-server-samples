@@ -32,7 +32,7 @@ export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
   const copy = dictionary.account;
   const [pending, setPending] = useState<PendingAction>(null);
   const { page, size, setPage, setSize } = useAdminTableState();
-  const { data, isError, isLoading, refetch } = useGetAccountSessionsQuery(
+  const { data, isError, isLoading } = useGetAccountSessionsQuery(
     { accessToken: accessToken ?? "", page, size },
     { skip: !accessToken },
   );
@@ -99,14 +99,7 @@ export function AccountSessions({ dictionary }: { dictionary: Dictionary }) {
         : copy.sessions.signOut;
 
   if (isLoading) return <DetailLoadingState />;
-  if (isError)
-    return (
-      <ErrorState
-        message={copy.common.operationError}
-        retryLabel={copy.common.retry}
-        onRetry={() => void refetch()}
-      />
-    );
+  if (isError) return <ErrorState message={copy.common.operationError} />;
 
   return (
     <>

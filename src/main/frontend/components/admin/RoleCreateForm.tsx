@@ -10,7 +10,7 @@ import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
-import { problemErrorCode, problemViolations } from "@/lib/problem-detail";
+import { applyProblemToForm } from "@/lib/problem-detail";
 
 import { useAdminAuth } from "./AdminAuthProvider";
 import { AdminActionIcon } from "./AdminActionIcon";
@@ -51,15 +51,14 @@ export function RoleCreateForm({ dictionary }: { dictionary: Dictionary; locale:
         data: { name },
       });
       if (response.status >= 300) {
-        const violation = problemViolations(response.data).find(({ field }) => field === "name");
-        if (violation) {
-          setError("name", {
-            message:
-              violation.message ??
-              (problemErrorCode(response.data) === "admin_role_duplicate_name"
-                ? dictionary.admin.common.validation.roleDuplicate
-                : dictionary.admin.common.validation.roleFormat),
-          });
+        const result = applyProblemToForm(response.data, setError, {
+          fields: ["name"],
+          fallbackMessage: (_, problem) =>
+            problem.errorCode === "admin_role_duplicate_name"
+              ? dictionary.admin.common.validation.roleDuplicate
+              : dictionary.admin.common.validation.roleFormat,
+        });
+        if (result.firstField) {
           return;
         }
         throw new Error();

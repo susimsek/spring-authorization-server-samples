@@ -1,4 +1,4 @@
-import { problemErrorCode, problemViolations } from "./problem-detail";
+import { applyProblemToForm, problemErrorCode, problemViolations } from "./problem-detail";
 
 describe("problem detail helpers", () => {
   it("extracts valid violations and the error code", () => {
@@ -22,7 +22,32 @@ describe("problem detail helpers", () => {
   it("rejects malformed problem detail properties", () => {
     expect(problemViolations(null)).toEqual([]);
     expect(problemViolations({ violations: "clientId" })).toEqual([]);
+    expect(problemViolations({ violations: [{ field: 42 }] })).toEqual([]);
     expect(problemErrorCode(null)).toBeUndefined();
     expect(problemErrorCode({ errorCode: 400 })).toBeUndefined();
+  });
+
+  it("applies only known violations to a form and returns the first field", () => {
+    const setError = jest.fn();
+    const result = applyProblemToForm(
+      {
+        violations: [
+          { field: "email", message: "Email is already registered." },
+          { field: "unknown", message: "Unknown field." },
+        ],
+      },
+      setError,
+      { fields: ["email"], fallbackMessage: "Invalid value." },
+    );
+
+    expect(setError).toHaveBeenCalledWith("email", {
+      type: "server",
+      message: "Email is already registered.",
+    });
+    expect(result).toEqual({
+      handled: [{ field: "email", message: "Email is already registered." }],
+      unhandled: [{ field: "unknown", message: "Unknown field." }],
+      firstField: "email",
+    });
   });
 });

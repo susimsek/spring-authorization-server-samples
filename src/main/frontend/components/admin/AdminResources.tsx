@@ -227,17 +227,7 @@ function AdminResourcesContent({
   };
 
   if (loading) return <LoadingState />;
-  if (error)
-    return (
-      <ErrorState
-        message={copy.operationError}
-        onRetry={() => {
-          setError(false);
-          setLoading(true);
-          setReloadVersion((current) => current + 1);
-        }}
-      />
-    );
+  if (error) return <ErrorState message={copy.operationError} />;
 
   return (
     <>

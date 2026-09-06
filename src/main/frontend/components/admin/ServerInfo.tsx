@@ -76,7 +76,6 @@ export default function ServerInfoPage() {
   const [loadError, setLoadError] = useState(false);
   const [discoveryError, setDiscoveryError] = useState(false);
   const [jwksError, setJwksError] = useState(false);
-  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -107,19 +106,9 @@ export default function ServerInfoPage() {
         setLoadError(true);
       });
     return () => controller.abort();
-  }, [accessToken, reloadToken]);
+  }, [accessToken]);
 
   const loading = Boolean(accessToken) && !info && !loadError;
-
-  const retry = () => {
-    setInfo(null);
-    setDiscovery(null);
-    setJwks(null);
-    setLoadError(false);
-    setDiscoveryError(false);
-    setJwksError(false);
-    setReloadToken((value) => value + 1);
-  };
 
   const copyValue = async (value: string) => {
     try {
@@ -153,18 +142,7 @@ export default function ServerInfoPage() {
       {copyFailed && <Alert variant="warning">{copy.copyFailed}</Alert>}
 
       {loading && <div role="status">{copy.loading}</div>}
-      {loadError && (
-        <Alert
-          className="d-flex flex-wrap align-items-center justify-content-between gap-2"
-          variant="danger"
-        >
-          <span>{copy.loadError}</span>
-          <Button onClick={retry} size="sm" variant="danger">
-            <AdminActionIcon action="retry" />
-            {copy.retry}
-          </Button>
-        </Alert>
-      )}
+      {loadError && <Alert variant="danger">{copy.loadError}</Alert>}
 
       {!loading && !loadError && (
         <>

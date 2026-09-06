@@ -85,7 +85,6 @@ export type ActionIconName =
   | "previousPage"
   | "regenerate"
   | "remove"
-  | "retry"
   | "revoke"
   | "rotate"
   | "save"
@@ -154,7 +153,6 @@ export const actionIcons: Record<ActionIconName, IconDefinition> = {
   previousPage: faChevronLeft,
   regenerate: faArrowsRotate,
   remove: faUserMinus,
-  retry: faRotate,
   revoke: faBan,
   rotate: faRotate,
   save: faFloppyDisk,

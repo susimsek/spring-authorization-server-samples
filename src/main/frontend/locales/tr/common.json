@@ -281,7 +281,6 @@
       "copyFailed": "Panoya kopyalanamadı.",
       "loading": "Sunucu bilgisi yükleniyor…",
       "loadError": "Sunucu bilgisi yüklenemedi.",
-      "retry": "Tekrar dene",
       "configurationError": "OpenID yapılandırması yüklenemedi.",
       "jwksError": "JWKS belgesi yüklenemedi."
     },
@@ -443,7 +442,6 @@
       "on": "Açık",
       "off": "Kapalı",
       "loading": "Yükleniyor…",
-      "retry": "Tekrar dene",
       "actions": "İşlemler",
       "toggleNavigation": "Gezinmeyi aç/kapat",
       "closeNavigation": "Gezinmeyi kapat",
@@ -489,7 +487,6 @@
       "deleteConfirm": "Bu rol silinsin mi?",
       "help": "ROLE_AUDITOR gibi büyük harfli ROLE_ adları kullanın.",
       "operationError": "Rol işlemi tamamlanamadı.",
-      "retry": "Tekrar dene",
       "assignedUsers": "atanmış kullanıcı",
       "protected": "Korumalı",
       "assignUser": "Kullanıcı ata",
@@ -702,7 +699,6 @@
       "loading": "Yükleniyor…",
       "empty": "Kayıt bulunamadı.",
       "operationError": "Hesap işlemi tamamlanamadı.",
-      "retry": "Tekrar dene",
       "authorizationCallbackError": "Hesap oturumu oluşturulamadı.",
       "cancel": "İptal",
       "required": "Zorunlu"

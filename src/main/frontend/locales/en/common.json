@@ -281,7 +281,6 @@
       "copyFailed": "Could not copy to the clipboard.",
       "loading": "Loading server information…",
       "loadError": "Server information could not be loaded.",
-      "retry": "Retry",
       "configurationError": "The OpenID configuration could not be loaded.",
       "jwksError": "The JWKS document could not be loaded."
     },
@@ -443,7 +442,6 @@
       "on": "On",
       "off": "Off",
       "loading": "Loading…",
-      "retry": "Retry",
       "actions": "Actions",
       "toggleNavigation": "Toggle navigation",
       "closeNavigation": "Close navigation",
@@ -489,7 +487,6 @@
       "deleteConfirm": "Delete this role?",
       "help": "Use uppercase ROLE_ names, for example ROLE_AUDITOR.",
       "operationError": "The role operation could not be completed.",
-      "retry": "Retry",
       "assignedUsers": "assigned users",
       "protected": "Protected",
       "assignUser": "Assign user",
@@ -702,7 +699,6 @@
       "loading": "Loading…",
       "empty": "No records found.",
       "operationError": "The account operation could not be completed.",
-      "retry": "Retry",
       "authorizationCallbackError": "The account session could not be established.",
       "cancel": "Cancel",
       "required": "Required"

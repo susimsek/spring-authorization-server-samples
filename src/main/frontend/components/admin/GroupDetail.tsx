@@ -240,14 +240,7 @@ export function GroupDetail({
   };
 
   if (loading && !group) return <LoadingState />;
-  if (error || !group)
-    return (
-      <ErrorState
-        message={copy.operationError}
-        onRetry={() => void load()}
-        retryLabel={dictionary.admin.common.retry}
-      />
-    );
+  if (error || !group) return <ErrorState message={copy.operationError} />;
 
   return (
     <div className="d-grid gap-4">

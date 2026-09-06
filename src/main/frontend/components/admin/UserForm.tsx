@@ -12,7 +12,7 @@ import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { adminRequest } from "@/lib/admin-api";
 import type { PageResponse } from "@/lib/api-types";
-import { problemErrorCode, problemViolations } from "@/lib/problem-detail";
+import { applyProblemToForm, problemViolations } from "@/lib/problem-detail";
 
 import { useAdminAuth } from "./AdminAuthProvider";
 import { AdminActionIcon } from "./AdminActionIcon";
@@ -365,20 +365,18 @@ export function UserForm({
         },
       });
       if (response.status >= 300) {
-        const errorCode = problemErrorCode(response.data);
-        problemViolations(response.data).forEach(({ field, message: serverMessage }) => {
-          const message =
-            serverMessage ??
-            (errorCode === "user_duplicate_username"
+        applyProblemToForm(response.data, setFieldError, {
+          fields: ["username", "email", "password", "roles"],
+          fallbackMessage: ({ field }, problem) =>
+            problem.errorCode === "user_duplicate_username"
               ? validation.usernameDuplicate
-              : errorCode === "user_duplicate_email"
+              : problem.errorCode === "user_duplicate_email"
                 ? validation.emailDuplicate
                 : field === "password"
                   ? validation.password
                   : field === "roles"
                     ? validation.roles
-                    : validation.required);
-          setFieldError(field as keyof UserFormValues, { message });
+                    : validation.required,
         });
         throw new Error();
       }
@@ -389,12 +387,10 @@ export function UserForm({
           data: { password: values.password },
         });
         if (passwordResponse.status >= 300) {
-          const violation = problemViolations(passwordResponse.data).find(
-            ({ field }) => field === "password",
-          );
-          if (violation) {
-            setFieldError("password", { message: violation.message ?? validation.password });
-          }
+          applyProblemToForm(passwordResponse.data, setFieldError, {
+            fields: ["password"],
+            fallbackMessage: validation.password,
+          });
           throw new Error();
         }
       }

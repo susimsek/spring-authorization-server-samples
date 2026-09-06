@@ -1,8 +1,6 @@
 import type { ReactNode } from "react";
 import { useDictionary } from "@/i18n/client";
-import { Alert, Button } from "react-bootstrap";
-
-import { ActionIcon } from "@/components/shared/ActionIcon";
+import { Alert } from "react-bootstrap";
 
 function useAdminCopy() {
   return useDictionary().admin.common;
@@ -37,30 +35,8 @@ export function DetailLoadingState() {
   );
 }
 
-export function ErrorState({
-  message,
-  onRetry,
-  retryLabel,
-}: {
-  message: string;
-  onRetry?: () => void;
-  retryLabel?: string;
-}) {
-  const copy = useAdminCopy();
-  return (
-    <Alert
-      variant="danger"
-      className="d-flex flex-wrap align-items-center justify-content-between gap-2"
-    >
-      <span>{message}</span>
-      {onRetry && (
-        <Button size="sm" variant="secondary" onClick={onRetry}>
-          <ActionIcon action="retry" />
-          {retryLabel ?? copy.retry}
-        </Button>
-      )}
-    </Alert>
-  );
+export function ErrorState({ message }: { message: string }) {
+  return <Alert variant="danger">{message}</Alert>;
 }
 
 export function EmptyState({ message, action }: { message: string; action?: ReactNode }) {

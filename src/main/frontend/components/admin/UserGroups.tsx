@@ -117,7 +117,7 @@ export function UserGroups({ dictionary, userId }: { dictionary: Dictionary; use
   };
 
   if (loading) return <LoadingState />;
-  if (error) return <ErrorState message={copy.operationError} onRetry={() => void load()} />;
+  if (error) return <ErrorState message={copy.operationError} />;
 
   return (
     <div className="d-grid gap-4">

@@ -129,18 +129,7 @@ export function EntityRelatedData({
   };
 
   if (loading) return <LoadingState />;
-  if (error)
-    return (
-      <ErrorState
-        message={copy.operationError}
-        retryLabel={dictionary.admin.common.retry}
-        onRetry={() => {
-          setError(false);
-          setLoading(true);
-          setVersion((current) => current + 1);
-        }}
-      />
-    );
+  if (error) return <ErrorState message={copy.operationError} />;
 
   return (
     <DataTable

@@ -10,7 +10,7 @@ import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import { ActionIcon } from "@/components/shared/ActionIcon";
 import { Icon } from "@/components/shared/Icon";
 import type { Dictionary } from "@/i18n/get-dictionary";
-import { problemViolations } from "@/lib/problem-detail";
+import { applyProblemToForm } from "@/lib/problem-detail";
 import { type AccountApiError, useUpdateAccountPasswordMutation } from "@/store/account-api-slice";
 
 import { useAccountAuth } from "./AccountAuthProvider";
@@ -66,20 +66,14 @@ export function AccountPasswordForm({ dictionary }: { dictionary: Dictionary }) 
       reset();
       alerts.addAlert(copy.security.saved);
     } catch (error) {
-      let firstInvalid: "currentPassword" | "newPassword" | undefined;
-      problemViolations((error as AccountApiError).data).forEach(({ field, message }) => {
-        if (field === "currentPassword") {
-          firstInvalid ??= "currentPassword";
-          setError("currentPassword", {
-            message: message ?? copy.validation.currentPassword,
-          });
-        }
-        if (field === "newPassword") {
-          firstInvalid ??= "newPassword";
-          setError("newPassword", { message: message ?? copy.validation.password });
-        }
+      const result = applyProblemToForm((error as AccountApiError).data, setError, {
+        fields: ["currentPassword", "newPassword"],
+        fallbackMessage: ({ field }) =>
+          field === "currentPassword" ? copy.validation.currentPassword : copy.validation.password,
       });
-      if (firstInvalid) setFocus(firstInvalid);
+      if (result.firstField) {
+        setFocus(result.firstField as "currentPassword" | "newPassword");
+      }
       setFailed(true);
     }
   });

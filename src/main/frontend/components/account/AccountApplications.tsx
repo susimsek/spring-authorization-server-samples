@@ -26,7 +26,7 @@ export function AccountApplications({ dictionary }: { dictionary: Dictionary }) 
   const copy = dictionary.account;
   const [pending, setPending] = useState<AccountApplication | null>(null);
   const { page, size, setPage, setSize } = useAdminTableState();
-  const { data, isError, isLoading, refetch } = useGetAccountApplicationsQuery(
+  const { data, isError, isLoading } = useGetAccountApplicationsQuery(
     { accessToken: accessToken ?? "", page, size },
     { skip: !accessToken },
   );
@@ -47,14 +47,7 @@ export function AccountApplications({ dictionary }: { dictionary: Dictionary }) 
   };
 
   if (isLoading) return <DetailLoadingState />;
-  if (isError)
-    return (
-      <ErrorState
-        message={copy.common.operationError}
-        retryLabel={copy.common.retry}
-        onRetry={() => void refetch()}
-      />
-    );
+  if (isError) return <ErrorState message={copy.common.operationError} />;
 
   return (
     <>

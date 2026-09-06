@@ -139,14 +139,7 @@ export function RoleDetail({
   };
 
   if (loading && !detail) return <LoadingState />;
-  if (error || !detail)
-    return (
-      <ErrorState
-        message={dictionary.admin.roles.operationError}
-        retryLabel={dictionary.admin.roles.retry}
-        onRetry={() => void load()}
-      />
-    );
+  if (error || !detail) return <ErrorState message={dictionary.admin.roles.operationError} />;
 
   return (
     <div className="d-grid gap-4">

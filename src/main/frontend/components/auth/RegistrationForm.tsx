@@ -9,7 +9,7 @@ import { z } from "zod";
 import Link from "@/routing/Link";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { accountActionError, submitAccountAction } from "@/lib/account-actions-api";
-import { problemViolations } from "@/lib/problem-detail";
+import { applyProblemToForm } from "@/lib/problem-detail";
 import { ActionIcon } from "@/components/shared/ActionIcon";
 
 import { PasswordField } from "./PasswordField";
@@ -76,16 +76,11 @@ export function RegistrationForm({ dictionary }: RegistrationFormProps) {
       });
       setCreated(true);
     } catch (failure) {
-      const violations = problemViolations(failure);
-      let fieldError = false;
-      violations.forEach(({ field, message }) => {
-        const fieldName = field as keyof Values;
-        if (fieldName in values && message) {
-          setFieldError(fieldName, { type: "server", message });
-          fieldError = true;
-        }
+      const result = applyProblemToForm(failure, setFieldError, {
+        fields: ["username", "firstName", "lastName", "email", "password", "confirmPassword"],
+        fallbackMessage: dictionary.account.validation.invalid,
       });
-      if (!fieldError) setError(accountActionError(failure, dictionary));
+      if (!result.firstField) setError(accountActionError(failure, dictionary));
     }
   });
 

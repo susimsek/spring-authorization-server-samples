@@ -12,7 +12,7 @@ import { z } from "zod";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { accountActionError, submitAccountAction } from "@/lib/account-actions-api";
-import { problemViolations } from "@/lib/problem-detail";
+import { applyProblemToForm } from "@/lib/problem-detail";
 import { ActionIcon } from "@/components/shared/ActionIcon";
 
 type Props = { locale: Locale; dictionary: Dictionary };
@@ -55,11 +55,12 @@ export function ForgotPasswordForm({ locale, dictionary }: Props) {
       await submitAccountAction("forgot-password", { ...values, locale });
       setSent(true);
     } catch (failure) {
-      const violation = problemViolations(failure).find(
-        ({ field, message }) => field === "identifier" && message,
-      );
-      if (violation?.message) {
-        setFieldError("identifier", { type: "server", message: violation.message });
+      const result = applyProblemToForm(failure, setFieldError, {
+        fields: ["identifier"],
+        fallbackMessage: dictionary.account.validation.invalid,
+      });
+      if (result.firstField) {
+        setError(null);
       } else {
         setError(accountActionError(failure, dictionary));
       }
@@ -139,15 +140,14 @@ export function ResetPasswordForm({ dictionary }: Props) {
       setDone(true);
       window.history.replaceState(null, "", window.location.pathname);
     } catch (failure) {
-      const violations = problemViolations(failure);
-      let fieldError = false;
-      violations.forEach(({ field, message }) => {
-        if ((field === "newPassword" || field === "confirmPassword") && message) {
-          setFieldError(field, { type: "server", message });
-          fieldError = true;
-        }
+      const result = applyProblemToForm(failure, setFieldError, {
+        fields: ["newPassword", "confirmPassword"],
+        fallbackMessage: (violation) =>
+          violation.field === "newPassword"
+            ? dictionary.account.validation.password
+            : copy.passwordMismatch,
       });
-      if (!fieldError) setError(accountActionError(failure, dictionary));
+      if (!result.firstField) setError(accountActionError(failure, dictionary));
     }
   });
 
