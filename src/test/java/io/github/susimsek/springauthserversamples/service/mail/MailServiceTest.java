@@ -1,14 +1,19 @@
 package io.github.susimsek.springauthserversamples.service.mail;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
+import io.github.susimsek.springauthserversamples.service.EmailSettingsService;
+import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import java.time.Duration;
@@ -17,6 +22,7 @@ import java.util.Properties;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.context.MessageSource;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
@@ -73,6 +79,79 @@ class MailServiceTest {
         assertThat(mimeMessage.getContent()).isEqualTo("<p>Doğrula</p>");
         assertThat(mimeMessage.getContentType()).contains("text/html").contains("charset=UTF-8");
         verify(mailSender).send(mimeMessage);
+    }
+
+    @Test
+    void sendsSmtpConnectionTestEmail() throws Exception {
+        MimeMessage mimeMessage = new MimeMessage(Session.getInstance(new Properties()));
+        when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
+        when(messageSource.getMessage(
+                        "mail.test.subject", null, "SMTP connection test", Locale.ENGLISH))
+                .thenReturn("SMTP connection test");
+        when(messageSource.getMessage(
+                        "mail.test.text", null, "This is a test email.", Locale.ENGLISH))
+                .thenReturn("This is a test email.");
+        MailService service =
+                new MailService(properties(false), mailSender, messageSource, templateEngine);
+
+        service.testConnection(
+                new EmailSettingsService.EmailConfiguration(
+                        false,
+                        "Spring Authorization Server <no-reply@example.com>",
+                        "https://example.com",
+                        "localhost",
+                        1025,
+                        null,
+                        null,
+                        false,
+                        false,
+                        false),
+                "admin@example.com",
+                Locale.ENGLISH);
+
+        mimeMessage.saveChanges();
+        assertThat(mimeMessage.getAllRecipients())
+                .extracting(Object::toString)
+                .containsExactly("admin@example.com");
+        assertThat(mimeMessage.getSubject()).isEqualTo("SMTP connection test");
+        assertThat(mimeMessage.getContent()).isEqualTo("This is a test email.");
+        verify(mailSender).send(mimeMessage);
+    }
+
+    @Test
+    void reportsSmtpConnectionFailure() {
+        MimeMessage mimeMessage = new MimeMessage(Session.getInstance(new Properties()));
+        when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
+        when(messageSource.getMessage(
+                        "mail.test.subject", null, "SMTP connection test", Locale.ENGLISH))
+                .thenReturn("SMTP connection test");
+        when(messageSource.getMessage(
+                        "mail.test.text", null, "This is a test email.", Locale.ENGLISH))
+                .thenReturn("This is a test email.");
+        doThrow(new MailSendException("SMTP unavailable")).when(mailSender).send(mimeMessage);
+        MailService service =
+                new MailService(properties(false), mailSender, messageSource, templateEngine);
+
+        assertThatThrownBy(
+                        () ->
+                                service.testConnection(
+                                        new EmailSettingsService.EmailConfiguration(
+                                                false,
+                                                "Spring Authorization Server"
+                                                        + " <no-reply@example.com>",
+                                                "https://example.com",
+                                                "localhost",
+                                                1025,
+                                                null,
+                                                null,
+                                                false,
+                                                false,
+                                                false),
+                                        "admin@example.com",
+                                        Locale.ENGLISH))
+                .isInstanceOf(ApiException.class)
+                .extracting(exception -> ((ApiException) exception).getErrorCode())
+                .isEqualTo(ApiErrorCode.EMAIL_TEST_FAILED);
     }
 
     private static ApplicationProperties properties(boolean enabled) {

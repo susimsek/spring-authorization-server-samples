@@ -34,6 +34,9 @@ export default function EmailSettingsPage({ embedded = false }: { embedded?: boo
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [testError, setTestError] = useState(false);
+  const [testSucceeded, setTestSucceeded] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [passwordConfigured, setPasswordConfigured] = useState(false);
   const schema = z.object({
     enabled: z.boolean(),
@@ -103,10 +106,44 @@ export default function EmailSettingsPage({ embedded = false }: { embedded?: boo
       .catch(() => setError(true));
   }, [accessToken, reset]);
 
+  const applySettingsProblem = (data: unknown, values: Settings) => {
+    applyProblemToForm(data, setFieldError, {
+      fields: ["fromAddress", "baseUrl", "host", "username", "password", "port"],
+      fallbackMessage: ({ field }) => {
+        const value = values[field as keyof Settings];
+        return field === "fromAddress"
+          ? !String(value ?? "").trim()
+            ? validation.required
+            : String(value).length > 255
+              ? validation.max255
+              : validation.email
+          : field === "baseUrl"
+            ? !String(value ?? "").trim()
+              ? validation.required
+              : String(value).length > 255
+                ? validation.max255
+                : validation.uri
+            : field === "host"
+              ? !String(value ?? "").trim()
+                ? validation.required
+                : validation.max255
+              : field === "username"
+                ? validation.max255
+                : field === "password"
+                  ? validation.max1000
+                  : field === "port"
+                    ? validation.positiveNumber
+                    : validation.invalid;
+      },
+    });
+  };
+
   const submit = handleSubmit(async (values) => {
     if (!accessToken) return;
     setSaved(false);
     setError(false);
+    setTestError(false);
+    setTestSucceeded(false);
     try {
       const response = await adminRequest<EmailResponse>(accessToken, {
         method: "PUT",
@@ -114,35 +151,7 @@ export default function EmailSettingsPage({ embedded = false }: { embedded?: boo
         data: values,
       });
       if (response.status >= 300) {
-        applyProblemToForm(response.data, setFieldError, {
-          fields: ["fromAddress", "baseUrl", "host", "username", "password", "port"],
-          fallbackMessage: ({ field }) => {
-            const value = values[field as keyof Settings];
-            return field === "fromAddress"
-              ? !String(value ?? "").trim()
-                ? validation.required
-                : String(value).length > 255
-                  ? validation.max255
-                  : validation.email
-              : field === "baseUrl"
-                ? !String(value ?? "").trim()
-                  ? validation.required
-                  : String(value).length > 255
-                    ? validation.max255
-                    : validation.uri
-                : field === "host"
-                  ? !String(value ?? "").trim()
-                    ? validation.required
-                    : validation.max255
-                  : field === "username"
-                    ? validation.max255
-                    : field === "password"
-                      ? validation.max1000
-                      : field === "port"
-                        ? validation.positiveNumber
-                        : validation.invalid;
-          },
-        });
+        applySettingsProblem(response.data, values);
         throw new Error();
       }
       reset({ ...response.data, password: "" } as Settings);
@@ -153,11 +162,38 @@ export default function EmailSettingsPage({ embedded = false }: { embedded?: boo
     }
   });
 
+  const testConnection = handleSubmit(async (values) => {
+    if (!accessToken) return;
+    setSaved(false);
+    setError(false);
+    setTestError(false);
+    setTestSucceeded(false);
+    setTesting(true);
+    try {
+      const response = await adminRequest<null>(accessToken, {
+        method: "POST",
+        url: "/api/admin/settings/email/test",
+        data: values,
+      });
+      if (response.status >= 300) {
+        applySettingsProblem(response.data, values);
+        throw new Error();
+      }
+      setTestSucceeded(true);
+    } catch {
+      setTestError(true);
+    } finally {
+      setTesting(false);
+    }
+  });
+
   return (
     <div className="d-grid gap-4">
       {!embedded && <ViewHeader title={copy.title} description={copy.subtitle} />}
       {error && <Alert variant="danger">{copy.error}</Alert>}
       {saved && <Alert variant="success">{copy.saved}</Alert>}
+      {testError && <Alert variant="danger">{copy.testConnectionError}</Alert>}
+      {testSucceeded && <Alert variant="success">{copy.testConnectionSucceeded}</Alert>}
       <Card className="admin-panel-card">
         <Card.Body>
           {!loaded ? (
@@ -234,7 +270,20 @@ export default function EmailSettingsPage({ embedded = false }: { embedded?: boo
                 <Form.Check type="switch" label={copy.ssl} {...register("ssl")} />
               </div>
               <div className="admin-form-actions">
-                <Button disabled={isSubmitting} type="submit">
+                <Button
+                  variant="secondary"
+                  disabled={isSubmitting || testing}
+                  onClick={() => void testConnection()}
+                  type="button"
+                >
+                  {testing ? (
+                    <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                  ) : (
+                    <AdminActionIcon action="send" />
+                  )}
+                  {copy.testConnection}
+                </Button>
+                <Button disabled={isSubmitting || testing} type="submit">
                   {isSubmitting ? (
                     <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
                   ) : (

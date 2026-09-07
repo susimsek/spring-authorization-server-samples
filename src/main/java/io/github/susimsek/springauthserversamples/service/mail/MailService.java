@@ -2,6 +2,8 @@ package io.github.susimsek.springauthserversamples.service.mail;
 
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
 import io.github.susimsek.springauthserversamples.service.EmailSettingsService;
+import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import java.nio.charset.StandardCharsets;
@@ -80,6 +82,32 @@ public class MailService {
     @Async
     public void sendEmail(String recipient, String subject, String content, boolean html) {
         sendEmailSync(recipient, subject, content, html);
+    }
+
+    public void testConnection(
+            EmailSettingsService.EmailConfiguration configuration,
+            String recipient,
+            Locale locale) {
+        JavaMailSender sender = configuredSender(configuration);
+        try {
+            MimeMessage mimeMessage = sender.createMimeMessage();
+            MimeMessageHelper message =
+                    new MimeMessageHelper(mimeMessage, false, StandardCharsets.UTF_8.name());
+            message.setTo(recipient);
+            message.setFrom(configuration.fromAddress());
+            message.setSubject(
+                    messageSource.getMessage(
+                            "mail.test.subject", null, "SMTP connection test", locale));
+            message.setText(
+                    messageSource.getMessage(
+                            "mail.test.text", null, "This is a test email.", locale),
+                    false);
+            sender.send(mimeMessage);
+        } catch (MailException | MessagingException exception) {
+            LOG.warn("SMTP connection test failed", exception);
+            throw ApiException.badRequest(
+                    ApiErrorCode.EMAIL_TEST_FAILED, "SMTP connection test failed");
+        }
     }
 
     private void sendFromTemplate(

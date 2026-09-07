@@ -72,6 +72,7 @@ public enum ApiErrorCode {
     ACTION_EMAIL_REQUIRED("action_email_required", "The user must have an email address."),
     ACTION_EMAIL_UNAVAILABLE("action_email_unavailable", "Email delivery is not configured."),
     ACTION_EMAIL_COOLDOWN("action_email_cooldown", "Please wait before sending another email."),
+    EMAIL_TEST_FAILED("email_test_failed", "The SMTP connection test failed."),
     ACTION_TOKEN_INVALID("action_token_invalid", "The action token is invalid."),
     ACTION_TOKEN_EXPIRED("action_token_expired", "The action token has expired."),
     ACTION_TOKEN_USED("action_token_used", "The action token has already been used."),

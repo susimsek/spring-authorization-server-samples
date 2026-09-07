@@ -86,6 +86,14 @@ describe("admin console", () => {
       cy.location("pathname", { timeout: 15_000 }).should("eq", path);
       cy.get('.admin-settings-nav a[aria-current="page"]').should("contain.text", label);
       if (saveLabel) cy.contains("button", saveLabel, { timeout: 15_000 }).should("be.visible");
+      if (label === "Email") {
+        cy.intercept("POST", "/api/admin/settings/email/test", { statusCode: 204 }).as(
+          "testEmailConnection",
+        );
+        cy.contains("button", "Test connection", { timeout: 15_000 }).should("be.visible").click();
+        cy.wait("@testEmailConnection");
+        cy.contains("Test email sent successfully.").should("be.visible");
+      }
     });
   });
 

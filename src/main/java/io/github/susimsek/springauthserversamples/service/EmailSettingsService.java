@@ -47,6 +47,26 @@ public class EmailSettingsService {
                 e.isSsl());
     }
 
+    @Transactional(readOnly = true)
+    public EmailConfiguration configuration(AdminEmailSettingsRequestDTO request) {
+        EmailSettingsEntity current = entity();
+        String password =
+                request.password() == null || request.password().isBlank()
+                        ? current.getPassword()
+                        : request.password();
+        return new EmailConfiguration(
+                request.enabled(),
+                request.fromAddress().trim(),
+                request.baseUrl().trim(),
+                request.host().trim(),
+                request.port(),
+                trimToNull(request.username()),
+                password,
+                request.smtpAuth(),
+                request.starttls(),
+                request.ssl());
+    }
+
     @Transactional
     public AdminEmailSettingsDTO update(AdminEmailSettingsRequestDTO request) {
         EmailSettingsEntity e = entity();
@@ -63,6 +83,14 @@ public class EmailSettingsService {
         return repository
                 .findById(SETTINGS_ID)
                 .orElseThrow(() -> new IllegalStateException("Email settings are not initialized"));
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     public record EmailConfiguration(
