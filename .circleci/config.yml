@@ -153,7 +153,7 @@ jobs:
               -Dskip.frontend=true \
               -Dspotless.skip=true \
               -Dcheckstyle.skip=true \
-              -DbuildArgs="--no-fallback,-Os,--static,--libc=musl,-J-Xmx7g" \
+              -DbuildArgs="--no-fallback,-Os,--static,--libc=musl,-J-Xmx5g" \
               native:compile
           no_output_timeout: 40m
 
