@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.benmanes.caffeine.jcache.spi.CaffeineCachingProvider;
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
+import io.github.susimsek.springauthserversamples.domain.AdminEventSettingsEntity;
 import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentEntity;
 import io.github.susimsek.springauthserversamples.domain.EmailSettingsEntity;
@@ -68,6 +69,7 @@ class CacheConfigTest {
         JCacheManagerCustomizer customizer = configuration.cacheManagerCustomizer();
 
         CacheManager cacheManager = configuration.jcacheManager(customizer);
+        assertThat(cacheManager.getCache(AdminEventSettingsEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(AuthorizationConsentEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(AuthorityEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(EmailSettingsEntity.class.getName())).isNotNull();

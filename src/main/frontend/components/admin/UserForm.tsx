@@ -570,7 +570,9 @@ export function UserForm({
     { key: "groups", label: dictionary.admin.nav.groups, href: `${userBaseUrl}/groups` },
     { key: "sessions", label: copy.sessions, href: `${userBaseUrl}/sessions` },
     { key: "consents", label: copy.consents, href: `${userBaseUrl}/consents` },
-    { key: "events", label: dictionary.admin.events.title, href: `${userBaseUrl}/events` },
+    ...(access?.viewEvents
+      ? [{ key: "events", label: dictionary.admin.events.title, href: `${userBaseUrl}/events` }]
+      : []),
   ];
   return (
     <>

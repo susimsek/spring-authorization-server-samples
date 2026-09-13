@@ -9,6 +9,8 @@ import io.github.susimsek.springauthserversamples.dto.admin.AdminAvatarDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminConsentDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminDashboardDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminEventDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminEventSettingsDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminEventSettingsRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminKeyDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminRoleDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminRoleRequestDTO;
@@ -20,6 +22,7 @@ import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventS
 import io.github.susimsek.springauthserversamples.service.admin.AdminAvatarService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminConsentService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminDashboardService;
+import io.github.susimsek.springauthserversamples.service.admin.AdminEventSettingsService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminRoleService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminServerInfoService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminSessionService;
@@ -39,6 +42,8 @@ class AdminControllerDelegationTest {
 
     private final AdminUserService userService = mock(AdminUserService.class);
     private final AdminAuditEventService eventService = mock(AdminAuditEventService.class);
+    private final AdminEventSettingsService eventSettingsService =
+            mock(AdminEventSettingsService.class);
     private final AdminAvatarService avatarService = mock(AdminAvatarService.class);
     private final AdminSessionService sessionService = mock(AdminSessionService.class);
     private final AdminServerInfoService serverInfoService = mock(AdminServerInfoService.class);
@@ -51,7 +56,8 @@ class AdminControllerDelegationTest {
     void delegatesDashboardRoleAndEventEndpoints() {
         var dashboardController = new AdminDashboardController(dashboardService, serverInfoService);
         var roleController = new AdminRoleController(roleService);
-        var eventController = new AdminEventController(eventService, userService);
+        var eventController =
+                new AdminEventController(eventService, userService, eventSettingsService);
         var dashboard = new AdminDashboardDTO(4, 5, 6, 7);
         var pageable = PageRequest.of(0, 20);
         var roles = new PageImpl<>(List.of(new AdminRoleDTO("ROLE_ADMIN")));
@@ -71,7 +77,19 @@ class AdminControllerDelegationTest {
         assertThat(roleController.deleteRole("ROLE_AUDITOR").getStatusCode())
                 .isEqualTo(HttpStatus.NO_CONTENT);
         assertThat(eventController.events("", "", "", "", null, null, pageable)).isSameAs(events);
+        var settings = new AdminEventSettingsDTO(true, true, true, 30);
+        when(eventSettingsService.get()).thenReturn(settings);
+        when(eventSettingsService.update(new AdminEventSettingsRequestDTO(true, true, true, 30)))
+                .thenReturn(settings);
+        assertThat(eventController.eventSettings()).isSameAs(settings);
+        assertThat(
+                        eventController.updateEventSettings(
+                                new AdminEventSettingsRequestDTO(true, true, true, 30)))
+                .isSameAs(settings);
+        assertThat(eventController.deleteAllEvents().getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
         verify(roleService).deleteRole("ROLE_AUDITOR");
+        verify(eventService).deleteAll();
     }
 
     @Test

@@ -108,7 +108,9 @@ export function ClientDetail({
     },
     { key: "sessions", label: copy.sessions, href: `${detailUrl}/sessions` },
     { key: "consents", label: copy.consents, href: `${detailUrl}/consents` },
-    { key: "events", label: copy.events, href: `${detailUrl}/events` },
+    ...(access?.viewEvents
+      ? [{ key: "events", label: copy.events, href: `${detailUrl}/events` }]
+      : []),
   ];
   return (
     <>

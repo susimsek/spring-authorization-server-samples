@@ -38,6 +38,24 @@ public class AdminApiSecurityConfig {
                                         .requestMatchers("/api/admin/whoami")
                                         .hasAuthority("SCOPE_admin-api")
                                         .requestMatchers(
+                                                HttpMethod.GET,
+                                                "/api/admin/users/*/events",
+                                                "/api/admin/clients/*/events",
+                                                "/api/admin/events",
+                                                "/api/admin/events/config")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.EVENT_VIEWER,
+                                                AuthoritiesConstants.EVENT_MANAGER)
+                                        .requestMatchers(HttpMethod.DELETE, "/api/admin/events")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.EVENT_MANAGER)
+                                        .requestMatchers(HttpMethod.PUT, "/api/admin/events/config")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.EVENT_MANAGER)
+                                        .requestMatchers(
                                                 HttpMethod.GET, "/api/admin/client-scopes/**")
                                         .hasAnyAuthority(
                                                 AuthoritiesConstants.ADMIN,
@@ -90,11 +108,6 @@ public class AdminApiSecurityConfig {
                                         .requestMatchers(
                                                 HttpMethod.POST, "/api/admin/users/*/impersonation")
                                         .hasAuthority(AuthoritiesConstants.ADMIN)
-                                        .requestMatchers(HttpMethod.GET, "/api/admin/events")
-                                        .hasAnyAuthority(
-                                                AuthoritiesConstants.ADMIN,
-                                                AuthoritiesConstants.USER_VIEWER,
-                                                AuthoritiesConstants.USER_MANAGER)
                                         .requestMatchers(HttpMethod.PUT, "/api/admin/users/**")
                                         .hasAnyAuthority(
                                                 AuthoritiesConstants.ADMIN,

@@ -1,6 +1,7 @@
 package io.github.susimsek.springauthserversamples.repository;
 
 import io.github.susimsek.springauthserversamples.domain.AdminEventEntity;
+import java.time.Instant;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,4 +12,6 @@ public interface AdminEventRepository
                 JpaSpecificationExecutor<AdminEventEntity> {
     Page<AdminEventEntity> findByTargetTypeAndTargetId(
             String targetType, String targetId, Pageable pageable);
+
+    long deleteByOccurredAtBefore(Instant cutoff);
 }

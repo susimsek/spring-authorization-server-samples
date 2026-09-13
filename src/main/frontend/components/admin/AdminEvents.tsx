@@ -1,17 +1,21 @@
 "use client";
 import { useDictionary, useLocale } from "@/i18n/client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
-import { Badge, Button, Form, Offcanvas } from "react-bootstrap";
+import { Alert, Badge, Button, Card, Form, Offcanvas, Spinner } from "react-bootstrap";
+import { z } from "zod";
 import { adminRequest } from "@/lib/admin-api";
 import type { PageResponse } from "@/lib/api-types";
 import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
+import { ConfirmModal } from "@/components/admin/ConfirmModal";
 import { DataTable } from "@/components/admin/DataTable";
 import { ResourceFilters } from "@/components/admin/ResourceFilters";
 import { PaginationControls } from "@/components/admin/PaginationControls";
 import { useAdminTableState } from "@/components/admin/useAdminTableState";
 import { ViewHeader } from "@/components/admin/ViewHeader";
 import { ActionIcon } from "@/components/shared/ActionIcon";
+import { useForm } from "@/lib/form";
 
 export type Event = {
   id: string;
@@ -22,9 +26,16 @@ export type Event = {
   occurredAt: string;
 };
 
+type EventSettings = {
+  eventsEnabled: boolean;
+  adminEventsEnabled: boolean;
+  adminEventsDetailsEnabled: boolean;
+  eventsExpirationDays: number;
+};
+
 export default function AdminEventsPage() {
   const locale = useLocale();
-  const { accessToken } = useAdminAuth();
+  const { access, accessToken } = useAdminAuth();
   const dictionary = useDictionary();
   const copy = dictionary.admin.events;
   const [events, setEvents] = useState<Event[]>([]);
@@ -32,6 +43,36 @@ export default function AdminEventsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [settingsError, setSettingsError] = useState(false);
+  const [settingsSaved, setSettingsSaved] = useState(false);
+  const [clearDialog, setClearDialog] = useState(false);
+  const [clearError, setClearError] = useState(false);
+  const [clearSucceeded, setClearSucceeded] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [reloadVersion, setReloadVersion] = useState(0);
+  const validation = dictionary.admin.common.validation;
+  const schema = z.object({
+    eventsEnabled: z.boolean(),
+    adminEventsEnabled: z.boolean(),
+    adminEventsDetailsEnabled: z.boolean(),
+    eventsExpirationDays: z.number().int().min(0, validation.invalid).max(3650, validation.invalid),
+  });
+  const {
+    register,
+    reset,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<EventSettings>({
+    resolver: zodResolver(schema),
+    mode: "onBlur",
+    defaultValues: {
+      eventsEnabled: true,
+      adminEventsEnabled: true,
+      adminEventsDetailsEnabled: true,
+      eventsExpirationDays: 0,
+    },
+  });
   const {
     action,
     clearFilters,
@@ -53,6 +94,19 @@ export default function AdminEventsPage() {
     targetType,
     to,
   } = useAdminTableState(10, false, "occurredAt,desc");
+
+  useEffect(() => {
+    if (!accessToken) return;
+    adminRequest<EventSettings>(accessToken, { url: "/api/admin/events/config" })
+      .then((response) => {
+        if (response.status >= 300) throw new Error();
+        reset(response.data);
+        setSettingsLoaded(true);
+        setSettingsError(false);
+      })
+      .catch(() => setSettingsError(true));
+  }, [accessToken, reset]);
+
   useEffect(() => {
     if (!accessToken) return;
     const search = new URLSearchParams({
@@ -75,7 +129,49 @@ export default function AdminEventsPage() {
         setTotalPages(r.data.totalPages);
       }
     });
-  }, [accessToken, action, from, page, query, size, sort, targetId, targetType, to]);
+  }, [accessToken, action, from, page, query, reloadVersion, size, sort, targetId, targetType, to]);
+
+  const saveSettings = handleSubmit(async (values) => {
+    if (!accessToken) return;
+    setSettingsSaved(false);
+    setSettingsError(false);
+    try {
+      const response = await adminRequest<EventSettings>(accessToken, {
+        method: "PUT",
+        url: "/api/admin/events/config",
+        data: values,
+      });
+      if (response.status >= 300) throw new Error();
+      reset(response.data);
+      setSettingsSaved(true);
+    } catch {
+      setSettingsError(true);
+    }
+  });
+
+  const clearEvents = async () => {
+    if (!accessToken) return;
+    setClearing(true);
+    setClearError(false);
+    setClearSucceeded(false);
+    try {
+      const response = await adminRequest(accessToken, {
+        method: "DELETE",
+        url: "/api/admin/events",
+      });
+      if (response.status >= 300) throw new Error();
+      setClearDialog(false);
+      setSelected(null);
+      setPage(0);
+      setClearSucceeded(true);
+      setReloadVersion((current) => current + 1);
+    } catch {
+      setClearError(true);
+    } finally {
+      setClearing(false);
+    }
+  };
+
   const types = useMemo(() => [...new Set(events.map((event) => event.action))].sort(), [events]);
   const activeFilters = [
     query && { label: copy.search, value: query, onRemove: () => setQuery("") },
@@ -96,6 +192,90 @@ export default function AdminEventsPage() {
           </Badge>
         }
       />
+      <Card className="admin-panel-card mb-4">
+        <Card.Body>
+          <div className="d-flex flex-wrap justify-content-between align-items-start gap-3">
+            <div>
+              <h2 className="h5 mb-1">{copy.settingsTitle}</h2>
+              <p className="text-body-secondary mb-0">{copy.settingsDescription}</p>
+            </div>
+            {access?.manageEvents && (
+              <Button
+                disabled={isSubmitting || !settingsLoaded}
+                form="event-settings-form"
+                type="submit"
+              >
+                {isSubmitting ? (
+                  <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                ) : null}
+                {copy.saveSettings}
+              </Button>
+            )}
+          </div>
+          {settingsError && (
+            <Alert variant="danger" className="mt-3 mb-0">
+              {copy.settingsError}
+            </Alert>
+          )}
+          {settingsSaved && (
+            <Alert variant="success" className="mt-3 mb-0">
+              {copy.settingsSaved}
+            </Alert>
+          )}
+          {clearSucceeded && (
+            <Alert variant="success" className="mt-3 mb-0">
+              {copy.clearAllSuccess}
+            </Alert>
+          )}
+          {settingsLoaded && (
+            <Form id="event-settings-form" noValidate onSubmit={saveSettings}>
+              <div className="d-grid gap-3 mt-3">
+                <Form.Check
+                  type="switch"
+                  disabled={!access?.manageEvents}
+                  label={copy.eventsEnabled}
+                  {...register("eventsEnabled")}
+                />
+                <Form.Check
+                  type="switch"
+                  disabled={!access?.manageEvents}
+                  label={copy.adminEventsEnabled}
+                  {...register("adminEventsEnabled")}
+                />
+                <Form.Check
+                  type="switch"
+                  disabled={!access?.manageEvents}
+                  label={copy.adminEventsDetailsEnabled}
+                  {...register("adminEventsDetailsEnabled")}
+                />
+                <Form.Group controlId="event-retention-days">
+                  <Form.Label>{copy.eventsExpirationDays}</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min={0}
+                    max={3650}
+                    isInvalid={Boolean(errors.eventsExpirationDays)}
+                    disabled={!access?.manageEvents}
+                    {...register("eventsExpirationDays", { valueAsNumber: true })}
+                  />
+                  <Form.Control.Feedback type="invalid">
+                    {errors.eventsExpirationDays?.message}
+                  </Form.Control.Feedback>
+                  <Form.Text>{copy.eventsExpirationHint}</Form.Text>
+                </Form.Group>
+              </div>
+            </Form>
+          )}
+          {access?.manageEvents && (
+            <div className="admin-form-actions mt-3">
+              <Button variant="danger" onClick={() => setClearDialog(true)}>
+                {copy.clearAll}
+              </Button>
+              {clearError && <span className="text-danger">{copy.clearAllError}</span>}
+            </div>
+          )}
+        </Card.Body>
+      </Card>
       <ResourceFilters
         key={query}
         query={query}
@@ -258,6 +438,15 @@ export default function AdminEventsPage() {
           )}
         </Offcanvas.Body>
       </Offcanvas>
+      <ConfirmModal
+        show={clearDialog}
+        message={copy.clearAllMessage}
+        cancelLabel={dictionary.admin.common.cancel}
+        confirmLabel={copy.clearAll}
+        busy={clearing}
+        onCancel={() => setClearDialog(false)}
+        onConfirm={clearEvents}
+      />
     </>
   );
 }

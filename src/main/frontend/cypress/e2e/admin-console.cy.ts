@@ -66,6 +66,35 @@ describe("admin console", () => {
     });
   });
 
+  it("updates event settings and clears audit events", () => {
+    signInAdmin();
+    cy.intercept("GET", "/api/admin/events/config").as("eventSettings");
+    cy.intercept("PUT", "/api/admin/events/config").as("saveEventSettings");
+    cy.intercept("DELETE", "/api/admin/events").as("clearEvents");
+    cy.contains(".admin-sidebar a", "Events").click();
+    cy.wait("@eventSettings");
+    cy.contains("button", "Save event settings", { timeout: 15_000 }).should("be.visible").click();
+    cy.wait("@saveEventSettings");
+    cy.contains("Event settings saved.").should("be.visible");
+    cy.contains("button", "Clear all events").click();
+    cy.contains("Clear all stored administrative events?").should("be.visible");
+    cy.get(".modal").contains("button", "Clear all events").click();
+    cy.wait("@clearEvents");
+  });
+
+  it("shows an error when event settings cannot be saved", () => {
+    signInAdmin();
+    cy.intercept("GET", "/api/admin/events/config").as("eventSettings");
+    cy.intercept("PUT", "/api/admin/events/config", { statusCode: 500 }).as(
+      "saveEventSettingsError",
+    );
+    cy.contains(".admin-sidebar a", "Events").click();
+    cy.wait("@eventSettings");
+    cy.contains("button", "Save event settings", { timeout: 15_000 }).should("be.visible").click();
+    cy.wait("@saveEventSettingsError");
+    cy.contains("Event settings could not be loaded or saved.").should("be.visible");
+  });
+
   it("opens each settings section with its own route and save action", () => {
     const sections = [
       ["General", "/admin/settings", null],

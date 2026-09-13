@@ -3,7 +3,9 @@ package io.github.susimsek.springauthserversamples.service.admin;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminEventDTO;
 import io.github.susimsek.springauthserversamples.mapper.AdminEventMapper;
 import io.github.susimsek.springauthserversamples.repository.AdminEventRepository;
+import io.github.susimsek.springauthserversamples.repository.AdminEventSettingsRepository;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.mapstruct.factory.Mappers;
@@ -11,6 +13,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
@@ -18,12 +21,36 @@ public class AdminAuditEventService {
 
     private final AdminEventRepository adminEventRepository;
     private final AdminEventMapper adminEventMapper;
+    private final AdminEventSettingsRepository settingsRepository;
 
-    public AdminAuditEventService(AdminEventRepository adminEventRepository) {
-        this(adminEventRepository, Mappers.getMapper(AdminEventMapper.class));
+    public AdminAuditEventService(
+            AdminEventRepository adminEventRepository,
+            AdminEventSettingsRepository settingsRepository) {
+        this(adminEventRepository, Mappers.getMapper(AdminEventMapper.class), settingsRepository);
     }
 
+    public AdminAuditEventService(AdminEventRepository adminEventRepository) {
+        this(adminEventRepository, Mappers.getMapper(AdminEventMapper.class), null);
+    }
+
+    @Transactional
     public void record(String action, String targetType, String targetId) {
+        if (settingsRepository != null) {
+            var settings =
+                    settingsRepository
+                            .findById(1L)
+                            .orElseThrow(
+                                    () ->
+                                            new IllegalStateException(
+                                                    "Event settings are not initialized"));
+            if (!settings.isEventsEnabled() || !settings.isAdminEventsEnabled()) {
+                return;
+            }
+            if (settings.getEventsExpirationDays() > 0) {
+                adminEventRepository.deleteByOccurredAtBefore(
+                        Instant.now().minus(settings.getEventsExpirationDays(), ChronoUnit.DAYS));
+            }
+        }
         String actor =
                 java.util.Optional.ofNullable(
                                 SecurityContextHolder.getContext().getAuthentication())
@@ -38,6 +65,12 @@ public class AdminAuditEventService {
                         targetType,
                         targetId,
                         Instant.now()));
+    }
+
+    @Transactional
+    public void deleteAll() {
+        adminEventRepository.deleteAllInBatch();
+        record("events.cleared", "event", "all");
     }
 
     public Page<AdminEventDTO> events(

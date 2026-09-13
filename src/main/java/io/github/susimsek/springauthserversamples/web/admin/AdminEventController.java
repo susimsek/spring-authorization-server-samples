@@ -2,22 +2,32 @@ package io.github.susimsek.springauthserversamples.web.admin;
 
 import io.github.susimsek.springauthserversamples.config.openapi.OpenApiConfig;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminEventDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminEventSettingsDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminEventSettingsRequestDTO;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
+import io.github.susimsek.springauthserversamples.service.admin.AdminEventSettingsService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminUserService;
 import io.github.susimsek.springauthserversamples.web.ApiController;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -32,6 +42,7 @@ class AdminEventController {
 
     private final AdminAuditEventService adminAuditEventService;
     private final AdminUserService adminUserService;
+    private final AdminEventSettingsService adminEventSettingsService;
 
     @GetMapping("/events")
     @Operation(
@@ -88,5 +99,56 @@ class AdminEventController {
             Authentication authentication) {
         adminUserService.requireManageableUser(id, authentication.getName());
         return adminAuditEventService.userEvents(id, pageable);
+    }
+
+    @DeleteMapping("/events")
+    @Operation(
+            summary = "Delete all administrative events",
+            description = "Deletes every stored administrative audit event.")
+    @ApiResponse(responseCode = "204", description = "Administrative audit events deleted.")
+    @ApiResponse(responseCode = "403", description = "The administrator cannot manage events.")
+    ResponseEntity<Void> deleteAllEvents() {
+        adminAuditEventService.deleteAll();
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/events/config")
+    @Operation(
+            summary = "Get event settings",
+            description = "Returns administrative audit event recording and retention settings.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Event settings returned.",
+            content = @Content(schema = @Schema(implementation = AdminEventSettingsDTO.class)))
+    @ApiResponse(responseCode = "403", description = "The administrator cannot view events.")
+    AdminEventSettingsDTO eventSettings() {
+        return adminEventSettingsService.get();
+    }
+
+    @PutMapping("/events/config")
+    @Operation(
+            summary = "Update event settings",
+            description = "Updates administrative audit event recording and retention settings.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Event settings updated.",
+            content = @Content(schema = @Schema(implementation = AdminEventSettingsDTO.class)))
+    @ApiResponse(responseCode = "400", description = "The event settings are invalid.")
+    @ApiResponse(responseCode = "403", description = "The administrator cannot manage events.")
+    AdminEventSettingsDTO updateEventSettings(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                            required = true,
+                            description = "Event settings to apply.",
+                            content =
+                                    @Content(
+                                            schema =
+                                                    @Schema(
+                                                            implementation =
+                                                                    AdminEventSettingsRequestDTO
+                                                                            .class)))
+                    @Valid
+                    @RequestBody
+                    AdminEventSettingsRequestDTO request) {
+        return adminEventSettingsService.update(request);
     }
 }

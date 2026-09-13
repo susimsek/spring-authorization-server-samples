@@ -211,9 +211,9 @@ curl http://localhost:9090/actuator/health/readiness
 - Build with `./mvnw -Pprod,native -DskipTests native:compile`.
 - Runtime hints live in `config/aot/NativeRuntimeHints`; resource-based reflection/resource config lives under `src/main/resources/META-INF/native-image`.
 - Update `NativeRuntimeHints` when adding:
-  - New Liquibase XML/CSV resources
   - New i18n message bundles
   - New framework resources that native image must keep
+- Liquibase resources under `db/changelog/**` and `db/data/**` are already included by the checked-in native-image resource configuration. Do not add `hints.resources().registerPattern("db/changelog/**")` or `hints.resources().registerPattern("db/data/**")` to `NativeRuntimeHints`.
 - If native runtime fails because resources are missing, add focused `RuntimeHints` instead of broad classpath inclusion.
 - Pay attention to Liquibase XML/CSV resources, i18n bundles, H2, Hibernate, Hibernate JCache, and the custom JPA-backed Authorization Server services when changing native-sensitive code.
 - Verify a native executable after changes to authentication, sessions, persistence, static assets, Liquibase, or runtime hints. Add focused hints only; broad reflection, serialization, or resource allowlists are not acceptable.
@@ -311,6 +311,7 @@ curl http://localhost:9090/actuator/health/readiness
 - For DB changes: add a new Liquibase XML changelog and include it from `db/changelog/db.changelog-master.xml`.
 - Do not modify existing changelogs that have already been applied unless this is still local sample bootstrap work and no migration history needs preservation.
 - Hibernate second-level cache uses JCache backed by Caffeine. Cache regions are configured in `config/cache/CacheConfig`.
+- Every entity annotated with `@Cache(usage = CacheConcurrencyStrategy.READ_WRITE)` must have a matching `Entity.class.getName()` region registered in `CacheConfig`; add the region and a focused `CacheConfigTest` assertion in the same change.
 
 ### Docker Compose (Optional)
 

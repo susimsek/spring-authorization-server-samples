@@ -14,6 +14,8 @@ export type AdminAccess = {
   manageSessions: boolean;
   viewConsents: boolean;
   manageConsents: boolean;
+  viewEvents?: boolean;
+  manageEvents?: boolean;
   viewKeys: boolean;
   manageKeys: boolean;
 };

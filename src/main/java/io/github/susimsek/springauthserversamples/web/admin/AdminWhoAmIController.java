@@ -100,6 +100,19 @@ public class AdminWhoAmIController {
                                         authorities,
                                         AuthoritiesConstants.ADMIN,
                                         AuthoritiesConstants.USER_MANAGER)),
+                        Map.entry(
+                                "viewEvents",
+                                hasAny(
+                                        authorities,
+                                        AuthoritiesConstants.ADMIN,
+                                        AuthoritiesConstants.EVENT_VIEWER,
+                                        AuthoritiesConstants.EVENT_MANAGER)),
+                        Map.entry(
+                                "manageEvents",
+                                hasAny(
+                                        authorities,
+                                        AuthoritiesConstants.ADMIN,
+                                        AuthoritiesConstants.EVENT_MANAGER)),
                         Map.entry("viewKeys", hasAny(authorities, AuthoritiesConstants.ADMIN)),
                         Map.entry("manageKeys", hasAny(authorities, AuthoritiesConstants.ADMIN))));
     }

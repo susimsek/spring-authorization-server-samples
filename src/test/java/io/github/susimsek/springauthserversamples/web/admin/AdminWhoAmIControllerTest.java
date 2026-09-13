@@ -30,6 +30,8 @@ class AdminWhoAmIControllerTest {
                 .containsEntry("manageSessions", true)
                 .containsEntry("viewConsents", true)
                 .containsEntry("manageConsents", true)
+                .containsEntry("viewEvents", true)
+                .containsEntry("manageEvents", true)
                 .containsEntry("viewKeys", true)
                 .containsEntry("manageKeys", true);
     }
@@ -53,7 +55,36 @@ class AdminWhoAmIControllerTest {
                 .containsEntry("manageSessions", false)
                 .containsEntry("viewConsents", false)
                 .containsEntry("manageConsents", false)
+                .containsEntry("viewEvents", false)
+                .containsEntry("manageEvents", false)
                 .containsEntry("viewKeys", false)
                 .containsEntry("manageKeys", false);
+    }
+
+    @Test
+    void derivesEventAccessFromEventAuthorities() {
+        var authentication =
+                UsernamePasswordAuthenticationToken.authenticated(
+                        "auditor",
+                        "ignored",
+                        List.of(new SimpleGrantedAuthority("ROLE_EVENT_VIEWER")));
+
+        var response = controller.whoAmI(authentication);
+
+        assertThat(response.access())
+                .containsEntry("viewEvents", true)
+                .containsEntry("manageEvents", false);
+
+        authentication =
+                UsernamePasswordAuthenticationToken.authenticated(
+                        "event-manager",
+                        "ignored",
+                        List.of(new SimpleGrantedAuthority("ROLE_EVENT_MANAGER")));
+
+        response = controller.whoAmI(authentication);
+
+        assertThat(response.access())
+                .containsEntry("viewEvents", true)
+                .containsEntry("manageEvents", true);
     }
 }
