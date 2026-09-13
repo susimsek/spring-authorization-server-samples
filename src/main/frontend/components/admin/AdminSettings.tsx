@@ -10,6 +10,7 @@ import { adminRequest } from "@/lib/admin-api";
 import { AdminPageHeader } from "./AdminPageHeader";
 import { useAdminAuth } from "./AdminAuthProvider";
 import AdminEventSettings from "./AdminEventSettings";
+import AdminUserProfileSettings from "./AdminUserProfileSettings";
 import { DetailTabs } from "./DetailTabs";
 import EmailSettings from "./EmailSettings";
 import LoginSettings, { type LoginSettingsSection } from "./LoginSettings";
@@ -23,6 +24,7 @@ const SETTINGS_SECTIONS = [
   "brute-force",
   "sessions",
   "events",
+  "user-profile",
 ] as const;
 type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 
@@ -73,6 +75,11 @@ export default function AdminSettings() {
       label: dictionary.admin.settings.sections.events,
       href: "/admin/settings/events",
     },
+    {
+      key: "user-profile",
+      label: dictionary.admin.settings.sections.userProfile,
+      href: "/admin/settings/user-profile",
+    },
   ] satisfies Array<{
     key: SettingsSection;
     label: string;
@@ -90,7 +97,11 @@ export default function AdminSettings() {
       {active === "general" ? <GeneralSettings /> : null}
       {active === "email" ? <EmailSettings embedded /> : null}
       {active === "events" ? <AdminEventSettings /> : null}
-      {active !== "general" && active !== "email" && active !== "events" ? (
+      {active === "user-profile" ? <AdminUserProfileSettings dictionary={dictionary} /> : null}
+      {active !== "general" &&
+      active !== "email" &&
+      active !== "events" &&
+      active !== "user-profile" ? (
         <LoginSettings embedded focusSection={active as LoginSettingsSection} />
       ) : null}
     </>

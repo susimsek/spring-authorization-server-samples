@@ -198,4 +198,187 @@ describe("Account console resources", () => {
       }),
     );
   });
+
+  it("validates, uploads, and removes the account avatar", async () => {
+    mockAccountRequest.mockImplementation(async (_token, config) => {
+      if (config.url === "/api/account/profile") {
+        return {
+          status: 200,
+          data: {
+            username: "admin",
+            firstName: "Admin",
+            lastName: "User",
+            email: "admin@example.test",
+            emailVerified: true,
+            createdAt: "2026-08-20T10:00:00Z",
+            updatedAt: "2026-08-20T10:00:00Z",
+          },
+        } as never;
+      }
+      if (config.url === "/api/account/profile/attributes") {
+        return { status: 200, data: { definitions: [], attributes: {} } } as never;
+      }
+      if (config.url === "/api/account/profile/avatar" && !config.method) {
+        return { status: 200, data: { avatarUrl: "/avatars/current?v=1" } } as never;
+      }
+      if (config.method === "PUT") {
+        return { status: 200, data: { avatarUrl: "/avatars/new?v=2" } } as never;
+      }
+      return { status: 204, data: null } as never;
+    });
+
+    renderWithStore(<AccountProfileForm dictionary={dictionary} />);
+
+    const upload = await screen.findByLabelText(dictionary.account.profile.uploadAvatar);
+    const invalidFile = new File(["text"], "avatar.txt", { type: "text/plain" });
+    fireEvent.change(upload, { target: { files: [invalidFile] } });
+    expect(await screen.findByText(dictionary.account.profile.avatarInvalid)).toBeVisible();
+
+    const validFile = new File(["image"], "avatar.png", { type: "image/png" });
+    fireEvent.change(upload, { target: { files: [validFile] } });
+    await waitFor(() =>
+      expect(mockAccountRequest).toHaveBeenCalledWith("token", {
+        method: "PUT",
+        url: "/api/account/profile/avatar",
+        data: expect.any(FormData),
+      }),
+    );
+
+    const removeButton = screen.getByRole("button", {
+      name: dictionary.account.profile.removeAvatar,
+    });
+    await waitFor(() => expect(removeButton).toBeEnabled());
+    fireEvent.click(removeButton);
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: dictionary.account.profile.removeAvatar,
+      }),
+    );
+    await waitFor(() =>
+      expect(mockAccountRequest).toHaveBeenCalledWith("token", {
+        method: "DELETE",
+        url: "/api/account/profile/avatar",
+      }),
+    );
+  });
+
+  it("renders built-in and custom profile fields in display order", async () => {
+    mockAccountRequest.mockImplementation(async (_token, config) => {
+      if (config.url === "/api/account/profile") {
+        return {
+          status: 200,
+          data: {
+            username: "admin",
+            firstName: "Admin",
+            lastName: "User",
+            email: "admin@example.test",
+            emailVerified: true,
+            createdAt: "2026-08-20T10:00:00Z",
+            updatedAt: "2026-08-20T10:00:00Z",
+          },
+        } as never;
+      }
+      if (config.url === "/api/account/profile/attributes") {
+        return {
+          status: 200,
+          data: {
+            definitions: [
+              {
+                name: "department",
+                displayName: "Department",
+                description: null,
+                type: "STRING",
+                required: false,
+                multivalued: false,
+                minLength: null,
+                maxLength: 100,
+                pattern: null,
+                displayOrder: 60,
+              },
+              {
+                name: "username",
+                displayName: "Username",
+                description: null,
+                type: "STRING",
+                required: true,
+                multivalued: false,
+                minLength: null,
+                maxLength: 100,
+                pattern: null,
+                displayOrder: 10,
+              },
+              {
+                name: "employeeNumber",
+                displayName: "Employee number",
+                description: null,
+                type: "STRING",
+                required: false,
+                multivalued: false,
+                minLength: null,
+                maxLength: 100,
+                pattern: null,
+                displayOrder: 50,
+              },
+              {
+                name: "email",
+                displayName: "Email",
+                description: null,
+                type: "EMAIL",
+                required: false,
+                multivalued: false,
+                minLength: null,
+                maxLength: 200,
+                pattern: null,
+                displayOrder: 20,
+              },
+              {
+                name: "lastName",
+                displayName: "Last name",
+                description: null,
+                type: "STRING",
+                required: false,
+                multivalued: false,
+                minLength: null,
+                maxLength: 100,
+                pattern: null,
+                displayOrder: 40,
+              },
+              {
+                name: "firstName",
+                displayName: "First name",
+                description: null,
+                type: "STRING",
+                required: false,
+                multivalued: false,
+                minLength: null,
+                maxLength: 100,
+                pattern: null,
+                displayOrder: 30,
+              },
+            ],
+            attributes: { employeeNumber: ["USR-001"], department: ["Sales"] },
+          },
+        } as never;
+      }
+      if (config.url === "/api/account/profile/avatar") {
+        return { status: 200, data: { avatarUrl: null } } as never;
+      }
+      return { status: 204, data: null } as never;
+    });
+
+    const view = renderWithStore(<AccountProfileForm dictionary={dictionary} />);
+    await screen.findByRole("textbox", { name: /Username/ });
+    const fields = [
+      screen.getByRole("textbox", { name: /Username/ }),
+      screen.getByRole("textbox", { name: /^Email$/ }),
+      screen.getByRole("textbox", { name: /First name/ }),
+      screen.getByRole("textbox", { name: /Last name/ }),
+      screen.getByRole("textbox", { name: /Employee number/ }),
+      screen.getByRole("textbox", { name: /Department/ }),
+    ];
+    const inputOrder = [...view.container.querySelectorAll('input:not([type="file"])')];
+    expect(fields.map((field) => inputOrder.indexOf(field as HTMLInputElement))).toEqual([
+      0, 1, 2, 3, 4, 5,
+    ]);
+  });
 });

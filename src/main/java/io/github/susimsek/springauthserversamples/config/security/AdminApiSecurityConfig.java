@@ -38,6 +38,12 @@ public class AdminApiSecurityConfig {
                                         .requestMatchers("/api/admin/whoami")
                                         .hasAuthority("SCOPE_admin-api")
                                         .requestMatchers(
+                                                HttpMethod.GET, "/api/admin/profile-attributes")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.USER_VIEWER,
+                                                AuthoritiesConstants.USER_MANAGER)
+                                        .requestMatchers(
                                                 HttpMethod.GET,
                                                 "/api/admin/users/*/events",
                                                 "/api/admin/clients/*/events",

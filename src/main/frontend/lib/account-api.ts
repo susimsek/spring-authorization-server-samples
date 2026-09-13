@@ -19,6 +19,10 @@ export type AccountProfile = {
   updatedAt: string;
 };
 
+export type AccountAvatar = {
+  avatarUrl: string | null;
+};
+
 export type AccountApplication = {
   clientId: string;
   clientName: string;

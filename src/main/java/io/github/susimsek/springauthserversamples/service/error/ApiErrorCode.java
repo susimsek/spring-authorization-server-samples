@@ -83,7 +83,16 @@ public enum ApiErrorCode {
                     + " and a symbol."),
     USER_INVALID_ROLES("user_invalid_roles", "One or more roles are invalid."),
     USER_INVALID_USERNAME("user_invalid_username", "Username is required."),
-    USER_PROTECTED("user_protected", "This user cannot be changed by the current administrator.");
+    USER_PROTECTED("user_protected", "This user cannot be changed by the current administrator."),
+    USER_PROFILE_INVALID_NAME(
+            "user_profile_invalid_name", "The profile attribute name is invalid."),
+    USER_PROFILE_DUPLICATE_NAME(
+            "user_profile_duplicate_name", "The profile attribute already exists."),
+    USER_PROFILE_INVALID_DEFINITION(
+            "user_profile_invalid_definition", "The profile attribute definition is invalid."),
+    USER_PROFILE_INVALID_VALUE(
+            "user_profile_invalid_value", "The profile attribute value is invalid."),
+    USER_PROFILE_REQUIRED("user_profile_required", "The profile attribute is required.");
 
     private final String value;
     private final String defaultMessage;

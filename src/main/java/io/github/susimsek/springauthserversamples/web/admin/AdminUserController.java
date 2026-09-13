@@ -7,6 +7,9 @@ import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminUserDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminUserEnabledRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminUserRequestDTO;
+import io.github.susimsek.springauthserversamples.dto.userprofile.UserProfileAttributesDTO;
+import io.github.susimsek.springauthserversamples.dto.userprofile.UserProfileAttributesRequestDTO;
+import io.github.susimsek.springauthserversamples.service.UserProfileService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAvatarService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminUserService;
 import io.github.susimsek.springauthserversamples.web.ApiController;
@@ -51,6 +54,7 @@ class AdminUserController {
 
     private final AdminUserService adminUserService;
     private final AdminAvatarService adminAvatarService;
+    private final UserProfileService userProfileService;
 
     @GetMapping
     @Operation(
@@ -80,6 +84,31 @@ class AdminUserController {
                     Long id,
             Authentication authentication) {
         return adminUserService.user(id, authentication.getName());
+    }
+
+    @GetMapping("/{id}/profile-attributes")
+    @Operation(
+            summary = "Read user profile attributes",
+            description = "Returns configured profile fields and values for a user.")
+    @ApiResponse(responseCode = "200", description = "Profile attributes returned.")
+    UserProfileAttributesDTO profileAttributes(
+            @PathVariable Long id, Authentication authentication) {
+        adminUserService.requireManageableUser(id, authentication.getName());
+        return userProfileService.attributes(id);
+    }
+
+    @PutMapping("/{id}/profile-attributes")
+    @Operation(
+            summary = "Update user profile attributes",
+            description = "Validates and replaces configured profile values for a user.")
+    @ApiResponse(responseCode = "200", description = "Profile attributes updated.")
+    UserProfileAttributesDTO updateProfileAttributes(
+            @PathVariable Long id,
+            @Valid @RequestBody UserProfileAttributesRequestDTO request,
+            Authentication authentication) {
+        adminUserService.requireManageableUser(id, authentication.getName());
+        return userProfileService.saveAttributes(
+                id, request.attributes(), authentication.getName());
     }
 
     @GetMapping("/{id}/groups")

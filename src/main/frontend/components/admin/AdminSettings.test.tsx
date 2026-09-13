@@ -61,7 +61,7 @@ describe("AdminSettings", () => {
         "href",
         key === "general"
           ? "/admin/settings"
-          : `/admin/settings/${key === "passwordPolicy" ? "password-policy" : key === "otpPolicy" ? "otp-policy" : key === "bruteForce" ? "brute-force" : key}`,
+          : `/admin/settings/${key === "passwordPolicy" ? "password-policy" : key === "otpPolicy" ? "otp-policy" : key === "bruteForce" ? "brute-force" : key === "userProfile" ? "user-profile" : key}`,
       );
     }
 

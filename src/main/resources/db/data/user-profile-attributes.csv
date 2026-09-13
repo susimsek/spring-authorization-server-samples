@@ -1,0 +1,3 @@
+name;display_name;description;attribute_type;required;multivalued;min_length;max_length;pattern;enabled;display_order;created_by;last_modified_by
+department;Department;The user's department.;STRING;false;false;;100;;true;50;system;
+employeeNumber;Employee number;An optional employee identifier.;STRING;false;false;;50;^[A-Z0-9-]+$;true;60;system;

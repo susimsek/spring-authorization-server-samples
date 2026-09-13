@@ -2,6 +2,7 @@ package io.github.susimsek.springauthserversamples.web.account;
 
 import io.github.susimsek.springauthserversamples.config.openapi.OpenApiConfig;
 import io.github.susimsek.springauthserversamples.dto.account.AccountApplicationDTO;
+import io.github.susimsek.springauthserversamples.dto.account.AccountAvatarDTO;
 import io.github.susimsek.springauthserversamples.dto.account.AccountDeleteRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.account.AccountPasswordRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.account.AccountProfileDTO;
@@ -12,7 +13,11 @@ import io.github.susimsek.springauthserversamples.dto.account.MfaSetupDTO;
 import io.github.susimsek.springauthserversamples.dto.account.MfaStatusDTO;
 import io.github.susimsek.springauthserversamples.dto.account.RecoveryCodesDTO;
 import io.github.susimsek.springauthserversamples.dto.account.RecoveryCodesStatusDTO;
+import io.github.susimsek.springauthserversamples.dto.userprofile.UserProfileAttributesDTO;
+import io.github.susimsek.springauthserversamples.dto.userprofile.UserProfileAttributesRequestDTO;
+import io.github.susimsek.springauthserversamples.service.UserProfileService;
 import io.github.susimsek.springauthserversamples.service.account.AccountApplicationService;
+import io.github.susimsek.springauthserversamples.service.account.AccountAvatarService;
 import io.github.susimsek.springauthserversamples.service.account.AccountDeletionService;
 import io.github.susimsek.springauthserversamples.service.account.AccountProfileService;
 import io.github.susimsek.springauthserversamples.service.account.AccountSessionService;
@@ -41,7 +46,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @ApiController
 @RestController
@@ -54,8 +61,10 @@ import org.springframework.web.bind.annotation.RestController;
 public class AccountController {
 
     private final AccountProfileService accountProfileService;
+    private final UserProfileService userProfileService;
     private final AccountSessionService accountSessionService;
     private final AccountApplicationService accountApplicationService;
+    private final AccountAvatarService accountAvatarService;
     private final AccountDeletionService accountDeletionService;
     private final MfaService mfaService;
     private final RecoveryCodeService recoveryCodeService;
@@ -163,6 +172,64 @@ public class AccountController {
                     @RequestBody
                     AccountProfileRequestDTO request) {
         return accountProfileService.updateProfile(authentication.getName(), request);
+    }
+
+    @GetMapping("/profile/avatar")
+    @Operation(
+            summary = "Read account avatar",
+            description = "Returns the public, versioned avatar URL for the authenticated account.")
+    @ApiResponse(responseCode = "200", description = "Account avatar returned.")
+    AccountAvatarDTO avatar(Authentication authentication) {
+        return accountAvatarService.avatar(authentication.getName());
+    }
+
+    @PutMapping(path = "/profile/avatar", consumes = "multipart/form-data")
+    @Operation(
+            summary = "Upload account avatar",
+            description =
+                    "Stores a JPEG or PNG avatar for the authenticated account. The image is"
+                            + " limited to 2 MiB and 4 megapixels.")
+    @ApiResponse(responseCode = "200", description = "Account avatar uploaded.")
+    AccountAvatarDTO updateAvatar(
+            Authentication authentication,
+            @Parameter(description = "JPEG or PNG avatar image.", required = true)
+                    @RequestParam("file")
+                    MultipartFile file) {
+        return accountAvatarService.updateAvatar(authentication.getName(), file);
+    }
+
+    @DeleteMapping("/profile/avatar")
+    @Operation(
+            summary = "Delete account avatar",
+            description = "Removes the avatar for the authenticated account.")
+    @ApiResponse(responseCode = "204", description = "Account avatar deleted.")
+    ResponseEntity<Void> deleteAvatar(Authentication authentication) {
+        accountAvatarService.deleteAvatar(authentication.getName());
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/profile/attributes")
+    @Operation(
+            summary = "Read profile attributes",
+            description =
+                    "Returns configured profile fields and values for the authenticated account.")
+    @ApiResponse(responseCode = "200", description = "Profile attributes returned.")
+    UserProfileAttributesDTO profileAttributes(Authentication authentication) {
+        return userProfileService.attributes(authentication.getName());
+    }
+
+    @PutMapping("/profile/attributes")
+    @Operation(
+            summary = "Update profile attributes",
+            description =
+                    "Validates and replaces configured profile values for the authenticated"
+                            + " account.")
+    @ApiResponse(responseCode = "200", description = "Profile attributes updated.")
+    UserProfileAttributesDTO updateProfileAttributes(
+            Authentication authentication,
+            @Valid @RequestBody UserProfileAttributesRequestDTO request) {
+        return userProfileService.saveAttributes(
+                authentication.getName(), request.attributes(), authentication.getName());
     }
 
     @PutMapping("/password")

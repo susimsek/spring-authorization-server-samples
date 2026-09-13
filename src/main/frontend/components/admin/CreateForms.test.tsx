@@ -6,6 +6,7 @@ import { adminRequest } from "@/lib/admin-api";
 import { ClientScopeCreateForm } from "./ClientScopeCreateForm";
 import { GroupCreateForm } from "./GroupCreateForm";
 import { RoleCreateForm } from "./RoleCreateForm";
+import { UserProfileAttributeForm } from "./UserProfileAttributeForm";
 
 const mockPush = jest.fn();
 const mockAdminRequest = adminRequest as jest.MockedFunction<typeof adminRequest>;
@@ -14,11 +15,11 @@ jest.mock("@/lib/admin-api", () => ({ adminRequest: jest.fn() }));
 jest.mock("./AdminAuthProvider", () => ({
   useAdminAuth: () => ({
     accessToken: "token",
-    access: { manageClients: true, manageRoles: true, manageUsers: true },
+    access: { isAdmin: true, manageClients: true, manageRoles: true, manageUsers: true },
   }),
 }));
 jest.mock("@/components/auth/ConsoleAlerts", () => ({
-  useConsoleAlerts: () => ({ addError: jest.fn() }),
+  useConsoleAlerts: () => ({ addError: jest.fn(), addAlert: jest.fn() }),
 }));
 jest.mock("@/routing/navigation", () => ({
   useParams: () => ({ lang: "en" }),
@@ -92,5 +93,48 @@ describe("dedicated administration creation forms", () => {
       }),
     );
     expect(mockPush).toHaveBeenCalledWith("/admin/client-scopes");
+  });
+
+  it("creates a user profile attribute from its dedicated page", async () => {
+    mockAdminRequest.mockResolvedValueOnce({
+      status: 201,
+      data: { id: 3, name: "department" },
+    } as never);
+    render(<UserProfileAttributeForm dictionary={dictionary} />);
+
+    fireEvent.change(
+      screen.getByRole("textbox", { name: dictionary.admin.userProfileSettings.name }),
+      {
+        target: { value: "department" },
+      },
+    );
+    fireEvent.change(
+      screen.getByRole("textbox", { name: dictionary.admin.userProfileSettings.displayName }),
+      { target: { value: "Department" } },
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: dictionary.admin.userProfileSettings.create }),
+    );
+
+    await waitFor(() =>
+      expect(mockAdminRequest).toHaveBeenCalledWith("token", {
+        url: "/api/admin/settings/user-profile",
+        method: "POST",
+        data: {
+          name: "department",
+          displayName: "Department",
+          description: "",
+          type: "STRING",
+          required: false,
+          multivalued: false,
+          minLength: null,
+          maxLength: null,
+          pattern: "",
+          enabled: true,
+          displayOrder: 0,
+        },
+      }),
+    );
+    expect(mockPush).toHaveBeenCalledWith("/admin/settings/user-profile");
   });
 });

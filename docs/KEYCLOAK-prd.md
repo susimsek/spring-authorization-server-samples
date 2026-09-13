@@ -194,8 +194,8 @@ The following matrix compares the behavior currently implemented in this reposit
 | --- | --- | --- | --- | --- |
 | Realm boundary | One configured issuer and one shared data space | Isolated realms contain users, clients, groups, roles, sessions, and realm settings; a master realm can administer other realms[^1] | Missing | Add realm/tenant IDs before claiming multi-tenant support. |
 | Realm settings | Login, password, OTP, brute-force, email, session, and event settings | Realm Settings is the central configuration area with separate tabs | Partial | Keep the Settings route and add realm ownership when multi-tenancy is approved. |
-| User CRUD | Admin API and UI | User list/detail, credentials, required actions, groups, roles, sessions, and consents | Partial | Add dynamic attributes, credential inventory, and bulk lifecycle operations. |
-| Dynamic user profile | Fixed JPA fields | Configurable user-profile attributes with validation and requiredness | Missing | Add a realm-scoped attribute schema and render it in user forms. |
+| User CRUD | Admin API and UI | User list/detail, credentials, required actions, groups, roles, sessions, and consents | Partial | Add credential inventory and bulk lifecycle operations; dynamic profile attributes are covered below. |
+| Dynamic user profile | Application-wide configurable attributes with validation, requiredness, type checks, pattern/length rules, and optional multi-value support; managed under Settings and rendered in admin/account profile forms | Configurable user-profile attributes with validation and requiredness | Implemented for the single-issuer application | Keep the schema application-wide while realms are intentionally out of scope; add localized labels, token mappers, and per-realm ownership only if realm support is introduced. |
 | Password and account recovery | Password policy, history, expiry, email verification, reset tokens | Password credentials and required actions configured per realm | Implemented / Partial | Preserve current flows; align required-action metadata with realm settings. |
 | TOTP and recovery codes | TOTP enrollment/verification, required TOTP, hashed recovery codes | OTP/WebAuthn credentials and configurable required actions | Partial | TOTP is implemented; WebAuthn/passkeys and device inventory remain. |
 | User impersonation | Admin-only, single-use ticket flow | Admin impersonation permission and console action | Partial | Keep the flow and add resource-scoped permission plus audit detail. |
@@ -230,7 +230,7 @@ The following matrix compares the behavior currently implemented in this reposit
 | Organizations | No organization model | Organization members, domains, invitations, IdPs, groups, and claims[^10] | Missing | Keep out of the single-issuer demo until B2B requirements exist. |
 | Authorization Services / UMA | Spring Security authorities protect endpoints | Resources, scopes, policies, permissions, permission tickets, and RPTs[^7] | Missing | Separate resource-server authorization product from admin RBAC. |
 | Admin REST | Documented custom `/api/admin` contract with OpenAPI | Keycloak Admin REST under `/admin/realms/{realm}` | Partial | Keep the application contract; map semantics explicitly rather than copying paths. |
-| Account Console | Custom account pages for profile, security, sessions, consents | Keycloak Account Console and account REST capabilities | Partial | Preserve the current user experience and add dynamic profile/credential views. |
+| Account Console | Custom account pages for profile, security, sessions, consents, and configurable profile attributes | Keycloak Account Console and account REST capabilities | Partial | Preserve the current user experience and add credential inventory and device views. |
 | Themes and localization | Next.js theme switcher and English/Turkish dictionaries | Themes, message bundles, and realm localization settings | Partial | Keep shared components and expose realm localization only with realm support. |
 
 ### Existing roles and Keycloak equivalents
@@ -365,7 +365,8 @@ Settings
 ├── OTP policy
 ├── Brute force
 ├── Sessions
-└── Events
+├── Events
+└── User profile
 ```
 
 Each tab uses the same card and form grammar:
@@ -377,6 +378,32 @@ Each tab uses the same card and form grammar:
 - inline spinner without changing the button label;
 - localized success/error alert outside or above the card;
 - viewer access renders disabled controls and no Save action.
+
+### User Profile Settings
+
+The User Profile tab provides the single-issuer equivalent of Keycloak's configurable user-profile schema. It follows the same page shell, tab strip, card width, spacing, validation placement, and bottom action row as Login, Email, and Event Settings. There is no realm selector because this application has one issuer and one shared data space.
+
+```text
+Settings / User profile
+┌────────────────────────────────────────────────────────────┐
+│ User profile                                                │
+│ Define custom attributes shown on user and account forms.   │
+│                                                             │
+│ Add attribute                                               │
+│ Name [department]  Display name [Department]                │
+│ Type [String]      Required [ ]  Multi-valued [ ]           │
+│ Min length [ ]     Max length [ ]  Pattern [                 ]│
+│ Description [                                             ] │
+│                                                             │
+│ Configured attributes                                      │
+│ Name | Type | Required | Multi-valued | Enabled | Delete     │
+│ ...                                                         │
+└────────────────────────────────────────────────────────────┘
+```
+
+Supported definition controls are `STRING`, `EMAIL`, `INTEGER`, and `BOOLEAN`; requiredness, single/multi-valued behavior, minimum/maximum length, regular-expression validation, enabled state, display order, and a localized description are stored with each definition. Built-in fields such as username, first name, last name, and email remain fixed fields and cannot be redefined as custom attributes.
+
+The admin API is `GET/POST /api/admin/settings/user-profile` for definitions and `PUT/DELETE /api/admin/settings/user-profile/{id}` for changes. User values are exposed through `GET/PUT /api/admin/users/{id}/profile-attributes`; the Account Console uses `GET/PUT /api/account/profile/attributes`. Every mutation validates the submitted values, records an audit event, evicts affected cached data, and invalidates the user's browser sessions and OAuth authorizations when a value changes. The form must show an inline spinner while saving, keep the Save label, disable duplicate submissions, and place field errors directly below the affected control.
 
 ### Event Settings
 
@@ -434,7 +461,7 @@ The Account Console should retain a user-centered layout: profile, password, MFA
 - Keep the current roles and event settings behavior stable.
 - Add realm/client ownership to role, client scope, group, and mapper models before multi-tenant support.
 - Add client roles, composite roles, standard role claims, and scope filtering.
-- Add dynamic user/group attributes and protocol mappers.
+- Extend group attributes and add protocol mappers; dynamic user profile attributes are implemented for the single issuer.
 - Keep Settings and Events visually consistent with the existing screens.
 - Maintain session/token invalidation, audit events, cache eviction, OpenAPI schemas, localized messages, native hints, and tests for each mutation.
 

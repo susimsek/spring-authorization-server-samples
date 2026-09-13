@@ -365,6 +365,50 @@
       "loading": "Loading email settings…",
       "error": "Email settings could not be loaded or saved."
     },
+    "userProfileSettings": {
+      "title": "User profile attributes",
+      "subtitle": "Define validated profile fields that appear in user and account forms.",
+      "createTitle": "Create user profile attribute",
+      "createSubtitle": "Add a validated custom field to the user and account profile forms.",
+      "editTitle": "Edit user profile attribute",
+      "editSubtitle": "Update the field definition, validation rules and display order.",
+      "loading": "Loading user profile settings…",
+      "error": "User profile settings could not be loaded or saved.",
+      "saved": "User profile attribute saved.",
+      "name": "Attribute name",
+      "displayName": "Display label",
+      "description": "Description",
+      "type": "Value type",
+      "required": "Required",
+      "multivalued": "Allow multiple values",
+      "multivaluedHelp": "Enter one value per line.",
+      "enabled": "Enabled",
+      "yes": "Yes",
+      "no": "No",
+      "minLength": "Minimum length",
+      "maxLength": "Maximum length",
+      "pattern": "Validation pattern",
+      "displayOrder": "Display order",
+      "reorder": "Reorder",
+      "displayOrderHelp": "Lower values are shown first after the built-in profile fields.",
+      "search": "Search profile attributes",
+      "records": "attributes",
+      "create": "Create attribute",
+      "edit": "Edit",
+      "update": "Update attribute",
+      "configured": "Configured attributes",
+      "rules": "Rules",
+      "noRules": "Optional text",
+      "empty": "No configurable attributes have been defined.",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this profile attribute and all stored user values? This action cannot be undone.",
+      "types": {
+        "string": "Text",
+        "email": "Email",
+        "integer": "Integer",
+        "boolean": "True or false"
+      }
+    },
     "events": {
       "title": "Events",
       "subtitle": "Audit history for administration and account actions.",
@@ -427,7 +471,8 @@
         "otpPolicy": "OTP policy",
         "bruteForce": "Brute force",
         "sessions": "Sessions",
-        "events": "Events"
+        "events": "Events",
+        "userProfile": "User profile"
       }
     },
     "clients": {
@@ -780,7 +825,9 @@
       "operationError": "The account operation could not be completed.",
       "authorizationCallbackError": "The account session could not be established.",
       "cancel": "Cancel",
-      "required": "Required"
+      "required": "Required",
+      "yes": "Yes",
+      "no": "No"
     },
     "validation": {
       "required": "This field is required.",
@@ -811,7 +858,16 @@
       "sectionTitle": "Basic information",
       "sectionHelp": "Review and update the personal information associated with your account.",
       "metadata": "Account metadata",
-      "cancel": "Cancel changes"
+      "cancel": "Cancel changes",
+      "avatar": "Profile avatar",
+      "avatarHelp": "JPEG or PNG up to 2 MiB and 4 megapixels.",
+      "avatarInvalid": "Choose a JPEG or PNG image up to 2 MiB.",
+      "avatarUploadError": "The avatar could not be uploaded.",
+      "uploadAvatar": "Upload avatar",
+      "removeAvatar": "Remove avatar",
+      "removeAvatarConfirm": "Remove your profile avatar?",
+      "avatarUpdated": "Your profile avatar has been updated.",
+      "avatarDeleted": "Your profile avatar has been removed."
     },
     "deleteAccount": {
       "title": "Delete account",

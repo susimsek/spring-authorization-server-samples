@@ -59,6 +59,7 @@ type UserFormValues = {
   enabled: boolean;
   roles: string[];
   temporaryPassword?: boolean;
+  profile: Record<string, string[]>;
 };
 type RequiredAction = {
   key: string;
@@ -67,6 +68,88 @@ type RequiredAction = {
   globalPolicy: boolean;
   assigned: boolean;
 };
+type ProfileDefinition = {
+  id: number;
+  name: string;
+  displayName: string;
+  description: string | null;
+  type: "STRING" | "EMAIL" | "INTEGER" | "BOOLEAN";
+  required: boolean;
+  multivalued: boolean;
+  minLength: number | null;
+  maxLength: number | null;
+  pattern: string | null;
+  enabled: boolean;
+  displayOrder: number;
+  builtIn: boolean;
+};
+type ProfileAttributes = {
+  definitions: ProfileDefinition[];
+  attributes: Record<string, string[]>;
+};
+
+const DEFAULT_PROFILE_DEFINITIONS: ProfileDefinition[] = [
+  {
+    id: -1,
+    name: "username",
+    displayName: "Username",
+    description: null,
+    type: "STRING",
+    required: true,
+    multivalued: false,
+    minLength: null,
+    maxLength: 100,
+    pattern: null,
+    enabled: true,
+    displayOrder: 10,
+    builtIn: true,
+  },
+  {
+    id: -2,
+    name: "email",
+    displayName: "Email",
+    description: null,
+    type: "EMAIL",
+    required: false,
+    multivalued: false,
+    minLength: null,
+    maxLength: 200,
+    pattern: null,
+    enabled: true,
+    displayOrder: 20,
+    builtIn: true,
+  },
+  {
+    id: -3,
+    name: "firstName",
+    displayName: "First name",
+    description: null,
+    type: "STRING",
+    required: false,
+    multivalued: false,
+    minLength: null,
+    maxLength: 100,
+    pattern: null,
+    enabled: true,
+    displayOrder: 30,
+    builtIn: true,
+  },
+  {
+    id: -4,
+    name: "lastName",
+    displayName: "Last name",
+    description: null,
+    type: "STRING",
+    required: false,
+    multivalued: false,
+    minLength: null,
+    maxLength: 100,
+    pattern: null,
+    enabled: true,
+    displayOrder: 40,
+    builtIn: true,
+  },
+];
 
 const USER_DETAIL_TABS = [
   "details",
@@ -144,10 +227,60 @@ export function UserForm({
   const [actionSent, setActionSent] = useState(false);
   const [impersonationBusy, setImpersonationBusy] = useState(false);
   const [error, setError] = useState(false);
+  const [profileDefinitions, setProfileDefinitions] = useState<ProfileDefinition[]>([]);
+  const [profileAttributesError, setProfileAttributesError] = useState(false);
   const activeTab = USER_DETAIL_TABS.includes(tab as (typeof USER_DETAIL_TABS)[number])
     ? tab
     : "details";
   const validation = dictionary.admin.common.validation;
+  const profileSchema = z
+    .record(z.string(), z.array(z.string()))
+    .superRefine((attributes, context) => {
+      for (const definition of profileDefinitions) {
+        const values = (attributes[definition.name] ?? [])
+          .map((value) => value.trim())
+          .filter(Boolean);
+        if (definition.required && values.length === 0) {
+          context.addIssue({
+            code: "custom",
+            path: [definition.name],
+            message: validation.required,
+          });
+          continue;
+        }
+        if (!definition.multivalued && values.length > 1) {
+          context.addIssue({
+            code: "custom",
+            path: [definition.name],
+            message: validation.invalid,
+          });
+        }
+        for (const value of values) {
+          if (
+            (definition.minLength !== null && value.length < definition.minLength) ||
+            (definition.maxLength !== null && value.length > definition.maxLength) ||
+            (definition.type === "EMAIL" && !z.email().safeParse(value).success) ||
+            (definition.type === "INTEGER" && !/^-?\d+$/.test(value)) ||
+            (definition.type === "BOOLEAN" && !["true", "false"].includes(value)) ||
+            (definition.pattern !== null &&
+              (() => {
+                try {
+                  return !new RegExp(definition.pattern).test(value);
+                } catch {
+                  return true;
+                }
+              })())
+          ) {
+            context.addIssue({
+              code: "custom",
+              path: [definition.name],
+              message: validation.invalid,
+            });
+            break;
+          }
+        }
+      }
+    });
   const schema = z.object({
     username: z.string().trim().min(1, validation.required).max(100, validation.max100),
     firstName: z.string().trim().max(100, validation.max100),
@@ -167,6 +300,7 @@ export function UserForm({
     enabled: z.boolean(),
     roles: z.array(z.string()).min(1, validation.roles),
     temporaryPassword: z.boolean().optional(),
+    profile: profileSchema,
   });
   const {
     register,
@@ -190,10 +324,14 @@ export function UserForm({
       enabled: true,
       roles: ["ROLE_USER"],
       temporaryPassword: true,
+      profile: {},
     },
   });
   const enabled = useWatch({ control, name: "enabled", defaultValue: true });
   const roles = useWatch({ control, name: "roles", defaultValue: ["ROLE_USER"] });
+  const profileValues = useWatch({ control, name: "profile", defaultValue: {} });
+  const renderedProfileDefinitions =
+    profileDefinitions.length > 0 ? profileDefinitions : DEFAULT_PROFILE_DEFINITIONS;
 
   useEffect(() => {
     if (!editing || !id || !accessToken) return;
@@ -210,6 +348,7 @@ export function UserForm({
           enabled: response.data.enabled,
           roles: response.data.assignedRoles ?? response.data.authorities,
           temporaryPassword: true,
+          profile: {},
         });
         setAvatarUrl(response.data.avatarUrl);
         setRoleView({
@@ -232,6 +371,30 @@ export function UserForm({
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [accessToken, editing, id, reset]);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    const url =
+      editing && id
+        ? `/api/admin/users/${encodeURIComponent(id)}/profile-attributes`
+        : "/api/admin/profile-attributes";
+    adminRequest<ProfileAttributes | ProfileDefinition[]>(accessToken, { url })
+      .then((response) => {
+        if (response.status >= 300) throw new Error();
+        if (Array.isArray(response.data)) {
+          setProfileDefinitions(response.data);
+          setValue("profile", {}, { shouldDirty: false });
+        } else if (response.data && Array.isArray(response.data.definitions)) {
+          setProfileDefinitions(response.data.definitions);
+          setValue("profile", response.data.attributes ?? {}, { shouldDirty: false });
+        } else {
+          setProfileDefinitions([]);
+          setValue("profile", {}, { shouldDirty: false });
+        }
+        setProfileAttributesError(false);
+      })
+      .catch(() => setProfileAttributesError(true));
+  }, [accessToken, editing, id, setValue]);
 
   useEffect(() => {
     if (!editing || !id || !accessToken || activeTab !== "credentials") return;
@@ -481,6 +644,7 @@ export function UserForm({
         });
         throw new Error();
       }
+      const savedUser = response.data;
       if (editing && values.password) {
         const passwordResponse = await adminRequest(accessToken, {
           url: `/api/admin/users/${encodeURIComponent(id ?? "")}/password`,
@@ -497,6 +661,18 @@ export function UserForm({
           });
           throw new Error();
         }
+      }
+      if (profileDefinitions.length > 0) {
+        const profileResponse = await adminRequest<ProfileAttributes>(accessToken, {
+          url: `/api/admin/users/${encodeURIComponent(String(savedUser.id))}/profile-attributes`,
+          method: "PUT",
+          data: { attributes: values.profile },
+        });
+        if (profileResponse.status >= 300) {
+          setProfileAttributesError(true);
+          throw new Error();
+        }
+        setValue("profile", profileResponse.data.attributes ?? {}, { shouldDirty: false });
       }
       if (editing && typeof response.data.enabled === "boolean") {
         setValue("enabled", response.data.enabled, { shouldDirty: false });
@@ -555,6 +731,117 @@ export function UserForm({
       setShowDeleteConfirm(false);
     }
   };
+
+  const updateProfileValue = (name: string, value: string, multivalued: boolean) => {
+    setValue(
+      "profile",
+      {
+        ...profileValues,
+        [name]: multivalued ? value.split("\n") : [value],
+      },
+      { shouldDirty: true, shouldValidate: true },
+    );
+  };
+
+  const profileFields = renderedProfileDefinitions.length > 0 && (
+    <Card className="admin-panel-card">
+      <Card.Body className="d-grid gap-3">
+        <div>
+          <h2 className="h5 mb-1">{dictionary.admin.userProfileSettings.title}</h2>
+          <p className="text-body-secondary mb-0">
+            {dictionary.admin.userProfileSettings.subtitle}
+          </p>
+        </div>
+        {renderedProfileDefinitions.map((definition) => {
+          const values = profileValues[definition.name] ?? [];
+          const value = definition.multivalued ? values.join("\n") : (values[0] ?? "");
+          const profileError =
+            errors.profile && typeof errors.profile === "object"
+              ? (errors.profile as Record<string, { message?: string }>)[definition.name]?.message
+              : undefined;
+          const controlId = `user-profile-${definition.name}`;
+          const isBuiltIn = definition.builtIn;
+          const baseField = ["username", "firstName", "lastName", "email"].includes(
+            definition.name,
+          );
+          if (isBuiltIn && !baseField) return null;
+          if (baseField) {
+            const fieldName = definition.name as "username" | "firstName" | "lastName" | "email";
+            return (
+              <Form.Group controlId={controlId} key={definition.name}>
+                <Form.Label>
+                  {definition.displayName}
+                  {definition.required ? " *" : ""}
+                </Form.Label>
+                <Form.Control
+                  type={definition.type === "EMAIL" ? "email" : "text"}
+                  disabled={!canManageUsers}
+                  required={definition.required}
+                  isInvalid={Boolean(errors[fieldName])}
+                  {...register(fieldName)}
+                />
+                <Form.Control.Feedback type="invalid">
+                  {errors[fieldName]?.message}
+                </Form.Control.Feedback>
+                {definition.description && <Form.Text>{definition.description}</Form.Text>}
+              </Form.Group>
+            );
+          }
+          return (
+            <Form.Group controlId={controlId} key={definition.name}>
+              <Form.Label>
+                {definition.displayName}
+                {definition.required ? " *" : ""}
+              </Form.Label>
+              {definition.type === "BOOLEAN" ? (
+                <Form.Select
+                  value={value}
+                  isInvalid={Boolean(profileError)}
+                  disabled={!canManageUsers}
+                  required={definition.required}
+                  onChange={(event) =>
+                    updateProfileValue(definition.name, event.target.value, false)
+                  }
+                >
+                  <option value="">—</option>
+                  <option value="true">{dictionary.admin.common.yes}</option>
+                  <option value="false">{dictionary.admin.common.no}</option>
+                </Form.Select>
+              ) : (
+                <Form.Control
+                  as={definition.multivalued ? "textarea" : undefined}
+                  rows={definition.multivalued ? 3 : undefined}
+                  type={
+                    definition.type === "EMAIL"
+                      ? "email"
+                      : definition.type === "INTEGER"
+                        ? "number"
+                        : "text"
+                  }
+                  value={value}
+                  isInvalid={Boolean(profileError)}
+                  disabled={!canManageUsers}
+                  required={definition.required}
+                  minLength={definition.minLength ?? undefined}
+                  maxLength={definition.maxLength ?? undefined}
+                  onChange={(event) =>
+                    updateProfileValue(definition.name, event.target.value, definition.multivalued)
+                  }
+                />
+              )}
+              {profileError && (
+                <Form.Control.Feedback type="invalid">{profileError}</Form.Control.Feedback>
+              )}
+              {definition.description && <Form.Text>{definition.description}</Form.Text>}
+              {definition.multivalued && (
+                <Form.Text>{dictionary.admin.userProfileSettings.multivaluedHelp}</Form.Text>
+              )}
+            </Form.Group>
+          );
+        })}
+      </Card.Body>
+    </Card>
+  );
 
   if (loading) return <LoadingState />;
   if (editing && error) return <ErrorState message={copy.notFound} />;
@@ -637,55 +924,13 @@ export function UserForm({
         onSubmit={handleSubmit(submit)}
       >
         {error && <Alert variant="danger">{copy.saveError}</Alert>}
+        {profileAttributesError && (
+          <Alert variant="danger">{dictionary.admin.userProfileSettings.error}</Alert>
+        )}
 
         {!editing && (
           <Card className="admin-panel-card admin-create-card">
             <Card.Body className="d-grid gap-4">
-              <Form.Group>
-                <Form.Label>{copy.username}</Form.Label>
-                <Form.Control
-                  disabled={!canManageUsers}
-                  isInvalid={Boolean(errors.username)}
-                  {...register("username")}
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.username?.message}
-                </Form.Control.Feedback>
-              </Form.Group>
-              <Form.Group>
-                <Form.Label>{copy.firstName}</Form.Label>
-                <Form.Control
-                  disabled={!canManageUsers}
-                  isInvalid={Boolean(errors.firstName)}
-                  {...register("firstName")}
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.firstName?.message}
-                </Form.Control.Feedback>
-              </Form.Group>
-              <Form.Group>
-                <Form.Label>{copy.lastName}</Form.Label>
-                <Form.Control
-                  disabled={!canManageUsers}
-                  isInvalid={Boolean(errors.lastName)}
-                  {...register("lastName")}
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.lastName?.message}
-                </Form.Control.Feedback>
-              </Form.Group>
-              <Form.Group>
-                <Form.Label>{copy.email}</Form.Label>
-                <Form.Control
-                  type="email"
-                  disabled={!canManageUsers}
-                  isInvalid={Boolean(errors.email)}
-                  {...register("email")}
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.email?.message}
-                </Form.Control.Feedback>
-              </Form.Group>
               <Form.Check
                 type="switch"
                 label={copy.enabled}
@@ -740,6 +985,8 @@ export function UserForm({
             </Card.Body>
           </Card>
         )}
+
+        {!editing && profileFields}
 
         {editing && activeTab === "details" && (
           <Card className="admin-panel-card">
@@ -823,51 +1070,6 @@ export function UserForm({
                   </Button>
                 )}
               </div>
-              <Form.Group>
-                <Form.Label>{copy.username}</Form.Label>
-                <Form.Control
-                  disabled={!canManageUsers}
-                  isInvalid={Boolean(errors.username)}
-                  {...register("username")}
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.username?.message}
-                </Form.Control.Feedback>
-              </Form.Group>
-              <Form.Group>
-                <Form.Label>{copy.email}</Form.Label>
-                <Form.Control
-                  type="email"
-                  disabled={!canManageUsers}
-                  isInvalid={Boolean(errors.email)}
-                  {...register("email")}
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.email?.message}
-                </Form.Control.Feedback>
-              </Form.Group>
-              <Form.Group>
-                <Form.Label>{copy.firstName}</Form.Label>
-                <Form.Control
-                  disabled={!canManageUsers}
-                  isInvalid={Boolean(errors.firstName)}
-                  {...register("firstName")}
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.firstName?.message}
-                </Form.Control.Feedback>
-              </Form.Group>
-              <Form.Group>
-                <Form.Label>{copy.lastName}</Form.Label>
-                <Form.Control
-                  disabled={!canManageUsers}
-                  isInvalid={Boolean(errors.lastName)}
-                  {...register("lastName")}
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.lastName?.message}
-                </Form.Control.Feedback>
-              </Form.Group>
               <Form.Check
                 type="switch"
                 label={copy.emailVerified}
@@ -894,6 +1096,8 @@ export function UserForm({
             </Card.Body>
           </Card>
         )}
+
+        {editing && activeTab === "details" && profileFields}
 
         {editing && activeTab === "credentials" && (
           <div className="d-grid gap-3">

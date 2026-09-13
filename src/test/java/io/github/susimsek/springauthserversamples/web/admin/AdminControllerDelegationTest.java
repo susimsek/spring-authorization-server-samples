@@ -18,6 +18,7 @@ import io.github.susimsek.springauthserversamples.dto.admin.AdminSessionDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminUserDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminUserEnabledRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminUserRequestDTO;
+import io.github.susimsek.springauthserversamples.service.UserProfileService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAvatarService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminConsentService;
@@ -45,6 +46,7 @@ class AdminControllerDelegationTest {
     private final AdminEventSettingsService eventSettingsService =
             mock(AdminEventSettingsService.class);
     private final AdminAvatarService avatarService = mock(AdminAvatarService.class);
+    private final UserProfileService userProfileService = mock(UserProfileService.class);
     private final AdminSessionService sessionService = mock(AdminSessionService.class);
     private final AdminServerInfoService serverInfoService = mock(AdminServerInfoService.class);
     private final AdminConsentService consentService = mock(AdminConsentService.class);
@@ -94,7 +96,7 @@ class AdminControllerDelegationTest {
 
     @Test
     void delegatesUserAndAvatarEndpoints() {
-        var controller = new AdminUserController(userService, avatarService);
+        var controller = new AdminUserController(userService, avatarService, userProfileService);
         var authentication = authentication();
         var pageable = PageRequest.of(0, 20);
         var page = new PageImpl<>(List.of(userView()));

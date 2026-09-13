@@ -365,6 +365,50 @@
       "loading": "E-posta ayarları yükleniyor…",
       "error": "E-posta ayarları yüklenemedi veya kaydedilemedi."
     },
+    "userProfileSettings": {
+      "title": "Kullanıcı profil alanları",
+      "subtitle": "Kullanıcı ve hesap formlarında görünecek doğrulamalı profil alanlarını tanımlayın.",
+      "createTitle": "Kullanıcı profil alanı oluştur",
+      "createSubtitle": "Kullanıcı ve hesap profillerine doğrulamalı özel bir alan ekleyin.",
+      "editTitle": "Kullanıcı profil alanını düzenle",
+      "editSubtitle": "Alan tanımını, doğrulama kurallarını ve görüntüleme sırasını güncelleyin.",
+      "loading": "Kullanıcı profil ayarları yükleniyor…",
+      "error": "Kullanıcı profil ayarları yüklenemedi veya kaydedilemedi.",
+      "saved": "Kullanıcı profil alanı kaydedildi.",
+      "name": "Alan adı",
+      "displayName": "Görünen etiket",
+      "description": "Açıklama",
+      "type": "Değer tipi",
+      "required": "Zorunlu",
+      "multivalued": "Birden fazla değere izin ver",
+      "multivaluedHelp": "Her satıra bir değer girin.",
+      "enabled": "Etkin",
+      "yes": "Evet",
+      "no": "Hayır",
+      "minLength": "Minimum uzunluk",
+      "maxLength": "Maksimum uzunluk",
+      "pattern": "Doğrulama deseni",
+      "displayOrder": "Görüntüleme sırası",
+      "reorder": "Sırala",
+      "displayOrderHelp": "Düşük değerler yerleşik profil alanlarından sonra önce gösterilir.",
+      "search": "Profil alanlarında ara",
+      "records": "alan",
+      "create": "Alan oluştur",
+      "edit": "Düzenle",
+      "update": "Alanı güncelle",
+      "configured": "Yapılandırılan alanlar",
+      "rules": "Kurallar",
+      "noRules": "İsteğe bağlı metin",
+      "empty": "Yapılandırılabilir profil alanı tanımlanmadı.",
+      "delete": "Sil",
+      "deleteConfirm": "Bu profil alanı ve kayıtlı tüm kullanıcı değerleri silinsin mi? Bu işlem geri alınamaz.",
+      "types": {
+        "string": "Metin",
+        "email": "E-posta",
+        "integer": "Tam sayı",
+        "boolean": "Doğru veya yanlış"
+      }
+    },
     "events": {
       "title": "Olaylar",
       "subtitle": "Yönetim ve hesap işlemlerinin denetim geçmişi.",
@@ -427,7 +471,8 @@
         "otpPolicy": "OTP politikası",
         "bruteForce": "Brute force",
         "sessions": "Oturumlar",
-        "events": "Olaylar"
+        "events": "Olaylar",
+        "userProfile": "Kullanıcı profili"
       }
     },
     "clients": {
@@ -780,7 +825,9 @@
       "operationError": "Hesap işlemi tamamlanamadı.",
       "authorizationCallbackError": "Hesap oturumu oluşturulamadı.",
       "cancel": "İptal",
-      "required": "Zorunlu"
+      "required": "Zorunlu",
+      "yes": "Evet",
+      "no": "Hayır"
     },
     "validation": {
       "required": "Bu alan zorunludur.",
@@ -811,7 +858,16 @@
       "sectionTitle": "Temel bilgiler",
       "sectionHelp": "Hesabınızla ilişkili kişisel bilgileri inceleyin ve güncelleyin.",
       "metadata": "Hesap bilgileri",
-      "cancel": "Değişiklikleri iptal et"
+      "cancel": "Değişiklikleri iptal et",
+      "avatar": "Profil avatarı",
+      "avatarHelp": "En fazla 2 MiB ve 4 megapiksel JPEG veya PNG.",
+      "avatarInvalid": "2 MiB boyutunda veya daha küçük JPEG ya da PNG seçin.",
+      "avatarUploadError": "Avatar yüklenemedi.",
+      "uploadAvatar": "Avatar yükle",
+      "removeAvatar": "Avatarı kaldır",
+      "removeAvatarConfirm": "Profil avatarınız kaldırılsın mı?",
+      "avatarUpdated": "Profil avatarınız güncellendi.",
+      "avatarDeleted": "Profil avatarınız kaldırıldı."
     },
     "deleteAccount": {
       "title": "Hesabı sil",

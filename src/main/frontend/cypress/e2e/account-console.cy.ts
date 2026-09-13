@@ -133,6 +133,27 @@ describe("account console", () => {
     signOut();
   });
 
+  it("updates and removes the account avatar", () => {
+    cy.intercept("GET", "/api/account/profile/avatar").as("avatar");
+    cy.intercept("PUT", "/api/account/profile/avatar").as("updateAvatar");
+    cy.intercept("DELETE", "/api/account/profile/avatar").as("deleteAvatar");
+    signInAccount();
+    cy.wait("@avatar").its("response.statusCode").should("eq", 200);
+
+    cy.get('input[type="file"][accept="image/jpeg,image/png"]').selectFile(
+      "cypress/fixtures/avatar.png",
+      { force: true },
+    );
+    cy.wait("@updateAvatar").its("response.statusCode").should("eq", 200);
+
+    cy.contains("button", /Remove avatar|Avatarı kaldır/).click();
+    cy.get(".modal")
+      .contains("button", /Remove avatar|Avatarı kaldır/)
+      .click();
+    cy.wait("@deleteAvatar").its("response.statusCode").should("eq", 204);
+    signOut();
+  });
+
   it("signs out one selected browser session", () => {
     cy.intercept("DELETE", /\/api\/account\/sessions\/[^/]+$/).as("deleteSession");
     createSecondBrowserSession();

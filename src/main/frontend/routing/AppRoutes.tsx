@@ -39,6 +39,7 @@ import { MfaSettings } from "@/components/account/MfaSettings";
 import { AccountSessions } from "@/components/account/AccountSessions";
 import { AccountApplications } from "@/components/account/AccountApplications";
 import { AccountDeleteForm } from "@/components/account/AccountDeleteForm";
+import { UserProfileAttributeForm } from "@/components/admin/UserProfileAttributeForm";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { RegistrationForm } from "@/components/auth/RegistrationForm";
@@ -122,6 +123,20 @@ function EntityDetail({ entity }: { entity: "group" | "role" | "consent" | "clie
   if (entity === "role") return <RoleDetail key={id} {...props} name={id} />;
   if (entity === "client-scope") return <ClientScopeDetail key={id} {...props} id={id} />;
   return <ConsentDetail key={id} {...props} routeKey={id} />;
+}
+
+function UserProfileEditPage() {
+  const dictionary = useDictionary();
+  const { id = "" } = useParams<{ id: string }>();
+  return (
+    <>
+      <AdminPageHeader
+        title={dictionary.admin.userProfileSettings.editTitle}
+        description={dictionary.admin.userProfileSettings.editSubtitle}
+      />
+      <UserProfileAttributeForm dictionary={dictionary} id={id} />
+    </>
+  );
 }
 
 function AccountPage({
@@ -323,6 +338,19 @@ export function AppRoutes() {
         />
         <Route path="events" element={<AdminEvents />} />
         <Route path="server-info" element={<ServerInfo />} />
+        <Route
+          path="settings/user-profile/new"
+          element={
+            <>
+              <AdminPageHeader
+                title={dictionary.admin.userProfileSettings.createTitle}
+                description={dictionary.admin.userProfileSettings.createSubtitle}
+              />
+              <UserProfileAttributeForm dictionary={dictionary} />
+            </>
+          }
+        />
+        <Route path="settings/user-profile/:id" element={<UserProfileEditPage />} />
         <Route path="settings/:section?" element={<AdminSettings />} />
       </Route>
       <Route path="account" element={<AccountLayout />}>

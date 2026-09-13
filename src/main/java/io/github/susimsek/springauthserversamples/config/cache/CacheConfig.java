@@ -15,6 +15,7 @@ import io.github.susimsek.springauthserversamples.domain.OAuth2KeyEntity;
 import io.github.susimsek.springauthserversamples.domain.RegisteredClientEntity;
 import io.github.susimsek.springauthserversamples.domain.RequiredActionDefinitionEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
+import io.github.susimsek.springauthserversamples.domain.UserProfileAttributeDefinitionEntity;
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientScopeRepository;
@@ -100,6 +101,7 @@ public class CacheConfig {
                 createCache(cacheManager, UserEntity.class.getName());
                 createCache(cacheManager, UserEntity.class.getName() + ".authorities");
                 createCache(cacheManager, UserEntity.class.getName() + ".groups");
+                createCache(cacheManager, UserProfileAttributeDefinitionEntity.class.getName());
                 createCache(cacheManager, RequiredActionDefinitionEntity.class.getName());
                 createCache(cacheManager, ClientRepository.REGISTERED_CLIENT_BY_CLIENT_ID_CACHE);
                 createCache(cacheManager, AuthorityRepository.AUTHORITY_BY_NAME_CACHE);
