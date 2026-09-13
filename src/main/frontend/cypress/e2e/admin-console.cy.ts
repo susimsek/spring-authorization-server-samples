@@ -71,11 +71,13 @@ describe("admin console", () => {
     cy.intercept("GET", "/api/admin/events/config").as("eventSettings");
     cy.intercept("PUT", "/api/admin/events/config").as("saveEventSettings");
     cy.intercept("DELETE", "/api/admin/events").as("clearEvents");
-    cy.contains(".admin-sidebar a", "Events").click();
+    cy.contains(".admin-sidebar a", "Settings").click();
+    cy.contains(".admin-settings-nav a", "Events").click();
     cy.wait("@eventSettings");
     cy.contains("button", "Save event settings", { timeout: 15_000 }).should("be.visible").click();
     cy.wait("@saveEventSettings");
     cy.contains("Event settings saved.").should("be.visible");
+    cy.contains(".admin-sidebar a", "Events").click();
     cy.contains("button", "Clear all events").click();
     cy.contains("Clear all stored administrative events?").should("be.visible");
     cy.get(".modal").contains("button", "Clear all events").click();
@@ -88,7 +90,8 @@ describe("admin console", () => {
     cy.intercept("PUT", "/api/admin/events/config", { statusCode: 500 }).as(
       "saveEventSettingsError",
     );
-    cy.contains(".admin-sidebar a", "Events").click();
+    cy.contains(".admin-sidebar a", "Settings").click();
+    cy.contains(".admin-settings-nav a", "Events").click();
     cy.wait("@eventSettings");
     cy.contains("button", "Save event settings", { timeout: 15_000 }).should("be.visible").click();
     cy.wait("@saveEventSettingsError");
@@ -104,6 +107,7 @@ describe("admin console", () => {
       ["OTP policy", "/admin/settings/otp-policy", "Save settings"],
       ["Brute force", "/admin/settings/brute-force", "Save settings"],
       ["Sessions", "/admin/settings/sessions", "Save settings"],
+      ["Events", "/admin/settings/events", "Save event settings"],
     ] as const;
 
     signInAdmin();

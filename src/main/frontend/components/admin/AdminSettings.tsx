@@ -9,6 +9,7 @@ import { adminRequest } from "@/lib/admin-api";
 
 import { AdminPageHeader } from "./AdminPageHeader";
 import { useAdminAuth } from "./AdminAuthProvider";
+import AdminEventSettings from "./AdminEventSettings";
 import { DetailTabs } from "./DetailTabs";
 import EmailSettings from "./EmailSettings";
 import LoginSettings, { type LoginSettingsSection } from "./LoginSettings";
@@ -21,6 +22,7 @@ const SETTINGS_SECTIONS = [
   "otp-policy",
   "brute-force",
   "sessions",
+  "events",
 ] as const;
 type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 
@@ -29,8 +31,12 @@ type ServerInfo = { issuer: string };
 export default function AdminSettings() {
   const dictionary = useDictionary();
   const { section: candidate } = useParams<{ section?: string }>();
-  const active = SETTINGS_SECTIONS.includes(candidate as SettingsSection) ? candidate! : "general";
-  const tabs = [
+  const { access } = useAdminAuth();
+  const availableSections = access?.isAdmin ? SETTINGS_SECTIONS : (["events"] as const);
+  const active = availableSections.includes(candidate as never)
+    ? (candidate as SettingsSection)
+    : availableSections[0];
+  const allTabs = [
     { key: "general", label: dictionary.admin.settings.sections.general, href: "/admin/settings" },
     {
       key: "login",
@@ -62,7 +68,17 @@ export default function AdminSettings() {
       label: dictionary.admin.settings.sections.sessions,
       href: "/admin/settings/sessions",
     },
-  ] satisfies Array<{ key: SettingsSection; label: string; href: string }>;
+    {
+      key: "events",
+      label: dictionary.admin.settings.sections.events,
+      href: "/admin/settings/events",
+    },
+  ] satisfies Array<{
+    key: SettingsSection;
+    label: string;
+    href: string;
+  }>;
+  const tabs = access?.isAdmin ? allTabs : allTabs.filter((tab) => tab.key === "events");
 
   return (
     <>
@@ -73,7 +89,8 @@ export default function AdminSettings() {
       <DetailTabs tabs={tabs} active={active} />
       {active === "general" ? <GeneralSettings /> : null}
       {active === "email" ? <EmailSettings embedded /> : null}
-      {active !== "general" && active !== "email" ? (
+      {active === "events" ? <AdminEventSettings /> : null}
+      {active !== "general" && active !== "email" && active !== "events" ? (
         <LoginSettings embedded focusSection={active as LoginSettingsSection} />
       ) : null}
     </>

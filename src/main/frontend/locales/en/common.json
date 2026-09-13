@@ -387,6 +387,7 @@
       "details": "Event details",
       "settingsTitle": "Event settings",
       "settingsDescription": "Control event recording, details and retention.",
+      "loading": "Loading event settings…",
       "eventsEnabled": "Enable event recording",
       "adminEventsEnabled": "Enable administrative events",
       "adminEventsDetailsEnabled": "Include event details",
@@ -411,7 +412,7 @@
     },
     "settings": {
       "title": "Settings",
-      "subtitle": "Configure the sign-in experience, sessions, security policies and email delivery.",
+      "subtitle": "Configure the sign-in experience, sessions, security policies, email delivery and event auditing.",
       "navigation": "Settings sections",
       "issuer": "Issuer",
       "generalTitle": "General settings",
@@ -425,7 +426,8 @@
         "passwordPolicy": "Password policy",
         "otpPolicy": "OTP policy",
         "bruteForce": "Brute force",
-        "sessions": "Sessions"
+        "sessions": "Sessions",
+        "events": "Events"
       }
     },
     "clients": {

@@ -387,6 +387,7 @@
       "details": "Olay ayrıntıları",
       "settingsTitle": "Olay ayarları",
       "settingsDescription": "Olay kaydını, ayrıntıları ve saklama süresini yönetin.",
+      "loading": "Olay ayarları yükleniyor…",
       "eventsEnabled": "Olay kaydını etkinleştir",
       "adminEventsEnabled": "Yönetim olaylarını etkinleştir",
       "adminEventsDetailsEnabled": "Olay ayrıntılarını dahil et",
@@ -411,7 +412,7 @@
     },
     "settings": {
       "title": "Ayarlar",
-      "subtitle": "Giriş deneyimini, oturumları, güvenlik politikalarını ve e-posta gönderimini yapılandırın.",
+      "subtitle": "Giriş deneyimini, oturumları, güvenlik politikalarını, e-posta gönderimini ve olay denetimini yapılandırın.",
       "navigation": "Ayar bölümleri",
       "issuer": "Yayıncı",
       "generalTitle": "Genel ayarlar",
@@ -425,7 +426,8 @@
         "passwordPolicy": "Parola politikası",
         "otpPolicy": "OTP politikası",
         "bruteForce": "Brute force",
-        "sessions": "Oturumlar"
+        "sessions": "Oturumlar",
+        "events": "Olaylar"
       }
     },
     "clients": {
