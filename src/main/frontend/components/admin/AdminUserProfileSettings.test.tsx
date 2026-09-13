@@ -73,4 +73,38 @@ describe("AdminUserProfileSettings", () => {
       }),
     );
   });
+
+  it("persists a pointer reorder for trackpad dragging", async () => {
+    const first = definition(1, "department", 10);
+    const second = definition(2, "employeeNumber", 20);
+    mockAdminRequest
+      .mockResolvedValueOnce({
+        status: 200,
+        data: { content: [first, second], totalPages: 1, totalElements: 2 },
+      } as never)
+      .mockResolvedValueOnce({
+        status: 200,
+        data: [definition(2, "employeeNumber", 10), definition(1, "department", 11)],
+      } as never);
+
+    const elementFromPoint = document.elementFromPoint;
+    render(<AdminUserProfileSettings dictionary={dictionary} />);
+    const handles = await screen.findAllByRole("button", {
+      name: new RegExp(dictionary.admin.userProfileSettings.reorder),
+    });
+    const targetRow = handles[0].closest("tr");
+    document.elementFromPoint = jest.fn(() => targetRow);
+    fireEvent.pointerDown(handles[1], { pointerId: 1 });
+    fireEvent.pointerMove(handles[1], { pointerId: 1, clientX: 10, clientY: 10 });
+    fireEvent.pointerUp(handles[1], { pointerId: 1 });
+
+    await waitFor(() =>
+      expect(mockAdminRequest).toHaveBeenCalledWith("token", {
+        method: "PUT",
+        url: "/api/admin/settings/user-profile/order",
+        data: { ids: [2, 1] },
+      }),
+    );
+    document.elementFromPoint = elementFromPoint;
+  });
 });

@@ -473,6 +473,16 @@ textarea.form-control {
   --bs-table-hover-bg: rgba(var(--bs-primary-rgb), 0.035);
 }
 
+.profile-reorder-handle {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.profile-reorder-handle:active {
+  cursor: grabbing;
+}
+
 .avatar-placeholder {
   width: 2rem;
   height: 2rem;

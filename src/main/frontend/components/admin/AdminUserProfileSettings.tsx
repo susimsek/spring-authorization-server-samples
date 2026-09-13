@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "@/routing/Link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dropdown, Spinner } from "react-bootstrap";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
@@ -33,6 +33,8 @@ export default function AdminUserProfileSettings({ dictionary }: { dictionary: D
   const [deleteTarget, setDeleteTarget] = useState<UserProfileDefinition | null>(null);
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [reordering, setReordering] = useState(false);
+  const pointerDragId = useRef<number | null>(null);
+  const pointerTargetIndex = useRef<number | null>(null);
   const { clearFilters, page, query, setPage, setQuery, setSize, setSort, size, sort } =
     useAdminTableState(10, false, "displayOrder,asc");
 
@@ -94,6 +96,45 @@ export default function AdminUserProfileSettings({ dictionary }: { dictionary: D
     setDraggedId(id);
     setDefinitions(nextDefinitions);
     void persistOrder(nextDefinitions, definitions);
+  };
+
+  const startPointerDrag = (id: number, event: React.PointerEvent<HTMLButtonElement>) => {
+    if (reordering || !canReorder) return;
+    event.preventDefault();
+    event.currentTarget.focus();
+    if (typeof event.currentTarget.setPointerCapture === "function") {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+    pointerDragId.current = id;
+    pointerTargetIndex.current = definitions.findIndex((definition) => definition.id === id);
+    setDraggedId(id);
+  };
+
+  const updatePointerDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (pointerDragId.current === null) return;
+    const row = document
+      .elementFromPoint(event.clientX, event.clientY)
+      ?.closest<HTMLElement>("tr[data-profile-definition-id]");
+    if (!row) return;
+    const targetId = Number(row.dataset.profileDefinitionId);
+    const targetIndex = definitions.findIndex((definition) => definition.id === targetId);
+    if (targetIndex >= 0) pointerTargetIndex.current = targetIndex;
+  };
+
+  const finishPointerDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (pointerDragId.current === null) return;
+    if (
+      typeof event.currentTarget.hasPointerCapture === "function" &&
+      event.currentTarget.hasPointerCapture(event.pointerId)
+    ) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    const id = pointerDragId.current;
+    const targetIndex = pointerTargetIndex.current;
+    pointerDragId.current = null;
+    pointerTargetIndex.current = null;
+    setDraggedId(null);
+    if (targetIndex !== null) moveDefinition(id, targetIndex);
   };
 
   const remove = async () => {
@@ -199,6 +240,7 @@ export default function AdminUserProfileSettings({ dictionary }: { dictionary: D
           {definitions.map((definition, index) => (
             <tr
               key={definition.id}
+              data-profile-definition-id={definition.id}
               onDragOver={(event) => {
                 if (canReorder && !reordering) {
                   event.preventDefault();
@@ -214,17 +256,13 @@ export default function AdminUserProfileSettings({ dictionary }: { dictionary: D
                 {canReorder && (
                   <button
                     type="button"
-                    className="btn btn-sm btn-secondary"
+                    className="btn btn-sm btn-secondary profile-reorder-handle"
                     aria-label={`${copy.reorder}: ${definition.displayName}`}
                     disabled={reordering}
-                    draggable={!reordering}
-                    onDragStart={(event) => {
-                      if (reordering) return;
-                      setDraggedId(definition.id);
-                      event.dataTransfer.setData("text/plain", String(definition.id));
-                      event.dataTransfer.effectAllowed = "move";
-                    }}
-                    onDragEnd={() => setDraggedId(null)}
+                    onPointerDown={(event) => startPointerDrag(definition.id, event)}
+                    onPointerMove={updatePointerDrag}
+                    onPointerUp={finishPointerDrag}
+                    onPointerCancel={finishPointerDrag}
                     onKeyDown={(event) => {
                       if (event.key === "ArrowUp") {
                         event.preventDefault();
