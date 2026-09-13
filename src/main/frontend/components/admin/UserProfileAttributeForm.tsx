@@ -14,6 +14,7 @@ import { applyProblemToForm } from "@/lib/problem-detail";
 
 import { AdminActionIcon } from "./AdminActionIcon";
 import { useAdminAuth } from "./AdminAuthProvider";
+import { AdminBreadcrumb } from "./AdminBreadcrumb";
 
 export type UserProfileDefinition = {
   id: number;
@@ -61,6 +62,9 @@ export function UserProfileAttributeForm({
   const editingId = id ? Number(id) : null;
   const [loading, setLoading] = useState(editingId !== null);
   const [loadError, setLoadError] = useState(false);
+  const [breadcrumbLabel, setBreadcrumbLabel] = useState(
+    editingId === null ? copy.createTitle : copy.editTitle,
+  );
   const schema = z.object({
     name: z.string().trim().min(1, validation.required).max(100, validation.max100),
     displayName: z.string().trim().min(1, validation.required).max(200, validation.max200),
@@ -120,6 +124,7 @@ export function UserProfileAttributeForm({
           enabled: definition.enabled,
           displayOrder: definition.displayOrder,
         });
+        setBreadcrumbLabel(definition.displayName || definition.name);
         setLoadError(false);
       })
       .catch(() => setLoadError(true))
@@ -157,148 +162,187 @@ export function UserProfileAttributeForm({
   });
 
   if (loading) {
-    return <div role="status">{copy.loading}</div>;
+    return (
+      <div className="d-grid gap-4">
+        <AdminBreadcrumb
+          items={[
+            {
+              label: dictionary.admin.settings.sections.userProfile,
+              href: "/admin/settings/user-profile",
+            },
+            { label: breadcrumbLabel },
+          ]}
+        />
+        <div role="status">{copy.loading}</div>
+      </div>
+    );
   }
   if (loadError) {
-    return <div className="alert alert-danger">{copy.error}</div>;
+    return (
+      <div className="d-grid gap-4">
+        <AdminBreadcrumb
+          items={[
+            {
+              label: dictionary.admin.settings.sections.userProfile,
+              href: "/admin/settings/user-profile",
+            },
+            { label: breadcrumbLabel },
+          ]}
+        />
+        <div className="alert alert-danger">{copy.error}</div>
+      </div>
+    );
   }
 
   return (
-    <Card className="admin-panel-card admin-create-card">
-      <Card.Body>
-        <Form className="admin-create-form" noValidate onSubmit={submit}>
-          <Form.Group className="mb-3" controlId="profile-definition-name">
-            <Form.Label>{copy.name}</Form.Label>
-            <Form.Control
-              autoComplete="off"
-              autoFocus
-              maxLength={100}
-              disabled={!canManage || editingId !== null}
-              isInvalid={Boolean(errors.name)}
-              {...register("name")}
-            />
-            <Form.Control.Feedback type="invalid">{errors.name?.message}</Form.Control.Feedback>
-          </Form.Group>
-          <Form.Group className="mb-3" controlId="profile-definition-display-name">
-            <Form.Label>{copy.displayName}</Form.Label>
-            <Form.Control
-              maxLength={200}
-              disabled={!canManage}
-              isInvalid={Boolean(errors.displayName)}
-              {...register("displayName")}
-            />
-            <Form.Control.Feedback type="invalid">
-              {errors.displayName?.message}
-            </Form.Control.Feedback>
-          </Form.Group>
-          <Form.Group className="mb-3" controlId="profile-definition-description">
-            <Form.Label>{copy.description}</Form.Label>
-            <Form.Control
-              as="textarea"
-              rows={3}
-              maxLength={1000}
-              disabled={!canManage}
-              {...register("description")}
-            />
-          </Form.Group>
-          <Form.Group className="mb-3" controlId="profile-definition-type">
-            <Form.Label>{copy.type}</Form.Label>
-            <Form.Select disabled={!canManage} {...register("type")}>
-              <option value="STRING">{copy.types.string}</option>
-              <option value="EMAIL">{copy.types.email}</option>
-              <option value="INTEGER">{copy.types.integer}</option>
-              <option value="BOOLEAN">{copy.types.boolean}</option>
-            </Form.Select>
-          </Form.Group>
-          <Form.Group className="mb-3" controlId="profile-definition-display-order">
-            <Form.Label>{copy.displayOrder}</Form.Label>
-            <Form.Control
-              type="number"
-              min={0}
-              max={10000}
-              disabled={!canManage}
-              isInvalid={Boolean(errors.displayOrder)}
-              {...register("displayOrder", { setValueAs: (value) => Number(value) })}
-            />
-            <Form.Control.Feedback type="invalid">
-              {errors.displayOrder?.message}
-            </Form.Control.Feedback>
-            <Form.Text>{copy.displayOrderHelp}</Form.Text>
-          </Form.Group>
-          <div className="d-flex flex-wrap gap-4 mb-3">
-            <Form.Check
-              type="switch"
-              label={copy.required}
-              disabled={!canManage}
-              {...register("required")}
-            />
-            <Form.Check
-              type="switch"
-              label={copy.multivalued}
-              disabled={!canManage}
-              {...register("multivalued")}
-            />
-            <Form.Check
-              type="switch"
-              label={copy.enabled}
-              disabled={!canManage}
-              {...register("enabled")}
-            />
-          </div>
-          <Form.Group className="mb-3" controlId="profile-definition-min-length">
-            <Form.Label>{copy.minLength}</Form.Label>
-            <Form.Control
-              type="number"
-              min={0}
-              max={2000}
-              disabled={!canManage}
-              {...register("minLength", {
-                setValueAs: (value) => (value === "" ? undefined : Number(value)),
-              })}
-            />
-          </Form.Group>
-          <Form.Group className="mb-3" controlId="profile-definition-max-length">
-            <Form.Label>{copy.maxLength}</Form.Label>
-            <Form.Control
-              type="number"
-              min={0}
-              max={2000}
-              disabled={!canManage}
-              {...register("maxLength", {
-                setValueAs: (value) => (value === "" ? undefined : Number(value)),
-              })}
-            />
-          </Form.Group>
-          <Form.Group className="mb-3" controlId="profile-definition-pattern">
-            <Form.Label>{copy.pattern}</Form.Label>
-            <Form.Control
-              maxLength={500}
-              disabled={!canManage}
-              isInvalid={Boolean(errors.pattern)}
-              {...register("pattern")}
-            />
-            <Form.Control.Feedback type="invalid">{errors.pattern?.message}</Form.Control.Feedback>
-          </Form.Group>
-          <div className="admin-create-actions">
-            <Button
-              variant="secondary"
-              type="button"
-              onClick={() => router.push("/admin/settings/user-profile")}
-            >
-              <AdminActionIcon action="cancel" />
-              {dictionary.admin.common.cancel}
-            </Button>
-            <Button disabled={!canManage || isSubmitting} type="submit">
-              {isSubmitting ? (
-                <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
-              ) : (
-                <AdminActionIcon action="save" />
-              )}
-              {editingId === null ? copy.create : copy.update}
-            </Button>
-          </div>
-        </Form>
-      </Card.Body>
-    </Card>
+    <div className="d-grid gap-4">
+      <AdminBreadcrumb
+        items={[
+          {
+            label: dictionary.admin.settings.sections.userProfile,
+            href: "/admin/settings/user-profile",
+          },
+          { label: breadcrumbLabel },
+        ]}
+      />
+      <Card className="admin-panel-card admin-create-card">
+        <Card.Body>
+          <Form className="admin-create-form" noValidate onSubmit={submit}>
+            <Form.Group className="mb-3" controlId="profile-definition-name">
+              <Form.Label>{copy.name}</Form.Label>
+              <Form.Control
+                autoComplete="off"
+                autoFocus
+                maxLength={100}
+                disabled={!canManage || editingId !== null}
+                isInvalid={Boolean(errors.name)}
+                {...register("name")}
+              />
+              <Form.Control.Feedback type="invalid">{errors.name?.message}</Form.Control.Feedback>
+            </Form.Group>
+            <Form.Group className="mb-3" controlId="profile-definition-display-name">
+              <Form.Label>{copy.displayName}</Form.Label>
+              <Form.Control
+                maxLength={200}
+                disabled={!canManage}
+                isInvalid={Boolean(errors.displayName)}
+                {...register("displayName")}
+              />
+              <Form.Control.Feedback type="invalid">
+                {errors.displayName?.message}
+              </Form.Control.Feedback>
+            </Form.Group>
+            <Form.Group className="mb-3" controlId="profile-definition-description">
+              <Form.Label>{copy.description}</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                maxLength={1000}
+                disabled={!canManage}
+                {...register("description")}
+              />
+            </Form.Group>
+            <Form.Group className="mb-3" controlId="profile-definition-type">
+              <Form.Label>{copy.type}</Form.Label>
+              <Form.Select disabled={!canManage} {...register("type")}>
+                <option value="STRING">{copy.types.string}</option>
+                <option value="EMAIL">{copy.types.email}</option>
+                <option value="INTEGER">{copy.types.integer}</option>
+                <option value="BOOLEAN">{copy.types.boolean}</option>
+              </Form.Select>
+            </Form.Group>
+            <Form.Group className="mb-3" controlId="profile-definition-display-order">
+              <Form.Label>{copy.displayOrder}</Form.Label>
+              <Form.Control
+                type="number"
+                min={0}
+                max={10000}
+                disabled={!canManage}
+                isInvalid={Boolean(errors.displayOrder)}
+                {...register("displayOrder", { setValueAs: (value) => Number(value) })}
+              />
+              <Form.Control.Feedback type="invalid">
+                {errors.displayOrder?.message}
+              </Form.Control.Feedback>
+              <Form.Text>{copy.displayOrderHelp}</Form.Text>
+            </Form.Group>
+            <div className="d-flex flex-wrap gap-4 mb-3">
+              <Form.Check
+                type="switch"
+                label={copy.required}
+                disabled={!canManage}
+                {...register("required")}
+              />
+              <Form.Check
+                type="switch"
+                label={copy.multivalued}
+                disabled={!canManage}
+                {...register("multivalued")}
+              />
+              <Form.Check
+                type="switch"
+                label={copy.enabled}
+                disabled={!canManage}
+                {...register("enabled")}
+              />
+            </div>
+            <Form.Group className="mb-3" controlId="profile-definition-min-length">
+              <Form.Label>{copy.minLength}</Form.Label>
+              <Form.Control
+                type="number"
+                min={0}
+                max={2000}
+                disabled={!canManage}
+                {...register("minLength", {
+                  setValueAs: (value) => (value === "" ? undefined : Number(value)),
+                })}
+              />
+            </Form.Group>
+            <Form.Group className="mb-3" controlId="profile-definition-max-length">
+              <Form.Label>{copy.maxLength}</Form.Label>
+              <Form.Control
+                type="number"
+                min={0}
+                max={2000}
+                disabled={!canManage}
+                {...register("maxLength", {
+                  setValueAs: (value) => (value === "" ? undefined : Number(value)),
+                })}
+              />
+            </Form.Group>
+            <Form.Group className="mb-3" controlId="profile-definition-pattern">
+              <Form.Label>{copy.pattern}</Form.Label>
+              <Form.Control
+                maxLength={500}
+                disabled={!canManage}
+                isInvalid={Boolean(errors.pattern)}
+                {...register("pattern")}
+              />
+              <Form.Control.Feedback type="invalid">
+                {errors.pattern?.message}
+              </Form.Control.Feedback>
+            </Form.Group>
+            <div className="admin-create-actions">
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={() => router.push("/admin/settings/user-profile")}
+              >
+                <AdminActionIcon action="cancel" />
+                {dictionary.admin.common.cancel}
+              </Button>
+              <Button disabled={!canManage || isSubmitting} type="submit">
+                {isSubmitting ? (
+                  <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                ) : (
+                  <AdminActionIcon action="save" />
+                )}
+                {editingId === null ? copy.create : copy.update}
+              </Button>
+            </div>
+          </Form>
+        </Card.Body>
+      </Card>
+    </div>
   );
 }
