@@ -310,6 +310,7 @@ curl http://localhost:9090/actuator/health/readiness
 - Registered client seed data lives in CSV and must stay aligned with `RegisteredClientEntity`, `RegisteredClientMapper`, and Spring Authorization Server's registered-client model.
 - For DB changes: add a new Liquibase XML changelog and include it from `db/changelog/db.changelog-master.xml`.
 - Do not modify existing changelogs that have already been applied unless this is still local sample bootstrap work and no migration history needs preservation.
+- This repository is a demo bootstrap: do not use Liquibase `update`, `alter`, or follow-up seed correction changesets for schema or initial data changes. Put the final columns, constraints, and initial rows in the create changelog and its first seed CSV; keep related seed data in the existing feature CSV instead of adding separate correction files.
 - Hibernate second-level cache uses JCache backed by Caffeine. Cache regions are configured in `config/cache/CacheConfig`.
 - Every entity annotated with `@Cache(usage = CacheConcurrencyStrategy.READ_WRITE)` must have a matching `Entity.class.getName()` region registered in `CacheConfig`; add the region and a focused `CacheConfigTest` assertion in the same change.
 

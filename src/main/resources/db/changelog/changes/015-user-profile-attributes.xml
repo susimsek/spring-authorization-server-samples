@@ -81,29 +81,4 @@
 		</loadData>
 	</changeSet>
 
-	<changeSet id="015-07-seed-built-in-user-profile-attributes" author="susimsek">
-		<update tableName="user_profile_attribute_definitions">
-			<column name="display_order" valueNumeric="50"/>
-			<where>name = 'department'</where>
-		</update>
-		<update tableName="user_profile_attribute_definitions">
-			<column name="display_order" valueNumeric="60"/>
-			<where>name = 'employeeNumber'</where>
-		</update>
-		<loadData encoding="UTF-8" file="db/data/user-profile-built-ins.csv" separator=";" tableName="user_profile_attribute_definitions" usePreparedStatements="true">
-			<column header="name" type="string"/>
-			<column header="display_name" type="string"/>
-			<column header="description" type="string"/>
-			<column header="attribute_type" type="string"/>
-			<column header="required" type="boolean"/>
-			<column header="multivalued" type="boolean"/>
-			<column header="min_length" type="numeric"/>
-			<column header="max_length" type="numeric"/>
-			<column header="pattern" type="string"/>
-			<column header="enabled" type="boolean"/>
-			<column header="display_order" type="numeric"/>
-			<column header="created_by" type="string"/>
-			<column header="last_modified_by" type="string"/>
-		</loadData>
-	</changeSet>
 </databaseChangeLog>
