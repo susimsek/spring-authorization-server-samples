@@ -19,20 +19,36 @@ public interface AdminClientScopeMapper {
     @Mapping(target = "name", source = "name")
     @Mapping(target = "displayName", source = "displayName")
     @Mapping(target = "description", source = "description")
+    @Mapping(target = "groupMapperEnabled", source = "groupMapperEnabled")
+    @Mapping(target = "groupClaimName", source = "groupClaimName")
+    @Mapping(target = "groupMapperFullPath", source = "groupMapperFullPath")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "createdBy", ignore = true)
     @Mapping(target = "lastModifiedBy", ignore = true)
-    ClientScopeEntity toEntity(String id, String name, String displayName, String description);
+    ClientScopeEntity toEntity(
+            String id,
+            String name,
+            String displayName,
+            String description,
+            boolean groupMapperEnabled,
+            String groupClaimName,
+            boolean groupMapperFullPath);
 
     @BeanMapping(ignoreByDefault = true)
     @Mapping(target = "name", source = "name")
     @Mapping(target = "displayName", source = "displayName")
     @Mapping(target = "description", source = "description")
+    @Mapping(target = "groupMapperEnabled", source = "groupMapperEnabled")
+    @Mapping(target = "groupClaimName", source = "groupClaimName")
+    @Mapping(target = "groupMapperFullPath", source = "groupMapperFullPath")
     void update(
             String name,
             String displayName,
             String description,
+            boolean groupMapperEnabled,
+            String groupClaimName,
+            boolean groupMapperFullPath,
             @MappingTarget ClientScopeEntity target);
 
     AdminClientScopeDTO toDTO(ClientScopeEntity entity);

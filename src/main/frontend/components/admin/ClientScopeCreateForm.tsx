@@ -15,7 +15,14 @@ import { applyProblemToForm } from "@/lib/problem-detail";
 import { useAdminAuth } from "./AdminAuthProvider";
 import { AdminActionIcon } from "./AdminActionIcon";
 
-type Values = { name: string; displayName: string; description: string };
+type Values = {
+  name: string;
+  displayName: string;
+  description: string;
+  groupMapperEnabled: boolean;
+  groupClaimName: string;
+  groupMapperFullPath: boolean;
+};
 
 export function ClientScopeCreateForm({ dictionary }: { dictionary: Dictionary; locale: Locale }) {
   const { access, accessToken } = useAdminAuth();
@@ -28,6 +35,13 @@ export function ClientScopeCreateForm({ dictionary }: { dictionary: Dictionary; 
     name: z.string().trim().min(1, common.validation.required).max(100, common.validation.max100),
     displayName: z.string().max(200, common.validation.max200),
     description: z.string().max(500, common.validation.max500),
+    groupMapperEnabled: z.boolean(),
+    groupClaimName: z
+      .string()
+      .trim()
+      .min(1, common.validation.required)
+      .max(100, common.validation.max100),
+    groupMapperFullPath: z.boolean(),
   });
   const {
     register,
@@ -37,7 +51,14 @@ export function ClientScopeCreateForm({ dictionary }: { dictionary: Dictionary; 
   } = useForm<Values>({
     resolver: zodResolver(schema),
     mode: "onBlur",
-    defaultValues: { name: "", displayName: "", description: "" },
+    defaultValues: {
+      name: "",
+      displayName: "",
+      description: "",
+      groupMapperEnabled: false,
+      groupClaimName: "groups",
+      groupMapperFullPath: true,
+    },
   });
 
   const submit = async (values: Values) => {
@@ -109,6 +130,34 @@ export function ClientScopeCreateForm({ dictionary }: { dictionary: Dictionary; 
               {errors.description?.message}
             </Form.Control.Feedback>
           </Form.Group>
+          <Form.Group className="mb-3" controlId="client-scope-group-claim-name">
+            <Form.Label>{copy.groupClaimName}</Form.Label>
+            <Form.Control
+              isInvalid={Boolean(errors.groupClaimName)}
+              maxLength={100}
+              disabled={!canManageClients}
+              {...register("groupClaimName")}
+            />
+            <Form.Control.Feedback type="invalid">
+              {errors.groupClaimName?.message}
+            </Form.Control.Feedback>
+          </Form.Group>
+          <Form.Check
+            className="mb-2"
+            type="switch"
+            id="client-scope-group-mapper-enabled"
+            label={copy.groupMapperEnabled}
+            disabled={!canManageClients}
+            {...register("groupMapperEnabled")}
+          />
+          <Form.Check
+            className="mb-3"
+            type="switch"
+            id="client-scope-group-mapper-full-path"
+            label={copy.groupMapperFullPath}
+            disabled={!canManageClients}
+            {...register("groupMapperFullPath")}
+          />
           <div className="admin-create-actions">
             <Button variant="secondary" onClick={() => router.push(`/admin/client-scopes`)}>
               <AdminActionIcon action="cancel" />

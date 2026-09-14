@@ -89,14 +89,31 @@ public class AdminApiSecurityConfig {
                                         .hasAnyAuthority(
                                                 AuthoritiesConstants.ADMIN,
                                                 AuthoritiesConstants.USER_VIEWER,
-                                                AuthoritiesConstants.USER_MANAGER)
+                                                AuthoritiesConstants.USER_MANAGER,
+                                                AuthoritiesConstants.GROUP_VIEWER,
+                                                AuthoritiesConstants.GROUP_MANAGER)
                                         .requestMatchers(
                                                 HttpMethod.PUT, "/api/admin/groups/*/roles")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.USER_MANAGER,
+                                                AuthoritiesConstants.GROUP_MANAGER)
+                                        .requestMatchers(
+                                                HttpMethod.GET, "/api/admin/groups/*/permissions")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.USER_VIEWER,
+                                                AuthoritiesConstants.USER_MANAGER,
+                                                AuthoritiesConstants.GROUP_VIEWER,
+                                                AuthoritiesConstants.GROUP_MANAGER)
+                                        .requestMatchers(
+                                                HttpMethod.PUT, "/api/admin/groups/*/permissions")
                                         .hasAuthority(AuthoritiesConstants.ADMIN)
                                         .requestMatchers("/api/admin/groups/**")
                                         .hasAnyAuthority(
                                                 AuthoritiesConstants.ADMIN,
-                                                AuthoritiesConstants.USER_MANAGER)
+                                                AuthoritiesConstants.USER_MANAGER,
+                                                AuthoritiesConstants.GROUP_MANAGER)
                                         .requestMatchers(
                                                 HttpMethod.GET, "/api/admin/required-actions/**")
                                         .hasAuthority(AuthoritiesConstants.ADMIN)

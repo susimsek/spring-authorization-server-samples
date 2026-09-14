@@ -26,9 +26,19 @@ type ClientScope = {
   description: string | null;
   createdAt: string;
   updatedAt: string;
+  groupMapperEnabled: boolean;
+  groupClaimName: string;
+  groupMapperFullPath: boolean;
 };
 
-type Values = { name: string; displayName: string; description: string };
+type Values = {
+  name: string;
+  displayName: string;
+  description: string;
+  groupMapperEnabled: boolean;
+  groupClaimName: string;
+  groupMapperFullPath: boolean;
+};
 
 export function ClientScopeDetail({
   dictionary,
@@ -52,6 +62,9 @@ export function ClientScopeDetail({
     name: z.string().trim().min(1, common.validation.required).max(100, common.validation.max100),
     displayName: z.string().max(200, common.validation.max200),
     description: z.string().max(500, common.validation.max500),
+    groupMapperEnabled: z.boolean(),
+    groupClaimName: z.string().trim().min(1, common.validation.required).max(100),
+    groupMapperFullPath: z.boolean(),
   });
   const {
     register,
@@ -61,7 +74,14 @@ export function ClientScopeDetail({
   } = useForm<Values>({
     resolver: zodResolver(schema),
     mode: "onBlur",
-    defaultValues: { name: "", displayName: "", description: "" },
+    defaultValues: {
+      name: "",
+      displayName: "",
+      description: "",
+      groupMapperEnabled: false,
+      groupClaimName: "groups",
+      groupMapperFullPath: true,
+    },
   });
 
   const load = useCallback(async () => {
@@ -77,6 +97,9 @@ export function ClientScopeDetail({
         name: response.data.name,
         displayName: response.data.displayName ?? "",
         description: response.data.description ?? "",
+        groupMapperEnabled: response.data.groupMapperEnabled,
+        groupClaimName: response.data.groupClaimName,
+        groupMapperFullPath: response.data.groupMapperFullPath,
       });
       setError(false);
     } catch {
@@ -107,6 +130,9 @@ export function ClientScopeDetail({
       name: response.data.name,
       displayName: response.data.displayName ?? "",
       description: response.data.description ?? "",
+      groupMapperEnabled: response.data.groupMapperEnabled,
+      groupClaimName: response.data.groupClaimName,
+      groupMapperFullPath: response.data.groupMapperFullPath,
     });
     alerts.addAlert(copy.saved);
   };
@@ -175,6 +201,29 @@ export function ClientScopeDetail({
                 {errors.description?.message}
               </Form.Control.Feedback>
             </Form.Group>
+            <Form.Group className="mb-3" controlId="client-scope-detail-group-claim-name">
+              <Form.Label>{copy.groupClaimName}</Form.Label>
+              <Form.Control
+                disabled={!access?.manageClients}
+                isInvalid={Boolean(errors.groupClaimName)}
+                {...register("groupClaimName")}
+              />
+              <Form.Control.Feedback type="invalid">
+                {errors.groupClaimName?.message}
+              </Form.Control.Feedback>
+            </Form.Group>
+            <Form.Check
+              className="mb-2"
+              disabled={!access?.manageClients}
+              label={copy.groupMapperEnabled}
+              {...register("groupMapperEnabled")}
+            />
+            <Form.Check
+              className="mb-4"
+              disabled={!access?.manageClients}
+              label={copy.groupMapperFullPath}
+              {...register("groupMapperFullPath")}
+            />
             <div className="admin-form-actions">
               <Button disabled={isSubmitting || !access?.manageClients} type="submit">
                 {isSubmitting ? (

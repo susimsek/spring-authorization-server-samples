@@ -239,6 +239,9 @@
 			<column name="name" type="varchar(100)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_oauth2_client_scope_name"/></column>
 			<column name="display_name" type="varchar(200)"/>
 			<column name="description" type="varchar(500)"/>
+			<column name="group_mapper_enabled" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="group_claim_name" type="varchar(100)" defaultValue="groups"><constraints nullable="false"/></column>
+			<column name="group_mapper_full_path" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
 			<column name="created_by" type="varchar(100)"><constraints nullable="false"/></column>
 			<column name="created_at" type="timestamp" defaultValueComputed="${now}"><constraints nullable="false"/></column>
 			<column name="last_modified_by" type="varchar(100)"/>
@@ -252,6 +255,9 @@
 			<column header="name" type="string"/>
 			<column header="display_name" type="string"/>
 			<column header="description" type="string"/>
+			<column header="group_mapper_enabled" type="boolean"/>
+			<column header="group_claim_name" type="string"/>
+			<column header="group_mapper_full_path" type="boolean"/>
 			<column header="created_by" type="string"/>
 			<column header="last_modified_by" type="string"/>
 		</loadData>

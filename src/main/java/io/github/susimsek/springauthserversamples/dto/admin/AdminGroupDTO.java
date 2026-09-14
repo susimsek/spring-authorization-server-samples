@@ -1,6 +1,8 @@
 package io.github.susimsek.springauthserversamples.dto.admin;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Schema(name = "AdminGroup", description = "A group and its direct and effective role mappings.")
@@ -39,6 +41,16 @@ public record AdminGroupDTO(
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 Set<String> effectiveRoles,
         @Schema(
+                        description = "Multi-valued group attributes.",
+                        example = "{\"department\":[\"finance\"],\"costCenter\":[\"42\"]}",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                Map<String, List<String>> attributes,
+        @Schema(
+                        description = "Whether new users are automatically added to this group.",
+                        example = "false",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                boolean defaultGroup,
+        @Schema(
                         description = "Number of users in the group.",
                         example = "3",
                         format = "int64",
@@ -47,6 +59,17 @@ public record AdminGroupDTO(
 
     public AdminGroupDTO(
             Long id, String name, String path, Long parentId, Set<String> roles, long userCount) {
-        this(id, name, path, parentId, roles, roles, userCount);
+        this(id, name, path, parentId, roles, roles, Map.of(), false, userCount);
+    }
+
+    public AdminGroupDTO(
+            Long id,
+            String name,
+            String path,
+            Long parentId,
+            Set<String> roles,
+            Set<String> effectiveRoles,
+            long userCount) {
+        this(id, name, path, parentId, roles, effectiveRoles, Map.of(), false, userCount);
     }
 }

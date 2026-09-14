@@ -30,4 +30,13 @@ public class ClientScopeEntity extends AuditableEntity {
 
     @Column(name = "description", length = 500)
     private String description;
+
+    @Column(name = "group_mapper_enabled", nullable = false)
+    private boolean groupMapperEnabled;
+
+    @Column(name = "group_claim_name", nullable = false, length = 100)
+    private String groupClaimName = "groups";
+
+    @Column(name = "group_mapper_full_path", nullable = false)
+    private boolean groupMapperFullPath = true;
 }

@@ -6,6 +6,7 @@ import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
 import io.github.susimsek.springauthserversamples.domain.GroupEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
+import io.github.susimsek.springauthserversamples.repository.ClientScopeRepository;
 import io.github.susimsek.springauthserversamples.repository.UserAvatarRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.security.AuthorizationEndpointErrorResponseHandler;
@@ -193,14 +194,51 @@ public class AuthorizationServerConfig {
     OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer(
             UserRepository userRepository,
             UserAvatarRepository userAvatarRepository,
+            AuthorizationRepository authorizationRepository,
+            ClientScopeRepository clientScopeRepository) {
+        return jwtTokenCustomizer(
+                userRepository,
+                userAvatarRepository,
+                authorizationRepository,
+                clientScopeRepository,
+                false);
+    }
+
+    OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer(
+            UserRepository userRepository,
+            UserAvatarRepository userAvatarRepository,
             AuthorizationRepository authorizationRepository) {
+        return jwtTokenCustomizer(
+                userRepository, userAvatarRepository, authorizationRepository, null, true);
+    }
+
+    private OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer(
+            UserRepository userRepository,
+            UserAvatarRepository userAvatarRepository,
+            AuthorizationRepository authorizationRepository,
+            ClientScopeRepository clientScopeRepository,
+            boolean legacyAdminGroups) {
         return context -> {
             boolean adminAccessToken =
                     OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())
                             && ConsoleClients.ADMIN.equals(
                                     context.getRegisteredClient().getClientId());
+            var groupMappers =
+                    clientScopeRepository == null
+                            ? java.util.List
+                                    .<io.github.susimsek.springauthserversamples.domain
+                                                    .ClientScopeEntity>
+                                            of()
+                            : clientScopeRepository
+                                    .findByNameIn(context.getAuthorizedScopes())
+                                    .stream()
+                                    .filter(scope -> scope.isGroupMapperEnabled())
+                                    .toList();
             Optional<UserEntity> tokenUser = Optional.empty();
-            if (isUserProfileToken(context) || isUserEmailToken(context) || adminAccessToken) {
+            if (isUserProfileToken(context)
+                    || isUserEmailToken(context)
+                    || adminAccessToken
+                    || !groupMappers.isEmpty()) {
                 tokenUser = userRepository.findByUsername(context.getPrincipal().getName());
             }
 
@@ -240,6 +278,9 @@ public class AuthorizationServerConfig {
                                         .map(authority -> authority.getAuthority())
                                         .sorted()
                                         .collect(Collectors.toList()));
+            }
+
+            if (legacyAdminGroups && adminAccessToken) {
                 tokenUser.ifPresent(
                         user ->
                                 context.getClaims()
@@ -249,6 +290,31 @@ public class AuthorizationServerConfig {
                                                         .map(AuthorizationServerConfig::groupPath)
                                                         .sorted()
                                                         .collect(Collectors.toList())));
+            }
+
+            if (!groupMappers.isEmpty()) {
+                tokenUser.ifPresent(
+                        user ->
+                                groupMappers.stream()
+                                        .findFirst()
+                                        .ifPresent(
+                                                mapper ->
+                                                        context.getClaims()
+                                                                .claim(
+                                                                        mapper.getGroupClaimName(),
+                                                                        user.getGroups().stream()
+                                                                                .map(
+                                                                                        group ->
+                                                                                                mapper
+                                                                                                                .isGroupMapperFullPath()
+                                                                                                        ? groupPath(
+                                                                                                                group)
+                                                                                                        : group
+                                                                                                                .getName())
+                                                                                .sorted()
+                                                                                .collect(
+                                                                                        Collectors
+                                                                                                .toList()))));
             }
 
             if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())

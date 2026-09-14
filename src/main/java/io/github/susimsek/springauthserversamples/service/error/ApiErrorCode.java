@@ -59,6 +59,8 @@ public enum ApiErrorCode {
     GROUP_INVALID_PARENT("group_invalid_parent", "The group parent is invalid."),
     GROUP_INVALID_NAME("group_invalid_name", "Group name is required."),
     GROUP_INVALID_ROLES("group_invalid_roles", "One or more roles are invalid."),
+    GROUP_INVALID_ATTRIBUTES("group_invalid_attributes", "Group attributes are invalid."),
+    GROUP_INVALID_PERMISSION("group_invalid_permission", "The group permission is invalid."),
     KEY_ROTATION_FAILED("key_rotation_failed", "The signing key could not be rotated."),
     LAST_ADMIN_PROTECTED("last_admin_protected", "The last administrator must be retained."),
     ROLE_ASSIGNED("role_assigned", "This role is assigned to one or more users."),

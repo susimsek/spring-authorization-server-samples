@@ -1,7 +1,10 @@
 package io.github.susimsek.springauthserversamples.domain;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -35,6 +38,9 @@ public class GroupEntity {
     @Column(name = "name", nullable = false, unique = true, length = 100)
     private String name;
 
+    @Column(name = "default_group", nullable = false)
+    private boolean defaultGroup;
+
     @ManyToOne
     @JoinColumn(name = "parent_id")
     private GroupEntity parent;
@@ -46,4 +52,8 @@ public class GroupEntity {
             joinColumns = @JoinColumn(name = "group_id"),
             inverseJoinColumns = @JoinColumn(name = "authority_id"))
     private Set<AuthorityEntity> authorities = new HashSet<>();
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "group_attributes", joinColumns = @JoinColumn(name = "group_id"))
+    private Set<GroupAttribute> attributes = new HashSet<>();
 }

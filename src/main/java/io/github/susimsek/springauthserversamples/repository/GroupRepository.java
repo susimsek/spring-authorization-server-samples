@@ -19,6 +19,8 @@ public interface GroupRepository extends JpaRepository<GroupEntity, Long> {
 
     boolean existsByParentId(Long parentId);
 
+    List<GroupEntity> findByDefaultGroupTrueOrderByNameAsc();
+
     @EntityGraph(attributePaths = "authorities")
     List<GroupEntity> findByParentId(Long parentId);
 

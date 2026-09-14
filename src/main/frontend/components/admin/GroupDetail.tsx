@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Badge, Button, Card, Form, ListGroup, Spinner } from "react-bootstrap";
 import { useForm } from "@/lib/form";
+import { useFieldArray } from "react-hook-form";
 import { useRouter } from "@/routing/navigation";
 import { z } from "zod";
 
@@ -30,8 +31,12 @@ type Group = {
   path: string;
   roles: string[];
   userCount: number;
+  attributes: Record<string, string[]>;
+  defaultGroup: boolean;
 };
 type Role = { name: string };
+type Permission = { userId: number; username: string; permission: string };
+type PermissionValues = { assignments: { userId: string; permission: string }[] };
 
 export function GroupDetail({
   dictionary,
@@ -44,6 +49,7 @@ export function GroupDetail({
   const { access, accessToken } = useAdminAuth();
   const canManageUsers = Boolean(access?.manageUsers);
   const canManageRoles = Boolean(access?.manageRoles);
+  const canManagePermissions = Boolean(access?.isAdmin);
   const alerts = useConsoleAlerts();
   const router = useRouter();
   const groupId = id;
@@ -59,6 +65,8 @@ export function GroupDetail({
   const [userQuery, setUserQuery] = useState("");
   const [suggestions, setSuggestions] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [permissionUsers, setPermissionUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
@@ -77,6 +85,22 @@ export function GroupDetail({
       .min(1, dictionary.admin.common.validation.required)
       .max(100, dictionary.admin.common.validation.max100),
     parentId: z.string(),
+    attributesJson: z.string().refine((value) => {
+      if (!value.trim()) return true;
+      try {
+        const parsed: unknown = JSON.parse(value);
+        return (
+          typeof parsed === "object" &&
+          parsed !== null &&
+          Object.values(parsed).every(
+            (values) => Array.isArray(values) && values.every((item) => typeof item === "string"),
+          )
+        );
+      } catch {
+        return false;
+      }
+    }, copy.attributeFormat),
+    defaultGroup: z.boolean(),
   });
   const {
     register: registerGroupSettings,
@@ -85,14 +109,32 @@ export function GroupDetail({
     formState: { errors: groupSettingsErrors, isDirty: isGroupSettingsDirty },
   } = useForm<z.infer<typeof groupSettingsSchema>>({
     resolver: zodResolver(groupSettingsSchema),
-    defaultValues: { name: "", parentId: "" },
+    defaultValues: { name: "", parentId: "", attributesJson: "", defaultGroup: false },
+  });
+  const permissionsForm = useForm<PermissionValues>({ defaultValues: { assignments: [] } });
+  const {
+    control: permissionsControl,
+    reset: resetPermissions,
+    register: registerPermission,
+    handleSubmit: handlePermissionsSubmit,
+  } = permissionsForm;
+  const { fields, append, remove } = useFieldArray({
+    control: permissionsControl,
+    name: "assignments",
   });
 
   const load = useCallback(async () => {
     if (!accessToken) return;
     setLoading(true);
     try {
-      const [groupResponse, rolesResponse, groupsResponse, membersResponse] = await Promise.all([
+      const [
+        groupResponse,
+        rolesResponse,
+        groupsResponse,
+        membersResponse,
+        permissionsResponse,
+        usersResponse,
+      ] = await Promise.all([
         adminRequest<Group>(accessToken, {
           url: `/api/admin/groups/${encodeURIComponent(groupId)}`,
         }),
@@ -103,6 +145,10 @@ export function GroupDetail({
         adminRequest<PageResponse<User>>(accessToken, {
           url: `/api/admin/groups/${encodeURIComponent(groupId)}/users?q=${encodeURIComponent(memberQuery)}&page=${memberPage}&size=${memberSize}`,
         }),
+        adminRequest<Permission[]>(accessToken, {
+          url: `/api/admin/groups/${encodeURIComponent(groupId)}/permissions`,
+        }),
+        adminRequest<PageResponse<User>>(accessToken, { url: "/api/admin/users?page=0&size=100" }),
       ]);
       if (
         groupResponse.status >= 300 ||
@@ -117,6 +163,8 @@ export function GroupDetail({
         resetGroupSettings({
           name: groupResponse.data.name,
           parentId: groupResponse.data.parentId?.toString() ?? "",
+          attributesJson: JSON.stringify(groupResponse.data.attributes ?? {}, null, 2),
+          defaultGroup: groupResponse.data.defaultGroup,
         });
         groupFormInitialized.current = true;
       }
@@ -124,6 +172,17 @@ export function GroupDetail({
       setGroups(groupsResponse.data.content);
       setSelectedRoles(groupResponse.data.roles);
       setMembers(membersResponse.data.content);
+      const loadedPermissions = Array.isArray(permissionsResponse.data)
+        ? permissionsResponse.data
+        : [];
+      setPermissions(loadedPermissions);
+      resetPermissions({
+        assignments: loadedPermissions.map((permission) => ({
+          userId: permission.userId.toString(),
+          permission: permission.permission,
+        })),
+      });
+      setPermissionUsers(usersResponse.status < 300 ? usersResponse.data.content : []);
       setMemberTotalPages(membersResponse.data.totalPages);
       setMemberTotalElements(membersResponse.data.totalElements);
       setError(false);
@@ -132,7 +191,15 @@ export function GroupDetail({
     } finally {
       setLoading(false);
     }
-  }, [accessToken, groupId, memberPage, memberQuery, memberSize, resetGroupSettings]);
+  }, [
+    accessToken,
+    groupId,
+    memberPage,
+    memberQuery,
+    memberSize,
+    resetGroupSettings,
+    resetPermissions,
+  ]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => void load(), 0);
@@ -175,22 +242,58 @@ export function GroupDetail({
     }
   };
 
-  const saveSettings = async ({ name, parentId }: z.infer<typeof groupSettingsSchema>) => {
+  const saveSettings = async ({
+    name,
+    parentId,
+    attributesJson,
+    defaultGroup,
+  }: z.infer<typeof groupSettingsSchema>) => {
     if (!canManageUsers || !accessToken) return;
     setSaving(true);
     try {
       const response = await adminRequest<Group>(accessToken, {
         url: `/api/admin/groups/${encodeURIComponent(groupId)}`,
         method: "PUT",
-        data: { name, parentId: parentId ? Number(parentId) : null },
+        data: {
+          name,
+          parentId: parentId ? Number(parentId) : null,
+          attributes: attributesJson.trim() ? JSON.parse(attributesJson) : {},
+          defaultGroup,
+        },
       });
       if (response.status >= 300) throw new Error();
       setGroup(response.data);
       resetGroupSettings({
         name: response.data.name,
         parentId: response.data.parentId?.toString() ?? "",
+        attributesJson: JSON.stringify(response.data.attributes ?? {}, null, 2),
+        defaultGroup: response.data.defaultGroup,
       });
       alerts.addAlert(copy.groupUpdated);
+    } catch {
+      alerts.addError(copy.operationError);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const savePermissions = async (values: PermissionValues) => {
+    if (!canManagePermissions || !accessToken) return;
+    setSaving(true);
+    try {
+      const response = await adminRequest<Permission[]>(accessToken, {
+        url: `/api/admin/groups/${encodeURIComponent(groupId)}/permissions`,
+        method: "PUT",
+        data: {
+          permissions: values.assignments.map((item) => ({
+            userId: Number(item.userId),
+            permission: item.permission,
+          })),
+        },
+      });
+      if (response.status >= 300) throw new Error();
+      setPermissions(response.data);
+      alerts.addAlert(copy.permissionsSaved);
     } catch {
       alerts.addError(copy.operationError);
     } finally {
@@ -272,6 +375,28 @@ export function GroupDetail({
                 {groupSettingsErrors.name?.message}
               </Form.Control.Feedback>
             </Form.Group>
+            <Form.Group className="mb-3" controlId="group-attributes-detail">
+              <Form.Label>{copy.attributes}</Form.Label>
+              <Form.Control
+                as="textarea"
+                isInvalid={Boolean(groupSettingsErrors.attributesJson)}
+                rows={4}
+                disabled={!canManageUsers}
+                placeholder='{"department":["finance"]}'
+                {...registerGroupSettings("attributesJson")}
+              />
+              <Form.Control.Feedback type="invalid">
+                {groupSettingsErrors.attributesJson?.message}
+              </Form.Control.Feedback>
+              <Form.Text>{copy.attributesHelp}</Form.Text>
+            </Form.Group>
+            <Form.Check
+              className="mb-3"
+              disabled={!canManageUsers}
+              id="group-default-detail"
+              label={copy.defaultGroup}
+              {...registerGroupSettings("defaultGroup")}
+            />
             <Form.Group className="mb-3" controlId="group-parent">
               <Form.Label>{copy.parent}</Form.Label>
               <Form.Select disabled={!canManageUsers} {...registerGroupSettings("parentId")}>
@@ -299,6 +424,75 @@ export function GroupDetail({
               )}
             </div>
           </Form>
+        </Card.Body>
+      </Card>
+      <Card className="admin-panel-card">
+        <Card.Body>
+          <h2 className="h5 mb-1">{copy.permissions}</h2>
+          <p className="small text-body-secondary mb-3">{copy.permissionsHelp}</p>
+          <Form onSubmit={handlePermissionsSubmit(savePermissions)}>
+            {fields.map((field, index) => (
+              <div className="d-flex gap-2 align-items-end mb-2" key={field.id}>
+                <Form.Group className="flex-grow-1" controlId={`group-permission-user-${index}`}>
+                  <Form.Label>{copy.permissionUser}</Form.Label>
+                  <Form.Select
+                    disabled={!canManagePermissions}
+                    {...registerPermission(`assignments.${index}.userId`)}
+                  >
+                    <option value="">{copy.selectUser}</option>
+                    {permissionUsers.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.username}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+                <Form.Group className="flex-grow-1" controlId={`group-permission-value-${index}`}>
+                  <Form.Label>{copy.permission}</Form.Label>
+                  <Form.Select
+                    disabled={!canManagePermissions}
+                    {...registerPermission(`assignments.${index}.permission`)}
+                  >
+                    {(["VIEW", "MANAGE_MEMBERS", "MANAGE_ROLES", "MANAGE_GROUP"] as const).map(
+                      (permission) => (
+                        <option key={permission} value={permission}>
+                          {permission}
+                        </option>
+                      ),
+                    )}
+                  </Form.Select>
+                </Form.Group>
+                {canManagePermissions && (
+                  <Button variant="danger" onClick={() => remove(index)}>
+                    {copy.removePermission}
+                  </Button>
+                )}
+              </div>
+            ))}
+            {canManagePermissions && (
+              <div className="admin-form-actions">
+                <Button
+                  variant="secondary"
+                  onClick={() => append({ userId: "", permission: "VIEW" })}
+                >
+                  {copy.addPermission}
+                </Button>
+                <Button disabled={saving} type="submit">
+                  {saving ? (
+                    <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                  ) : (
+                    <AdminActionIcon action="save" />
+                  )}
+                  {copy.savePermissions}
+                </Button>
+              </div>
+            )}
+          </Form>
+          {!canManagePermissions && permissions.length > 0 && (
+            <p className="small text-body-secondary mb-0">
+              {permissions.map((item) => `${item.username}: ${item.permission}`).join(", ")}
+            </p>
+          )}
         </Card.Body>
       </Card>
       <Card className="admin-panel-card">

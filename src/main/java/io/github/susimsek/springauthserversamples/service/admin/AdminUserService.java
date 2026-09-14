@@ -181,6 +181,10 @@ public class AdminUserService {
         } else {
             passwordService.setInitialPassword(user, password);
         }
+        List<GroupEntity> defaultGroups = groupRepository.findByDefaultGroupTrueOrderByNameAsc();
+        if (defaultGroups != null) {
+            user.getGroups().addAll(defaultGroups);
+        }
         UserEntity saved = userRepository.save(user);
         adminAuditEventService.record("user.created", "user", saved.getId().toString());
         return userView(saved, null);
