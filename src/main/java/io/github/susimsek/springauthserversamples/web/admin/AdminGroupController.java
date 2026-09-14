@@ -2,6 +2,8 @@ package io.github.susimsek.springauthserversamples.web.admin;
 
 import io.github.susimsek.springauthserversamples.config.openapi.OpenApiConfig;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupPermissionDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupPermissionsRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupRolesRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupUserDTO;
@@ -15,11 +17,13 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -53,8 +57,9 @@ public class AdminGroupController {
                             example = "finance")
                     @RequestParam(defaultValue = "")
                     String q,
-            @PageableDefault(size = 20, sort = "name") Pageable pageable) {
-        return adminGroupService.findAll(q, pageable);
+            @PageableDefault(size = 20, sort = "name") Pageable pageable,
+            Authentication authentication) {
+        return adminGroupService.findAll(q, pageable, authentication.getName());
     }
 
     @GetMapping("/{id}")
@@ -63,8 +68,9 @@ public class AdminGroupController {
     AdminGroupDTO findById(
             @Parameter(description = "Internal group identifier.", example = "1", required = true)
                     @PathVariable
-                    Long id) {
-        return adminGroupService.findById(id);
+                    Long id,
+            Authentication authentication) {
+        return adminGroupService.findById(id, authentication.getName());
     }
 
     @PostMapping
@@ -98,8 +104,9 @@ public class AdminGroupController {
                             required = true)
                     @Valid
                     @RequestBody
-                    AdminGroupRequestDTO request) {
-        return adminGroupService.update(id, request);
+                    AdminGroupRequestDTO request,
+            Authentication authentication) {
+        return adminGroupService.update(id, request, authentication.getName());
     }
 
     @PutMapping("/{id}/roles")
@@ -116,8 +123,9 @@ public class AdminGroupController {
                             required = true)
                     @Valid
                     @RequestBody
-                    AdminGroupRolesRequestDTO request) {
-        return adminGroupService.updateRoles(id, request);
+                    AdminGroupRolesRequestDTO request,
+            Authentication authentication) {
+        return adminGroupService.updateRoles(id, request, authentication.getName());
     }
 
     @GetMapping("/{id}/users")
@@ -132,8 +140,9 @@ public class AdminGroupController {
             @Parameter(description = "Optional username search text.", example = "user")
                     @RequestParam(defaultValue = "")
                     String q,
-            @PageableDefault(size = 20, sort = "username") Pageable pageable) {
-        return adminGroupService.users(id, q, pageable);
+            @PageableDefault(size = 20, sort = "username") Pageable pageable,
+            Authentication authentication) {
+        return adminGroupService.users(id, q, pageable, authentication.getName());
     }
 
     @GetMapping("/{id}/available-users")
@@ -148,8 +157,9 @@ public class AdminGroupController {
             @Parameter(description = "Optional username search text.", example = "user")
                     @RequestParam(defaultValue = "")
                     String q,
-            @PageableDefault(size = 10, sort = "username") Pageable pageable) {
-        return adminGroupService.availableUsers(id, q, pageable);
+            @PageableDefault(size = 10, sort = "username") Pageable pageable,
+            Authentication authentication) {
+        return adminGroupService.availableUsers(id, q, pageable, authentication.getName());
     }
 
     @PostMapping("/{id}/users")
@@ -166,8 +176,9 @@ public class AdminGroupController {
                             required = true)
                     @Valid
                     @RequestBody
-                    AdminGroupUserRequestDTO request) {
-        return adminGroupService.addUser(id, request.userId());
+                    AdminGroupUserRequestDTO request,
+            Authentication authentication) {
+        return adminGroupService.addUser(id, request.userId(), authentication.getName());
     }
 
     @DeleteMapping("/{id}/users/{userId}")
@@ -181,8 +192,9 @@ public class AdminGroupController {
                     Long id,
             @Parameter(description = "Internal user identifier.", example = "2", required = true)
                     @PathVariable
-                    Long userId) {
-        return adminGroupService.removeUser(id, userId);
+                    Long userId,
+            Authentication authentication) {
+        return adminGroupService.removeUser(id, userId, authentication.getName());
     }
 
     @DeleteMapping("/{id}")
@@ -191,8 +203,28 @@ public class AdminGroupController {
     ResponseEntity<Void> delete(
             @Parameter(description = "Internal group identifier.", example = "1", required = true)
                     @PathVariable
-                    Long id) {
-        adminGroupService.delete(id);
+                    Long id,
+            Authentication authentication) {
+        adminGroupService.delete(id, authentication.getName());
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/permissions")
+    @Operation(
+            summary = "List group-scoped permissions",
+            description = "Returns administrator permissions assigned to this group.")
+    @ApiResponse(responseCode = "200", description = "Group permissions returned.")
+    List<AdminGroupPermissionDTO> permissions(@PathVariable Long id) {
+        return adminGroupService.permissions(id);
+    }
+
+    @PutMapping("/{id}/permissions")
+    @Operation(
+            summary = "Replace group-scoped permissions",
+            description = "Replaces administrator permissions for this group and its descendants.")
+    @ApiResponse(responseCode = "200", description = "Group permissions returned.")
+    List<AdminGroupPermissionDTO> updatePermissions(
+            @PathVariable Long id, @Valid @RequestBody AdminGroupPermissionsRequestDTO request) {
+        return adminGroupService.updatePermissions(id, request);
     }
 }

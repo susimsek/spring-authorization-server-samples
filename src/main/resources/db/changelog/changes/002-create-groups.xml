@@ -21,6 +21,9 @@
 				<constraints nullable="false" unique="true" uniqueConstraintName="uk_groups_name"/>
 			</column>
 			<column name="parent_id" type="bigint"/>
+			<column name="default_group" type="boolean" defaultValueBoolean="false">
+				<constraints nullable="false"/>
+			</column>
 		</createTable>
 		<createIndex indexName="idx_groups_parent" tableName="groups">
 			<column name="parent_id"/>
@@ -79,6 +82,59 @@
 		<createIndex indexName="idx_group_authorities_authority" tableName="group_authorities">
 			<column name="authority_id"/>
 		</createIndex>
+		<createTable tableName="group_attributes">
+			<column name="group_id" type="bigint"><constraints nullable="false"/></column>
+			<column name="attribute_name" type="varchar(100)"><constraints nullable="false"/></column>
+			<column name="attribute_value" type="varchar(1000)"><constraints nullable="false"/></column>
+		</createTable>
+		<addPrimaryKey
+			tableName="group_attributes"
+			columnNames="group_id, attribute_name, attribute_value"
+			constraintName="pk_group_attributes"/>
+		<addForeignKeyConstraint
+			baseTableName="group_attributes"
+			baseColumnNames="group_id"
+			constraintName="fk_group_attributes_group"
+			referencedTableName="groups"
+			referencedColumnNames="id"/>
+		<createIndex indexName="idx_group_attributes_name" tableName="group_attributes">
+			<column name="attribute_name"/>
+		</createIndex>
+		<createSequence
+			sequenceName="group_permission_seq"
+			startValue="1"
+			incrementBy="1"
+			minValue="1"
+			maxValue="9999999999999999"
+			cacheSize="100"
+			cycle="false"/>
+		<createTable tableName="group_permissions">
+			<column name="id" type="bigint" defaultValueSequenceNext="group_permission_seq">
+				<constraints nullable="false" primaryKey="true" primaryKeyName="pk_group_permissions"/>
+			</column>
+			<column name="group_id" type="bigint"><constraints nullable="false"/></column>
+			<column name="user_id" type="bigint"><constraints nullable="false"/></column>
+			<column name="permission" type="varchar(50)"><constraints nullable="false"/></column>
+		</createTable>
+		<addUniqueConstraint
+			tableName="group_permissions"
+			columnNames="group_id, user_id, permission"
+			constraintName="uk_group_permissions_subject"/>
+		<addForeignKeyConstraint
+			baseTableName="group_permissions"
+			baseColumnNames="group_id"
+			constraintName="fk_group_permissions_group"
+			referencedTableName="groups"
+			referencedColumnNames="id"/>
+		<addForeignKeyConstraint
+			baseTableName="group_permissions"
+			baseColumnNames="user_id"
+			constraintName="fk_group_permissions_user"
+			referencedTableName="users"
+			referencedColumnNames="id"/>
+		<createIndex indexName="idx_group_permissions_user" tableName="group_permissions">
+			<column name="user_id"/>
+		</createIndex>
 	</changeSet>
 
 	<changeSet id="002-seed-groups" author="susimsek">
@@ -90,6 +146,7 @@
 			usePreparedStatements="true">
 			<column header="name" type="string"/>
 			<column header="parent_id" type="numeric"/>
+			<column header="default_group" type="boolean"/>
 		</loadData>
 		<loadData
 			encoding="UTF-8"

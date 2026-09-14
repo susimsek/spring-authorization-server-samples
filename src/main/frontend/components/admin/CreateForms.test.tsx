@@ -44,13 +44,22 @@ describe("dedicated administration creation forms", () => {
     fireEvent.change(screen.getByRole("textbox", { name: dictionary.admin.groups.name }), {
       target: { value: "finance-operators" },
     });
+    fireEvent.change(screen.getByRole("textbox", { name: dictionary.admin.groups.attributes }), {
+      target: { value: '{"department":["finance"]}' },
+    });
+    fireEvent.click(screen.getByRole("checkbox", { name: dictionary.admin.groups.defaultGroup }));
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.groups.create }));
 
     await waitFor(() =>
       expect(mockAdminRequest).toHaveBeenCalledWith("token", {
         url: "/api/admin/groups",
         method: "POST",
-        data: { name: "finance-operators", parentId: null },
+        data: {
+          name: "finance-operators",
+          parentId: null,
+          attributes: { department: ["finance"] },
+          defaultGroup: true,
+        },
       }),
     );
     expect(mockPush).toHaveBeenCalledWith("/admin/groups/7");
@@ -83,13 +92,27 @@ describe("dedicated administration creation forms", () => {
     fireEvent.change(screen.getByRole("textbox", { name: dictionary.admin.clientScopes.name }), {
       target: { value: "invoice.read" },
     });
+    fireEvent.change(
+      screen.getByRole("textbox", { name: dictionary.admin.clientScopes.groupClaimName }),
+      { target: { value: "roles.groups" } },
+    );
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: dictionary.admin.clientScopes.groupMapperEnabled }),
+    );
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.clientScopes.create }));
 
     await waitFor(() =>
       expect(mockAdminRequest).toHaveBeenCalledWith("token", {
         url: "/api/admin/client-scopes",
         method: "POST",
-        data: { name: "invoice.read", displayName: "", description: "" },
+        data: {
+          name: "invoice.read",
+          displayName: "",
+          description: "",
+          groupMapperEnabled: true,
+          groupClaimName: "roles.groups",
+          groupMapperFullPath: true,
+        },
       }),
     );
     expect(mockPush).toHaveBeenCalledWith("/admin/client-scopes");

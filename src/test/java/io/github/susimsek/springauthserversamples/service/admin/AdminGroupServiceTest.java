@@ -8,10 +8,14 @@ import static org.mockito.Mockito.when;
 
 import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
 import io.github.susimsek.springauthserversamples.domain.GroupEntity;
+import io.github.susimsek.springauthserversamples.domain.GroupPermissionEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupPermissionRequestDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupPermissionsRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupRolesRequestDTO;
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
+import io.github.susimsek.springauthserversamples.repository.GroupPermissionRepository;
 import io.github.susimsek.springauthserversamples.repository.GroupRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import java.util.List;
@@ -32,6 +36,7 @@ class AdminGroupServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private UserAccessInvalidationService userAccessInvalidationService;
     @Mock private AdminAuditEventService adminAuditEventService;
+    @Mock private GroupPermissionRepository groupPermissionRepository;
 
     @Test
     void findAllLoadsMemberCountsInOneBatch() {
@@ -136,11 +141,99 @@ class AdminGroupServiceTest {
         when(groupRepository.findById(7L)).thenReturn(Optional.of(group));
         when(userRepository.findAllByGroupsId(7L)).thenReturn(List.of(alice, bob));
 
-        service().delete(7L);
+        serviceWithPermissions().delete(7L);
 
         verify(userAccessInvalidationService).invalidate("alice");
         verify(userAccessInvalidationService).invalidate("bob");
+        verify(groupPermissionRepository).deleteByGroupId(7L);
         verify(groupRepository).delete(group);
+    }
+
+    @Test
+    void createsGroupWithAttributesAndDefaultGroupFlag() {
+        when(groupRepository.existsByName("finance")).thenReturn(false);
+        when(groupRepository.save(org.mockito.ArgumentMatchers.any(GroupEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            GroupEntity saved = invocation.getArgument(0);
+                            saved.setId(9L);
+                            return saved;
+                        });
+        when(userRepository.countByGroupsId(org.mockito.ArgumentMatchers.any())).thenReturn(0L);
+
+        var result =
+                service()
+                        .create(
+                                new AdminGroupRequestDTO(
+                                        "finance",
+                                        null,
+                                        java.util.Map.of("department", List.of("finance")),
+                                        true));
+
+        assertThat(result.attributes()).containsEntry("department", List.of("finance"));
+        assertThat(result.defaultGroup()).isTrue();
+    }
+
+    @Test
+    void inheritedGroupPermissionAllowsAccessToNestedGroup() {
+        GroupEntity parent = group(7L, "finance");
+        GroupEntity child = group(8L, "operations");
+        child.setParent(parent);
+        UserEntity operator = user(3L, "operator");
+        when(groupRepository.findById(8L)).thenReturn(Optional.of(child));
+        when(userRepository.findByUsername("operator")).thenReturn(Optional.of(operator));
+        when(groupPermissionRepository.existsForUserAndGroups(
+                        3L, Set.of(8L, 7L), GroupPermission.VIEW))
+                .thenReturn(true);
+
+        var result = serviceWithPermissions().findById(8L, "operator");
+
+        assertThat(result.id()).isEqualTo(8L);
+    }
+
+    @Test
+    void listsOnlyGroupsVisibleThroughInheritedScopedPermissions() {
+        GroupEntity finance = group(7L, "finance");
+        GroupEntity operations = group(8L, "operations");
+        operations.setParent(finance);
+        GroupEntity unrelated = group(9L, "unrelated");
+        UserEntity operator = user(3L, "operator");
+        when(userRepository.findByUsername("operator")).thenReturn(Optional.of(operator));
+        when(groupPermissionRepository.findGroupIdsByUserIdAndPermissions(3L, GroupPermission.ALL))
+                .thenReturn(Set.of(7L));
+        when(groupRepository.findAll()).thenReturn(List.of(unrelated, operations, finance));
+        when(userRepository.countUsersByGroupIdIn(List.of(7L, 8L)))
+                .thenReturn(List.of(groupUserCount(7L, 0L), groupUserCount(8L, 0L)));
+
+        var result = serviceWithPermissions().findAll("", Pageable.ofSize(20), "operator");
+
+        assertThat(result.getContent()).extracting("name").containsExactly("finance", "operations");
+    }
+
+    @Test
+    void replacingGroupPermissionsInvalidatesOldAndNewSubjects() {
+        GroupEntity group = group(7L, "finance");
+        UserEntity alice = user(3L, "alice");
+        UserEntity bob = user(4L, "bob");
+        GroupPermissionEntity oldAssignment =
+                new GroupPermissionEntity(group, alice, GroupPermission.VIEW);
+        when(groupRepository.findById(7L)).thenReturn(Optional.of(group));
+        when(groupRepository.existsById(7L)).thenReturn(true);
+        when(groupPermissionRepository.findByGroupIdOrderByUserUsernameAscPermissionAsc(7L))
+                .thenReturn(List.of(oldAssignment), List.of());
+        when(userRepository.findById(4L)).thenReturn(Optional.of(bob));
+
+        serviceWithPermissions()
+                .updatePermissions(
+                        7L,
+                        new AdminGroupPermissionsRequestDTO(
+                                List.of(
+                                        new AdminGroupPermissionRequestDTO(
+                                                4L, GroupPermission.MANAGE_MEMBERS))));
+
+        verify(userAccessInvalidationService).invalidate("alice");
+        verify(userAccessInvalidationService).invalidate("bob");
+        verify(groupPermissionRepository).deleteByGroupId(7L);
     }
 
     private AdminGroupService service() {
@@ -150,6 +243,18 @@ class AdminGroupServiceTest {
                 userRepository,
                 userAccessInvalidationService,
                 adminAuditEventService);
+    }
+
+    private AdminGroupService serviceWithPermissions() {
+        return new AdminGroupService(
+                groupRepository,
+                authorityRepository,
+                userRepository,
+                userAccessInvalidationService,
+                adminAuditEventService,
+                org.mapstruct.factory.Mappers.getMapper(
+                        io.github.susimsek.springauthserversamples.mapper.AdminGroupMapper.class),
+                groupPermissionRepository);
     }
 
     private static GroupEntity group(Long id, String name) {

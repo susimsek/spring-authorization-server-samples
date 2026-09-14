@@ -33,6 +33,9 @@ const scope = {
   description: "Profile claims",
   createdAt: "2026-01-01T10:00:00Z",
   updatedAt: "2026-01-02T10:00:00Z",
+  groupMapperEnabled: false,
+  groupClaimName: "groups",
+  groupMapperFullPath: true,
 };
 
 describe("ClientScopeDetail", () => {
@@ -62,13 +65,25 @@ describe("ClientScopeDetail", () => {
         target: { value: "Updated profile" },
       },
     );
+    fireEvent.change(
+      screen.getByRole("textbox", { name: dictionary.admin.clientScopes.groupClaimName }),
+      { target: { value: "roles.groups" } },
+    );
+    fireEvent.click(screen.getAllByRole("checkbox")[0]);
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.save }));
 
     await waitFor(() =>
       expect(mockAdminRequest).toHaveBeenCalledWith("token", {
         url: "/api/admin/client-scopes/scope-1",
         method: "PUT",
-        data: { name: "profile", displayName: "Updated profile", description: "Profile claims" },
+        data: {
+          name: "profile",
+          displayName: "Updated profile",
+          description: "Profile claims",
+          groupMapperEnabled: true,
+          groupClaimName: "roles.groups",
+          groupMapperFullPath: true,
+        },
       }),
     );
   });

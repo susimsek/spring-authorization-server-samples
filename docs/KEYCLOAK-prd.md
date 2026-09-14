@@ -199,8 +199,8 @@ The following matrix compares the behavior currently implemented in this reposit
 | Password and account recovery | Password policy, history, expiry, email verification, reset tokens | Password credentials and required actions configured per realm | Implemented / Partial | Preserve current flows; align required-action metadata with realm settings. |
 | TOTP and recovery codes | TOTP enrollment/verification, required TOTP, hashed recovery codes | OTP/WebAuthn credentials and configurable required actions | Partial | TOTP is implemented; WebAuthn/passkeys and device inventory remain. |
 | User impersonation | Admin-only, single-use ticket flow | Admin impersonation permission and console action | Partial | Keep the flow and add resource-scoped permission plus audit detail. |
-| Groups | CRUD, membership, hierarchy, parent role inheritance | Hierarchical groups, attributes, role mappings, default groups, membership permissions[^6] | Partial | Add attributes, default groups, client-scope group mapper, and group-scoped permissions. |
-| Group claims | `groups` claim is currently produced for the admin console token | Group membership mapper is configurable per client/client scope | Partial | Move claim production into protocol mapper configuration. |
+| Groups | CRUD, membership, hierarchy, parent role inheritance, multi-valued attributes, default groups, configurable group claims, and group-scoped permissions | Hierarchical groups, attributes, role mappings, default groups, membership permissions[^6] | Implemented / Partial | Preserve the single-issuer boundary; add broader Keycloak protocol mapper types and realm boundaries later. |
+| Group claims | Configurable group membership mapper on client scopes with claim name and full-path options | Group membership mapper is configurable per client/client scope | Implemented / Partial | Add the remaining protocol mapper types and token-preview tooling. |
 | Realm roles | Global application authorities | Realm-level roles with direct, group, and composite assignment | Partial | Add realm ownership and composite-role relationships. |
 | Client roles | No client namespace in the role model | Client roles are scoped to a client and appear in `resource_access` | Missing | Add client-scoped roles and token claim filtering. |
 | Composite roles | No composite role graph | Roles can include other roles with cycle protection | Missing | Add a role graph and effective-role resolver. |
@@ -325,7 +325,7 @@ Detail layout:
 - members card with add/remove actions;
 - direct role mappings and effective inherited role mappings shown separately.
 
-The current project already has hierarchical groups and parent role inheritance. The missing Keycloak parity is the attribute/default-group/mapper layer and group-scoped permissions.
+The project supports hierarchical groups and parent role inheritance, multi-valued attributes, default-group assignment for newly created users, configurable client-scope group claims, and inherited group-scoped permissions. Broader Keycloak protocol-mapper types and realm boundaries remain outside this single-issuer sample.
 
 ### Roles
 

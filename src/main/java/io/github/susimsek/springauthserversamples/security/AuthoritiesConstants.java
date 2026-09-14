@@ -15,6 +15,10 @@ public final class AuthoritiesConstants {
 
     public static final String USER_MANAGER = "ROLE_USER_MANAGER";
 
+    public static final String GROUP_VIEWER = "ROLE_GROUP_VIEWER";
+
+    public static final String GROUP_MANAGER = "ROLE_GROUP_MANAGER";
+
     public static final String CLIENT_VIEWER = "ROLE_CLIENT_VIEWER";
 
     public static final String CLIENT_MANAGER = "ROLE_CLIENT_MANAGER";

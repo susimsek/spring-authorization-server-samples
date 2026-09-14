@@ -1,5 +1,5 @@
-name;parent_id
-application-users;
-platform-administrators;
-user-managers;
-client-managers;
+name;parent_id;default_group
+application-users;;false
+platform-administrators;;false
+user-managers;;false
+client-managers;;false

@@ -87,7 +87,10 @@ public class AdminClientScopeService {
                         UUID.randomUUID().toString(),
                         name,
                         trimToNull(request.displayName()),
-                        trimToNull(request.description()));
+                        trimToNull(request.description()),
+                        request.groupMapperEnabledValue(),
+                        request.groupClaimNameValue(),
+                        request.groupMapperFullPathValue());
         ClientScopeEntity saved = clientScopeRepository.save(entity);
         adminAuditEventService.record("client-scope.created", "client-scope", saved.getId());
         return adminClientScopeMapper.toDTO(saved);
@@ -117,7 +120,13 @@ public class AdminClientScopeService {
             renameAssignedScope(entity.getName(), name);
         }
         adminClientScopeMapper.update(
-                name, trimToNull(request.displayName()), trimToNull(request.description()), entity);
+                name,
+                trimToNull(request.displayName()),
+                trimToNull(request.description()),
+                request.groupMapperEnabledValue(),
+                request.groupClaimNameValue(),
+                request.groupMapperFullPathValue(),
+                entity);
         ClientScopeEntity saved = clientScopeRepository.save(entity);
         adminAuditEventService.record("client-scope.updated", "client-scope", id);
         return adminClientScopeMapper.toDTO(saved);

@@ -33,6 +33,22 @@ export function GroupCreateForm({ dictionary }: { dictionary: Dictionary; locale
       .min(1, dictionary.admin.common.validation.required)
       .max(100, dictionary.admin.common.validation.max100),
     parentId: z.string(),
+    attributesJson: z.string().refine((value) => {
+      if (!value.trim()) return true;
+      try {
+        const parsed: unknown = JSON.parse(value);
+        return (
+          typeof parsed === "object" &&
+          parsed !== null &&
+          Object.values(parsed).every(
+            (values) => Array.isArray(values) && values.every((item) => typeof item === "string"),
+          )
+        );
+      } catch {
+        return false;
+      }
+    }, copy.attributeFormat),
+    defaultGroup: z.boolean(),
   });
   const {
     register,
@@ -42,7 +58,7 @@ export function GroupCreateForm({ dictionary }: { dictionary: Dictionary; locale
   } = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     mode: "onBlur",
-    defaultValues: { name: "", parentId: "" },
+    defaultValues: { name: "", parentId: "", attributesJson: "", defaultGroup: false },
   });
 
   useEffect(() => {
@@ -52,13 +68,23 @@ export function GroupCreateForm({ dictionary }: { dictionary: Dictionary; locale
       .catch(() => setGroups([]));
   }, [accessToken, canManageUsers]);
 
-  const submit = async ({ name, parentId }: z.infer<typeof schema>) => {
+  const submit = async ({
+    name,
+    parentId,
+    attributesJson,
+    defaultGroup,
+  }: z.infer<typeof schema>) => {
     if (!accessToken || !canManageUsers) return;
     try {
       const response = await adminRequest<Group>(accessToken, {
         url: "/api/admin/groups",
         method: "POST",
-        data: { name, parentId: parentId ? Number(parentId) : null },
+        data: {
+          name,
+          parentId: parentId ? Number(parentId) : null,
+          attributes: attributesJson.trim() ? JSON.parse(attributesJson) : {},
+          defaultGroup,
+        },
       });
       if (response.status >= 300) {
         const result = applyProblemToForm(response.data, setError, {
@@ -97,6 +123,26 @@ export function GroupCreateForm({ dictionary }: { dictionary: Dictionary; locale
             <Form.Control.Feedback type="invalid">{errors.name?.message}</Form.Control.Feedback>
             <Form.Text>{copy.help}</Form.Text>
           </Form.Group>
+          <Form.Group className="mb-3" controlId="group-attributes">
+            <Form.Label>{copy.attributes}</Form.Label>
+            <Form.Control
+              as="textarea"
+              isInvalid={Boolean(errors.attributesJson)}
+              rows={4}
+              placeholder='{"department":["finance"]}'
+              {...register("attributesJson")}
+            />
+            <Form.Control.Feedback type="invalid">
+              {errors.attributesJson?.message}
+            </Form.Control.Feedback>
+            <Form.Text>{copy.attributesHelp}</Form.Text>
+          </Form.Group>
+          <Form.Check
+            className="mb-3"
+            id="group-default"
+            label={copy.defaultGroup}
+            {...register("defaultGroup")}
+          />
           <Form.Group className="mb-3" controlId="group-parent">
             <Form.Label>{copy.parent}</Form.Label>
             <Form.Select disabled={!canManageUsers} {...register("parentId")}>

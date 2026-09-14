@@ -38,4 +38,30 @@ public record AdminClientScopeDTO(
                         example = "2026-09-04T08:30:00Z",
                         format = "date-time",
                         requiredMode = Schema.RequiredMode.REQUIRED)
-                Instant updatedAt) {}
+                Instant updatedAt,
+        @Schema(
+                        description = "Whether this scope emits group membership claims.",
+                        example = "true",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                boolean groupMapperEnabled,
+        @Schema(
+                        description = "Claim name used for mapped groups.",
+                        example = "groups",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                String groupClaimName,
+        @Schema(
+                        description = "Whether group claims contain full hierarchical paths.",
+                        example = "true",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                boolean groupMapperFullPath) {
+
+    public AdminClientScopeDTO(
+            String id,
+            String name,
+            String displayName,
+            String description,
+            Instant createdAt,
+            Instant updatedAt) {
+        this(id, name, displayName, description, createdAt, updatedAt, false, "groups", true);
+    }
+}

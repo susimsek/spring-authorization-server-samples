@@ -17,6 +17,8 @@ public interface ClientScopeRepository extends JpaRepository<ClientScopeEntity, 
 
     boolean existsByName(String name);
 
+    java.util.List<ClientScopeEntity> findByNameIn(Collection<String> names);
+
     Page<ClientScopeEntity> findByNameContainingIgnoreCaseOrDisplayNameContainingIgnoreCase(
             String name, String displayName, Pageable pageable);
 
