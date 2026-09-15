@@ -100,7 +100,7 @@ public class SessionConfig {
 
         @Override
         public void serialize(Object object, OutputStream outputStream) throws IOException {
-            securityJsonMapper.delegate().writeValue(outputStream, object);
+            securityJsonMapper.writeSessionAttribute(object, outputStream);
         }
     }
 
@@ -114,7 +114,7 @@ public class SessionConfig {
 
         @Override
         public Object deserialize(InputStream inputStream) throws IOException {
-            return securityJsonMapper.delegate().readValue(inputStream, Object.class);
+            return securityJsonMapper.readSessionAttribute(inputStream);
         }
     }
 }

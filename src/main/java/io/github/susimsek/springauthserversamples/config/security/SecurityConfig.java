@@ -1,7 +1,9 @@
 package io.github.susimsek.springauthserversamples.config.security;
 
+import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
 import io.github.susimsek.springauthserversamples.security.LocalizedAccessDeniedHandler;
 import io.github.susimsek.springauthserversamples.security.LocalizedAuthenticationEntryPoint;
+import java.net.URI;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
@@ -10,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationEventPublisher;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.DefaultAuthenticationEventPublisher;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -18,6 +21,8 @@ import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.context.DelegatingSecurityContextRepository;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
@@ -25,6 +30,10 @@ import org.springframework.security.web.context.RequestAttributeSecurityContextR
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
+import org.springframework.security.web.webauthn.authentication.PublicKeyCredentialRequestOptionsFilter;
+import org.springframework.security.web.webauthn.authentication.PublicKeyCredentialRequestOptionsRepository;
+import org.springframework.security.web.webauthn.authentication.WebAuthnAuthenticationFilter;
+import org.springframework.security.web.webauthn.management.WebAuthnRelyingPartyOperations;
 
 @Configuration(proxyBeanMethods = false)
 public class SecurityConfig {
@@ -71,7 +80,12 @@ public class SecurityConfig {
             HttpSecurity http,
             @Qualifier("browserSecurityContextRepository")
                     SecurityContextRepository securityContextRepository,
-            LoginRateLimitFilter loginRateLimitFilter) {
+            LoginRateLimitFilter loginRateLimitFilter,
+            ApplicationProperties applicationProperties,
+            AuthenticationManager webAuthnAuthenticationManager,
+            PublicKeyCredentialRequestOptionsRepository webAuthnRequestOptionsRepository,
+            WebAuthnRelyingPartyOperations webAuthnRelyingPartyOperations) {
+        URI issuer = URI.create(applicationProperties.authorizationServer().issuer());
         http.securityContext(
                         securityContext ->
                                 securityContext
@@ -142,6 +156,39 @@ public class SecurityConfig {
                                         .securityContextRepository(securityContextRepository)
                                         .permitAll())
                 .rememberMe(rememberMe -> rememberMe.rememberMeServices(rememberMeServices));
+
+        http.webAuthn(
+                webAuthn ->
+                        webAuthn.rpId(issuer.getHost())
+                                .allowedOrigins(
+                                        issuer.getScheme() + "://" + issuer.getRawAuthority())
+                                .disableDefaultRegistrationPage(true));
+
+        PublicKeyCredentialRequestOptionsFilter requestOptionsFilter =
+                new PublicKeyCredentialRequestOptionsFilter(webAuthnRelyingPartyOperations);
+        requestOptionsFilter.setRequestOptionsRepository(webAuthnRequestOptionsRepository);
+        WebAuthnAuthenticationFilter authenticationFilter = new WebAuthnAuthenticationFilter();
+        authenticationFilter.setAuthenticationManager(webAuthnAuthenticationManager);
+        authenticationFilter.setRequestOptionsRepository(webAuthnRequestOptionsRepository);
+        SavedRequestAwareAuthenticationSuccessHandler successHandler =
+                new SavedRequestAwareAuthenticationSuccessHandler();
+        successHandler.setDefaultTargetUrl("/");
+        authenticationFilter.setAuthenticationSuccessHandler(
+                (request, response, authentication) -> {
+                    if (request.getSession(false) != null
+                            && request.getSession(false)
+                                            .getAttribute(
+                                                    MfaAuthorizationFilter.MFA_PENDING_REQUEST)
+                                    != null) {
+                        MfaAuthorizationFilter.markVerified(request.getSession(false));
+                    }
+                    successHandler.onAuthenticationSuccess(request, response, authentication);
+                });
+        authenticationFilter.setAuthenticationFailureHandler(
+                new SimpleUrlAuthenticationFailureHandler("/login?error"));
+
+        http.addFilterBefore(requestOptionsFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         http.addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class);
 

@@ -23,7 +23,10 @@
     "register": "Hesap oluştur",
     "invalidCredentials": "Kullanıcı adı veya şifre hatalı.",
     "loggedOut": "Başarıyla çıkış yaptınız.",
-    "accountDeleted": "Hesabınız başarıyla silindi."
+    "accountDeleted": "Hesabınız başarıyla silindi.",
+    "passkey": "Geçiş anahtarıyla giriş yap",
+    "passkeyDivider": "veya geçiş anahtarı kullanın",
+    "passkeyError": "Geçiş anahtarıyla giriş tamamlanamadı. Tekrar deneyin veya parolanızı kullanın."
   },
   "accountActions": {
     "forgotTitle": "Parolanızı sıfırlayın",
@@ -59,6 +62,7 @@
     "firstName": "Ad",
     "lastName": "Soyad",
     "emailLabel": "E-posta",
+    "passkeyLabel": "Bu cihaz",
     "password": "Yeni parola",
     "confirmPassword": "Yeni parolayı doğrulayın",
     "passwordHelp": "En az 12 karakter; büyük harf, küçük harf, rakam ve sembol kullanın.",
@@ -87,7 +91,9 @@
     "recoveryCopy": "Kopyala",
     "recoveryCopied": "Kopyalandı",
     "recoveryDownload": "İndir",
-    "recoveryPrint": "Yazdır"
+    "recoveryPrint": "Yazdır",
+    "passkeyHelp": "Bu cihaza bir geçiş anahtarı kaydedin. Tarayıcınız ekran kilidi, parmak izi veya güvenlik anahtarıyla onaylamanızı isteyecektir.",
+    "passkeyRegister": "Geçiş anahtarı kaydet"
   },
   "mfa": {
     "eyebrow": "Çok faktörlü kimlik doğrulama",
@@ -99,7 +105,9 @@
     "recoveryCode": "Kurtarma kodu",
     "useRecoveryCode": "Kurtarma kodu kullan",
     "useAuthenticatorCode": "Kimlik doğrulayıcı kodu kullan",
-    "invalidRecoveryCode": "Kurtarma kodu geçersiz veya daha önce kullanılmış."
+    "invalidRecoveryCode": "Kurtarma kodu geçersiz veya daha önce kullanılmış.",
+    "passkey": "Geçiş anahtarıyla doğrula",
+    "passkeyError": "Geçiş anahtarı doğrulaması tamamlanamadı. Başka bir yöntem kullanın."
   },
   "registration": {
     "eyebrow": "Yeni hesap",
@@ -791,7 +799,17 @@
       "createdAt": "Oluşturulma zamanı",
       "updatedAt": "Güncellenme zamanı",
       "firstName": "Ad",
-      "lastName": "Soyad"
+      "lastName": "Soyad",
+      "passkeys": "Geçiş anahtarları",
+      "passkeysHelp": "Bu kullanıcı için kayıtlı geçiş anahtarlarını inceleyin ve yönetin.",
+      "noPasskeys": "Bu kullanıcı için kayıtlı geçiş anahtarı yok.",
+      "unnamedPasskey": "Adsız geçiş anahtarı",
+      "passkeyLabel": "Geçiş anahtarı adı",
+      "passkeyCreated": "Eklenme",
+      "passkeyLastUsed": "Son kullanım",
+      "passkeyDeleteConfirm": "Bu kullanıcının geçiş anahtarı kaldırılsın mı? Bu anahtarla artık giriş yapamaz.",
+      "save": "Kaydet",
+      "loading": "Yükleniyor…"
     },
     "placeholder": "Bu yönetim bölümü sonraki geliştirme adımı için hazır.",
     "clientScopes": {
@@ -940,6 +958,32 @@
         "recoveryDownload": "İndir",
         "recoveryPrint": "Yazdır",
         "recoveryWarning": "Yalnızca {{count}} kurtarma kodu kaldı."
+      },
+      "passkeys": {
+        "title": "Geçiş anahtarları",
+        "help": "Güvenli oturum açmak için cihaz tabanlı geçiş anahtarı kullanın ve kayıtlı cihazlarınızı yönetin.",
+        "label": "Geçiş anahtarı adı",
+        "labelPlaceholder": "Örneğin Windows Hello",
+        "labelRequired": "Bu geçiş anahtarı için bir ad girin.",
+        "labelTooLong": "Geçiş anahtarı adı en fazla 100 karakter olabilir.",
+        "add": "Geçiş anahtarı ekle",
+        "added": "Geçiş anahtarı eklendi.",
+        "addError": "Geçiş anahtarı eklenemedi. Tekrar deneyin.",
+        "empty": "Kayıtlı geçiş anahtarı yok.",
+        "unnamed": "Adsız geçiş anahtarı",
+        "backedUp": "Yedeklendi",
+        "created": "Eklenme",
+        "lastUsed": "Son kullanım",
+        "transportUnknown": "Cihaz bağlantı türü kullanılamıyor",
+        "remove": "Kaldır",
+        "rename": "Adı kaydet",
+        "renamed": "Geçiş anahtarı adı güncellendi.",
+        "renameError": "Geçiş anahtarı adı güncellenemedi.",
+        "removeConfirm": "Bu geçiş anahtarı kaldırılsın mı? Artık bu anahtarla oturum açamazsınız.",
+        "removed": "Geçiş anahtarı kaldırıldı.",
+        "removeError": "Geçiş anahtarı kaldırılamadı.",
+        "error": "Geçiş anahtarları yüklenemedi.",
+        "unsupported": "Bu tarayıcı geçiş anahtarlarını desteklemiyor. Güncel bir tarayıcı veya başka bir cihaz deneyin."
       }
     },
     "sessions": {

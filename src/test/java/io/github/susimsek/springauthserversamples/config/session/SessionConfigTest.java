@@ -30,6 +30,14 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.savedrequest.DefaultSavedRequest;
+import org.springframework.security.web.webauthn.api.AuthenticatorSelectionCriteria;
+import org.springframework.security.web.webauthn.api.Bytes;
+import org.springframework.security.web.webauthn.api.ImmutablePublicKeyCredentialUserEntity;
+import org.springframework.security.web.webauthn.api.PublicKeyCredentialCreationOptions;
+import org.springframework.security.web.webauthn.api.PublicKeyCredentialRpEntity;
+import org.springframework.security.web.webauthn.api.PublicKeyCredentialUserEntity;
+import org.springframework.security.web.webauthn.api.ResidentKeyRequirement;
+import org.springframework.security.web.webauthn.api.UserVerificationRequirement;
 import org.springframework.session.MapSession;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -107,6 +115,76 @@ class SessionConfigTest {
         assertThat(deserialized.getAuthentication().getAuthorities())
                 .extracting(authority -> authority.getAuthority())
                 .contains("ROLE_ADMIN", "FACTOR_PASSWORD");
+    }
+
+    @Test
+    void springSessionConversionServiceRoundTripsWebauthnCreationOptions() {
+        ConversionService conversionService =
+                config.springSessionConversionService(
+                        new SecurityJsonMapper(getClass().getClassLoader()));
+        PublicKeyCredentialUserEntity user =
+                ImmutablePublicKeyCredentialUserEntity.builder()
+                        .name("admin")
+                        .id(new Bytes(new byte[] {1, 2, 3}))
+                        .displayName("Admin")
+                        .build();
+        PublicKeyCredentialCreationOptions options =
+                PublicKeyCredentialCreationOptions.builder()
+                        .rp(
+                                PublicKeyCredentialRpEntity.builder()
+                                        .id("localhost")
+                                        .name("Sample")
+                                        .build())
+                        .user(user)
+                        .challenge(new Bytes(new byte[] {4, 5, 6}))
+                        .pubKeyCredParams(
+                                List.of(
+                                        org.springframework.security.web.webauthn.api
+                                                .PublicKeyCredentialParameters.RS256))
+                        .authenticatorSelection(
+                                AuthenticatorSelectionCriteria.builder()
+                                        .residentKey(ResidentKeyRequirement.REQUIRED)
+                                        .userVerification(UserVerificationRequirement.REQUIRED)
+                                        .build())
+                        .build();
+
+        byte[] serialized = conversionService.convert(options, byte[].class);
+        Object deserialized = conversionService.convert(serialized, Object.class);
+
+        assertThat(deserialized).isInstanceOf(PublicKeyCredentialCreationOptions.class);
+        assertThat(((PublicKeyCredentialCreationOptions) deserialized).getRp().getId())
+                .isEqualTo("localhost");
+        assertThat(((PublicKeyCredentialCreationOptions) deserialized).getChallenge())
+                .isEqualTo(options.getChallenge());
+    }
+
+    @Test
+    void springSessionConversionServiceRoundTripsWebauthnRequestOptions() {
+        ConversionService conversionService =
+                config.springSessionConversionService(
+                        new SecurityJsonMapper(getClass().getClassLoader()));
+        var options =
+                org.springframework.security.web.webauthn.api.PublicKeyCredentialRequestOptions
+                        .builder()
+                        .challenge(new Bytes(new byte[] {7, 8, 9}))
+                        .timeout(Duration.ofMinutes(5))
+                        .rpId("localhost")
+                        .allowCredentials(List.of())
+                        .userVerification(UserVerificationRequirement.REQUIRED)
+                        .build();
+
+        byte[] serialized = conversionService.convert(options, byte[].class);
+        Object deserialized = conversionService.convert(serialized, Object.class);
+
+        assertThat(deserialized)
+                .isInstanceOf(
+                        org.springframework.security.web.webauthn.api
+                                .PublicKeyCredentialRequestOptions.class);
+        var restored =
+                (org.springframework.security.web.webauthn.api.PublicKeyCredentialRequestOptions)
+                        deserialized;
+        assertThat(restored.getRpId()).isEqualTo("localhost");
+        assertThat(restored.getChallenge()).isEqualTo(options.getChallenge());
     }
 
     @Test

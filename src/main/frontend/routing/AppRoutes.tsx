@@ -36,6 +36,7 @@ import { AccountBreadcrumb } from "@/components/account/AccountBreadcrumb";
 import { AccountProfileForm } from "@/components/account/AccountProfileForm";
 import { AccountPasswordForm } from "@/components/account/AccountPasswordForm";
 import { MfaSettings } from "@/components/account/MfaSettings";
+import { PasskeySettings } from "@/components/account/PasskeySettings";
 import { AccountSessions } from "@/components/account/AccountSessions";
 import { AccountApplications } from "@/components/account/AccountApplications";
 import { AccountDeleteForm } from "@/components/account/AccountDeleteForm";
@@ -160,6 +161,7 @@ function AccountPage({
         <>
           <AccountPasswordForm dictionary={d} />
           <MfaSettings dictionary={d} />
+          <PasskeySettings dictionary={d} />
         </>
       )}
       {section === "sessions" && <AccountSessions dictionary={d} />}

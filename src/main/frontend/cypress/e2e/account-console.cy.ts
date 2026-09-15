@@ -106,7 +106,10 @@ describe("account console", () => {
     cy.wait("@updateProfile").its("response.statusCode").should("eq", 200);
     cy.get('[data-cy="save-profile"]').should("be.disabled");
 
+    cy.intercept("GET", "/api/account/webauthn/credentials*").as("passkeyCredentials");
     cy.contains("a", /Security|Güvenlik/).click();
+    cy.wait("@passkeyCredentials").its("response.statusCode").should("eq", 200);
+    cy.contains("h2", /Passkeys|Geçiş anahtarları/).should("be.visible");
     cy.get("#account-new-password").type("short").blur();
     cy.get("#account-new-password").should("have.class", "is-invalid");
     cy.get("#account-new-password").clear().type("temporary-password-1");
