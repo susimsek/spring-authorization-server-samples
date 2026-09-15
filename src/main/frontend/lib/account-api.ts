@@ -40,6 +40,16 @@ export type AccountSession = {
   clients: Array<{ clientId: string; clientName: string }>;
 };
 
+export type AccountWebAuthnCredential = {
+  credentialId: string;
+  label: string;
+  createdAt: string;
+  lastUsedAt: string;
+  transports: string[];
+  backupEligible: boolean;
+  backupState: boolean;
+};
+
 export function registerAccountTokenHandlers(handlers: TokenHandlers | undefined) {
   accountClient.registerTokenHandlers(handlers);
 }

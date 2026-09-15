@@ -194,10 +194,10 @@ The following matrix compares the behavior currently implemented in this reposit
 | --- | --- | --- | --- | --- |
 | Realm boundary | One configured issuer and one shared data space | Isolated realms contain users, clients, groups, roles, sessions, and realm settings; a master realm can administer other realms[^1] | Missing | Add realm/tenant IDs before claiming multi-tenant support. |
 | Realm settings | Login, password, OTP, brute-force, email, session, and event settings | Realm Settings is the central configuration area with separate tabs | Partial | Keep the Settings route and add realm ownership when multi-tenancy is approved. |
-| User CRUD | Admin API and UI | User list/detail, credentials, required actions, groups, roles, sessions, and consents | Partial | Add credential inventory and bulk lifecycle operations; dynamic profile attributes are covered below. |
+| User CRUD | Admin API and UI | User list/detail, credentials, required actions, groups, roles, sessions, and consents | Partial | Credential inventory and individual lifecycle operations are covered; bulk lifecycle operations remain. |
 | Dynamic user profile | Application-wide configurable attributes with validation, requiredness, type checks, pattern/length rules, and optional multi-value support; managed under Settings and rendered in admin/account profile forms | Configurable user-profile attributes with validation and requiredness | Implemented for the single-issuer application | Keep the schema application-wide while realms are intentionally out of scope; add localized labels, token mappers, and per-realm ownership only if realm support is introduced. |
 | Password and account recovery | Password policy, history, expiry, email verification, reset tokens | Password credentials and required actions configured per realm | Implemented / Partial | Preserve current flows; align required-action metadata with realm settings. |
-| TOTP and recovery codes | TOTP enrollment/verification, required TOTP, hashed recovery codes | OTP/WebAuthn credentials and configurable required actions | Partial | TOTP is implemented; WebAuthn/passkeys and device inventory remain. |
+| TOTP and recovery codes | TOTP enrollment/verification, required TOTP, hashed recovery codes, WebAuthn/passkey enrollment and credential verification, and required passkeys | OTP/WebAuthn credentials and configurable required actions | Implemented / Partial | TOTP and passkeys are implemented, including primary passkey sign-in, OTP fallback, account/admin credential inventory, label management, deletion, and the configurable `CONFIGURE_PASSKEY` required action; richer device metadata and passwordless-only policy remain. |
 | User impersonation | Admin-only, single-use ticket flow | Admin impersonation permission and console action | Partial | Keep the flow and add resource-scoped permission plus audit detail. |
 | Groups | CRUD, membership, hierarchy, parent role inheritance, multi-valued attributes, default groups, configurable group claims, and group-scoped permissions | Hierarchical groups, attributes, role mappings, default groups, membership permissions[^6] | Implemented / Partial | Preserve the single-issuer boundary; add broader Keycloak protocol mapper types and realm boundaries later. |
 | Group claims | Configurable group membership mapper on client scopes with claim name and full-path options | Group membership mapper is configurable per client/client scope | Implemented / Partial | Add the remaining protocol mapper types and token-preview tooling. |
@@ -218,7 +218,7 @@ The following matrix compares the behavior currently implemented in this reposit
 | CIBA, DPoP, resource indicators | Not implemented | Available as advanced protocol capabilities in Keycloak distributions | Missing | Treat as separate protocol epics, not UI-only work. |
 | SAML | No SAML IdP/SP | SAML client and identity-provider support | Missing | Separate protocol product decision. |
 | Authentication flows | Fixed Spring Security flow with custom MFA filter and required actions | Configurable browser, registration, reset-credential, first-broker-login, and conditional flows[^8] | Partial | Introduce a flow graph only when administrators need reordering/conditions. |
-| WebAuthn/passkeys | Not implemented | WebAuthn credential and passkey authenticators | Missing | Add a credential ceremony, device management, and recovery policy. |
+| WebAuthn/passkeys | Spring Security WebAuthn registration/authentication ceremonies, account/admin credential inventory, labels, deletion, and required-action enrollment | WebAuthn credential and passkey authenticators | Implemented / Partial | Registration, persistence, primary sign-in, OTP step-up, account/admin inventory, label management, deletion, and required enrollment are implemented; richer device metadata and passwordless-only policy remain. |
 | Identity brokering | Local JPA users only | OIDC/SAML/social providers, mappers, account linking | Missing | Add provider registry and first-login policy before adding UI. |
 | LDAP/Active Directory federation | Not implemented | Federated user stores with sync and mapper policies[^9] | Missing | Requires provider lifecycle, sync jobs, and failure handling. |
 | Sessions | JPA browser sessions, admin/account views, revoke | Online and offline sessions, client sessions, revocation and not-before policies | Partial | Add offline session model and realm/client/user not-before policy if required. |
@@ -452,7 +452,7 @@ Session screens list active sessions with device/IP/time metadata, support row-l
 
 ### Account Console
 
-The Account Console should retain a user-centered layout: profile, password, MFA/recovery codes, sessions, consents, required actions, and logout. Dynamic user-profile attributes and WebAuthn devices should appear as additional cards without changing the existing navigation or card grammar.
+The Account Console should retain a user-centered layout: profile, password, MFA/recovery codes, sessions, consents, required actions, and logout. Dynamic user-profile attributes and WebAuthn devices should appear as additional cards without changing the existing navigation or card grammar. The WebAuthn card now supports passkey registration, credential labels, inventory, and deletion; the browser's native ceremony remains responsible for authenticator verification.
 
 ## Product requirements by priority
 
@@ -467,7 +467,7 @@ The Account Console should retain a user-centered layout: profile, password, MFA
 
 ### P1 — close identity and administration gaps
 
-- Add WebAuthn/passkeys and credential/device management.
+- Add WebAuthn/passkeys and credential/device management. Registration, primary-factor sign-in, OTP step-up, account/admin inventory, label management, deletion, and configurable required enrollment are now covered; richer device metadata and passwordless-only policy remain.
 - Add user event persistence and separate User events history.
 - Add fine-grained resource permissions for users, groups, clients, roles, and events.
 - Add service accounts and offline session/token policy if required by consuming clients.

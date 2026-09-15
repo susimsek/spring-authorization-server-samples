@@ -2,6 +2,7 @@ package io.github.susimsek.springauthserversamples.config;
 
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 @ConfigurationProperties(prefix = "app")
@@ -11,6 +12,20 @@ public record ApplicationProperties(
         @DefaultValue AuthorizationServer authorizationServer,
         @DefaultValue Mail mail,
         @DefaultValue Security security) {
+
+    @ConstructorBinding
+    public ApplicationProperties(
+            Cache cache,
+            Session session,
+            AuthorizationServer authorizationServer,
+            Mail mail,
+            Security security) {
+        this.cache = cache;
+        this.session = session;
+        this.authorizationServer = authorizationServer;
+        this.mail = mail;
+        this.security = security;
+    }
 
     public ApplicationProperties() {
         this(

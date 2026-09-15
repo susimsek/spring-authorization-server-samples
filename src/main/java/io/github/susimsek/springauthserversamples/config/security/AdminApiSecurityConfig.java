@@ -85,6 +85,18 @@ public class AdminApiSecurityConfig {
                                                 AuthoritiesConstants.ADMIN,
                                                 AuthoritiesConstants.USER_VIEWER,
                                                 AuthoritiesConstants.USER_MANAGER)
+                                        .requestMatchers(
+                                                HttpMethod.PUT,
+                                                "/api/admin/users/*/webauthn/credentials/**")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.USER_MANAGER)
+                                        .requestMatchers(
+                                                HttpMethod.DELETE,
+                                                "/api/admin/users/*/webauthn/credentials/**")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.USER_MANAGER)
                                         .requestMatchers(HttpMethod.GET, "/api/admin/groups/**")
                                         .hasAnyAuthority(
                                                 AuthoritiesConstants.ADMIN,

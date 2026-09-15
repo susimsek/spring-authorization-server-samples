@@ -10,6 +10,7 @@ import type { Dictionary } from "@/i18n/get-dictionary";
 import { ActionIcon } from "@/components/shared/ActionIcon";
 import { RecoveryCodesActions } from "@/components/shared/RecoveryCodesActions";
 import { TotpSetupDetails } from "@/components/shared/TotpSetupDetails";
+import { registerPasskey } from "@/lib/webauthn";
 
 type Action = { key: string; displayName: string; description: string; version: number };
 type TotpSetup = {
@@ -178,6 +179,33 @@ export function RequiredActionsPage({ dictionary }: { dictionary: Dictionary }) 
       return;
     }
     return complete(values);
+  };
+
+  const registerRequiredPasskey = async () => {
+    if (busy) return;
+    setBusy(true);
+    setSubmitError(null);
+    try {
+      await registerPasskey(async (url, init) => {
+        const response = await fetch(url, { ...init, credentials: "same-origin" });
+        return {
+          status: response.status,
+          data: await response.json().catch(() => null),
+        };
+      }, copy.passkeyLabel);
+      const response = await fetch(`/api/required-actions/CONFIGURE_PASSKEY`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ values: { accepted: true } }),
+      });
+      if (!response.ok) throw new Error(await responseError(response, copy.error));
+      window.location.assign(returnTo);
+    } catch (cause) {
+      setSubmitError(cause instanceof Error ? cause.message : copy.error);
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (loading)
@@ -353,6 +381,18 @@ export function RequiredActionsPage({ dictionary }: { dictionary: Dictionary }) 
                 </Button>
               </Stack>
             </Form>
+          ) : action.key === "CONFIGURE_PASSKEY" ? (
+            <Stack gap={3}>
+              <Alert variant="info">{copy.passkeyHelp}</Alert>
+              <Button disabled={busy} onClick={() => void registerRequiredPasskey()}>
+                {busy ? (
+                  <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                ) : (
+                  <ActionIcon action="add" />
+                )}
+                {copy.passkeyRegister}
+              </Button>
+            </Stack>
           ) : action.key === "RECOVERY_CODES" ? (
             <Form
               onSubmit={(event) => {

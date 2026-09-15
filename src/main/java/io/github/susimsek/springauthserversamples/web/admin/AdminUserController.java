@@ -2,14 +2,17 @@ package io.github.susimsek.springauthserversamples.web.admin;
 
 import io.github.susimsek.springauthserversamples.config.openapi.OpenApiConfig;
 import io.github.susimsek.springauthserversamples.domain.UserAction;
+import io.github.susimsek.springauthserversamples.dto.account.WebAuthnCredentialDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminAvatarDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminUserDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminUserEnabledRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminUserRequestDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminWebAuthnCredentialLabelRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.userprofile.UserProfileAttributesDTO;
 import io.github.susimsek.springauthserversamples.dto.userprofile.UserProfileAttributesRequestDTO;
 import io.github.susimsek.springauthserversamples.service.UserProfileService;
+import io.github.susimsek.springauthserversamples.service.account.WebAuthnService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAvatarService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminUserService;
 import io.github.susimsek.springauthserversamples.web.ApiController;
@@ -55,6 +58,7 @@ class AdminUserController {
     private final AdminUserService adminUserService;
     private final AdminAvatarService adminAvatarService;
     private final UserProfileService userProfileService;
+    private final WebAuthnService webAuthnService;
 
     @GetMapping
     @Operation(
@@ -128,6 +132,49 @@ class AdminUserController {
             @PageableDefault(size = 20, sort = "name") Pageable pageable,
             Authentication authentication) {
         return adminUserService.groups(id, q, pageable, authentication.getName());
+    }
+
+    @GetMapping("/{id}/webauthn/credentials")
+    @Operation(
+            summary = "List user passkeys",
+            description = "Returns registered passkeys for a user.")
+    @ApiResponse(responseCode = "200", description = "Passkeys returned.")
+    Page<WebAuthnCredentialDTO> webAuthnCredentials(
+            @PathVariable Long id,
+            @PageableDefault(size = 20, sort = "createdAt") Pageable pageable,
+            Authentication authentication) {
+        var user = adminUserService.requireManageableUser(id, authentication.getName());
+        return webAuthnService.credentials(user.getUsername(), pageable);
+    }
+
+    @PutMapping("/{id}/webauthn/credentials/{credentialId}")
+    @Operation(summary = "Rename user passkey", description = "Updates a registered passkey label.")
+    @ApiResponse(responseCode = "204", description = "Passkey label updated.")
+    ResponseEntity<Void> renameWebAuthnCredential(
+            @PathVariable Long id,
+            @PathVariable String credentialId,
+            @Valid @RequestBody AdminWebAuthnCredentialLabelRequestDTO request,
+            Authentication authentication) {
+        String username =
+                adminUserService.requireManageableUser(id, authentication.getName()).getUsername();
+        webAuthnService.updateLabel(
+                username, credentialId, request.label(), authentication.getName());
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/webauthn/credentials/{credentialId}")
+    @Operation(
+            summary = "Delete user passkey",
+            description = "Removes a registered passkey and invalidates the user's access.")
+    @ApiResponse(responseCode = "204", description = "Passkey deleted.")
+    ResponseEntity<Void> deleteWebAuthnCredential(
+            @PathVariable Long id,
+            @PathVariable String credentialId,
+            Authentication authentication) {
+        String username =
+                adminUserService.requireManageableUser(id, authentication.getName()).getUsername();
+        webAuthnService.deleteForAdministrator(username, credentialId, authentication.getName());
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping

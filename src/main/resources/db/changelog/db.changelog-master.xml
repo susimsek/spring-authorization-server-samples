@@ -23,4 +23,5 @@
 	<include file="db/changelog/changes/013-recovery-codes.xml"/>
 	<include file="db/changelog/changes/014-event-settings.xml"/>
 	<include file="db/changelog/changes/015-user-profile-attributes.xml"/>
+	<include file="db/changelog/changes/016-webauthn.xml"/>
 </databaseChangeLog>

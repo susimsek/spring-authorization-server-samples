@@ -5,6 +5,7 @@ import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.dto.account.AccountProfileRequestDTO;
 import io.github.susimsek.springauthserversamples.service.LoginSettingsService;
 import io.github.susimsek.springauthserversamples.service.account.RecoveryCodeService;
+import io.github.susimsek.springauthserversamples.service.account.WebAuthnService;
 import io.github.susimsek.springauthserversamples.service.admin.UserAccessInvalidationService;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
@@ -30,6 +31,7 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
     private final TotpService totpService;
     private final RecoveryCodeService recoveryCodeService;
     private final MfaBruteForceService mfaBruteForceService;
+    private final WebAuthnService webAuthnService;
 
     @Autowired
     StandardRequiredActionHandler(
@@ -40,7 +42,8 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
             LoginSettingsService loginSettingsService,
             TotpService totpService,
             RecoveryCodeService recoveryCodeService,
-            MfaBruteForceService mfaBruteForceService) {
+            MfaBruteForceService mfaBruteForceService,
+            WebAuthnService webAuthnService) {
         this.validator = validator;
         this.passwordPolicyService = passwordPolicyService;
         this.passwordService = passwordService;
@@ -49,6 +52,7 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
         this.totpService = totpService;
         this.recoveryCodeService = recoveryCodeService;
         this.mfaBruteForceService = mfaBruteForceService;
+        this.webAuthnService = webAuthnService;
     }
 
     StandardRequiredActionHandler(
@@ -65,6 +69,7 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
                 userAccessInvalidationService,
                 loginSettingsService,
                 totpService,
+                null,
                 null,
                 null);
     }
@@ -85,6 +90,7 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
                 loginSettingsService,
                 totpService,
                 recoveryCodeService,
+                null,
                 null);
     }
 
@@ -97,6 +103,7 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
         this.totpService = null;
         this.recoveryCodeService = null;
         this.mfaBruteForceService = null;
+        this.webAuthnService = null;
     }
 
     @Override
@@ -123,6 +130,8 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
                             && loginSettingsService.isOtpRequired()
                             && !user.isTotpEnabled();
             case "RECOVERY_CODES" -> !completed;
+            case "CONFIGURE_PASSKEY" ->
+                    webAuthnService != null && !webAuthnService.hasCredential(user.getUsername());
             default -> !completed;
         };
     }
@@ -225,6 +234,17 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
                     throw ApiException.badRequest(
                             ApiErrorCode.INVALID_REQUEST,
                             "Save the recovery codes before completing this action");
+                }
+            }
+            case "CONFIGURE_PASSKEY" -> {
+                if (webAuthnService == null || !webAuthnService.hasCredential(user.getUsername())) {
+                    throw ApiException.badRequest(
+                            ApiErrorCode.INVALID_REQUEST,
+                            "Register a passkey before completing this action");
+                }
+                if (userAccessInvalidationService != null) {
+                    userAccessInvalidationService.invalidateOtherSessions(
+                            user.getUsername(), currentSessionId);
                 }
             }
             default ->

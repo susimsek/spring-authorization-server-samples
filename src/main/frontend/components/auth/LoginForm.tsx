@@ -14,6 +14,7 @@ import { ActionIcon } from "@/components/shared/ActionIcon";
 import { Icon } from "@/components/shared/Icon";
 
 import { PasswordField } from "./PasswordField";
+import { authenticatePasskey } from "@/lib/webauthn";
 
 type LoginFormProps = {
   dictionary: Dictionary;
@@ -26,13 +27,14 @@ export function LoginForm({ dictionary }: LoginFormProps) {
     userRegistration: true,
     forgotPassword: true,
     rememberMe: true,
+    passkeys: true,
   });
   useEffect(() => {
     if (typeof fetch !== "function") return;
     fetch("/api/auth/login-settings")
       .then((response) => (response.ok ? response.json() : null))
       .then((value) => {
-        if (value) setSettings(value);
+        if (value) setSettings((current) => ({ ...current, ...value }));
       })
       .catch(() => {});
   }, []);
@@ -73,7 +75,7 @@ export function LoginForm({ dictionary }: LoginFormProps) {
           <LoginStatusAlerts dictionary={dictionary} />
         </Suspense>
 
-        <Form method="post" action="/login" onSubmit={submit}>
+        <Form method="post" action="/login" onSubmit={submit} noValidate>
           <Form.Group className="mb-3" controlId="username">
             <Form.Label>{dictionary.login.username}</Form.Label>
             <InputGroup>
@@ -130,6 +132,11 @@ export function LoginForm({ dictionary }: LoginFormProps) {
             {dictionary.login.submit}
           </Button>
         </Form>
+        {settings.passkeys && (
+          <Suspense fallback={null}>
+            <PasskeyLoginButton dictionary={dictionary} />
+          </Suspense>
+        )}
         {settings.userRegistration && (
           <Link className="d-block text-center mt-3" href={`/register`}>
             {dictionary.login.register}
@@ -137,6 +144,65 @@ export function LoginForm({ dictionary }: LoginFormProps) {
         )}
       </Card.Body>
     </Card>
+  );
+}
+
+function PasskeyLoginButton({ dictionary }: LoginFormProps) {
+  const searchParams = useSearchParams();
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(false);
+  const returnTo = searchParams.get("return_to") || "/";
+
+  const signIn = async () => {
+    setSubmitting(true);
+    setError(false);
+    try {
+      const response = await authenticatePasskey(async (url, init) => {
+        const value = await fetch(url, { ...init, credentials: "same-origin" });
+        let data: unknown = null;
+        try {
+          data = await value.json();
+        } catch {
+          // The successful login handler may redirect to an HTML page.
+        }
+        return { status: value.status, data, url: value.url };
+      });
+      if (response.status >= 300) throw new Error();
+      const redirectedUrl = response.url ? new URL(response.url, window.location.origin) : null;
+      const redirectedTarget = redirectedUrl ? redirectedUrl.pathname + redirectedUrl.search : "/";
+      const target = returnTo.startsWith("/") && returnTo !== "/" ? returnTo : redirectedTarget;
+      window.location.assign(target.startsWith("/") ? target : "/");
+    } catch {
+      setError(true);
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="mt-3">
+      <div className="d-flex align-items-center gap-2 text-body-secondary small mb-2">
+        <hr className="flex-grow-1 my-0" />
+        <span>{dictionary.login.passkeyDivider}</span>
+        <hr className="flex-grow-1 my-0" />
+      </div>
+      {error && <Alert variant="danger">{dictionary.login.passkeyError}</Alert>}
+      <Button
+        type="button"
+        variant="primary"
+        size="lg"
+        className="w-100"
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => void signIn()}
+        disabled={submitting}
+      >
+        {submitting ? (
+          <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+        ) : (
+          <Icon icon="key" />
+        )}
+        {dictionary.login.passkey}
+      </Button>
+    </div>
   );
 }
 
