@@ -8,6 +8,8 @@ import { z } from "zod";
 import { useSearchParams } from "@/routing/navigation";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { ActionIcon } from "@/components/shared/ActionIcon";
+import { Icon } from "@/components/shared/Icon";
+import { authenticatePasskey } from "@/lib/webauthn";
 
 export function MfaChallengePage({ dictionary }: { dictionary: Dictionary }) {
   const copy = dictionary.mfa;
@@ -15,6 +17,7 @@ export function MfaChallengePage({ dictionary }: { dictionary: Dictionary }) {
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [recoveryMode, setRecoveryMode] = useState(false);
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
   const schema = z.object({ code: z.string().min(1, copy.invalidCode) });
   const {
     register,
@@ -107,6 +110,41 @@ export function MfaChallengePage({ dictionary }: { dictionary: Dictionary }) {
             }}
           >
             {recoveryMode ? copy.useAuthenticatorCode : copy.useRecoveryCode}
+          </Button>
+          <Button
+            variant="primary"
+            type="button"
+            disabled={passkeyBusy}
+            onClick={() => {
+              setPasskeyBusy(true);
+              setFailed(null);
+              void authenticatePasskey(async (url, init) => {
+                const response = await fetch(url, {
+                  ...init,
+                  credentials: "same-origin",
+                });
+                let data: unknown = null;
+                try {
+                  data = await response.json();
+                } catch {
+                  // Successful WebAuthn authentication redirects to the authorization request.
+                }
+                return { status: response.status, data, url: response.url };
+              })
+                .then((response) => {
+                  if (response.status >= 300) throw new Error();
+                  window.location.assign(returnTo);
+                })
+                .catch(() => setFailed(copy.passkeyError))
+                .finally(() => setPasskeyBusy(false));
+            }}
+          >
+            {passkeyBusy ? (
+              <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+            ) : (
+              <Icon icon="key" className="me-2" />
+            )}
+            {copy.passkey}
           </Button>
         </Stack>
       </Card.Body>

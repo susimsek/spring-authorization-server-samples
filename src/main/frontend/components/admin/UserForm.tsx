@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { Alert, Button, Card, Form, Spinner } from "react-bootstrap";
 import { useRouter } from "@/routing/navigation";
@@ -67,6 +67,15 @@ type RequiredAction = {
   enabled: boolean;
   globalPolicy: boolean;
   assigned: boolean;
+};
+type AdminPasskey = {
+  credentialId: string;
+  label: string;
+  createdAt: string;
+  lastUsedAt: string;
+  transports: string[];
+  backupEligible: boolean;
+  backupState: boolean;
 };
 type ProfileDefinition = {
   id: number;
@@ -1128,6 +1137,13 @@ export function UserForm({
                 <Form.Text>{copy.temporaryPasswordHelp}</Form.Text>
               </Card.Body>
             </Card>
+            <AdminPasskeyInventory
+              accessToken={accessToken}
+              userId={id ?? undefined}
+              canManage={canManageUsers}
+              copy={copy}
+              validation={validation}
+            />
             <Card className="admin-panel-card">
               <Card.Body className="d-grid gap-3">
                 <div>
@@ -1405,5 +1421,192 @@ export function UserForm({
         show={showLogoutAllConfirm}
       />
     </>
+  );
+}
+
+function AdminPasskeyInventory({
+  accessToken,
+  userId,
+  canManage,
+  copy,
+  validation,
+}: {
+  accessToken: string | null;
+  userId?: string;
+  canManage: boolean;
+  copy: Dictionary["admin"]["resources"];
+  validation: Dictionary["admin"]["common"]["validation"];
+}) {
+  const [items, setItems] = useState<AdminPasskey[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [pending, setPending] = useState<AdminPasskey | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!accessToken || !userId) return;
+    setLoading(true);
+    try {
+      const response = await adminRequest<{ content?: AdminPasskey[] }>(accessToken, {
+        url: `/api/admin/users/${encodeURIComponent(userId)}/webauthn/credentials?page=0&size=20`,
+      });
+      if (response.status >= 300) throw new Error();
+      setItems(response.data.content ?? []);
+      setError(false);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken, userId]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
+
+  const rename = async (credential: AdminPasskey, label: string) => {
+    if (!accessToken || !userId) return;
+    setBusy(true);
+    try {
+      const response = await adminRequest(accessToken, {
+        url: `/api/admin/users/${encodeURIComponent(userId)}/webauthn/credentials/${encodeURIComponent(credential.credentialId)}`,
+        method: "PUT",
+        data: { label },
+      });
+      if (response.status >= 300) throw new Error();
+      await load();
+    } catch {
+      setError(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    if (!accessToken || !userId || !pending) return;
+    setBusy(true);
+    try {
+      const response = await adminRequest(accessToken, {
+        url: `/api/admin/users/${encodeURIComponent(userId)}/webauthn/credentials/${encodeURIComponent(pending.credentialId)}`,
+        method: "DELETE",
+      });
+      if (response.status >= 300) throw new Error();
+      setPending(null);
+      await load();
+    } catch {
+      setError(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <Card className="admin-panel-card">
+        <Card.Body className="d-grid gap-3">
+          <div>
+            <h2 className="h5 mb-1">{copy.passkeys}</h2>
+            <p className="small text-body-secondary mb-0">{copy.passkeysHelp}</p>
+          </div>
+          {error && <Alert variant="danger">{copy.operationError}</Alert>}
+          {loading ? (
+            <div role="status">{copy.loading}</div>
+          ) : items.length === 0 ? (
+            <div className="small text-body-secondary">{copy.noPasskeys}</div>
+          ) : (
+            items.map((credential) => (
+              <AdminPasskeyRow
+                key={credential.credentialId}
+                credential={credential}
+                copy={copy}
+                validation={validation}
+                canManage={canManage}
+                busy={busy}
+                onRename={rename}
+                onRemove={setPending}
+              />
+            ))
+          )}
+        </Card.Body>
+      </Card>
+      <ConfirmModal
+        show={pending !== null}
+        message={copy.passkeyDeleteConfirm}
+        cancelLabel={copy.cancel}
+        confirmLabel={copy.delete}
+        busy={busy}
+        onCancel={() => setPending(null)}
+        onConfirm={() => void remove()}
+      />
+    </>
+  );
+}
+
+function AdminPasskeyRow({
+  credential,
+  copy,
+  validation,
+  canManage,
+  busy,
+  onRename,
+  onRemove,
+}: {
+  credential: AdminPasskey;
+  copy: Dictionary["admin"]["resources"];
+  validation: Dictionary["admin"]["common"]["validation"];
+  canManage: boolean;
+  busy: boolean;
+  onRename: (credential: AdminPasskey, label: string) => Promise<void>;
+  onRemove: (credential: AdminPasskey) => void;
+}) {
+  const form = useForm<{ label: string }>({
+    resolver: zodResolver(
+      z.object({
+        label: z.string().trim().min(1, validation.required).max(100, validation.max100),
+      }),
+    ),
+    defaultValues: { label: credential.label || copy.unnamedPasskey },
+  });
+  const submit = form.handleSubmit(({ label }) => onRename(credential, label));
+  return (
+    <div className="border rounded p-3">
+      <div className="d-flex justify-content-between gap-3 flex-wrap">
+        <div>
+          <strong>{credential.label || copy.unnamedPasskey}</strong>
+          <div className="small text-body-secondary mt-1">
+            {copy.passkeyCreated}: {new Date(credential.createdAt).toLocaleString()}
+          </div>
+          <div className="small text-body-secondary">
+            {copy.passkeyLastUsed}: {new Date(credential.lastUsedAt).toLocaleString()}
+          </div>
+        </div>
+        {canManage && (
+          <Form onSubmit={submit} noValidate className="d-flex gap-2 align-items-start">
+            <div>
+              <Form.Control
+                aria-label={copy.passkeyLabel}
+                isInvalid={Boolean(form.formState.errors.label)}
+                {...form.register("label")}
+              />
+              <Form.Control.Feedback type="invalid">
+                {form.formState.errors.label?.message}
+              </Form.Control.Feedback>
+            </div>
+            <Button type="submit" disabled={busy}>
+              {busy ? <Spinner animation="border" size="sm" aria-hidden="true" /> : copy.save}
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              disabled={busy}
+              onClick={() => onRemove(credential)}
+            >
+              {copy.delete}
+            </Button>
+          </Form>
+        )}
+      </div>
+    </div>
   );
 }

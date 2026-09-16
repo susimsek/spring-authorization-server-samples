@@ -13,6 +13,8 @@ import io.github.susimsek.springauthserversamples.dto.account.MfaSetupDTO;
 import io.github.susimsek.springauthserversamples.dto.account.MfaStatusDTO;
 import io.github.susimsek.springauthserversamples.dto.account.RecoveryCodesDTO;
 import io.github.susimsek.springauthserversamples.dto.account.RecoveryCodesStatusDTO;
+import io.github.susimsek.springauthserversamples.dto.account.WebAuthnCredentialDTO;
+import io.github.susimsek.springauthserversamples.dto.account.WebAuthnCredentialLabelRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.userprofile.UserProfileAttributesDTO;
 import io.github.susimsek.springauthserversamples.dto.userprofile.UserProfileAttributesRequestDTO;
 import io.github.susimsek.springauthserversamples.service.UserProfileService;
@@ -23,6 +25,7 @@ import io.github.susimsek.springauthserversamples.service.account.AccountProfile
 import io.github.susimsek.springauthserversamples.service.account.AccountSessionService;
 import io.github.susimsek.springauthserversamples.service.account.MfaService;
 import io.github.susimsek.springauthserversamples.service.account.RecoveryCodeService;
+import io.github.susimsek.springauthserversamples.service.account.WebAuthnService;
 import io.github.susimsek.springauthserversamples.web.ApiController;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -32,8 +35,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -53,7 +58,7 @@ import org.springframework.web.multipart.MultipartFile;
 @ApiController
 @RestController
 @RequestMapping("/api/account")
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 @Tag(
         name = "Account",
         description = "Account Console profile, session, and application management.")
@@ -68,6 +73,28 @@ public class AccountController {
     private final AccountDeletionService accountDeletionService;
     private final MfaService mfaService;
     private final RecoveryCodeService recoveryCodeService;
+    private final WebAuthnService webAuthnService;
+
+    AccountController(
+            AccountProfileService accountProfileService,
+            UserProfileService userProfileService,
+            AccountSessionService accountSessionService,
+            AccountApplicationService accountApplicationService,
+            AccountAvatarService accountAvatarService,
+            AccountDeletionService accountDeletionService,
+            MfaService mfaService,
+            RecoveryCodeService recoveryCodeService) {
+        this(
+                accountProfileService,
+                userProfileService,
+                accountSessionService,
+                accountApplicationService,
+                accountAvatarService,
+                accountDeletionService,
+                mfaService,
+                recoveryCodeService,
+                null);
+    }
 
     @GetMapping("/mfa")
     @Operation(
@@ -98,6 +125,42 @@ public class AccountController {
     @ApiResponse(responseCode = "200", description = "New recovery codes returned.")
     RecoveryCodesDTO generateRecoveryCodes(Authentication authentication) {
         return recoveryCodeService.generate(authentication.getName());
+    }
+
+    @GetMapping("/webauthn/credentials")
+    @Operation(
+            summary = "List registered passkeys",
+            description = "Returns the authenticated account's registered WebAuthn credentials.")
+    @ApiResponse(responseCode = "200", description = "Passkey credentials returned.")
+    Page<WebAuthnCredentialDTO> webAuthnCredentials(
+            Authentication authentication,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+                    Pageable pageable) {
+        return webAuthnService.credentials(authentication.getName(), pageable);
+    }
+
+    @PutMapping("/webauthn/credentials/{credentialId}")
+    @Operation(
+            summary = "Rename a registered passkey",
+            description = "Updates the label of a passkey owned by the authenticated account.")
+    @ApiResponse(responseCode = "204", description = "Passkey label updated.")
+    ResponseEntity<Void> updateWebAuthnCredential(
+            Authentication authentication,
+            @PathVariable String credentialId,
+            @Valid @RequestBody WebAuthnCredentialLabelRequestDTO request) {
+        webAuthnService.updateLabel(authentication.getName(), credentialId, request.label(), null);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/webauthn/credentials/{credentialId}")
+    @Operation(
+            summary = "Remove a registered passkey",
+            description = "Removes a passkey owned by the authenticated account.")
+    @ApiResponse(responseCode = "204", description = "Passkey removed.")
+    ResponseEntity<Void> deleteWebAuthnCredential(
+            Authentication authentication, @PathVariable String credentialId) {
+        webAuthnService.delete(authentication.getName(), credentialId);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/mfa/setup")
