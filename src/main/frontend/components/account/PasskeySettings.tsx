@@ -256,6 +256,12 @@ function PasskeyRow({
               ? credential.transports.join(", ")
               : copy.transportUnknown}
           </div>
+          {credential.signatureCount !== undefined && (
+            <div className="small text-body-secondary">
+              {copy.signatureCount}: {credential.signatureCount} · {copy.userVerification}:{" "}
+              {credential.uvInitialized ? copy.yes : copy.no}
+            </div>
+          )}
           <Form
             className="d-flex gap-2 mt-3"
             onSubmit={form.handleSubmit(({ label }) => onRename(credential.credentialId, label))}
@@ -276,7 +282,11 @@ function PasskeyRow({
           type="button"
           variant="danger"
         >
-          <ActionIcon action="delete" />
+          {removing ? (
+            <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+          ) : (
+            <ActionIcon action="delete" />
+          )}
           <span className="d-none d-sm-inline">{copy.remove}</span>
         </Button>
       </div>

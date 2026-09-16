@@ -27,7 +27,7 @@ export function LoginForm({ dictionary }: LoginFormProps) {
     userRegistration: true,
     forgotPassword: true,
     rememberMe: true,
-    passkeys: true,
+    passkeys: false,
   });
   useEffect(() => {
     if (typeof fetch !== "function") return;
@@ -84,7 +84,7 @@ export function LoginForm({ dictionary }: LoginFormProps) {
               </InputGroup.Text>
               <Form.Control
                 type="text"
-                autoComplete="username"
+                autoComplete="username webauthn"
                 placeholder={dictionary.login.usernamePlaceholder}
                 autoFocus
                 isInvalid={Boolean(errors.username)}
@@ -153,7 +153,7 @@ function PasskeyLoginButton({ dictionary }: LoginFormProps) {
   const [error, setError] = useState(false);
   const returnTo = searchParams.get("return_to") || "/";
 
-  const signIn = async () => {
+  async function signIn() {
     setSubmitting(true);
     setError(false);
     try {
@@ -163,12 +163,21 @@ function PasskeyLoginButton({ dictionary }: LoginFormProps) {
         try {
           data = await value.json();
         } catch {
-          // The successful login handler may redirect to an HTML page.
+          // A successful WebAuthn response has no body.
         }
-        return { status: value.status, data, url: value.url };
+        return {
+          status: value.status,
+          data,
+          url: value.url,
+          redirectUrl: value.headers.get("Location"),
+        };
       });
       if (response.status >= 300) throw new Error();
-      const redirectedUrl = response.url ? new URL(response.url, window.location.origin) : null;
+      const redirectedUrl = response.redirectUrl
+        ? new URL(response.redirectUrl, window.location.origin)
+        : response.url
+          ? new URL(response.url, window.location.origin)
+          : null;
       const redirectedTarget = redirectedUrl ? redirectedUrl.pathname + redirectedUrl.search : "/";
       const target = returnTo.startsWith("/") && returnTo !== "/" ? returnTo : redirectedTarget;
       window.location.assign(target.startsWith("/") ? target : "/");
@@ -176,7 +185,7 @@ function PasskeyLoginButton({ dictionary }: LoginFormProps) {
       setError(true);
       setSubmitting(false);
     }
-  };
+  }
 
   return (
     <div className="mt-3">

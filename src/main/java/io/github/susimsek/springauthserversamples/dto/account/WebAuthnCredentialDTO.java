@@ -40,4 +40,24 @@ public record WebAuthnCredentialDTO(
                         description = "Whether the credential is currently backed up.",
                         example = "true",
                         requiredMode = Schema.RequiredMode.REQUIRED)
-                boolean backupState) {}
+                boolean backupState,
+        @Schema(
+                        description = "WebAuthn credential type.",
+                        example = "public-key",
+                        requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+                String credentialType,
+        @Schema(
+                        description = "Authenticator signature counter.",
+                        example = "4",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                long signatureCount,
+        @Schema(
+                        description = "Whether user verification was initialized.",
+                        example = "true",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                boolean uvInitialized,
+        @Schema(
+                        description = "Whether attestation data is available.",
+                        example = "false",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                boolean attestationPresent) {}

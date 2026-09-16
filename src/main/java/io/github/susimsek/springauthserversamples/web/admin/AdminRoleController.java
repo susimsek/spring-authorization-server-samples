@@ -63,11 +63,16 @@ class AdminRoleController {
                             required = true)
                     @PathVariable
                     String name,
-            @Parameter(description = "Optional username search text.", example = "user")
+            @Parameter(
+                            description = "Optional username, email, or name search text.",
+                            example = "user")
                     @RequestParam(defaultValue = "")
                     String q,
+            @Parameter(description = "Filter assigned users by enabled state.", example = "true")
+                    @RequestParam(required = false)
+                    Boolean enabled,
             @PageableDefault(size = 20, sort = "username") Pageable pageable) {
-        return adminRoleService.role(name, q, pageable);
+        return adminRoleService.role(name, q, enabled, pageable);
     }
 
     @GetMapping("/{name}/available-users")
@@ -82,7 +87,9 @@ class AdminRoleController {
                             required = true)
                     @PathVariable
                     String name,
-            @Parameter(description = "Optional username search text.", example = "user")
+            @Parameter(
+                            description = "Optional username, email, or name search text.",
+                            example = "user")
                     @RequestParam(defaultValue = "")
                     String q,
             @PageableDefault(size = 10, sort = "username") Pageable pageable) {

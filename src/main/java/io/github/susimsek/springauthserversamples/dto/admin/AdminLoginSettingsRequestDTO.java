@@ -108,7 +108,12 @@ public record AdminLoginSettingsRequestDTO(
                         description = "Show a warning when unused recovery codes reach this count.",
                         minimum = "0")
                 @Min(0)
-                int recoveryCodeWarningThreshold) {
+                int recoveryCodeWarningThreshold,
+        @Schema(
+                        description = "Allow passkey sign-in on the public login page.",
+                        example = "true",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                boolean passkeys) {
 
     public AdminLoginSettingsRequestDTO(
             boolean userRegistration,
@@ -172,6 +177,7 @@ public record AdminLoginSettingsRequestDTO(
                 otpLookAheadWindow,
                 otpCodeReusable,
                 otpAddRecoveryCodes,
-                recoveryCodeWarningThreshold);
+                recoveryCodeWarningThreshold,
+                true);
     }
 }

@@ -5,7 +5,7 @@ import { useDateTimeFormatter } from "@/i18n/useDateTimeFormatter";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "@/routing/Link";
-import { Badge, Button, Dropdown, Form, Modal } from "react-bootstrap";
+import { Badge, Button, Dropdown, Form, Modal, Spinner } from "react-bootstrap";
 
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
@@ -108,6 +108,7 @@ function AdminResourcesContent({
   const [result, setResult] = useState<{ title: string; message: string; value?: string } | null>(
     null,
   );
+  const [rotating, setRotating] = useState(false);
   const {
     clientId,
     clearFilters,
@@ -202,9 +203,10 @@ function AdminResourcesContent({
     url: string,
     method: "DELETE" | "POST" | "PUT",
     data?: unknown,
+    refresh = true,
   ): Promise<T | undefined> => {
     if (!accessToken) return undefined;
-    setLoading(true);
+    if (refresh) setLoading(true);
     try {
       const response = await adminRequest(accessToken, { url, method, data });
       if (response.status >= 300) {
@@ -214,19 +216,24 @@ function AdminResourcesContent({
       return response.data as T;
     } catch {
       setError(true);
-      setLoading(false);
+      if (refresh) setLoading(false);
       return undefined;
     }
   };
 
   const rotateKey = async () => {
-    const key = await request<Key>("/api/admin/keys/rotate", "POST");
-    if (!key) return;
-    setResult({
-      title: copy.keyRotatedTitle,
-      message: copy.keyRotatedHelp,
-      value: key.kid,
-    });
+    setRotating(true);
+    try {
+      const key = await request<Key>("/api/admin/keys/rotate", "POST", undefined, false);
+      if (!key) return;
+      setResult({
+        title: copy.keyRotatedTitle,
+        message: copy.keyRotatedHelp,
+        value: key.kid,
+      });
+    } finally {
+      setRotating(false);
+    }
   };
 
   if (loading) return <LoadingState />;
@@ -246,8 +253,12 @@ function AdminResourcesContent({
               </Link>
             )}
             {resource === "keys" && access?.manageKeys && (
-              <Button variant="primary" onClick={() => void rotateKey()}>
-                <AdminActionIcon action="rotate" />
+              <Button disabled={rotating} variant="primary" onClick={() => void rotateKey()}>
+                {rotating ? (
+                  <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                ) : (
+                  <AdminActionIcon action="rotate" />
+                )}
                 {copy.rotateKey}
               </Button>
             )}
@@ -590,9 +601,14 @@ function SessionsTable({
                 <Button
                   variant="link"
                   className="font-monospace p-0 text-decoration-none"
+                  disabled={detailLoading}
                   onClick={() => void showDetail(session.id)}
                 >
-                  <AdminActionIcon action="view" />
+                  {detailLoading ? (
+                    <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                  ) : (
+                    <AdminActionIcon action="view" />
+                  )}
                   {session.id.slice(0, 12)}…
                 </Button>
               </td>
@@ -608,8 +624,15 @@ function SessionsTable({
               <td data-label={copy.authorizations}>{session.authorizationCount}</td>
               <td className="text-end">
                 <RowActions label={copy.sessionActions}>
-                  <Dropdown.Item onClick={() => void showDetail(session.id)}>
-                    <AdminActionIcon action="view" />
+                  <Dropdown.Item
+                    disabled={detailLoading}
+                    onClick={() => void showDetail(session.id)}
+                  >
+                    {detailLoading ? (
+                      <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                    ) : (
+                      <AdminActionIcon action="view" />
+                    )}
                     View details
                   </Dropdown.Item>
                   {canManage && !expired && (

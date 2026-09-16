@@ -17,12 +17,14 @@ import { useAdminAuth } from "./AdminAuthProvider";
 import { AdminActionIcon } from "./AdminActionIcon";
 import { AdminBreadcrumb } from "./AdminBreadcrumb";
 import { DataTable } from "./DataTable";
+import { DetailTabs } from "./DetailTabs";
 import { ErrorState, LoadingState } from "./AsyncState";
 import { PaginationControls } from "./PaginationControls";
 import { ResourceFilters } from "./ResourceFilters";
 import { useAdminTableState } from "./useAdminTableState";
 
 type RoleUser = { id: number; username: string; enabled: boolean };
+export type RoleDetailTab = "details" | "users";
 type RoleDetailData = {
   name: string;
   description?: string | null;
@@ -34,22 +36,37 @@ type RoleDetailData = {
 export function RoleDetail({
   dictionary,
   name,
+  tab,
 }: {
   locale: Locale;
   dictionary: Dictionary;
   name: string;
+  tab?: RoleDetailTab;
 }) {
   const { access, accessToken } = useAdminAuth();
   const alerts = useConsoleAlerts();
   const router = useRouter();
   const actualName = name;
+  const activeTab = tab ?? "details";
   const [detail, setDetail] = useState<RoleDetailData | null>(null);
   const [userQuery, setUserQuery] = useState("");
   const [suggestions, setSuggestions] = useState<RoleUser[]>([]);
   const [selectedUser, setSelectedUser] = useState<RoleUser | null>(null);
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [saving, setSaving] = useState(false);
-  const { page, query, setPage, setQuery, setSize, size } = useAdminTableState();
+  const {
+    clearFilters,
+    page,
+    query,
+    setPage,
+    setQuery,
+    setSize,
+    setSort,
+    setStatus,
+    size,
+    sort,
+    status,
+  } = useAdminTableState(10, true, "username,asc");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const descriptionSchema = z.object({
@@ -71,7 +88,7 @@ export function RoleDetail({
     setLoading(true);
     try {
       const roleResponse = await adminRequest<RoleDetailData>(accessToken, {
-        url: `/api/admin/roles/${encodeURIComponent(actualName)}?q=${encodeURIComponent(query)}&page=${page}&size=${size}`,
+        url: `/api/admin/roles/${encodeURIComponent(actualName)}?q=${encodeURIComponent(query)}&enabled=${encodeURIComponent(status)}&page=${page}&size=${size}&sort=${encodeURIComponent(sort)}`,
       });
       if (roleResponse.status >= 300) throw new Error();
       setDetail(roleResponse.data);
@@ -82,7 +99,7 @@ export function RoleDetail({
     } finally {
       setLoading(false);
     }
-  }, [accessToken, actualName, page, query, reset, size]);
+  }, [accessToken, actualName, page, query, reset, size, sort, status]);
 
   const saveDescription = async ({ description }: z.infer<typeof descriptionSchema>) => {
     if (!access?.manageRoles || !accessToken || !detail) return;
@@ -196,190 +213,274 @@ export function RoleDetail({
         {detail.protectedRole && <Badge bg="secondary">{dictionary.admin.roles.protected}</Badge>}
       </div>
 
-      <Card className="admin-panel-card">
-        <Card.Body>
-          <Form noValidate onSubmit={handleSubmit(saveDescription)}>
-            <Form.Group controlId="role-description-detail">
-              <Form.Label>{dictionary.admin.roles.description}</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                maxLength={500}
-                disabled={!access?.manageRoles || descriptionSaving}
-                isInvalid={Boolean(descriptionErrors.description)}
-                {...register("description")}
-              />
-              <Form.Control.Feedback type="invalid">
-                {descriptionErrors.description?.message}
-              </Form.Control.Feedback>
-              <Form.Text>{dictionary.admin.roles.descriptionHelp}</Form.Text>
-            </Form.Group>
-            {access?.manageRoles && (
-              <Button className="mt-3" disabled={descriptionSaving} type="submit">
-                {descriptionSaving ? (
-                  <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
-                ) : (
-                  <AdminActionIcon action="save" />
-                )}
-                {dictionary.admin.roles.saveDescription}
-              </Button>
-            )}
-          </Form>
-        </Card.Body>
-      </Card>
-
-      <Card className="admin-panel-card">
-        <Card.Body>
-          <h2 className="h5">{dictionary.admin.roles.assignUser}</h2>
-          <div className="d-flex flex-wrap align-items-start gap-2">
-            <div className="position-relative flex-grow-1" style={{ maxWidth: "28rem" }}>
-              <Form.Control
-                autoComplete="off"
-                aria-autocomplete="list"
-                aria-controls="role-user-suggestions"
-                aria-expanded={suggestions.length > 0}
-                aria-label={dictionary.admin.roles.searchUsers}
-                placeholder={dictionary.admin.roles.searchUsersPlaceholder}
-                role="combobox"
-                value={selectedUser?.username ?? userQuery}
-                onChange={(event) => {
-                  setSelectedUser(null);
-                  setSuggestions([]);
-                  setSearchingUsers(false);
-                  setUserQuery(event.target.value);
-                }}
-              />
-              {searchingUsers && (
-                <Spinner
-                  animation="border"
-                  size="sm"
-                  className="position-absolute end-0 top-0 mt-2 me-2"
-                  aria-label={dictionary.admin.roles.searchingUsers}
-                />
-              )}
-              {!selectedUser && suggestions.length > 0 && (
-                <ListGroup
-                  id="role-user-suggestions"
-                  className="position-absolute start-0 end-0 mt-1 shadow-sm z-3"
-                >
-                  {suggestions.map((user) => (
-                    <ListGroup.Item
-                      action
-                      type="button"
-                      key={user.id}
-                      onClick={() => {
-                        setSelectedUser(user);
-                        setSuggestions([]);
-                      }}
-                    >
-                      <div className="d-flex justify-content-between align-items-center gap-2">
-                        <span>{user.username}</span>
-                        <Badge bg={user.enabled ? "success" : "secondary"}>
-                          {user.enabled
-                            ? dictionary.admin.resources.enabled
-                            : dictionary.admin.resources.disabled}
-                        </Badge>
-                      </div>
-                    </ListGroup.Item>
-                  ))}
-                </ListGroup>
-              )}
-            </div>
-            {access?.manageRoles && (
-              <Button disabled={!selectedUser || saving} onClick={() => void assign()}>
-                {saving ? (
-                  <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
-                ) : (
-                  <AdminActionIcon action="assign" />
-                )}
-                {dictionary.admin.roles.assign}
-              </Button>
-            )}
-          </div>
-          <Form.Text className="text-body-secondary">
-            {dictionary.admin.roles.searchUsersHelp}
-          </Form.Text>
-        </Card.Body>
-      </Card>
-
-      <ResourceFilters
-        query={query}
-        searchLabel={dictionary.admin.roles.searchAssignedUsers}
-        onQueryChange={setQuery}
+      <DetailTabs
+        active={activeTab}
+        tabs={[
+          {
+            key: "details",
+            label: dictionary.admin.roles.details,
+            href: `/admin/roles/${encodeURIComponent(detail.name)}/details`,
+          },
+          {
+            key: "users",
+            label: dictionary.admin.roles.usersInRole,
+            href: `/admin/roles/${encodeURIComponent(detail.name)}/users`,
+          },
+        ]}
       />
 
-      <DataTable
-        isEmpty={detail.users.content.length === 0}
-        emptyMessage={dictionary.admin.roles.noAssignedUsers}
-        footer={
-          detail.users.totalElements > 0 ? (
-            <PaginationControls
-              page={page}
-              totalPages={detail.users.totalPages}
-              totalElements={detail.users.totalElements}
-              size={size}
-              rowsPerPage={dictionary.admin.resources.rowsPerPage}
-              pageLabel={dictionary.admin.resources.page}
-              previous={dictionary.admin.resources.previous}
-              next={dictionary.admin.resources.next}
-              first={dictionary.admin.resources.first}
-              last={dictionary.admin.resources.last}
-              onPageChange={setPage}
-              onSizeChange={(nextSize) => {
-                setPage(0);
-                setSize(nextSize);
-              }}
-            />
-          ) : undefined
-        }
-      >
-        <thead>
-          <tr>
-            <th>{dictionary.admin.resources.user}</th>
-            <th>{dictionary.admin.resources.status}</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {detail.users.content.map((user) => (
-            <tr key={user.id}>
-              <td>
-                <Button
-                  variant="link"
-                  className="p-0 text-decoration-none"
-                  onClick={() => router.push(`/admin/users/${user.id}/details`)}
-                >
-                  {user.username}
+      {activeTab === "details" && (
+        <Card className="admin-panel-card">
+          <Card.Body>
+            <Form noValidate onSubmit={handleSubmit(saveDescription)}>
+              <Form.Group controlId="role-description-detail">
+                <Form.Label>{dictionary.admin.roles.description}</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={3}
+                  maxLength={500}
+                  disabled={!access?.manageRoles || descriptionSaving}
+                  isInvalid={Boolean(descriptionErrors.description)}
+                  {...register("description")}
+                />
+                <Form.Control.Feedback type="invalid">
+                  {descriptionErrors.description?.message}
+                </Form.Control.Feedback>
+                <Form.Text>{dictionary.admin.roles.descriptionHelp}</Form.Text>
+              </Form.Group>
+              {access?.manageRoles && (
+                <Button className="mt-3" disabled={descriptionSaving} type="submit">
+                  {descriptionSaving ? (
+                    <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                  ) : (
+                    <AdminActionIcon action="save" />
+                  )}
+                  {dictionary.admin.roles.saveDescription}
                 </Button>
-              </td>
-              <td>
-                <Badge bg={user.enabled ? "success" : "secondary"}>
-                  {user.enabled
-                    ? dictionary.admin.resources.enabled
-                    : dictionary.admin.resources.disabled}
-                </Badge>
-              </td>
-              <td className="text-end">
+              )}
+            </Form>
+          </Card.Body>
+        </Card>
+      )}
+
+      {activeTab === "users" && (
+        <>
+          <Card className="admin-panel-card">
+            <Card.Body>
+              <h2 className="h5">{dictionary.admin.roles.assignUser}</h2>
+              <div className="d-flex flex-wrap align-items-start gap-2">
+                <div className="position-relative flex-grow-1" style={{ maxWidth: "28rem" }}>
+                  <Form.Control
+                    autoComplete="off"
+                    aria-autocomplete="list"
+                    aria-controls="role-user-suggestions"
+                    aria-expanded={suggestions.length > 0}
+                    aria-label={dictionary.admin.roles.searchUsers}
+                    placeholder={dictionary.admin.roles.searchUsersPlaceholder}
+                    role="combobox"
+                    value={selectedUser?.username ?? userQuery}
+                    onChange={(event) => {
+                      setSelectedUser(null);
+                      setSuggestions([]);
+                      setSearchingUsers(false);
+                      setUserQuery(event.target.value);
+                    }}
+                  />
+                  {searchingUsers && (
+                    <Spinner
+                      animation="border"
+                      size="sm"
+                      className="position-absolute end-0 top-0 mt-2 me-2"
+                      aria-label={dictionary.admin.roles.searchingUsers}
+                    />
+                  )}
+                  {!selectedUser && suggestions.length > 0 && (
+                    <ListGroup
+                      id="role-user-suggestions"
+                      className="position-absolute start-0 end-0 mt-1 shadow-sm z-3"
+                    >
+                      {suggestions.map((user) => (
+                        <ListGroup.Item
+                          action
+                          type="button"
+                          key={user.id}
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setSuggestions([]);
+                          }}
+                        >
+                          <div className="d-flex justify-content-between align-items-center gap-2">
+                            <span>{user.username}</span>
+                            <Badge bg={user.enabled ? "success" : "secondary"}>
+                              {user.enabled
+                                ? dictionary.admin.resources.enabled
+                                : dictionary.admin.resources.disabled}
+                            </Badge>
+                          </div>
+                        </ListGroup.Item>
+                      ))}
+                    </ListGroup>
+                  )}
+                </div>
                 {access?.manageRoles && (
-                  <Button
-                    disabled={saving}
-                    size="sm"
-                    variant="danger"
-                    onClick={() => void remove(user)}
-                  >
+                  <Button disabled={!selectedUser || saving} onClick={() => void assign()}>
                     {saving ? (
                       <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
                     ) : (
-                      <AdminActionIcon action="remove" />
+                      <AdminActionIcon action="assign" />
                     )}
-                    {dictionary.admin.roles.remove}
+                    {dictionary.admin.roles.assign}
                   </Button>
                 )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </DataTable>
+              </div>
+              <Form.Text className="text-body-secondary">
+                {dictionary.admin.roles.searchUsersHelp}
+              </Form.Text>
+            </Card.Body>
+          </Card>
+
+          <ResourceFilters
+            key={query}
+            query={query}
+            searchLabel={dictionary.admin.roles.searchAssignedUsers}
+            onQueryChange={setQuery}
+            sort={{
+              label: dictionary.admin.resources.sort,
+              value: sort,
+              options: [
+                {
+                  value: "username,asc",
+                  label: `${dictionary.admin.resources.username} · ${dictionary.admin.resources.ascending}`,
+                },
+                {
+                  value: "username,desc",
+                  label: `${dictionary.admin.resources.username} · ${dictionary.admin.resources.descending}`,
+                },
+                {
+                  value: "email,asc",
+                  label: `${dictionary.admin.resources.email} · ${dictionary.admin.resources.ascending}`,
+                },
+                {
+                  value: "email,desc",
+                  label: `${dictionary.admin.resources.email} · ${dictionary.admin.resources.descending}`,
+                },
+              ],
+              onChange: setSort,
+            }}
+            filterToggle={
+              <Form.Select
+                aria-label={dictionary.admin.resources.status}
+                className="admin-resource-filter-control"
+                value={status}
+                onChange={(event) => setStatus(event.target.value)}
+              >
+                <option value="">{dictionary.admin.resources.all}</option>
+                <option value="true">{dictionary.admin.resources.enabled}</option>
+                <option value="false">{dictionary.admin.resources.disabled}</option>
+              </Form.Select>
+            }
+            activeFilters={
+              [
+                query && {
+                  label: dictionary.admin.resources.search,
+                  value: query,
+                  onRemove: () => setQuery(""),
+                },
+                status && {
+                  label: dictionary.admin.resources.status,
+                  value:
+                    status === "true"
+                      ? dictionary.admin.resources.enabled
+                      : dictionary.admin.resources.disabled,
+                  onRemove: () => setStatus(""),
+                },
+              ].filter(Boolean) as { label: string; value: string; onRemove: () => void }[]
+            }
+            clearFiltersLabel={dictionary.admin.resources.clearFilters}
+            onClearFilters={clearFilters}
+            resultCount={detail.users.totalElements}
+            recordsLabel={dictionary.admin.resources.records}
+          />
+
+          <DataTable
+            isEmpty={detail.users.content.length === 0}
+            emptyMessage={dictionary.admin.roles.noAssignedUsers}
+            footer={
+              detail.users.totalElements > 0 ? (
+                <PaginationControls
+                  page={page}
+                  totalPages={detail.users.totalPages}
+                  totalElements={detail.users.totalElements}
+                  size={size}
+                  rowsPerPage={dictionary.admin.resources.rowsPerPage}
+                  pageLabel={dictionary.admin.resources.page}
+                  previous={dictionary.admin.resources.previous}
+                  next={dictionary.admin.resources.next}
+                  first={dictionary.admin.resources.first}
+                  last={dictionary.admin.resources.last}
+                  onPageChange={setPage}
+                  onSizeChange={(nextSize) => {
+                    setPage(0);
+                    setSize(nextSize);
+                  }}
+                />
+              ) : undefined
+            }
+          >
+            <thead>
+              <tr>
+                <th>{dictionary.admin.resources.user}</th>
+                <th>{dictionary.admin.resources.status}</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {detail.users.content.map((user) => (
+                <tr key={user.id}>
+                  <td>
+                    <Button
+                      variant="link"
+                      className="p-0 text-decoration-none"
+                      onClick={() => router.push(`/admin/users/${user.id}/details`)}
+                    >
+                      {user.username}
+                    </Button>
+                  </td>
+                  <td>
+                    <Badge bg={user.enabled ? "success" : "secondary"}>
+                      {user.enabled
+                        ? dictionary.admin.resources.enabled
+                        : dictionary.admin.resources.disabled}
+                    </Badge>
+                  </td>
+                  <td className="text-end">
+                    {access?.manageRoles && (
+                      <Button
+                        disabled={saving}
+                        size="sm"
+                        variant="danger"
+                        onClick={() => void remove(user)}
+                      >
+                        {saving ? (
+                          <Spinner
+                            animation="border"
+                            aria-hidden="true"
+                            className="me-2"
+                            size="sm"
+                          />
+                        ) : (
+                          <AdminActionIcon action="remove" />
+                        )}
+                        {dictionary.admin.roles.remove}
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </DataTable>
+        </>
+      )}
     </div>
   );
 }

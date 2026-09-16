@@ -57,6 +57,13 @@ class AuthorizationServerEndpointsIT {
                 .andExpect(redirectedUrl("/admin"));
     }
 
+    @Test
+    void publicLoginSettingsDisablePasskeysByDefault() throws Exception {
+        mockMvc.perform(get("/api/auth/login-settings"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passkeys").value(false));
+    }
+
     @ParameterizedTest
     @CsvSource({"account, tr, en", "account, en, tr", "admin, tr, en", "admin, en, tr"})
     void resumedAuthorizationPreservesLocaleSelectedOnLogin(

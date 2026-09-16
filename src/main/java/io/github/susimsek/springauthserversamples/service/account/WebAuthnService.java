@@ -1,5 +1,6 @@
 package io.github.susimsek.springauthserversamples.service.account;
 
+import io.github.susimsek.springauthserversamples.config.security.WebAuthnUserEntityRepository;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.dto.account.WebAuthnCredentialDTO;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
@@ -54,6 +55,24 @@ public class WebAuthnService {
         int start = Math.min((int) pageable.getOffset(), credentials.size());
         int end = Math.min(start + pageable.getPageSize(), credentials.size());
         return new PageImpl<>(credentials.subList(start, end), pageable, credentials.size());
+    }
+
+    @Transactional(readOnly = true)
+    public WebAuthnCredentialDTO credential(String username, String credentialId) {
+        UserEntity user = user(username);
+        Bytes id;
+        try {
+            id = Bytes.fromBase64(credentialId);
+        } catch (RuntimeException ex) {
+            throw ApiException.notFound("Passkey not found");
+        }
+        CredentialRecord record = credentialRepository.findByCredentialId(id);
+        if (record == null
+                || !record.getUserEntityUserId()
+                        .equals(WebAuthnUserEntityRepository.userHandle(user.getId()))) {
+            throw ApiException.notFound("Passkey not found");
+        }
+        return toDTO(record);
     }
 
     @Transactional(readOnly = true)
@@ -135,7 +154,14 @@ public class WebAuthnService {
                 record.getLastUsed(),
                 transports,
                 record.isBackupEligible(),
-                record.isBackupState());
+                record.isBackupState(),
+                record.getCredentialType() == null
+                        ? "public-key"
+                        : record.getCredentialType().getValue(),
+                record.getSignatureCount(),
+                record.isUvInitialized(),
+                record.getAttestationObject() != null
+                        && record.getAttestationClientDataJSON() != null);
     }
 
     private UserEntity user(String username) {

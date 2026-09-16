@@ -12,6 +12,7 @@
 			<column name="user_registration_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
 			<column name="forgot_password_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
 			<column name="remember_me_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+			<column name="passkeys_enabled" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
 			<column name="login_with_email" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
 			<column name="verify_email" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
 			<column name="session_timeout_minutes" type="int" defaultValueNumeric="30"><constraints nullable="false"/></column>
@@ -56,6 +57,7 @@
 			<column header="user_registration_enabled" type="boolean"/>
 			<column header="forgot_password_enabled" type="boolean"/>
 			<column header="remember_me_enabled" type="boolean"/>
+			<column header="passkeys_enabled" type="boolean"/>
 			<column header="login_with_email" type="boolean"/>
 			<column header="verify_email" type="boolean"/>
 			<column header="session_timeout_minutes" type="numeric"/>

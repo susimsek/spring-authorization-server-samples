@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, ButtonGroup } from "react-bootstrap";
+import { Button, ButtonGroup, Spinner } from "react-bootstrap";
 import { ActionIcon } from "./ActionIcon";
 
 export function RecoveryCodesActions({
@@ -17,16 +17,20 @@ export function RecoveryCodesActions({
   };
 }) {
   const [copied, setCopied] = useState(false);
+  const [copying, setCopying] = useState(false);
   const text = codes.join("\n");
 
   const copy = async () => {
     if (!navigator.clipboard) return;
+    setCopying(true);
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
       // Clipboard access can be denied by the browser or document policy.
+    } finally {
+      setCopying(false);
     }
   };
 
@@ -43,8 +47,12 @@ export function RecoveryCodesActions({
 
   return (
     <ButtonGroup size="sm" aria-label="Recovery code actions">
-      <Button variant="secondary" onClick={() => void copy()}>
-        <ActionIcon action="copy" />
+      <Button disabled={copying} variant="secondary" onClick={() => void copy()}>
+        {copying ? (
+          <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+        ) : (
+          <ActionIcon action="copy" />
+        )}
         {copied ? labels.copied : labels.copy}
       </Button>
       <Button variant="secondary" onClick={download}>

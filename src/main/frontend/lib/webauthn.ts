@@ -4,6 +4,7 @@ type ResponseLike = {
   status: number;
   data: unknown;
   url?: string;
+  redirectUrl?: string | null;
 };
 
 type CreationOptions = {
@@ -70,7 +71,10 @@ export async function registerPasskey(request: WebAuthnRequest, label: string) {
   }
 }
 
-export async function authenticatePasskey(request: WebAuthnRequest) {
+export async function authenticatePasskey(
+  request: WebAuthnRequest,
+  requestOptions: { mediation?: CredentialMediationRequirement; signal?: AbortSignal } = {},
+) {
   if (!window.PublicKeyCredential || !navigator.credentials) {
     throw new Error("WebAuthn is not supported by this browser.");
   }
@@ -78,6 +82,8 @@ export async function authenticatePasskey(request: WebAuthnRequest) {
   if (optionsResponse.status >= 300) throw new Error("Passkey options could not be loaded.");
   const options = optionsResponse.data as RequestOptions;
   const credential = await navigator.credentials.get({
+    mediation: requestOptions.mediation,
+    signal: requestOptions.signal,
     publicKey: {
       ...options,
       challenge: decode(options.challenge),

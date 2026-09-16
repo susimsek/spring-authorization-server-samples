@@ -79,3 +79,11 @@ app:
     cleanup-cron: "0 * * * * *"
   authorization-server:
     issuer: https://spring-authorization-server-samples.local
+  web-authn:
+    rp-name: Spring Authorization Server Samples
+    rp-id: ""
+    allowed-origins: ""
+    timeout-seconds: 300
+    resident-key: REQUIRED
+    user-verification: REQUIRED
+    attestation: NONE

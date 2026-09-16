@@ -23,7 +23,7 @@ import { GroupDetail } from "@/components/admin/GroupDetail";
 import { GroupEntityRoute } from "@/components/admin/GroupEntityRoute";
 import { RolesTable } from "@/components/admin/RolesTable";
 import { RoleCreateForm } from "@/components/admin/RoleCreateForm";
-import { RoleDetail } from "@/components/admin/RoleDetail";
+import { RoleEntityRoute } from "@/components/admin/RoleEntityRoute";
 import { ConsentDetail } from "@/components/admin/ConsentDetail";
 import { ClientScopesTable } from "@/components/admin/ClientScopesTable";
 import { ClientScopeCreateForm } from "@/components/admin/ClientScopeCreateForm";
@@ -118,11 +118,10 @@ function PublicLayout() {
   );
 }
 
-function EntityDetail({ entity }: { entity: "group" | "role" | "consent" | "client-scope" }) {
+function EntityDetail({ entity }: { entity: "group" | "consent" | "client-scope" }) {
   const { id = "" } = useParams();
   const props = { locale: useLocale(), dictionary: useDictionary() };
   if (entity === "group") return <GroupDetail key={id} {...props} id={id} />;
-  if (entity === "role") return <RoleDetail key={id} {...props} name={id} />;
   if (entity === "client-scope") return <ClientScopeDetail key={id} {...props} id={id} />;
   return <ConsentDetail key={id} {...props} routeKey={id} />;
 }
@@ -305,7 +304,7 @@ export function AppRoutes() {
             </>
           }
         />
-        <Route path="roles/:id" element={<EntityDetail entity="role" />} />
+        <Route path="roles/:id/:section?" element={<RoleEntityRoute {...props} />} />
         <Route
           path="consents"
           element={

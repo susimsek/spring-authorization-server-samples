@@ -23,6 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 @ExtendWith(MockitoExtension.class)
 class AdminRoleServiceTest {
@@ -216,6 +217,29 @@ class AdminRoleServiceTest {
         verify(userRepository, never()).findAvailableRoleUsers(any(), any(), any());
     }
 
+    @Test
+    void filtersAndSortsAssignedUsers() {
+        AuthorityEntity role = authority(4L, "ROLE_AUDITOR");
+        UserEntity alice = user(10L, "alice", true, "alice@example.com");
+        UserEntity bob = user(11L, "bob", false, "bob@example.com");
+        alice.setAuthorities(java.util.Set.of(role));
+        bob.setAuthorities(java.util.Set.of(role));
+        when(authorityRepository.findByName("ROLE_AUDITOR")).thenReturn(Optional.of(role));
+        when(userRepository.findAllWithEffectiveAuthorities()).thenReturn(List.of(alice, bob));
+
+        var result =
+                service()
+                        .role(
+                                "ROLE_AUDITOR",
+                                "example.com",
+                                true,
+                                PageRequest.of(0, 10, Sort.by(Sort.Order.desc("username"))));
+
+        assertThat(result.users().getContent())
+                .containsExactly(new AdminRoleUserDTO(10L, "alice", true));
+        assertThat(result.userCount()).isEqualTo(1L);
+    }
+
     private AdminRoleService service() {
         return new AdminRoleService(
                 authorityRepository, userRepository, adminAuditEventService, adminUserService);
@@ -226,5 +250,14 @@ class AdminRoleServiceTest {
         authority.setId(id);
         authority.setName(name);
         return authority;
+    }
+
+    private static UserEntity user(Long id, String username, boolean enabled, String email) {
+        UserEntity user = new UserEntity();
+        user.setId(id);
+        user.setUsername(username);
+        user.setEnabled(enabled);
+        user.setEmail(email);
+        return user;
     }
 }

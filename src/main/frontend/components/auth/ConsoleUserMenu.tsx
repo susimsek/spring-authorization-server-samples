@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { Dropdown } from "react-bootstrap";
+import { Dropdown, Spinner } from "react-bootstrap";
 import { ActionIcon } from "@/components/shared/ActionIcon";
 import { Icon } from "@/components/shared/Icon";
 
@@ -20,11 +20,21 @@ export function ConsoleUserMenu({
   accountLabel: string;
   logoutLabel: string;
   signedInAsLabel: string;
-  onLogout: () => void;
+  onLogout: () => void | Promise<void>;
   avatarSrc?: string | null;
 }) {
   const [avatarFailed, setAvatarFailed] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const initial = username.trim().charAt(0).toUpperCase() || "?";
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await onLogout();
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   return (
     <Dropdown align="end">
@@ -59,8 +69,12 @@ export function ConsoleUserMenu({
           {accountLabel}
         </Dropdown.Item>
         <Dropdown.Divider />
-        <Dropdown.Item onClick={onLogout}>
-          <ActionIcon action="logout" />
+        <Dropdown.Item disabled={loggingOut} onClick={() => void handleLogout()}>
+          {loggingOut ? (
+            <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+          ) : (
+            <ActionIcon action="logout" />
+          )}
           {logoutLabel}
         </Dropdown.Item>
       </Dropdown.Menu>

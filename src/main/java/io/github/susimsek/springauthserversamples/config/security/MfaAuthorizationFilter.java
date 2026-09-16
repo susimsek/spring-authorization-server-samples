@@ -27,6 +27,7 @@ public class MfaAuthorizationFilter extends OncePerRequestFilter {
     public static final String MFA_VERIFIED_AT = "MFA_VERIFIED_AT";
     public static final String MFA_VERIFIED_REQUEST = "MFA_VERIFIED_REQUEST";
     public static final String MFA_PENDING_REQUEST = "MFA_PENDING_REQUEST";
+    public static final String MFA_CREDENTIAL_VERIFIED = "MFA_CREDENTIAL_VERIFIED";
     private static final Duration DEFAULT_VERIFICATION_TIMEOUT = Duration.ofMinutes(5);
 
     private final MfaService mfaService;
@@ -97,7 +98,18 @@ public class MfaAuthorizationFilter extends OncePerRequestFilter {
         session.removeAttribute(MFA_PENDING_REQUEST);
     }
 
+    /** Marks a successful passkey assertion as the credential factor for the next authorization. */
+    public static void markCredentialVerified(HttpSession session) {
+        if (session != null) {
+            session.setAttribute(MFA_CREDENTIAL_VERIFIED, true);
+        }
+    }
+
     private boolean isVerified(HttpSession session, String currentRequest) {
+        if (session != null && Boolean.TRUE.equals(session.getAttribute(MFA_CREDENTIAL_VERIFIED))) {
+            session.removeAttribute(MFA_CREDENTIAL_VERIFIED);
+            return true;
+        }
         if (session == null || !Boolean.TRUE.equals(session.getAttribute(MFA_VERIFIED))) {
             return false;
         }

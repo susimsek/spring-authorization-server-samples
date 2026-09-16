@@ -139,6 +139,14 @@ public class AccountController {
         return webAuthnService.credentials(authentication.getName(), pageable);
     }
 
+    @GetMapping("/webauthn/credentials/{credentialId}")
+    @Operation(summary = "Read a registered passkey", description = "Returns passkey metadata.")
+    @ApiResponse(responseCode = "200", description = "Passkey metadata returned.")
+    WebAuthnCredentialDTO webAuthnCredential(
+            Authentication authentication, @PathVariable String credentialId) {
+        return webAuthnService.credential(authentication.getName(), credentialId);
+    }
+
     @PutMapping("/webauthn/credentials/{credentialId}")
     @Operation(
             summary = "Rename a registered passkey",

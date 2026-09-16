@@ -18,6 +18,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,16 +67,9 @@ public class AdminRoleService {
                                     user ->
                                             !EffectiveRoleService.effectiveRoleNames(user)
                                                     .contains(name))
-                            .filter(
-                                    user ->
-                                            normalizedQuery.isEmpty()
-                                                    || user.getUsername()
-                                                            .toLowerCase(java.util.Locale.ROOT)
-                                                            .contains(
-                                                                    normalizedQuery.toLowerCase(
-                                                                            java.util.Locale.ROOT)))
-                            .sorted(java.util.Comparator.comparing(UserEntity::getUsername))
+                            .filter(user -> matchesQuery(user, normalizedQuery))
                             .toList();
+            availableUsers = sortUsers(availableUsers, pageable);
             int start = (int) Math.min(pageable.getOffset(), availableUsers.size());
             int end = Math.min(start + pageable.getPageSize(), availableUsers.size());
             return new PageImpl<>(
@@ -92,12 +86,18 @@ public class AdminRoleService {
 
     @Transactional(readOnly = true)
     public AdminRoleDetailDTO role(String name, String query, Pageable pageable) {
+        return role(name, query, null, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public AdminRoleDetailDTO role(String name, String query, Boolean enabled, Pageable pageable) {
         AuthorityEntity role =
                 authorityRepository
                         .findByName(name)
                         .orElseThrow(() -> ApiException.notFound("Role not found"));
         String normalizedQuery = AdminSearch.normalize(query);
         java.util.List<UserEntity> allUsers = userRepository.findAllWithEffectiveAuthorities();
+        boolean loadedAllUsers = allUsers != null && !allUsers.isEmpty();
         if (allUsers == null) {
             allUsers = java.util.List.of();
         }
@@ -107,18 +107,12 @@ public class AdminRoleService {
                                 user ->
                                         EffectiveRoleService.effectiveRoleNames(user)
                                                 .contains(name))
-                        .filter(
-                                user ->
-                                        normalizedQuery.isEmpty()
-                                                || user.getUsername()
-                                                        .toLowerCase(java.util.Locale.ROOT)
-                                                        .contains(
-                                                                normalizedQuery.toLowerCase(
-                                                                        java.util.Locale.ROOT)))
-                        .sorted(java.util.Comparator.comparing(UserEntity::getUsername))
+                        .filter(user -> enabled == null || user.isEnabled() == enabled)
+                        .filter(user -> matchesQuery(user, normalizedQuery))
                         .toList();
+        effectiveUsers = sortUsers(effectiveUsers, pageable);
         Page<AdminRoleUserDTO> users;
-        if (effectiveUsers.isEmpty()) {
+        if (!loadedAllUsers) {
             users =
                     userRepository
                             .findByAuthoritiesNameAndUsernameContainingIgnoreCase(
@@ -136,7 +130,7 @@ public class AdminRoleService {
                             effectiveUsers.size());
         }
         long userCount =
-                effectiveUsers.isEmpty()
+                !loadedAllUsers
                         ? userRepository.countByAuthoritiesId(role.getId())
                         : effectiveUsers.size();
         return adminRoleMapper.toDetailDTO(
@@ -235,5 +229,52 @@ public class AdminRoleService {
         }
         String value = description.strip();
         return value.isEmpty() ? null : value;
+    }
+
+    private static boolean matchesQuery(UserEntity user, String query) {
+        if (query.isEmpty()) {
+            return true;
+        }
+        String normalized = query.toLowerCase(java.util.Locale.ROOT);
+        return contains(user.getUsername(), normalized)
+                || contains(user.getEmail(), normalized)
+                || contains(user.getFirstName(), normalized)
+                || contains(user.getLastName(), normalized);
+    }
+
+    private static boolean contains(String value, String query) {
+        return value != null && value.toLowerCase(java.util.Locale.ROOT).contains(query);
+    }
+
+    private static java.util.List<UserEntity> sortUsers(
+            java.util.List<UserEntity> users, Pageable pageable) {
+        java.util.Comparator<UserEntity> comparator = null;
+        for (Sort.Order order : pageable.getSort()) {
+            java.util.Comparator<UserEntity> next =
+                    java.util.Comparator.comparing(
+                            user -> sortValue(user, order.getProperty()),
+                            java.util.Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+            if (order.isDescending()) {
+                next = next.reversed();
+            }
+            comparator = comparator == null ? next : comparator.thenComparing(next);
+        }
+        if (comparator == null) {
+            comparator =
+                    java.util.Comparator.comparing(
+                            UserEntity::getUsername,
+                            java.util.Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+        }
+        return users.stream().sorted(comparator.thenComparing(UserEntity::getId)).toList();
+    }
+
+    private static String sortValue(UserEntity user, String property) {
+        return switch (property) {
+            case "email" -> user.getEmail();
+            case "firstName" -> user.getFirstName();
+            case "lastName" -> user.getLastName();
+            case "enabled" -> Boolean.toString(user.isEnabled());
+            default -> user.getUsername();
+        };
     }
 }

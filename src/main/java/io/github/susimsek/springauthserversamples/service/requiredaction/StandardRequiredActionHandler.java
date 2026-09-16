@@ -130,7 +130,7 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
                             && loginSettingsService.isOtpRequired()
                             && !user.isTotpEnabled();
             case "RECOVERY_CODES" -> !completed;
-            case "CONFIGURE_PASSKEY" ->
+            case "CONFIGURE_PASSKEY", "CONFIGURE_PASSKEY_PASSWORDLESS" ->
                     webAuthnService != null && !webAuthnService.hasCredential(user.getUsername());
             default -> !completed;
         };
@@ -236,7 +236,7 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
                             "Save the recovery codes before completing this action");
                 }
             }
-            case "CONFIGURE_PASSKEY" -> {
+            case "CONFIGURE_PASSKEY", "CONFIGURE_PASSKEY_PASSWORDLESS" -> {
                 if (webAuthnService == null || !webAuthnService.hasCredential(user.getUsername())) {
                     throw ApiException.badRequest(
                             ApiErrorCode.INVALID_REQUEST,

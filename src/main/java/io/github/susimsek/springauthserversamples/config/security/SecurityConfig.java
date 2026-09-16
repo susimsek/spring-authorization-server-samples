@@ -4,6 +4,7 @@ import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
 import io.github.susimsek.springauthserversamples.security.LocalizedAccessDeniedHandler;
 import io.github.susimsek.springauthserversamples.security.LocalizedAuthenticationEntryPoint;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
@@ -86,6 +87,17 @@ public class SecurityConfig {
             PublicKeyCredentialRequestOptionsRepository webAuthnRequestOptionsRepository,
             WebAuthnRelyingPartyOperations webAuthnRelyingPartyOperations) {
         URI issuer = URI.create(applicationProperties.authorizationServer().issuer());
+        ApplicationProperties.WebAuthn policy = applicationProperties.webAuthn();
+        String configuredRpId = policy.rpId() == null ? "" : policy.rpId().trim();
+        String rpId = configuredRpId.isBlank() ? issuer.getHost() : configuredRpId;
+        String configuredOrigins = policy.allowedOrigins() == null ? "" : policy.allowedOrigins();
+        Set<String> allowedOrigins =
+                configuredOrigins.isBlank()
+                        ? Set.of(issuer.getScheme() + "://" + issuer.getRawAuthority())
+                        : Arrays.stream(configuredOrigins.split(","))
+                                .map(String::trim)
+                                .filter(value -> !value.isBlank())
+                                .collect(java.util.stream.Collectors.toUnmodifiableSet());
         SavedRequestAwareAuthenticationSuccessHandler successHandler =
                 new SavedRequestAwareAuthenticationSuccessHandler();
         successHandler.setDefaultTargetUrl("/admin");
@@ -163,9 +175,8 @@ public class SecurityConfig {
 
         http.webAuthn(
                 webAuthn ->
-                        webAuthn.rpId(issuer.getHost())
-                                .allowedOrigins(
-                                        issuer.getScheme() + "://" + issuer.getRawAuthority())
+                        webAuthn.rpId(rpId)
+                                .allowedOrigins(allowedOrigins)
                                 .disableDefaultRegistrationPage(true));
 
         PublicKeyCredentialRequestOptionsFilter requestOptionsFilter =
@@ -176,6 +187,7 @@ public class SecurityConfig {
         authenticationFilter.setRequestOptionsRepository(webAuthnRequestOptionsRepository);
         authenticationFilter.setAuthenticationSuccessHandler(
                 (request, response, authentication) -> {
+                    MfaAuthorizationFilter.markCredentialVerified(request.getSession(true));
                     if (request.getSession(false) != null
                             && request.getSession(false)
                                             .getAttribute(
@@ -183,7 +195,8 @@ public class SecurityConfig {
                                     != null) {
                         MfaAuthorizationFilter.markVerified(request.getSession(false));
                     }
-                    successHandler.onAuthenticationSuccess(request, response, authentication);
+                    new WebAuthnAuthenticationSuccessHandler()
+                            .onAuthenticationSuccess(request, response, authentication);
                 });
         authenticationFilter.setAuthenticationFailureHandler(
                 new SimpleUrlAuthenticationFailureHandler("/login?error"));

@@ -77,9 +77,7 @@ export function AdminShell({ locale, dictionary, children }: Props) {
                 accountLabel={dictionary.account.product}
                 logoutLabel={dictionary.admin.common.logout}
                 signedInAsLabel={dictionary.admin.common.signedInAs}
-                onLogout={() => {
-                  void logout(locale);
-                }}
+                onLogout={() => logout(locale)}
               />
             </div>
           </Container>

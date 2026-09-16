@@ -8,4 +8,9 @@ public record LoginSettingsDTO(
         @Schema(description = "Whether users can request password reset emails.")
                 boolean forgotPassword,
         @Schema(description = "Whether the login page offers remember-me sessions.")
-                boolean rememberMe) {}
+                boolean rememberMe,
+        @Schema(
+                        description = "Whether the login page offers passkey sign-in.",
+                        example = "true",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                boolean passkeys) {}

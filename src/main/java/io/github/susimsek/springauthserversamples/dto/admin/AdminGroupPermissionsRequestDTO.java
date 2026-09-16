@@ -12,8 +12,7 @@ import java.util.List;
 public record AdminGroupPermissionsRequestDTO(
         @NotNull
                 @Size(max = 200)
-                @Valid
                 @Schema(
                         description = "Complete permission assignment list.",
                         requiredMode = Schema.RequiredMode.REQUIRED)
-                List<AdminGroupPermissionRequestDTO> permissions) {}
+                List<@Valid AdminGroupPermissionRequestDTO> permissions) {}

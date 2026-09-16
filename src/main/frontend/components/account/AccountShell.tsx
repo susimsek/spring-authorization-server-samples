@@ -66,9 +66,7 @@ export function AccountShell({
                 accountLabel={dictionary.account.nav.personalInfo}
                 logoutLabel={dictionary.account.logout}
                 signedInAsLabel={dictionary.admin.common.signedInAs}
-                onLogout={() => {
-                  void logout(locale);
-                }}
+                onLogout={() => logout(locale)}
               />
             </div>
           </Container>

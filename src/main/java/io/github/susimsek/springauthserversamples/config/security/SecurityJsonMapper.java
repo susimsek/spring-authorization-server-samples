@@ -22,8 +22,10 @@ import org.springframework.security.web.webauthn.api.PublicKeyCredentialParamete
 import org.springframework.security.web.webauthn.api.PublicKeyCredentialType;
 import org.springframework.security.web.webauthn.api.ResidentKeyRequirement;
 import org.springframework.security.web.webauthn.api.UserVerificationRequirement;
+import org.springframework.security.web.webauthn.authentication.WebAuthnAuthentication;
 import org.springframework.security.web.webauthn.jackson.WebauthnJacksonModule;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import tools.jackson.databind.module.SimpleModule;
 
 /**
@@ -45,9 +47,13 @@ public final class SecurityJsonMapper {
     private final JsonMapper webauthnDelegate;
 
     public SecurityJsonMapper(ClassLoader classLoader) {
+        BasicPolymorphicTypeValidator.Builder typeValidator =
+                BasicPolymorphicTypeValidator.builder()
+                        .allowIfSubType(WebAuthnAuthentication.class)
+                        .allowIfSubType(ImmutablePublicKeyCredentialUserEntity.class);
         this.delegate =
                 JsonMapper.builder()
-                        .addModules(SecurityJacksonModules.getModules(classLoader))
+                        .addModules(SecurityJacksonModules.getModules(classLoader, typeValidator))
                         .addModule(new WebauthnJacksonModule())
                         .build();
         this.webauthnDelegate =

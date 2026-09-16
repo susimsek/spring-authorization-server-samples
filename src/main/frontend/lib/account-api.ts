@@ -48,6 +48,10 @@ export type AccountWebAuthnCredential = {
   transports: string[];
   backupEligible: boolean;
   backupState: boolean;
+  credentialType?: string;
+  signatureCount?: number;
+  uvInitialized?: boolean;
+  attestationPresent?: boolean;
 };
 
 export function registerAccountTokenHandlers(handlers: TokenHandlers | undefined) {

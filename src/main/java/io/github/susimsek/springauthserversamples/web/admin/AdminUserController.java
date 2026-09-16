@@ -147,6 +147,19 @@ class AdminUserController {
         return webAuthnService.credentials(user.getUsername(), pageable);
     }
 
+    @GetMapping("/{id}/webauthn/credentials/{credentialId}")
+    @Operation(
+            summary = "Read user passkey data",
+            description = "Returns registered passkey metadata.")
+    @ApiResponse(responseCode = "200", description = "Passkey metadata returned.")
+    WebAuthnCredentialDTO webAuthnCredential(
+            @PathVariable Long id,
+            @PathVariable String credentialId,
+            Authentication authentication) {
+        var user = adminUserService.requireManageableUser(id, authentication.getName());
+        return webAuthnService.credential(user.getUsername(), credentialId);
+    }
+
     @PutMapping("/{id}/webauthn/credentials/{credentialId}")
     @Operation(summary = "Rename user passkey", description = "Updates a registered passkey label.")
     @ApiResponse(responseCode = "204", description = "Passkey label updated.")

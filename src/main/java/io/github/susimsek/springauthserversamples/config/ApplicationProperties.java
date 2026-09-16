@@ -11,7 +11,8 @@ public record ApplicationProperties(
         @DefaultValue Session session,
         @DefaultValue AuthorizationServer authorizationServer,
         @DefaultValue Mail mail,
-        @DefaultValue Security security) {
+        @DefaultValue Security security,
+        @DefaultValue WebAuthn webAuthn) {
 
     @ConstructorBinding
     public ApplicationProperties(
@@ -19,12 +20,14 @@ public record ApplicationProperties(
             Session session,
             AuthorizationServer authorizationServer,
             Mail mail,
-            Security security) {
+            Security security,
+            WebAuthn webAuthn) {
         this.cache = cache;
         this.session = session;
         this.authorizationServer = authorizationServer;
         this.mail = mail;
         this.security = security;
+        this.webAuthn = webAuthn == null ? new WebAuthn() : webAuthn;
     }
 
     public ApplicationProperties() {
@@ -36,12 +39,22 @@ public record ApplicationProperties(
                         false,
                         "Spring Authorization Server <no-reply@localhost>",
                         "http://127.0.0.1:9090"),
-                new Security());
+                new Security(),
+                new WebAuthn());
     }
 
     public ApplicationProperties(
             Cache cache, Session session, AuthorizationServer authorizationServer, Mail mail) {
-        this(cache, session, authorizationServer, mail, new Security());
+        this(cache, session, authorizationServer, mail, new Security(), new WebAuthn());
+    }
+
+    public ApplicationProperties(
+            Cache cache,
+            Session session,
+            AuthorizationServer authorizationServer,
+            Mail mail,
+            Security security) {
+        this(cache, session, authorizationServer, mail, security, new WebAuthn());
     }
 
     public record Cache(@DefaultValue Caffeine caffeine) {}
@@ -54,6 +67,27 @@ public record ApplicationProperties(
     public record Session(@DefaultValue("0 * * * * *") String cleanupCron) {}
 
     public record AuthorizationServer(@DefaultValue("http://127.0.0.1:9090") String issuer) {}
+
+    public record WebAuthn(
+            @DefaultValue("Spring Authorization Server Samples") String rpName,
+            @DefaultValue("") String rpId,
+            @DefaultValue("") String allowedOrigins,
+            @DefaultValue("300") int timeoutSeconds,
+            @DefaultValue("REQUIRED") String residentKey,
+            @DefaultValue("REQUIRED") String userVerification,
+            @DefaultValue("NONE") String attestation) {
+
+        public WebAuthn() {
+            this(
+                    "Spring Authorization Server Samples",
+                    "",
+                    "",
+                    300,
+                    "REQUIRED",
+                    "REQUIRED",
+                    "NONE");
+        }
+    }
 
     public record Mail(
             @DefaultValue("false") boolean enabled,

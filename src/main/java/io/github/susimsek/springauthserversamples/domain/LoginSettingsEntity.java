@@ -30,6 +30,9 @@ public class LoginSettingsEntity {
     @Column(name = "remember_me_enabled", nullable = false)
     private boolean rememberMeEnabled;
 
+    @Column(name = "passkeys_enabled", nullable = false)
+    private boolean passkeysEnabled;
+
     @Column(name = "login_with_email", nullable = false)
     private boolean loginWithEmail;
 

@@ -2,7 +2,7 @@
 import { useDictionary, useLocale } from "@/i18n/client";
 
 import { useEffect, useState } from "react";
-import { Alert, Badge, Button, Card, Nav, Tab } from "react-bootstrap";
+import { Alert, Badge, Button, Card, Nav, Spinner, Tab } from "react-bootstrap";
 
 import { ViewHeader } from "@/components/admin/ViewHeader";
 import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
@@ -43,22 +43,29 @@ function CopyButton({
   label,
   onCopy,
   copiedLabel,
+  copying,
 }: {
   copied: boolean;
   label: string;
   onCopy: () => void;
   copiedLabel: string;
+  copying: boolean;
 }) {
   return (
     <Button
       aria-label={copied ? copiedLabel : label}
       className="text-nowrap"
+      disabled={copying}
       onClick={onCopy}
       size="sm"
       type="button"
       variant={copied ? "success" : "secondary"}
     >
-      <AdminActionIcon action={copied ? "check" : "copy"} />
+      {copying ? (
+        <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+      ) : (
+        <AdminActionIcon action={copied ? "check" : "copy"} />
+      )}
       {copied ? copiedLabel : label}
     </Button>
   );
@@ -72,6 +79,7 @@ export default function ServerInfoPage() {
   const [discovery, setDiscovery] = useState<unknown>(null);
   const [jwks, setJwks] = useState<unknown>(null);
   const [copiedValue, setCopiedValue] = useState<string | null>(null);
+  const [copyingValue, setCopyingValue] = useState<string | null>(null);
   const [copyFailed, setCopyFailed] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [discoveryError, setDiscoveryError] = useState(false);
@@ -111,6 +119,7 @@ export default function ServerInfoPage() {
   const loading = Boolean(accessToken) && !info && !loadError;
 
   const copyValue = async (value: string) => {
+    setCopyingValue(value);
     try {
       await navigator.clipboard.writeText(value);
       setCopyFailed(false);
@@ -119,6 +128,8 @@ export default function ServerInfoPage() {
     } catch {
       setCopiedValue(null);
       setCopyFailed(true);
+    } finally {
+      setCopyingValue(null);
     }
   };
 
@@ -195,6 +206,7 @@ export default function ServerInfoPage() {
                         <td className="text-end">
                           <CopyButton
                             copied={copiedValue === value}
+                            copying={copyingValue === value}
                             copiedLabel={copy.copied}
                             label={copy.copy}
                             onCopy={() => void copyValue(value)}
@@ -230,6 +242,7 @@ export default function ServerInfoPage() {
                       {info && discovery !== null && (
                         <CopyButton
                           copied={copiedValue === JSON.stringify(discovery, null, 2)}
+                          copying={copyingValue === JSON.stringify(discovery, null, 2)}
                           copiedLabel={copy.copied}
                           label={copy.copyJson}
                           onCopy={() => void copyValue(JSON.stringify(discovery, null, 2))}
@@ -252,6 +265,7 @@ export default function ServerInfoPage() {
                       {info && jwks !== null && (
                         <CopyButton
                           copied={copiedValue === JSON.stringify(jwks, null, 2)}
+                          copying={copyingValue === JSON.stringify(jwks, null, 2)}
                           copiedLabel={copy.copied}
                           label={copy.copyJson}
                           onCopy={() => void copyValue(JSON.stringify(jwks, null, 2))}

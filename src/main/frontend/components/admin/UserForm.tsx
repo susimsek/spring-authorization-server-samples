@@ -76,6 +76,10 @@ type AdminPasskey = {
   transports: string[];
   backupEligible: boolean;
   backupState: boolean;
+  credentialType?: string;
+  signatureCount?: number;
+  uvInitialized?: boolean;
+  attestationPresent?: boolean;
 };
 type ProfileDefinition = {
   id: number;
@@ -1580,6 +1584,13 @@ function AdminPasskeyRow({
           <div className="small text-body-secondary">
             {copy.passkeyLastUsed}: {new Date(credential.lastUsedAt).toLocaleString()}
           </div>
+          {credential.signatureCount !== undefined && (
+            <div className="small text-body-secondary">
+              {credential.credentialType} · {copy.passkeySignatureCount}:{" "}
+              {credential.signatureCount} · {copy.passkeyUserVerification}:{" "}
+              {credential.uvInitialized ? copy.yes : copy.no}
+            </div>
+          )}
         </div>
         {canManage && (
           <Form onSubmit={submit} noValidate className="d-flex gap-2 align-items-start">
@@ -1594,7 +1605,8 @@ function AdminPasskeyRow({
               </Form.Control.Feedback>
             </div>
             <Button type="submit" disabled={busy}>
-              {busy ? <Spinner animation="border" size="sm" aria-hidden="true" /> : copy.save}
+              {busy && <Spinner animation="border" className="me-2" size="sm" aria-hidden="true" />}
+              {copy.save}
             </Button>
             <Button
               type="button"
@@ -1602,6 +1614,7 @@ function AdminPasskeyRow({
               disabled={busy}
               onClick={() => onRemove(credential)}
             >
+              {busy && <Spinner animation="border" className="me-2" size="sm" aria-hidden="true" />}
               {copy.delete}
             </Button>
           </Form>

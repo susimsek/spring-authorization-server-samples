@@ -18,11 +18,13 @@ public interface LoginSettingsMapper {
     @Mapping(target = "userRegistration", source = "userRegistrationEnabled")
     @Mapping(target = "forgotPassword", source = "forgotPasswordEnabled")
     @Mapping(target = "rememberMe", source = "rememberMeEnabled")
+    @Mapping(target = "passkeys", source = "passkeysEnabled")
     LoginSettingsDTO toPublicDTO(LoginSettingsEntity source);
 
     @Mapping(target = "userRegistration", source = "userRegistrationEnabled")
     @Mapping(target = "forgotPassword", source = "forgotPasswordEnabled")
     @Mapping(target = "rememberMe", source = "rememberMeEnabled")
+    @Mapping(target = "passkeys", source = "passkeysEnabled")
     @Mapping(target = "loginWithEmail", source = "loginWithEmail")
     @Mapping(target = "verifyEmail", source = "verifyEmail")
     @Mapping(target = "sessionTimeoutMinutes", source = "sessionTimeoutMinutes")
@@ -128,6 +130,7 @@ public interface LoginSettingsMapper {
     @Mapping(target = "otpCodeReusable", source = "otpCodeReusable")
     @Mapping(target = "otpAddRecoveryCodes", source = "otpAddRecoveryCodes")
     @Mapping(target = "recoveryCodeWarningThreshold", source = "recoveryCodeWarningThreshold")
+    @Mapping(target = "passkeysEnabled", source = "passkeys")
     void update(AdminLoginSettingsRequestDTO source, @MappingTarget LoginSettingsEntity target);
 
     @Named("trim")

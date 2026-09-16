@@ -18,6 +18,7 @@ type Settings = {
   userRegistration: boolean;
   forgotPassword: boolean;
   rememberMe: boolean;
+  passkeys: boolean;
   loginWithEmail: boolean;
   verifyEmail: boolean;
   sessionTimeoutMinutes: number;
@@ -79,6 +80,7 @@ export default function LoginSettingsPage({
     userRegistration: z.boolean(),
     forgotPassword: z.boolean(),
     rememberMe: z.boolean(),
+    passkeys: z.boolean(),
     loginWithEmail: z.boolean(),
     verifyEmail: z.boolean(),
     sessionTimeoutMinutes: z.number().int().min(1, validation.positiveNumber),
@@ -202,6 +204,12 @@ export default function LoginSettingsPage({
                   type="switch"
                   label={copy.rememberMe}
                   {...register("rememberMe")}
+                />
+                <Form.Check
+                  className="mb-4"
+                  type="switch"
+                  label={copy.passkeys}
+                  {...register("passkeys")}
                 />
                 <Form.Check
                   className="mb-4"
