@@ -27,6 +27,7 @@ class MailTemplateTest {
         ResourceBundleMessageSource messageSource = new ResourceBundleMessageSource();
         messageSource.setBasename("i18n/messages");
         messageSource.setDefaultEncoding(StandardCharsets.UTF_8.name());
+        messageSource.setFallbackToSystemLocale(false);
 
         templateEngine = new SpringTemplateEngine();
         templateEngine.setTemplateResolver(templateResolver);

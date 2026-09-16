@@ -20,6 +20,7 @@ import { UserEntityRoute } from "@/components/admin/UserEntityRoute";
 import { GroupsTable } from "@/components/admin/GroupsTable";
 import { GroupCreateForm } from "@/components/admin/GroupCreateForm";
 import { GroupDetail } from "@/components/admin/GroupDetail";
+import { GroupEntityRoute } from "@/components/admin/GroupEntityRoute";
 import { RolesTable } from "@/components/admin/RolesTable";
 import { RoleCreateForm } from "@/components/admin/RoleCreateForm";
 import { RoleDetail } from "@/components/admin/RoleDetail";
@@ -279,7 +280,7 @@ export function AppRoutes() {
             </>
           }
         />
-        <Route path="groups/:id" element={<EntityDetail entity="group" />} />
+        <Route path="groups/:id/:section?" element={<GroupEntityRoute {...props} />} />
         <Route
           path="roles"
           element={

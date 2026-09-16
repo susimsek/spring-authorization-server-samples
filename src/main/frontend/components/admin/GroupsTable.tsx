@@ -148,7 +148,7 @@ export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
           {groups.map((group) => (
             <tr key={group.id}>
               <td data-label={copy.name}>
-                <Link className="text-decoration-none" href={`/admin/groups/${group.id}`}>
+                <Link className="text-decoration-none" href={`/admin/groups/${group.id}/details`}>
                   {group.path}
                 </Link>
               </td>
@@ -156,7 +156,7 @@ export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
               <td data-label={copy.members}>{group.userCount}</td>
               <td className="text-end">
                 <RowActions label={`${group.path} ${dictionary.admin.common.actions}`}>
-                  <Dropdown.Item as={Link} href={`/admin/groups/${group.id}`}>
+                  <Dropdown.Item as={Link} href={`/admin/groups/${group.id}/details`}>
                     <AdminActionIcon action="edit" />
                     {copy.settings}
                   </Dropdown.Item>

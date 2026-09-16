@@ -265,7 +265,7 @@ class ApiExceptionHandlerTest {
 
     private static class ValidatedTarget {
         @SuppressWarnings("unused")
-        void update(@NotBlank String clientId) {}
+        void update(@NotBlank(message = "must not be blank") String clientId) {}
     }
 
     private static ParameterValidationResult parameterResult(MethodParameter parameter) {

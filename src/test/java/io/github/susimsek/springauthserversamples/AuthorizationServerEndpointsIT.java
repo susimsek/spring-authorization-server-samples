@@ -6,6 +6,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.github.susimsek.springauthserversamples.repository.UserSessionRepository;
@@ -44,6 +45,17 @@ class AuthorizationServerEndpointsIT {
     @Autowired private OAuth2AuthorizationConsentService authorizationConsentService;
 
     @Autowired private UserSessionRepository userSessionRepository;
+
+    @Test
+    void formLoginWithoutSavedRequestRedirectsToAdminConsole() throws Exception {
+        mockMvc.perform(
+                        post("/login")
+                                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                .param("username", "admin")
+                                .param("password", "admin"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin"));
+    }
 
     @ParameterizedTest
     @CsvSource({"account, tr, en", "account, en, tr", "admin, tr, en", "admin, en, tr"})

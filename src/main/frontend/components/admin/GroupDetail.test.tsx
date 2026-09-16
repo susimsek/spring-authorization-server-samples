@@ -92,8 +92,6 @@ it("edits group attributes and the default-group flag", async () => {
   render(<GroupDetail id="7" locale="en" dictionary={en} />);
 
   const attributes = await screen.findByRole("textbox", { name: en.admin.groups.attributes });
-  expect(screen.getByRole("heading", { name: en.admin.groups.permissions })).toBeVisible();
-  expect(screen.getByRole("button", { name: en.admin.groups.addPermission })).toBeVisible();
   fireEvent.change(attributes, { target: { value: '{"department":["platform"]}' } });
   fireEvent.click(screen.getByRole("checkbox", { name: en.admin.groups.defaultGroup }));
   fireEvent.click(screen.getByRole("button", { name: en.admin.common.save }));
@@ -110,4 +108,71 @@ it("edits group attributes and the default-group flag", async () => {
       },
     }),
   );
+});
+
+it("shows permission actions on the permissions tab", async () => {
+  mockGroupIsAdmin = true;
+  const request = jest.mocked(adminRequest);
+  request.mockReset();
+  request.mockImplementation(
+    async (_token, config) =>
+      ({
+        status: 200,
+        data:
+          config.url === "/api/admin/groups/7"
+            ? {
+                id: 7,
+                name: "Operators",
+                path: "/Operators",
+                parentId: null,
+                roles: [],
+                userCount: 0,
+                attributes: {},
+                defaultGroup: false,
+              }
+            : { content: [], totalPages: 0, totalElements: 0 },
+      }) as never,
+  );
+
+  render(<GroupDetail id="7" locale="en" dictionary={en} tab="permissions" />);
+
+  expect(await screen.findByRole("heading", { name: en.admin.groups.permissions })).toBeVisible();
+  expect(screen.getByRole("button", { name: en.admin.groups.addPermission })).toBeVisible();
+});
+
+it("sorts group members by username", async () => {
+  mockGroupIsAdmin = true;
+  const request = jest.mocked(adminRequest);
+  request.mockReset();
+  request.mockImplementation(
+    async (_token, config) =>
+      ({
+        status: 200,
+        data:
+          config.url === "/api/admin/groups/7"
+            ? {
+                id: 7,
+                name: "Operators",
+                path: "/Operators",
+                parentId: null,
+                roles: [],
+                userCount: 0,
+                attributes: {},
+                defaultGroup: false,
+              }
+            : { content: [], totalPages: 0, totalElements: 0 },
+      }) as never,
+  );
+
+  render(<GroupDetail id="7" locale="en" dictionary={en} tab="members" />);
+
+  expect(await screen.findByRole("combobox", { name: en.admin.resources.sort })).toHaveValue(
+    "username,asc",
+  );
+  expect(
+    request.mock.calls.some(
+      ([, config]) =>
+        config.url === "/api/admin/groups/7/users?q=&page=0&size=10&sort=username%2Casc",
+    ),
+  ).toBe(true);
 });

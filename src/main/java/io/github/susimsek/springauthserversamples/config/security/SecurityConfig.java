@@ -86,6 +86,9 @@ public class SecurityConfig {
             PublicKeyCredentialRequestOptionsRepository webAuthnRequestOptionsRepository,
             WebAuthnRelyingPartyOperations webAuthnRelyingPartyOperations) {
         URI issuer = URI.create(applicationProperties.authorizationServer().issuer());
+        SavedRequestAwareAuthenticationSuccessHandler successHandler =
+                new SavedRequestAwareAuthenticationSuccessHandler();
+        successHandler.setDefaultTargetUrl("/admin");
         http.securityContext(
                         securityContext ->
                                 securityContext
@@ -153,6 +156,7 @@ public class SecurityConfig {
                         formLogin ->
                                 formLogin
                                         .loginPage("/login")
+                                        .successHandler(successHandler)
                                         .securityContextRepository(securityContextRepository)
                                         .permitAll())
                 .rememberMe(rememberMe -> rememberMe.rememberMeServices(rememberMeServices));
@@ -170,9 +174,6 @@ public class SecurityConfig {
         WebAuthnAuthenticationFilter authenticationFilter = new WebAuthnAuthenticationFilter();
         authenticationFilter.setAuthenticationManager(webAuthnAuthenticationManager);
         authenticationFilter.setRequestOptionsRepository(webAuthnRequestOptionsRepository);
-        SavedRequestAwareAuthenticationSuccessHandler successHandler =
-                new SavedRequestAwareAuthenticationSuccessHandler();
-        successHandler.setDefaultTargetUrl("/");
         authenticationFilter.setAuthenticationSuccessHandler(
                 (request, response, authentication) -> {
                     if (request.getSession(false) != null

@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import dictionary from "@/locales/en/common.json";
 import { ClientEntityRoute } from "./ClientEntityRoute";
+import { GroupEntityRoute } from "./GroupEntityRoute";
 import { UserEntityRoute } from "./UserEntityRoute";
 
 jest.mock("./ClientDetail", () => ({
@@ -9,6 +10,9 @@ jest.mock("./ClientDetail", () => ({
 }));
 jest.mock("./UserForm", () => ({
   UserForm: (props: unknown) => <pre>{JSON.stringify(props)}</pre>,
+}));
+jest.mock("./GroupDetail", () => ({
+  GroupDetail: (props: unknown) => <pre>{JSON.stringify(props)}</pre>,
 }));
 
 describe("runtime entity routing", () => {
@@ -30,6 +34,25 @@ describe("runtime entity routing", () => {
           <Route
             path="/admin/users/:id/:section?"
             element={<UserEntityRoute locale="en" dictionary={dictionary} />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.getByText(new RegExp('"id":"' + id + '"'))).toHaveTextContent(
+      '"tab":"' + tab + '"',
+    );
+  });
+
+  it.each([
+    ["/admin/groups/123", "123", "details"],
+    ["/admin/groups/42/permissions", "42", "permissions"],
+  ])("resolves group route %s to the expected tab", (path, id, tab) => {
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route
+            path="/admin/groups/:id/:section?"
+            element={<GroupEntityRoute locale="en" dictionary={dictionary} />}
           />
         </Routes>
       </MemoryRouter>,
