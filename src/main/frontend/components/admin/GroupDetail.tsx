@@ -18,6 +18,7 @@ import { useAdminAuth } from "./AdminAuthProvider";
 import { AdminActionIcon } from "./AdminActionIcon";
 import { AdminBreadcrumb } from "./AdminBreadcrumb";
 import { DataTable } from "./DataTable";
+import { DetailTabs } from "./DetailTabs";
 import { ErrorState, LoadingState } from "./AsyncState";
 import { PaginationControls } from "./PaginationControls";
 import { ResourceFilters } from "./ResourceFilters";
@@ -37,14 +38,17 @@ type Group = {
 type Role = { name: string };
 type Permission = { userId: number; username: string; permission: string };
 type PermissionValues = { assignments: { userId: string; permission: string }[] };
+export type GroupDetailTab = "details" | "permissions" | "roles" | "members";
 
 export function GroupDetail({
   dictionary,
   id,
+  tab,
 }: {
   locale: Locale;
   dictionary: Dictionary;
   id: string;
+  tab?: GroupDetailTab;
 }) {
   const { access, accessToken } = useAdminAuth();
   const canManageUsers = Boolean(access?.manageUsers);
@@ -53,6 +57,7 @@ export function GroupDetail({
   const alerts = useConsoleAlerts();
   const router = useRouter();
   const groupId = id;
+  const activeTab = tab ?? "details";
   const copy = dictionary.admin.groups;
   const [group, setGroup] = useState<Group | null>(null);
   const groupFormInitialized = useRef(false);
@@ -76,8 +81,10 @@ export function GroupDetail({
     setPage: setMemberPage,
     setQuery: setMemberQuery,
     setSize: setMemberSize,
+    setSort: setMemberSort,
     size: memberSize,
-  } = useAdminTableState();
+    sort: memberSort,
+  } = useAdminTableState(10, false, "username,asc");
   const groupSettingsSchema = z.object({
     name: z
       .string()
@@ -143,7 +150,7 @@ export function GroupDetail({
           url: "/api/admin/groups?page=0&size=100",
         }),
         adminRequest<PageResponse<User>>(accessToken, {
-          url: `/api/admin/groups/${encodeURIComponent(groupId)}/users?q=${encodeURIComponent(memberQuery)}&page=${memberPage}&size=${memberSize}`,
+          url: `/api/admin/groups/${encodeURIComponent(groupId)}/users?q=${encodeURIComponent(memberQuery)}&page=${memberPage}&size=${memberSize}&sort=${encodeURIComponent(memberSort)}`,
         }),
         adminRequest<Permission[]>(accessToken, {
           url: `/api/admin/groups/${encodeURIComponent(groupId)}/permissions`,
@@ -197,6 +204,7 @@ export function GroupDetail({
     memberPage,
     memberQuery,
     memberSize,
+    memberSort,
     resetGroupSettings,
     resetPermissions,
   ]);
@@ -345,6 +353,14 @@ export function GroupDetail({
   if (loading && !group) return <LoadingState />;
   if (error || !group) return <ErrorState message={copy.operationError} />;
 
+  const groupBaseUrl = `/admin/groups/${encodeURIComponent(groupId)}`;
+  const groupTabs = [
+    { key: "details", label: copy.settings, href: `${groupBaseUrl}/details` },
+    { key: "permissions", label: copy.permissions, href: `${groupBaseUrl}/permissions` },
+    { key: "roles", label: copy.roleMappings, href: `${groupBaseUrl}/roles` },
+    { key: "members", label: copy.members, href: `${groupBaseUrl}/members` },
+  ];
+
   return (
     <div className="d-grid gap-4">
       <AdminBreadcrumb
@@ -358,292 +374,326 @@ export function GroupDetail({
           </div>
         </div>
       </div>
-      <Card className="admin-panel-card">
-        <Card.Body>
-          <h2 className="h5 mb-1">{copy.settings}</h2>
-          <p className="small text-body-secondary mb-3">{copy.renameHelp}</p>
-          <Form onSubmit={handleGroupSettingsSubmit(saveSettings)}>
-            <Form.Group className="mb-3" controlId="group-name">
-              <Form.Label>{copy.name}</Form.Label>
-              <Form.Control
-                isInvalid={Boolean(groupSettingsErrors.name)}
-                maxLength={100}
+      <DetailTabs tabs={groupTabs} active={activeTab} />
+      {activeTab === "details" && (
+        <Card className="admin-panel-card">
+          <Card.Body>
+            <h2 className="h5 mb-1">{copy.settings}</h2>
+            <p className="small text-body-secondary mb-3">{copy.renameHelp}</p>
+            <Form onSubmit={handleGroupSettingsSubmit(saveSettings)}>
+              <Form.Group className="mb-3" controlId="group-name">
+                <Form.Label>{copy.name}</Form.Label>
+                <Form.Control
+                  isInvalid={Boolean(groupSettingsErrors.name)}
+                  maxLength={100}
+                  disabled={!canManageUsers}
+                  {...registerGroupSettings("name")}
+                />
+                <Form.Control.Feedback type="invalid">
+                  {groupSettingsErrors.name?.message}
+                </Form.Control.Feedback>
+              </Form.Group>
+              <Form.Group className="mb-3" controlId="group-attributes-detail">
+                <Form.Label>{copy.attributes}</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  isInvalid={Boolean(groupSettingsErrors.attributesJson)}
+                  rows={4}
+                  disabled={!canManageUsers}
+                  placeholder='{"department":["finance"]}'
+                  {...registerGroupSettings("attributesJson")}
+                />
+                <Form.Control.Feedback type="invalid">
+                  {groupSettingsErrors.attributesJson?.message}
+                </Form.Control.Feedback>
+                <Form.Text>{copy.attributesHelp}</Form.Text>
+              </Form.Group>
+              <Form.Check
+                className="mb-3"
                 disabled={!canManageUsers}
-                {...registerGroupSettings("name")}
+                id="group-default-detail"
+                label={copy.defaultGroup}
+                {...registerGroupSettings("defaultGroup")}
               />
-              <Form.Control.Feedback type="invalid">
-                {groupSettingsErrors.name?.message}
-              </Form.Control.Feedback>
-            </Form.Group>
-            <Form.Group className="mb-3" controlId="group-attributes-detail">
-              <Form.Label>{copy.attributes}</Form.Label>
-              <Form.Control
-                as="textarea"
-                isInvalid={Boolean(groupSettingsErrors.attributesJson)}
-                rows={4}
-                disabled={!canManageUsers}
-                placeholder='{"department":["finance"]}'
-                {...registerGroupSettings("attributesJson")}
-              />
-              <Form.Control.Feedback type="invalid">
-                {groupSettingsErrors.attributesJson?.message}
-              </Form.Control.Feedback>
-              <Form.Text>{copy.attributesHelp}</Form.Text>
-            </Form.Group>
-            <Form.Check
-              className="mb-3"
-              disabled={!canManageUsers}
-              id="group-default-detail"
-              label={copy.defaultGroup}
-              {...registerGroupSettings("defaultGroup")}
-            />
-            <Form.Group className="mb-3" controlId="group-parent">
-              <Form.Label>{copy.parent}</Form.Label>
-              <Form.Select disabled={!canManageUsers} {...registerGroupSettings("parentId")}>
-                <option value="">{copy.rootGroup}</option>
-                {groups
-                  .filter((candidate) => candidate.id !== group.id)
-                  .map((candidate) => (
-                    <option key={candidate.id} value={candidate.id}>
-                      {candidate.path}
-                    </option>
-                  ))}
-              </Form.Select>
-              <Form.Text>{copy.parentHelp}</Form.Text>
-            </Form.Group>
-            <div className="admin-form-actions">
-              {canManageUsers && (
-                <Button disabled={saving || !isGroupSettingsDirty} type="submit">
-                  {saving ? (
-                    <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
-                  ) : (
-                    <AdminActionIcon action="save" />
-                  )}
-                  {dictionary.admin.common.save}
-                </Button>
-              )}
-            </div>
-          </Form>
-        </Card.Body>
-      </Card>
-      <Card className="admin-panel-card">
-        <Card.Body>
-          <h2 className="h5 mb-1">{copy.permissions}</h2>
-          <p className="small text-body-secondary mb-3">{copy.permissionsHelp}</p>
-          <Form onSubmit={handlePermissionsSubmit(savePermissions)}>
-            {fields.map((field, index) => (
-              <div className="d-flex gap-2 align-items-end mb-2" key={field.id}>
-                <Form.Group className="flex-grow-1" controlId={`group-permission-user-${index}`}>
-                  <Form.Label>{copy.permissionUser}</Form.Label>
-                  <Form.Select
-                    disabled={!canManagePermissions}
-                    {...registerPermission(`assignments.${index}.userId`)}
-                  >
-                    <option value="">{copy.selectUser}</option>
-                    {permissionUsers.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.username}
+              <Form.Group className="mb-3" controlId="group-parent">
+                <Form.Label>{copy.parent}</Form.Label>
+                <Form.Select disabled={!canManageUsers} {...registerGroupSettings("parentId")}>
+                  <option value="">{copy.rootGroup}</option>
+                  {groups
+                    .filter((candidate) => candidate.id !== group.id)
+                    .map((candidate) => (
+                      <option key={candidate.id} value={candidate.id}>
+                        {candidate.path}
                       </option>
                     ))}
-                  </Form.Select>
-                </Form.Group>
-                <Form.Group className="flex-grow-1" controlId={`group-permission-value-${index}`}>
-                  <Form.Label>{copy.permission}</Form.Label>
-                  <Form.Select
-                    disabled={!canManagePermissions}
-                    {...registerPermission(`assignments.${index}.permission`)}
-                  >
-                    {(["VIEW", "MANAGE_MEMBERS", "MANAGE_ROLES", "MANAGE_GROUP"] as const).map(
-                      (permission) => (
-                        <option key={permission} value={permission}>
-                          {permission}
-                        </option>
-                      ),
-                    )}
-                  </Form.Select>
-                </Form.Group>
-                {canManagePermissions && (
-                  <Button variant="danger" onClick={() => remove(index)}>
-                    {copy.removePermission}
-                  </Button>
-                )}
-              </div>
-            ))}
-            {canManagePermissions && (
+                </Form.Select>
+                <Form.Text>{copy.parentHelp}</Form.Text>
+              </Form.Group>
               <div className="admin-form-actions">
-                <Button
-                  variant="secondary"
-                  onClick={() => append({ userId: "", permission: "VIEW" })}
-                >
-                  {copy.addPermission}
-                </Button>
-                <Button disabled={saving} type="submit">
-                  {saving ? (
-                    <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
-                  ) : (
-                    <AdminActionIcon action="save" />
-                  )}
-                  {copy.savePermissions}
-                </Button>
-              </div>
-            )}
-          </Form>
-          {!canManagePermissions && permissions.length > 0 && (
-            <p className="small text-body-secondary mb-0">
-              {permissions.map((item) => `${item.username}: ${item.permission}`).join(", ")}
-            </p>
-          )}
-        </Card.Body>
-      </Card>
-      <Card className="admin-panel-card">
-        <Card.Body>
-          <h2 className="h5">{copy.roleMappings}</h2>
-          <div className="d-flex flex-wrap gap-2 mb-3">
-            {roles.map((role) => (
-              <Form.Check
-                key={role.name}
-                checked={selectedRoles.includes(role.name)}
-                id={`role-${role.name}`}
-                label={role.name}
-                type="checkbox"
-                disabled={!canManageRoles}
-                onChange={() =>
-                  setSelectedRoles((current) =>
-                    current.includes(role.name)
-                      ? current.filter((value) => value !== role.name)
-                      : [...current, role.name],
-                  )
-                }
-              />
-            ))}
-          </div>
-          <div className="admin-form-actions">
-            {canManageRoles && (
-              <Button disabled={saving} onClick={() => void saveRoles()}>
-                {saving ? (
-                  <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
-                ) : (
-                  <AdminActionIcon action="save" />
-                )}
-                {copy.saveMappings}
-              </Button>
-            )}
-          </div>
-        </Card.Body>
-      </Card>
-      <Card className="admin-panel-card">
-        <Card.Body>
-          <h2 className="h5">{copy.assignUser}</h2>
-          <div className="d-flex flex-wrap align-items-start gap-2">
-            <div className="position-relative flex-grow-1" style={{ maxWidth: "28rem" }}>
-              <Form.Control
-                aria-label={copy.assignUser}
-                placeholder={dictionary.admin.resources.search}
-                value={selectedUser?.username ?? userQuery}
-                disabled={!canManageUsers}
-                onChange={(event) => {
-                  setSelectedUser(null);
-                  setSuggestions([]);
-                  setUserQuery(event.target.value);
-                }}
-              />
-              {!selectedUser && suggestions.length > 0 && (
-                <ListGroup className="position-absolute start-0 end-0 mt-1 shadow-sm z-3">
-                  {suggestions.map((user) => (
-                    <ListGroup.Item action key={user.id} onClick={() => setSelectedUser(user)}>
-                      {user.username}
-                    </ListGroup.Item>
-                  ))}
-                </ListGroup>
-              )}
-            </div>
-            {canManageUsers && (
-              <Button disabled={!selectedUser || saving} onClick={() => void addMember()}>
-                {saving ? (
-                  <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
-                ) : (
-                  <AdminActionIcon action="assign" />
-                )}
-                {copy.assignUser}
-              </Button>
-            )}
-          </div>
-        </Card.Body>
-      </Card>
-      <ResourceFilters
-        query={memberQuery}
-        searchLabel={copy.searchMembers}
-        onQueryChange={setMemberQuery}
-      />
-      <DataTable
-        isEmpty={members.length === 0}
-        emptyMessage={dictionary.admin.resources.empty}
-        footer={
-          memberTotalElements > 0 ? (
-            <PaginationControls
-              first={dictionary.admin.resources.first}
-              last={dictionary.admin.resources.last}
-              next={dictionary.admin.resources.next}
-              onPageChange={setMemberPage}
-              onSizeChange={setMemberSize}
-              page={memberPage}
-              pageLabel={dictionary.admin.resources.page}
-              previous={dictionary.admin.resources.previous}
-              rowsPerPage={dictionary.admin.resources.rowsPerPage}
-              size={memberSize}
-              totalElements={memberTotalElements}
-              totalPages={memberTotalPages}
-            />
-          ) : undefined
-        }
-      >
-        <thead>
-          <tr>
-            <th>{dictionary.admin.resources.user}</th>
-            <th>{dictionary.admin.resources.status}</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {members.map((user) => (
-            <tr key={user.id}>
-              <td>
-                <Button
-                  className="p-0 text-decoration-none"
-                  variant="link"
-                  onClick={() => router.push(`/admin/users/${user.id}/details`)}
-                >
-                  {user.username}
-                </Button>
-              </td>
-              <td>
-                <Badge bg={user.enabled ? "success" : "secondary"}>
-                  {user.enabled
-                    ? dictionary.admin.resources.enabled
-                    : dictionary.admin.resources.disabled}
-                </Badge>
-              </td>
-              <td className="text-end">
                 {canManageUsers && (
-                  <Button
-                    disabled={saving}
-                    size="sm"
-                    variant="danger"
-                    onClick={() => void removeMember(user)}
-                  >
+                  <Button disabled={saving || !isGroupSettingsDirty} type="submit">
                     {saving ? (
                       <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
                     ) : (
-                      <AdminActionIcon action="remove" />
+                      <AdminActionIcon action="save" />
                     )}
-                    {copy.removeUser}
+                    {dictionary.admin.common.save}
                   </Button>
                 )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </DataTable>
+              </div>
+            </Form>
+          </Card.Body>
+        </Card>
+      )}
+      {activeTab === "permissions" && (
+        <Card className="admin-panel-card">
+          <Card.Body>
+            <h2 className="h5 mb-1">{copy.permissions}</h2>
+            <p className="small text-body-secondary mb-3">{copy.permissionsHelp}</p>
+            <Form onSubmit={handlePermissionsSubmit(savePermissions)}>
+              {fields.map((field, index) => (
+                <div className="d-flex gap-2 align-items-end mb-2" key={field.id}>
+                  <Form.Group className="flex-grow-1" controlId={`group-permission-user-${index}`}>
+                    <Form.Label>{copy.permissionUser}</Form.Label>
+                    <Form.Select
+                      disabled={!canManagePermissions}
+                      {...registerPermission(`assignments.${index}.userId`)}
+                    >
+                      <option value="">{copy.selectUser}</option>
+                      {permissionUsers.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.username}
+                        </option>
+                      ))}
+                    </Form.Select>
+                  </Form.Group>
+                  <Form.Group className="flex-grow-1" controlId={`group-permission-value-${index}`}>
+                    <Form.Label>{copy.permission}</Form.Label>
+                    <Form.Select
+                      disabled={!canManagePermissions}
+                      {...registerPermission(`assignments.${index}.permission`)}
+                    >
+                      {(["VIEW", "MANAGE_MEMBERS", "MANAGE_ROLES", "MANAGE_GROUP"] as const).map(
+                        (permission) => (
+                          <option key={permission} value={permission}>
+                            {permission}
+                          </option>
+                        ),
+                      )}
+                    </Form.Select>
+                  </Form.Group>
+                  {canManagePermissions && (
+                    <Button type="button" variant="danger" onClick={() => remove(index)}>
+                      <AdminActionIcon action="remove" />
+                      {copy.removePermission}
+                    </Button>
+                  )}
+                </div>
+              ))}
+              {canManagePermissions && (
+                <div className="admin-form-actions">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => append({ userId: "", permission: "VIEW" })}
+                  >
+                    <AdminActionIcon action="add" />
+                    {copy.addPermission}
+                  </Button>
+                  <Button disabled={saving} type="submit">
+                    {saving ? (
+                      <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                    ) : (
+                      <AdminActionIcon action="save" />
+                    )}
+                    {copy.savePermissions}
+                  </Button>
+                </div>
+              )}
+            </Form>
+            {!canManagePermissions && permissions.length > 0 && (
+              <p className="small text-body-secondary mb-0">
+                {permissions.map((item) => `${item.username}: ${item.permission}`).join(", ")}
+              </p>
+            )}
+          </Card.Body>
+        </Card>
+      )}
+      {activeTab === "roles" && (
+        <Card className="admin-panel-card">
+          <Card.Body>
+            <h2 className="h5">{copy.roleMappings}</h2>
+            <div className="d-flex flex-wrap gap-2 mb-3">
+              {roles.map((role) => (
+                <Form.Check
+                  key={role.name}
+                  checked={selectedRoles.includes(role.name)}
+                  id={`role-${role.name}`}
+                  label={role.name}
+                  type="checkbox"
+                  disabled={!canManageRoles}
+                  onChange={() =>
+                    setSelectedRoles((current) =>
+                      current.includes(role.name)
+                        ? current.filter((value) => value !== role.name)
+                        : [...current, role.name],
+                    )
+                  }
+                />
+              ))}
+            </div>
+            <div className="admin-form-actions">
+              {canManageRoles && (
+                <Button disabled={saving} onClick={() => void saveRoles()}>
+                  {saving ? (
+                    <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                  ) : (
+                    <AdminActionIcon action="save" />
+                  )}
+                  {copy.saveMappings}
+                </Button>
+              )}
+            </div>
+          </Card.Body>
+        </Card>
+      )}
+      {activeTab === "members" && (
+        <>
+          <Card className="admin-panel-card admin-group-member-add-card">
+            <Card.Body>
+              <h2 className="h5">{copy.assignUser}</h2>
+              <div className="d-flex flex-wrap align-items-start gap-2">
+                <div className="position-relative flex-grow-1" style={{ maxWidth: "28rem" }}>
+                  <Form.Control
+                    aria-label={copy.assignUser}
+                    placeholder={dictionary.admin.resources.search}
+                    value={selectedUser?.username ?? userQuery}
+                    disabled={!canManageUsers}
+                    onChange={(event) => {
+                      setSelectedUser(null);
+                      setSuggestions([]);
+                      setUserQuery(event.target.value);
+                    }}
+                  />
+                  {!selectedUser && suggestions.length > 0 && (
+                    <ListGroup className="admin-member-suggestions position-absolute start-0 end-0 mt-1 shadow-sm">
+                      {suggestions.map((user) => (
+                        <ListGroup.Item action key={user.id} onClick={() => setSelectedUser(user)}>
+                          {user.username}
+                        </ListGroup.Item>
+                      ))}
+                    </ListGroup>
+                  )}
+                </div>
+                {canManageUsers && (
+                  <Button disabled={!selectedUser || saving} onClick={() => void addMember()}>
+                    {saving ? (
+                      <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+                    ) : (
+                      <AdminActionIcon action="assign" />
+                    )}
+                    {copy.assignUser}
+                  </Button>
+                )}
+              </div>
+            </Card.Body>
+          </Card>
+          <ResourceFilters
+            query={memberQuery}
+            searchLabel={copy.searchMembers}
+            onQueryChange={setMemberQuery}
+            sort={{
+              label: dictionary.admin.resources.sort,
+              value: memberSort,
+              options: [
+                {
+                  value: "username,asc",
+                  label: `${dictionary.admin.resources.username} · ${dictionary.admin.resources.ascending}`,
+                },
+                {
+                  value: "username,desc",
+                  label: `${dictionary.admin.resources.username} · ${dictionary.admin.resources.descending}`,
+                },
+              ],
+              onChange: setMemberSort,
+            }}
+          />
+          <DataTable
+            isEmpty={members.length === 0}
+            emptyMessage={dictionary.admin.resources.empty}
+            footer={
+              memberTotalElements > 0 ? (
+                <PaginationControls
+                  first={dictionary.admin.resources.first}
+                  last={dictionary.admin.resources.last}
+                  next={dictionary.admin.resources.next}
+                  onPageChange={setMemberPage}
+                  onSizeChange={setMemberSize}
+                  page={memberPage}
+                  pageLabel={dictionary.admin.resources.page}
+                  previous={dictionary.admin.resources.previous}
+                  rowsPerPage={dictionary.admin.resources.rowsPerPage}
+                  size={memberSize}
+                  totalElements={memberTotalElements}
+                  totalPages={memberTotalPages}
+                />
+              ) : undefined
+            }
+          >
+            <thead>
+              <tr>
+                <th>{dictionary.admin.resources.user}</th>
+                <th>{dictionary.admin.resources.status}</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((user) => (
+                <tr key={user.id}>
+                  <td>
+                    <Button
+                      className="p-0 text-decoration-none"
+                      variant="link"
+                      onClick={() => router.push(`/admin/users/${user.id}/details`)}
+                    >
+                      {user.username}
+                    </Button>
+                  </td>
+                  <td>
+                    <Badge bg={user.enabled ? "success" : "secondary"}>
+                      {user.enabled
+                        ? dictionary.admin.resources.enabled
+                        : dictionary.admin.resources.disabled}
+                    </Badge>
+                  </td>
+                  <td className="text-end">
+                    {canManageUsers && (
+                      <Button
+                        disabled={saving}
+                        size="sm"
+                        variant="danger"
+                        onClick={() => void removeMember(user)}
+                      >
+                        {saving ? (
+                          <Spinner
+                            animation="border"
+                            aria-hidden="true"
+                            className="me-2"
+                            size="sm"
+                          />
+                        ) : (
+                          <AdminActionIcon action="remove" />
+                        )}
+                        {copy.removeUser}
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </DataTable>
+        </>
+      )}
     </div>
   );
 }
