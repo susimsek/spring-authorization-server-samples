@@ -99,7 +99,7 @@ export function GroupCreateForm({ dictionary }: { dictionary: Dictionary; locale
         }
         throw new Error();
       }
-      router.push(`/admin/groups/${response.data.id}`);
+      router.push(`/admin/groups/${response.data.id}/details`);
     } catch {
       alerts.addError(copy.operationError);
     }

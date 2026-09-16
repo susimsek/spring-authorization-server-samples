@@ -62,7 +62,7 @@ describe("dedicated administration creation forms", () => {
         },
       }),
     );
-    expect(mockPush).toHaveBeenCalledWith("/admin/groups/7");
+    expect(mockPush).toHaveBeenCalledWith("/admin/groups/7/details");
   });
 
   it("validates and creates a role from its dedicated page", async () => {

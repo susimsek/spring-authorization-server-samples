@@ -34,5 +34,42 @@ server:
   port: 0
 
 app:
+  cache:
+    caffeine:
+      ttl: PT1H
+      initial-capacity: 50
+      maximum-size: 100
+  session:
+    cleanup-cron: "0 * * * * *"
   authorization-server:
     issuer: http://127.0.0.1:0
+  mail:
+    enabled: false
+    from: Spring Authorization Server <no-reply@localhost>
+    base-url: http://127.0.0.1:0
+  security:
+    password-policy:
+      minimum-length: 12
+      maximum-length: 128
+      minimum-uppercase: 1
+      minimum-lowercase: 1
+      minimum-digits: 1
+      minimum-special-characters: 1
+      reject-username: true
+      reject-email: true
+      reject-common-passwords: true
+      history-size: 5
+      expiration-days: 90
+      common-passwords: password,123456,12345678,qwerty,qwerty123,admin,letmein
+    brute-force:
+      enabled: true
+      max-failures: 5
+      quick-login-window: PT1S
+      minimum-quick-login-wait: PT1M
+      wait-increment: PT1M
+      max-wait: PT15M
+      failure-reset-time: PT12H
+      max-temporary-lockouts: 3
+      permanent-lockout: false
+      ip-requests-per-minute: 30
+      username-ip-requests-per-minute: 5

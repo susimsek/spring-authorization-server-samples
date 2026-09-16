@@ -1599,6 +1599,21 @@ textarea.form-control {
   overflow-y: auto;
   z-index: 1080 !important;
 }
+.admin-group-member-add-card {
+  position: relative;
+  z-index: 2;
+  overflow: visible;
+}
+.admin-member-suggestions {
+  max-height: 12rem;
+  overflow-y: auto;
+  z-index: 1080 !important;
+}
+.admin-member-suggestions .list-group-item {
+  display: flex;
+  align-items: center;
+  min-height: 3rem;
+}
 
 @media (max-width: 767.98px) {
   .admin-resource-filters > .ms-auto {
