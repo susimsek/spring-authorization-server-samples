@@ -12,6 +12,12 @@ public record AdminLoginSettingsDTO(
         @Schema(description = "Allow email addresses as login identifiers.") boolean loginWithEmail,
         @Schema(description = "Require verified email addresses for new accounts.")
                 boolean verifyEmail,
+        @Schema(
+                        description =
+                                "Maximum age of authentication before an email change requires"
+                                        + " current-password confirmation.",
+                        minimum = "0")
+                int emailUpdateReauthenticationMinutes,
         @Schema(description = "Maximum browser session duration in minutes.", minimum = "1")
                 int sessionTimeoutMinutes,
         @Schema(description = "Minimum accepted password length.", minimum = "8")
@@ -120,6 +126,7 @@ public record AdminLoginSettingsDTO(
                 rememberMe,
                 loginWithEmail,
                 verifyEmail,
+                5,
                 sessionTimeoutMinutes,
                 passwordMinimumLength,
                 bruteForceEnabled,

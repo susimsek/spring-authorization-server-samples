@@ -27,6 +27,9 @@ public interface LoginSettingsMapper {
     @Mapping(target = "passkeys", source = "passkeysEnabled")
     @Mapping(target = "loginWithEmail", source = "loginWithEmail")
     @Mapping(target = "verifyEmail", source = "verifyEmail")
+    @Mapping(
+            target = "emailUpdateReauthenticationMinutes",
+            source = "emailUpdateReauthenticationMinutes")
     @Mapping(target = "sessionTimeoutMinutes", source = "sessionTimeoutMinutes")
     @Mapping(target = "passwordMinimumLength", source = "passwordMinimumLength")
     @Mapping(target = "bruteForceEnabled", source = "bruteForceEnabled")
@@ -81,6 +84,9 @@ public interface LoginSettingsMapper {
     @Mapping(target = "rememberMeEnabled", source = "rememberMe")
     @Mapping(target = "loginWithEmail", source = "loginWithEmail")
     @Mapping(target = "verifyEmail", source = "verifyEmail")
+    @Mapping(
+            target = "emailUpdateReauthenticationMinutes",
+            source = "emailUpdateReauthenticationMinutes")
     @Mapping(target = "sessionTimeoutMinutes", source = "sessionTimeoutMinutes")
     @Mapping(target = "passwordMinimumLength", source = "passwordMinimumLength")
     @Mapping(target = "bruteForceEnabled", source = "bruteForceEnabled")

@@ -27,4 +27,18 @@ public record AccountProfileRequestDTO(
                         requiredMode = Schema.RequiredMode.NOT_REQUIRED)
                 @Email
                 @Size(max = 200)
-                String email) {}
+                String email,
+        @Schema(
+                        description =
+                                "Current password used when the email-change re-authentication"
+                                        + " window has expired.",
+                        accessMode = Schema.AccessMode.WRITE_ONLY,
+                        format = "password",
+                        requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+                @Size(max = 200)
+                String currentPassword) {
+
+    public AccountProfileRequestDTO(String firstName, String lastName, String email) {
+        this(firstName, lastName, email, null);
+    }
+}

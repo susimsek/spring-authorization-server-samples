@@ -94,6 +94,11 @@ public class LoginSettingsService {
     }
 
     @Transactional(readOnly = true)
+    public Duration emailUpdateReauthenticationAge() {
+        return Duration.ofMinutes(settings().getEmailUpdateReauthenticationMinutes());
+    }
+
+    @Transactional(readOnly = true)
     public boolean isBruteForceEnabled() {
         return settings().isBruteForceEnabled();
     }

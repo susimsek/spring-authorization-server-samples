@@ -311,6 +311,7 @@
       "loginWithEmailHelp": "Allow users to sign in using their email address.",
       "verifyEmail": "Verify email",
       "verifyEmailHelp": "Require a verified email address for new accounts.",
+      "emailUpdateReauthentication": "Email change re-authentication age (minutes)",
       "sessionTimeout": "Session timeout (minutes)",
       "passwordMinimumLength": "Minimum password length",
       "passwordMaximumLength": "Maximum password length",
@@ -589,6 +590,7 @@
         "max500": "Use at most 500 characters.",
         "max1000": "Use at most 1000 characters.",
         "positiveNumber": "Enter a number greater than zero.",
+        "maximumNumber": "Enter a value within the allowed range.",
         "minimumPasswordLength": "Use at least 8 characters.",
         "maximumPasswordLength": "Use at most 128 characters."
       }
@@ -889,6 +891,8 @@
       "firstName": "First name",
       "lastName": "Last name",
       "email": "Email",
+      "currentPassword": "Current password",
+      "reauthenticationRequired": "For your security, confirm your current password to change your email address.",
       "emailVerified": "Verified",
       "emailUnverified": "Not verified",
       "sendVerification": "Send verification email",

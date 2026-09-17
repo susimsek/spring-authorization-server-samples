@@ -173,7 +173,9 @@ export function MfaSettings({ dictionary }: { dictionary: Dictionary }) {
                 <Button disabled={busy} onClick={() => void setupMfa()}>
                   {busy ? (
                     <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
-                  ) : null}
+                  ) : (
+                    <ActionIcon action="add" />
+                  )}
                   {copy.setup}
                 </Button>
               )}

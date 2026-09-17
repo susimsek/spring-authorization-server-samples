@@ -21,6 +21,7 @@ type Settings = {
   passkeys: boolean;
   loginWithEmail: boolean;
   verifyEmail: boolean;
+  emailUpdateReauthenticationMinutes: number;
   sessionTimeoutMinutes: number;
   passwordMinimumLength: number;
   bruteForceEnabled: boolean;
@@ -83,6 +84,11 @@ export default function LoginSettingsPage({
     passkeys: z.boolean(),
     loginWithEmail: z.boolean(),
     verifyEmail: z.boolean(),
+    emailUpdateReauthenticationMinutes: z
+      .number()
+      .int()
+      .min(0, validation.positiveNumber)
+      .max(1440, validation.maximumNumber),
     sessionTimeoutMinutes: z.number().int().min(1, validation.positiveNumber),
     passwordMinimumLength: z.number().int().min(8, validation.minimumPasswordLength),
     bruteForceEnabled: z.boolean(),
@@ -222,6 +228,14 @@ export default function LoginSettingsPage({
                   type="switch"
                   label={copy.verifyEmail}
                   {...register("verifyEmail")}
+                />
+                <NumberField
+                  id="login-email-reauthentication"
+                  label={copy.emailUpdateReauthentication}
+                  error={errors.emailUpdateReauthenticationMinutes?.message}
+                  registration={register("emailUpdateReauthenticationMinutes", {
+                    valueAsNumber: true,
+                  })}
                 />
                 <SaveButton copy={copy.save} isSubmitting={isSubmitting} />
               </section>

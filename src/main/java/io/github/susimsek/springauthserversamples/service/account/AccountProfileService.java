@@ -6,18 +6,20 @@ import io.github.susimsek.springauthserversamples.dto.account.AccountProfileDTO;
 import io.github.susimsek.springauthserversamples.dto.account.AccountProfileRequestDTO;
 import io.github.susimsek.springauthserversamples.mapper.AccountProfileMapper;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
+import io.github.susimsek.springauthserversamples.service.LoginSettingsService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
 import io.github.susimsek.springauthserversamples.service.admin.UserAccessInvalidationService;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import io.github.susimsek.springauthserversamples.service.security.PasswordService;
-import lombok.RequiredArgsConstructor;
+import java.time.Duration;
+import java.time.Instant;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
 public class AccountProfileService {
 
     private final UserRepository userRepository;
@@ -26,6 +28,42 @@ public class AccountProfileService {
     private final AdminAuditEventService auditEventService;
     private final UserAccessInvalidationService userAccessInvalidationService;
     private final UserActionService userActionService;
+    private final LoginSettingsService loginSettingsService;
+
+    @Autowired
+    public AccountProfileService(
+            UserRepository userRepository,
+            AccountProfileMapper accountProfileMapper,
+            PasswordService passwordService,
+            AdminAuditEventService auditEventService,
+            UserAccessInvalidationService userAccessInvalidationService,
+            UserActionService userActionService,
+            LoginSettingsService loginSettingsService) {
+        this.userRepository = userRepository;
+        this.accountProfileMapper = accountProfileMapper;
+        this.passwordService = passwordService;
+        this.auditEventService = auditEventService;
+        this.userAccessInvalidationService = userAccessInvalidationService;
+        this.userActionService = userActionService;
+        this.loginSettingsService = loginSettingsService;
+    }
+
+    public AccountProfileService(
+            UserRepository userRepository,
+            AccountProfileMapper accountProfileMapper,
+            PasswordService passwordService,
+            AdminAuditEventService auditEventService,
+            UserAccessInvalidationService userAccessInvalidationService,
+            UserActionService userActionService) {
+        this(
+                userRepository,
+                accountProfileMapper,
+                passwordService,
+                auditEventService,
+                userAccessInvalidationService,
+                userActionService,
+                null);
+    }
 
     @Transactional(readOnly = true)
     public AccountProfileDTO profile(String username) {
@@ -35,6 +73,13 @@ public class AccountProfileService {
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, key = "#username")
     public AccountProfileDTO updateProfile(String username, AccountProfileRequestDTO request) {
+        return updateProfile(username, request, Instant.now());
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, key = "#username")
+    public AccountProfileDTO updateProfile(
+            String username, AccountProfileRequestDTO request, Instant authenticationTime) {
         UserEntity user = requireUser(username);
         AccountProfileRequestDTO normalized = accountProfileMapper.normalize(request);
         String email = normalized.email();
@@ -44,6 +89,7 @@ public class AccountProfileService {
         }
         boolean emailChanged = !java.util.Objects.equals(user.getEmail(), email);
         if (emailChanged) {
+            requireRecentAuthentication(user, normalized.currentPassword(), authenticationTime);
             accountProfileMapper.updateNames(normalized, user);
             user.setPendingEmail(email);
             user.setEmailVerified(false);
@@ -56,6 +102,34 @@ public class AccountProfileService {
         userRepository.save(user);
         auditEventService.record("account.profile.updated", "user", user.getId().toString());
         return accountProfileMapper.toDTO(user);
+    }
+
+    private void requireRecentAuthentication(
+            UserEntity user, String currentPassword, Instant authenticationTime) {
+        Duration maxAge =
+                loginSettingsService == null
+                        ? Duration.ofDays(365_000)
+                        : loginSettingsService.emailUpdateReauthenticationAge();
+        Instant authenticatedAt = authenticationTime == null ? Instant.EPOCH : authenticationTime;
+        boolean expired =
+                maxAge.isZero()
+                        || authenticatedAt.equals(Instant.EPOCH)
+                        || authenticatedAt.plus(maxAge).isBefore(Instant.now());
+        if (!expired) {
+            return;
+        }
+        if (currentPassword == null || currentPassword.isBlank()) {
+            throw ApiException.forbidden(
+                    "currentPassword",
+                    ApiErrorCode.REAUTHENTICATION_REQUIRED,
+                    "Re-authentication is required before changing the email address");
+        }
+        if (!passwordService.matchesCurrentPassword(currentPassword, user)) {
+            throw ApiException.badRequest(
+                    "currentPassword",
+                    ApiErrorCode.INVALID_CURRENT_PASSWORD,
+                    "Current password is invalid");
+        }
     }
 
     @Transactional

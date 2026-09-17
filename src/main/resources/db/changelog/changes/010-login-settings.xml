@@ -15,6 +15,7 @@
 			<column name="passkeys_enabled" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
 			<column name="login_with_email" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
 			<column name="verify_email" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="email_update_reauthentication_minutes" type="int" defaultValueNumeric="5"><constraints nullable="false"/></column>
 			<column name="session_timeout_minutes" type="int" defaultValueNumeric="30"><constraints nullable="false"/></column>
 			<column name="password_minimum_length" type="int" defaultValueNumeric="12"><constraints nullable="false"/></column>
 			<column name="brute_force_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
@@ -60,6 +61,7 @@
 			<column header="passkeys_enabled" type="boolean"/>
 			<column header="login_with_email" type="boolean"/>
 			<column header="verify_email" type="boolean"/>
+			<column header="email_update_reauthentication_minutes" type="numeric"/>
 			<column header="session_timeout_minutes" type="numeric"/>
 			<column header="password_minimum_length" type="numeric"/>
 			<column header="brute_force_enabled" type="boolean"/>

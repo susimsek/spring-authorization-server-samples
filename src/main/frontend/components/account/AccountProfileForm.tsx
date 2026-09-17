@@ -24,11 +24,13 @@ import {
 } from "@/lib/account-api";
 
 import { useAccountAuth } from "./AccountAuthProvider";
+import { PasswordField } from "../auth/PasswordField";
 
 type Values = {
   firstName: string;
   lastName: string;
   email: string;
+  currentPassword: string;
   profile: Record<string, string[]>;
 };
 type ProfileDefinition = {
@@ -65,6 +67,7 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
   const [isError, setIsError] = useState(false);
   const [verificationSending, setVerificationSending] = useState(false);
   const [profileUpdating, setProfileUpdating] = useState(false);
+  const [emailReauthRequired, setEmailReauthRequired] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarSaving, setAvatarSaving] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
@@ -126,6 +129,7 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
       .trim()
       .max(200, copy.validation.max200)
       .refine((value) => value === "" || z.email().safeParse(value).success, copy.validation.email),
+    currentPassword: z.string().max(200, copy.validation.max200),
     profile: profileSchema,
   });
   const {
@@ -141,7 +145,7 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
   } = useForm<Values>({
     resolver: zodResolver(schema),
     mode: "onChange",
-    defaultValues: { firstName: "", lastName: "", email: "", profile: {} },
+    defaultValues: { firstName: "", lastName: "", email: "", currentPassword: "", profile: {} },
   });
   const profileAttributeValues = useWatch({ control, name: "profile", defaultValue: {} });
 
@@ -184,6 +188,7 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
         firstName: profile.firstName ?? "",
         lastName: profile.lastName ?? "",
         email: profile.email ?? "",
+        currentPassword: "",
         profile: getValues("profile"),
       });
     }
@@ -200,6 +205,7 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
           firstName: values.firstName.trim(),
           lastName: values.lastName.trim(),
           email: values.email.trim(),
+          currentPassword: values.currentPassword.trim() || undefined,
         },
       });
       const attributesResponse = await requestAccount<ProfileAttributes>(accessToken, {
@@ -214,12 +220,24 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
         firstName: updated.firstName ?? "",
         lastName: updated.lastName ?? "",
         email: updated.email ?? "",
+        currentPassword: "",
         profile: safeAttributesResponse.attributes ?? {},
       });
+      setEmailReauthRequired(false);
       alerts.addAlert(copy.profile.saved);
     } catch (error) {
+      const data = (error as AccountApiError).data;
+      if (
+        typeof data === "object" &&
+        data !== null &&
+        "errorCode" in data &&
+        data.errorCode === "reauthentication_required"
+      ) {
+        setEmailReauthRequired(true);
+        return;
+      }
       const result = applyProblemToForm((error as AccountApiError).data, setError, {
-        fields: ["firstName", "lastName", "email"],
+        fields: ["firstName", "lastName", "email", "currentPassword"],
         fallbackMessage: copy.validation.invalid,
       });
       if (result.firstField) setFocus(result.firstField as keyof Values);
@@ -553,6 +571,26 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
                 </Col>
               );
             })}
+            {emailReauthRequired && (
+              <Col xs={12}>
+                <Alert variant="info">{copy.profile.reauthenticationRequired}</Alert>
+                <PasswordField
+                  controlId="account-profile-current-password"
+                  label={copy.profile.currentPassword}
+                  placeholder={copy.profile.currentPassword}
+                  showLabel={dictionary.login.showPassword}
+                  hideLabel={dictionary.login.hidePassword}
+                  autoComplete="current-password"
+                  inputProps={{
+                    isInvalid: Boolean(errors.currentPassword),
+                    ...register("currentPassword"),
+                  }}
+                />
+                {errors.currentPassword && (
+                  <div className="invalid-feedback d-block">{errors.currentPassword.message}</div>
+                )}
+              </Col>
+            )}
             <Col xs={12}>
               <div className="account-metadata-panel">
                 <div className="small fw-semibold mb-3">{copy.profile.metadata}</div>
@@ -593,6 +631,7 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
                   firstName: profile.firstName ?? "",
                   lastName: profile.lastName ?? "",
                   email: profile.email ?? "",
+                  currentPassword: "",
                   profile: profileAttributes?.attributes ?? {},
                 });
               }}

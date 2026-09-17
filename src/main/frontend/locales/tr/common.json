@@ -311,6 +311,7 @@
       "loginWithEmailHelp": "Kullanıcıların e-posta adresiyle giriş yapmasına izin verin.",
       "verifyEmail": "E-posta doğrulama",
       "verifyEmailHelp": "Yeni hesaplar için doğrulanmış e-posta adresi isteyin.",
+      "emailUpdateReauthentication": "E-posta değişikliği yeniden kimlik doğrulama süresi (dakika)",
       "sessionTimeout": "Oturum zaman aşımı (dakika)",
       "passwordMinimumLength": "Minimum parola uzunluğu",
       "passwordMaximumLength": "Maksimum parola uzunluğu",
@@ -589,6 +590,7 @@
         "max500": "En fazla 500 karakter kullanın.",
         "max1000": "En fazla 1000 karakter kullanın.",
         "positiveNumber": "Sıfırdan büyük bir sayı girin.",
+        "maximumNumber": "İzin verilen aralıkta bir değer girin.",
         "minimumPasswordLength": "En az 8 karakter kullanın.",
         "maximumPasswordLength": "En fazla 128 karakter kullanın."
       }
@@ -889,6 +891,8 @@
       "firstName": "Ad",
       "lastName": "Soyad",
       "email": "E-posta",
+      "currentPassword": "Mevcut parola",
+      "reauthenticationRequired": "Güvenliğiniz için e-posta adresinizi değiştirmeden önce mevcut parolanızı doğrulayın.",
       "emailVerified": "Doğrulandı",
       "emailUnverified": "Doğrulanmadı",
       "sendVerification": "Doğrulama e-postası gönder",

@@ -228,7 +228,7 @@ export default function ServerInfoPage() {
                     <Nav.Link eventKey="discovery">{copy.discovery}</Nav.Link>
                   </Nav.Item>
                   <Nav.Item>
-                    <Nav.Link eventKey="jwks">JWKS</Nav.Link>
+                    <Nav.Link eventKey="jwks">{copy.jwks}</Nav.Link>
                   </Nav.Item>
                 </Nav>
               </Card.Header>

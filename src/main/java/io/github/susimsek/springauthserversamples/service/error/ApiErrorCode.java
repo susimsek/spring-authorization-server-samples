@@ -10,6 +10,9 @@ public enum ApiErrorCode {
     INTERNAL_ERROR("internal_error", "An unexpected error occurred."),
     RATE_LIMIT_EXCEEDED("rate_limit_exceeded", "Too many requests. Please try again later."),
     INVALID_CURRENT_PASSWORD("invalid_current_password", "Current password is invalid."),
+    REAUTHENTICATION_REQUIRED(
+            "reauthentication_required",
+            "Re-authentication is required before changing the email address."),
     INVALID_TOTP_CODE("invalid_totp_code", "Authenticator code is invalid."),
     INVALID_RECOVERY_CODE(
             "invalid_recovery_code", "Recovery code is invalid or has already been used."),

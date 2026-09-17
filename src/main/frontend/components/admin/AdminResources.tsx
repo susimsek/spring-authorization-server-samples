@@ -633,7 +633,7 @@ function SessionsTable({
                     ) : (
                       <AdminActionIcon action="view" />
                     )}
-                    View details
+                    {copy.details}
                   </Dropdown.Item>
                   {canManage && !expired && (
                     <>
@@ -832,7 +832,7 @@ function ConsentsTable({
                   {detailHref && (
                     <Dropdown.Item as={Link} href={detailHref}>
                       <AdminActionIcon action="view" />
-                      View details
+                      {copy.details}
                     </Dropdown.Item>
                   )}
                   {canManage && (

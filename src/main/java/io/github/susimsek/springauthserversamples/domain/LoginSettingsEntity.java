@@ -39,6 +39,9 @@ public class LoginSettingsEntity {
     @Column(name = "verify_email", nullable = false)
     private boolean verifyEmail;
 
+    @Column(name = "email_update_reauthentication_minutes", nullable = false)
+    private int emailUpdateReauthenticationMinutes;
+
     @Column(name = "session_timeout_minutes", nullable = false)
     private int sessionTimeoutMinutes;
 
