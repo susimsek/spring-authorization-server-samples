@@ -151,6 +151,10 @@ public class AdminApiSecurityConfig {
                                         .hasAnyAuthority(
                                                 AuthoritiesConstants.ADMIN,
                                                 AuthoritiesConstants.USER_MANAGER)
+                                        .requestMatchers(HttpMethod.POST, "/api/admin/users/bulk")
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.USER_MANAGER)
                                         .requestMatchers(
                                                 HttpMethod.POST, "/api/admin/users/*/unlock")
                                         .hasAnyAuthority(

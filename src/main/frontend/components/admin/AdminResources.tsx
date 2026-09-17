@@ -76,6 +76,7 @@ type Key = {
 
 type Resource = "users" | "sessions" | "consents" | "keys";
 type Copy = Dictionary["admin"]["resources"];
+type UserBulkAction = "ENABLE" | "DISABLE" | "DELETE";
 
 export function AdminResources({
   resource,
@@ -105,6 +106,9 @@ function AdminResourcesContent({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reloadVersion, setReloadVersion] = useState(0);
+  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+  const [bulkAction, setBulkAction] = useState<UserBulkAction | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [result, setResult] = useState<{ title: string; message: string; value?: string } | null>(
     null,
   );
@@ -150,6 +154,7 @@ function AdminResourcesContent({
         setItems(response.data.content as User[] | Session[] | Consent[] | Key[]);
         setTotalPages(response.data.totalPages);
         setTotalElements(response.data.totalElements);
+        if (resource === "users") setSelectedUserIds([]);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -236,6 +241,27 @@ function AdminResourcesContent({
     }
   };
 
+  const runBulkUserAction = async () => {
+    if (!accessToken || !bulkAction || selectedUserIds.length === 0) return;
+    setBulkBusy(true);
+    try {
+      const response = await adminRequest(accessToken, {
+        url: "/api/admin/users/bulk",
+        method: "POST",
+        data: { userIds: selectedUserIds, action: bulkAction },
+      });
+      if (response.status >= 300) throw new Error("Bulk user operation failed");
+      setBulkAction(null);
+      setSelectedUserIds([]);
+      setReloadVersion((current) => current + 1);
+    } catch {
+      setError(true);
+      setLoading(false);
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={copy.operationError} />;
 
@@ -247,10 +273,46 @@ function AdminResourcesContent({
         actions={
           <>
             {resource === "users" && access?.manageUsers && locale && (
-              <Link className="btn btn-primary" href={`/admin/users/new`}>
-                <AdminActionIcon action="add" />
-                {copy.createUser}
-              </Link>
+              <>
+                {selectedUserIds.length > 0 && (
+                  <div aria-label={copy.bulkActions} className="admin-bulk-actions" role="group">
+                    <Badge bg="secondary" className="admin-bulk-selection-count">
+                      {copy.selectedUsers.replace("{count}", String(selectedUserIds.length))}
+                    </Badge>
+                    <Button
+                      disabled={bulkBusy}
+                      onClick={() => setBulkAction("ENABLE")}
+                      type="button"
+                      variant="primary"
+                    >
+                      <AdminActionIcon action="enable" />
+                      {copy.bulkEnable}
+                    </Button>
+                    <Button
+                      disabled={bulkBusy}
+                      onClick={() => setBulkAction("DISABLE")}
+                      type="button"
+                      variant="warning"
+                    >
+                      <AdminActionIcon action="disable" />
+                      {copy.bulkDisable}
+                    </Button>
+                    <Button
+                      disabled={bulkBusy}
+                      onClick={() => setBulkAction("DELETE")}
+                      type="button"
+                      variant="danger"
+                    >
+                      <AdminActionIcon action="delete" />
+                      {copy.bulkDelete}
+                    </Button>
+                  </div>
+                )}
+                <Link className="btn btn-primary" href={`/admin/users/new`}>
+                  <AdminActionIcon action="add" />
+                  {copy.createUser}
+                </Link>
+              </>
             )}
             {resource === "keys" && access?.manageKeys && (
               <Button disabled={rotating} variant="primary" onClick={() => void rotateKey()}>
@@ -394,6 +456,8 @@ function AdminResourcesContent({
             copy={copy}
             canManage={access?.manageUsers ?? false}
             locale={locale}
+            selectedIds={selectedUserIds}
+            onSelectionChange={setSelectedUserIds}
           />
         )}
         {resource === "sessions" && (
@@ -424,6 +488,35 @@ function AdminResourcesContent({
         title={result?.title ?? ""}
         value={result?.value}
       />
+      <ConfirmModal
+        cancelLabel={copy.cancel}
+        confirmLabel={
+          bulkAction === "ENABLE"
+            ? copy.bulkEnable
+            : bulkAction === "DISABLE"
+              ? copy.bulkDisable
+              : copy.bulkDelete
+        }
+        confirmAction={
+          bulkAction === "ENABLE" ? "enable" : bulkAction === "DISABLE" ? "disable" : "delete"
+        }
+        confirmVariant={
+          bulkAction === "ENABLE" ? "primary" : bulkAction === "DISABLE" ? "warning" : "danger"
+        }
+        busy={bulkBusy}
+        message={
+          bulkAction === "ENABLE"
+            ? copy.bulkEnableConfirm
+            : bulkAction === "DISABLE"
+              ? copy.bulkDisableConfirm
+              : copy.bulkDeleteConfirm
+        }
+        onCancel={() => {
+          if (!bulkBusy) setBulkAction(null);
+        }}
+        onConfirm={() => void runBulkUserAction()}
+        show={resource === "users" && bulkAction !== null}
+      />
     </>
   );
 }
@@ -434,18 +527,43 @@ function UsersTable({
   copy,
   canManage,
   locale,
+  selectedIds,
+  onSelectionChange,
 }: {
   items: User[];
   request: AdminRequest;
   copy: Copy;
   canManage: boolean;
   locale?: Locale;
+  selectedIds: number[];
+  onSelectionChange: (ids: number[]) => void;
 }) {
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const allSelected = items.length > 0 && items.every((user) => selectedIds.includes(user.id));
+
+  const toggleUser = (id: number, checked: boolean) => {
+    onSelectionChange(
+      checked
+        ? [...new Set([...selectedIds, id])]
+        : selectedIds.filter((selectedId) => selectedId !== id),
+    );
+  };
+
   return (
     <>
       <thead>
         <tr>
+          {canManage && (
+            <th className="admin-selection-column">
+              <Form.Check
+                aria-label={copy.selectAllUsers}
+                checked={allSelected}
+                onChange={(event) =>
+                  onSelectionChange(event.target.checked ? items.map((user) => user.id) : [])
+                }
+              />
+            </th>
+          )}
           <th>{copy.username}</th>
           <th>{copy.roles}</th>
           <th>{copy.status}</th>
@@ -455,6 +573,15 @@ function UsersTable({
       <tbody>
         {items.map((user) => (
           <tr key={user.id}>
+            {canManage && (
+              <td className="admin-selection-cell" data-label={copy.selectUser}>
+                <Form.Check
+                  aria-label={`${copy.selectUser}: ${user.username}`}
+                  checked={selectedIds.includes(user.id)}
+                  onChange={(event) => toggleUser(user.id, event.target.checked)}
+                />
+              </td>
+            )}
             <td data-label={copy.username}>
               <div className="d-flex align-items-center gap-2">
                 {user.avatarUrl ? (

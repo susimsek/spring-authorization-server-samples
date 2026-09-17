@@ -473,6 +473,38 @@ textarea.form-control {
   --bs-table-hover-bg: rgba(var(--bs-primary-rgb), 0.035);
 }
 
+.admin-bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--console-space-2);
+}
+
+.admin-bulk-selection-count {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--console-control-height);
+  padding-inline: 0.75rem;
+  white-space: nowrap;
+}
+
+.admin-data-table > thead > tr > th.admin-selection-column,
+.admin-data-table > tbody > tr > td.admin-selection-cell {
+  width: 3.25rem;
+  min-width: 3.25rem;
+  padding-inline: var(--console-space-3);
+  text-align: center;
+}
+
+.admin-selection-column .form-check,
+.admin-selection-cell .form-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--console-touch-target);
+  margin: 0;
+}
+
 .profile-reorder-handle {
   cursor: grab;
   touch-action: none;
@@ -1630,6 +1662,15 @@ textarea.form-control {
   }
   .console-view-actions > .btn,
   .console-view-actions > a.btn {
+    width: 100%;
+  }
+
+  .admin-bulk-actions {
+    width: 100%;
+  }
+
+  .admin-bulk-selection-count,
+  .admin-bulk-actions > .btn {
     width: 100%;
   }
 }

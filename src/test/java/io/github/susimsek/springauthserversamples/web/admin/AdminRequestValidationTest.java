@@ -6,11 +6,14 @@ import io.github.susimsek.springauthserversamples.dto.admin.AdminClientRequestDT
 import io.github.susimsek.springauthserversamples.dto.admin.AdminClientScopeAssignmentRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupRolesRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminRequiredActionRequestDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminUserBulkAction;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminUserBulkRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminUserRequestDTO;
 import io.github.susimsek.springauthserversamples.web.admin.validation.CreateValidation;
 import io.github.susimsek.springauthserversamples.web.admin.validation.UpdateValidation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
@@ -80,5 +83,22 @@ class AdminRequestValidationTest {
         assertThat(validator.validate(scopes))
                 .extracting(violation -> violation.getPropertyPath().toString())
                 .contains("defaultScopes[].<iterable element>");
+    }
+
+    @Test
+    void validatesBulkUserLifecycleRequests() {
+        AdminUserBulkRequestDTO request =
+                new AdminUserBulkRequestDTO(List.of(), AdminUserBulkAction.DISABLE);
+        assertThat(validator.validate(request))
+                .extracting(violation -> violation.getPropertyPath().toString())
+                .contains("userIds");
+
+        AdminUserBulkRequestDTO oversized =
+                new AdminUserBulkRequestDTO(
+                        java.util.stream.LongStream.rangeClosed(1, 101).boxed().toList(),
+                        AdminUserBulkAction.DELETE);
+        assertThat(validator.validate(oversized))
+                .extracting(violation -> violation.getPropertyPath().toString())
+                .contains("userIds");
     }
 }

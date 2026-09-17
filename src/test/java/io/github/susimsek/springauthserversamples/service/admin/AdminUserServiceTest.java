@@ -11,6 +11,7 @@ import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
 import io.github.susimsek.springauthserversamples.domain.GroupEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminUserBulkAction;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminUserDTO;
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
 import io.github.susimsek.springauthserversamples.repository.GroupRepository;
@@ -438,6 +439,49 @@ class AdminUserServiceTest {
         assertThat(target.isEnabled()).isTrue();
         verify(userAccessInvalidationService, never()).invalidate("alice");
         verify(adminAuditEventService).record("user.enabled.updated", "user", "5");
+    }
+
+    @Test
+    void bulkDisableInvalidatesEverySelectedUserAndAuditsEachMutation() {
+        UserEntity first = user(5L, "alice", AuthoritiesConstants.USER);
+        UserEntity second = user(6L, "bob", AuthoritiesConstants.USER);
+        UserEntity administrator = user(7L, "administrator", AuthoritiesConstants.ADMIN);
+        when(userRepository.findAllByIdIn(List.of(5L, 6L))).thenReturn(List.of(first, second));
+        when(userRepository.findByUsername("administrator")).thenReturn(Optional.of(administrator));
+
+        var result =
+                service()
+                        .bulkOperate(List.of(5L, 6L), AdminUserBulkAction.DISABLE, "administrator");
+
+        assertThat(result.action()).isEqualTo(AdminUserBulkAction.DISABLE);
+        assertThat(result.userCount()).isEqualTo(2);
+        assertThat(first.isEnabled()).isFalse();
+        assertThat(second.isEnabled()).isFalse();
+        verify(userAccessInvalidationService).invalidate("alice");
+        verify(userAccessInvalidationService).invalidate("bob");
+        verify(adminAuditEventService).record("user.enabled.updated", "user", "5");
+        verify(adminAuditEventService).record("user.enabled.updated", "user", "6");
+    }
+
+    @Test
+    void bulkDeleteRejectsRemovingTheLastAdministrator() {
+        UserEntity target = user(5L, "administrator-target", AuthoritiesConstants.ADMIN);
+        UserEntity administrator = user(6L, "administrator", AuthoritiesConstants.ADMIN);
+        when(userRepository.findAllByIdIn(List.of(5L))).thenReturn(List.of(target));
+        when(userRepository.findByUsername("administrator")).thenReturn(Optional.of(administrator));
+        when(userRepository.findAllWithEffectiveAuthorities()).thenReturn(List.of(target));
+
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .bulkOperate(
+                                                List.of(5L),
+                                                AdminUserBulkAction.DELETE,
+                                                "administrator"))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("The last administrator must be retained");
+        verify(userRepository, never()).delete(any(UserEntity.class));
+        verify(userAccessInvalidationService, never()).invalidate("administrator-target");
     }
 
     @Test

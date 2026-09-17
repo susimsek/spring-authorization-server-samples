@@ -5,6 +5,8 @@ import io.github.susimsek.springauthserversamples.domain.GroupEntity;
 import io.github.susimsek.springauthserversamples.domain.UserAction;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminUserBulkAction;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminUserBulkOperationDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminUserDTO;
 import io.github.susimsek.springauthserversamples.mapper.AdminGroupMapper;
 import io.github.susimsek.springauthserversamples.mapper.AdminUserMapper;
@@ -24,6 +26,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.mapstruct.factory.Mappers;
 import org.springframework.cache.annotation.CacheEvict;
@@ -431,6 +435,60 @@ public class AdminUserService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
+    public AdminUserBulkOperationDTO bulkOperate(
+            List<Long> userIds, AdminUserBulkAction action, String currentUsername) {
+        List<Long> distinctIds = userIds.stream().distinct().toList();
+        List<UserEntity> users = userRepository.findAllByIdIn(distinctIds);
+        Map<Long, UserEntity> usersById =
+                users.stream().collect(Collectors.toMap(UserEntity::getId, Function.identity()));
+        if (usersById.size() != distinctIds.size()) {
+            throw ApiException.notFound("One or more users were not found");
+        }
+
+        users = distinctIds.stream().map(usersById::get).toList();
+        users.forEach(user -> assertCanManageUser(user, currentUsername));
+        if (action == AdminUserBulkAction.DISABLE || action == AdminUserBulkAction.DELETE) {
+            users.forEach(
+                    user -> {
+                        if (user.getUsername().equals(currentUsername)) {
+                            throw ApiException.badRequest(
+                                    ApiErrorCode.USER_PROTECTED,
+                                    "You cannot disable or delete your own account");
+                        }
+                    });
+            long selectedAdministrators = users.stream().filter(this::isAdministrator).count();
+            if (selectedAdministrators > 0 && effectiveAdminCount() - selectedAdministrators <= 0) {
+                throw ApiException.badRequest(
+                        ApiErrorCode.LAST_ADMIN_PROTECTED,
+                        "The last administrator must be retained");
+            }
+        }
+
+        for (UserEntity user : users) {
+            switch (action) {
+                case ENABLE -> {
+                    adminUserMapper.updateEnabled(true, user);
+                    adminAuditEventService.record(
+                            "user.enabled.updated", "user", user.getId().toString());
+                }
+                case DISABLE -> {
+                    userAccessInvalidationService.invalidate(user.getUsername());
+                    adminUserMapper.updateEnabled(false, user);
+                    adminAuditEventService.record(
+                            "user.enabled.updated", "user", user.getId().toString());
+                }
+                case DELETE -> {
+                    userAccessInvalidationService.invalidate(user.getUsername());
+                    userRepository.delete(user);
+                    adminAuditEventService.record("user.deleted", "user", user.getId().toString());
+                }
+            }
+        }
+        return new AdminUserBulkOperationDTO(action, users.size());
+    }
+
+    @Transactional
     public void executeActionsEmail(
             Long id,
             UserAction action,
@@ -573,6 +631,10 @@ public class AdminUserService {
 
     private static Set<String> authorities(UserEntity user) {
         return EffectiveRoleService.effectiveRoleNames(user);
+    }
+
+    private boolean isAdministrator(UserEntity user) {
+        return authorities(user).contains(AuthoritiesConstants.ADMIN);
     }
 
     private static Set<String> requestedRoleNames(Set<String> roles) {

@@ -1,14 +1,16 @@
 "use client";
 
-import { Button, Modal, Spinner } from "react-bootstrap";
+import { Button, Modal, Spinner, type ButtonProps } from "react-bootstrap";
 
-import { ActionIcon } from "@/components/shared/ActionIcon";
+import { ActionIcon, type ActionIconName } from "@/components/shared/ActionIcon";
 
 export function ConfirmModal({
   show,
   message,
   cancelLabel,
   confirmLabel,
+  confirmAction = "check",
+  confirmVariant = "danger",
   busy = false,
   onCancel,
   onConfirm,
@@ -17,6 +19,8 @@ export function ConfirmModal({
   message: string;
   cancelLabel: string;
   confirmLabel: string;
+  confirmAction?: ActionIconName;
+  confirmVariant?: ButtonProps["variant"];
   busy?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
@@ -29,11 +33,11 @@ export function ConfirmModal({
           <ActionIcon action="cancel" />
           {cancelLabel}
         </Button>
-        <Button disabled={busy} onClick={onConfirm} type="button" variant="danger">
+        <Button disabled={busy} onClick={onConfirm} type="button" variant={confirmVariant}>
           {busy ? (
             <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
           ) : (
-            <ActionIcon action="check" />
+            <ActionIcon action={confirmAction} />
           )}
           {confirmLabel}
         </Button>
