@@ -40,7 +40,7 @@ export default function AdminEventSettings() {
     formState: { errors, isSubmitting },
   } = useForm<EventSettings>({
     resolver: zodResolver(schema),
-    mode: "onBlur",
+    mode: "onChange",
     defaultValues: {
       eventsEnabled: true,
       adminEventsEnabled: true,

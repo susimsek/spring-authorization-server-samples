@@ -65,6 +65,7 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
     formState: { errors },
   } = useForm<Values>({
     resolver: zodResolver(clientScopeSchema),
+    mode: "onChange",
     defaultValues: EMPTY,
   });
 

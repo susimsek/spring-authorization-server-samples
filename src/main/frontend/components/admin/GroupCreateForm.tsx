@@ -57,7 +57,7 @@ export function GroupCreateForm({ dictionary }: { dictionary: Dictionary; locale
     setError,
   } = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
-    mode: "onBlur",
+    mode: "onChange",
     defaultValues: { name: "", parentId: "", attributesJson: "", defaultGroup: false },
   });
 

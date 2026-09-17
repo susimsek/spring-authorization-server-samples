@@ -187,7 +187,7 @@ export function ClientForm({
     control,
   } = useForm<FormState>({
     resolver: zodResolver(clientSchema(dictionary.admin.common.validation)),
-    mode: "onBlur",
+    mode: "onChange",
     defaultValues: EMPTY,
   });
   const clientAuthenticationMethods = useWatch({

@@ -94,7 +94,9 @@ it("edits group attributes and the default-group flag", async () => {
   const attributes = await screen.findByRole("textbox", { name: en.admin.groups.attributes });
   fireEvent.change(attributes, { target: { value: '{"department":["platform"]}' } });
   fireEvent.click(screen.getByRole("checkbox", { name: en.admin.groups.defaultGroup }));
-  fireEvent.click(screen.getByRole("button", { name: en.admin.common.save }));
+  const saveButton = screen.getByRole("button", { name: en.admin.common.save });
+  await waitFor(() => expect(saveButton).not.toBeDisabled());
+  fireEvent.click(saveButton);
 
   await waitFor(() =>
     expect(request).toHaveBeenCalledWith("token", {

@@ -138,7 +138,7 @@ export default function LoginSettingsPage({
     formState: { errors, isSubmitting },
   } = useForm<Settings>({
     resolver: zodResolver(schema),
-    mode: "onBlur",
+    mode: "onChange",
   });
 
   useEffect(() => {

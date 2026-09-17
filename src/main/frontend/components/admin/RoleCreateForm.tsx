@@ -39,7 +39,7 @@ export function RoleCreateForm({ dictionary }: { dictionary: Dictionary; locale:
     setError,
   } = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
-    mode: "onBlur",
+    mode: "onChange",
     defaultValues: { name: "", description: "" },
   });
 

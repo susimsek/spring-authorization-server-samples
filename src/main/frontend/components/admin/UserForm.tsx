@@ -326,7 +326,7 @@ export function UserForm({
     formState: { errors, dirtyFields },
   } = useForm<UserFormValues>({
     resolver: zodResolver(schema),
-    mode: "onBlur",
+    mode: "onChange",
     defaultValues: {
       username: "",
       firstName: "",

@@ -79,7 +79,7 @@ export default function EmailSettingsPage({ embedded = false }: { embedded?: boo
     formState: { errors, isSubmitting },
   } = useForm<Settings>({
     resolver: zodResolver(schema),
-    mode: "onBlur",
+    mode: "onChange",
     defaultValues: {
       enabled: false,
       fromAddress: "",
