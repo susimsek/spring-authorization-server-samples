@@ -17,6 +17,7 @@ public interface LoginSettingsMapper {
 
     @Mapping(target = "userRegistration", source = "userRegistrationEnabled")
     @Mapping(target = "forgotPassword", source = "forgotPasswordEnabled")
+    @Mapping(target = "passwordResetOtpMode", source = "passwordResetOtpMode")
     @Mapping(target = "rememberMe", source = "rememberMeEnabled")
     @Mapping(target = "passkeys", source = "passkeysEnabled")
     @Mapping(target = "webauthnMediation", source = "webAuthnMediation")
@@ -24,6 +25,13 @@ public interface LoginSettingsMapper {
 
     @Mapping(target = "userRegistration", source = "userRegistrationEnabled")
     @Mapping(target = "forgotPassword", source = "forgotPasswordEnabled")
+    @Mapping(target = "passwordResetOtpMode", source = "passwordResetOtpMode")
+    @Mapping(
+            target = "passwordResetTokenLifespanSeconds",
+            source = "passwordResetTokenLifespanSeconds")
+    @Mapping(
+            target = "passwordResetResendCooldownSeconds",
+            source = "passwordResetResendCooldownSeconds")
     @Mapping(target = "rememberMe", source = "rememberMeEnabled")
     @Mapping(target = "passkeys", source = "passkeysEnabled")
     @Mapping(target = "loginWithEmail", source = "loginWithEmail")
@@ -83,6 +91,16 @@ public interface LoginSettingsMapper {
     @BeanMapping(ignoreByDefault = true)
     @Mapping(target = "userRegistrationEnabled", source = "userRegistration")
     @Mapping(target = "forgotPasswordEnabled", source = "forgotPassword")
+    @Mapping(
+            target = "passwordResetOtpMode",
+            source = "passwordResetOtpMode",
+            qualifiedByName = "normalizeResetOtpMode")
+    @Mapping(
+            target = "passwordResetTokenLifespanSeconds",
+            source = "passwordResetTokenLifespanSeconds")
+    @Mapping(
+            target = "passwordResetResendCooldownSeconds",
+            source = "passwordResetResendCooldownSeconds")
     @Mapping(target = "rememberMeEnabled", source = "rememberMe")
     @Mapping(target = "loginWithEmail", source = "loginWithEmail")
     @Mapping(target = "verifyEmail", source = "verifyEmail")
@@ -157,6 +175,11 @@ public interface LoginSettingsMapper {
 
     @Named("normalizeMediation")
     default String normalizeMediation(String value) {
+        return value == null ? "none" : value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    @Named("normalizeResetOtpMode")
+    default String normalizeResetOtpMode(String value) {
         return value == null ? "none" : value.trim().toLowerCase(Locale.ROOT);
     }
 }

@@ -17,6 +17,9 @@ import { ViewHeader } from "./ViewHeader";
 type Settings = {
   userRegistration: boolean;
   forgotPassword: boolean;
+  passwordResetOtpMode: "none" | "if-configured" | "required";
+  passwordResetTokenLifespanSeconds: number;
+  passwordResetResendCooldownSeconds: number;
   rememberMe: boolean;
   passkeys: boolean;
   loginWithEmail: boolean;
@@ -61,6 +64,56 @@ type Settings = {
   recoveryCodeWarningThreshold: number;
 };
 
+const defaultSettings: Settings = {
+  userRegistration: true,
+  forgotPassword: true,
+  passwordResetOtpMode: "none",
+  passwordResetTokenLifespanSeconds: 43200,
+  passwordResetResendCooldownSeconds: 30,
+  rememberMe: true,
+  passkeys: false,
+  loginWithEmail: false,
+  verifyEmail: false,
+  webauthnMediation: "none",
+  emailUpdateReauthenticationMinutes: 5,
+  sessionTimeoutMinutes: 30,
+  passwordMinimumLength: 12,
+  bruteForceEnabled: true,
+  bruteForceMaxFailures: 5,
+  bruteForceMaxSecondaryFailures: 0,
+  mfaVerificationTimeoutSeconds: 300,
+  passwordMaximumLength: 128,
+  passwordMinimumUppercase: 1,
+  passwordMinimumLowercase: 1,
+  passwordMinimumDigits: 1,
+  passwordMinimumSpecialCharacters: 1,
+  passwordRejectUsername: true,
+  passwordRejectEmail: true,
+  passwordRejectCommonPasswords: true,
+  passwordHistorySize: 5,
+  passwordExpirationDays: 90,
+  passwordCommonPasswords: "password,123456,12345678,qwerty,qwerty123,admin,letmein",
+  bruteForceQuickLoginWindowMillis: 1000,
+  bruteForceMinimumQuickLoginWaitSeconds: 60,
+  bruteForceWaitIncrementSeconds: 60,
+  bruteForceMaxWaitSeconds: 900,
+  bruteForceFailureResetTimeSeconds: 43200,
+  bruteForceMaxTemporaryLockouts: 3,
+  bruteForcePermanentLockout: false,
+  bruteForceIpRequestsPerMinute: 30,
+  bruteForceUsernameIpRequestsPerMinute: 5,
+  otpEnabled: false,
+  otpRequired: false,
+  otpIssuer: "Spring Authorization Server",
+  otpAlgorithm: "SHA1",
+  otpDigits: 6,
+  otpPeriodSeconds: 30,
+  otpLookAheadWindow: 1,
+  otpCodeReusable: false,
+  otpAddRecoveryCodes: false,
+  recoveryCodeWarningThreshold: 2,
+};
+
 export type LoginSettingsSection =
   "login" | "webauthn" | "password-policy" | "otp-policy" | "brute-force" | "sessions";
 
@@ -81,6 +134,17 @@ export default function LoginSettingsPage({
   const schema = z.object({
     userRegistration: z.boolean(),
     forgotPassword: z.boolean(),
+    passwordResetOtpMode: z.enum(["none", "if-configured", "required"]),
+    passwordResetTokenLifespanSeconds: z
+      .number()
+      .int()
+      .min(60, validation.positiveNumber)
+      .max(86400, validation.maximumNumber),
+    passwordResetResendCooldownSeconds: z
+      .number()
+      .int()
+      .min(0, validation.positiveNumber)
+      .max(86400, validation.maximumNumber),
     rememberMe: z.boolean(),
     passkeys: z.boolean(),
     loginWithEmail: z.boolean(),
@@ -139,6 +203,7 @@ export default function LoginSettingsPage({
   } = useForm<Settings>({
     resolver: zodResolver(schema),
     mode: "onChange",
+    defaultValues: defaultSettings,
   });
 
   useEffect(() => {
@@ -146,7 +211,7 @@ export default function LoginSettingsPage({
     adminRequest<Settings>(accessToken, { url: "/api/admin/settings/login" })
       .then((response) => {
         if (response.status >= 300) throw new Error();
-        reset(response.data);
+        reset({ ...defaultSettings, ...response.data });
         setLoaded(true);
       })
       .catch(() => setError(true));
@@ -173,7 +238,7 @@ export default function LoginSettingsPage({
         data: values,
       });
       if (response.status >= 300) throw new Error();
-      reset(response.data);
+      reset({ ...defaultSettings, ...response.data });
       setSaved(true);
     } catch {
       setError(true);
@@ -207,6 +272,33 @@ export default function LoginSettingsPage({
                   label={copy.forgotPassword}
                   {...register("forgotPassword")}
                 />
+                <div className="d-grid gap-3 mb-4">
+                  <Form.Group controlId="login-password-reset-otp-mode">
+                    <Form.Label>{copy.passwordResetOtpMode}</Form.Label>
+                    <Form.Select {...register("passwordResetOtpMode")}>
+                      <option value="none">{copy.passwordResetOtpNone}</option>
+                      <option value="if-configured">{copy.passwordResetOtpIfConfigured}</option>
+                      <option value="required">{copy.passwordResetOtpRequired}</option>
+                    </Form.Select>
+                    <Form.Text>{copy.passwordResetOtpModeHelp}</Form.Text>
+                  </Form.Group>
+                  <NumberField
+                    id="login-password-reset-lifespan"
+                    label={copy.passwordResetTokenLifespan}
+                    error={errors.passwordResetTokenLifespanSeconds?.message}
+                    registration={register("passwordResetTokenLifespanSeconds", {
+                      valueAsNumber: true,
+                    })}
+                  />
+                  <NumberField
+                    id="login-password-reset-cooldown"
+                    label={copy.passwordResetResendCooldown}
+                    error={errors.passwordResetResendCooldownSeconds?.message}
+                    registration={register("passwordResetResendCooldownSeconds", {
+                      valueAsNumber: true,
+                    })}
+                  />
+                </div>
                 <Form.Check
                   className="mb-4"
                   type="switch"

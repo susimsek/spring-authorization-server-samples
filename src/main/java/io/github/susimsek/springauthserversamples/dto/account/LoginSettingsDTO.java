@@ -7,6 +7,12 @@ public record LoginSettingsDTO(
         @Schema(description = "Whether visitors can create accounts.") boolean userRegistration,
         @Schema(description = "Whether users can request password reset emails.")
                 boolean forgotPassword,
+        @Schema(
+                        description =
+                                "OTP policy during password reset: none, if-configured, or"
+                                        + " required.",
+                        allowableValues = {"none", "if-configured", "required"})
+                String passwordResetOtpMode,
         @Schema(description = "Whether the login page offers remember-me sessions.")
                 boolean rememberMe,
         @Schema(

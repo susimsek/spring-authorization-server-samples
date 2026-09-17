@@ -8,11 +8,13 @@ import io.github.susimsek.springauthserversamples.mapper.AccountActionTokenMappe
 import io.github.susimsek.springauthserversamples.repository.UserActionTokenRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.service.EmailSettingsService;
+import io.github.susimsek.springauthserversamples.service.LoginSettingsService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
 import io.github.susimsek.springauthserversamples.service.admin.UserAccessInvalidationService;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import io.github.susimsek.springauthserversamples.service.security.PasswordService;
+import io.github.susimsek.springauthserversamples.service.security.TotpService;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -48,6 +50,8 @@ public class UserActionService {
     private final ApplicationProperties applicationProperties;
     private final EmailSettingsService emailSettingsService;
     private final AccountActionTokenMapper accountActionTokenMapper;
+    private final LoginSettingsService loginSettingsService;
+    private final TotpService totpService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public UserActionService(
@@ -68,7 +72,9 @@ public class UserActionService {
                 eventPublisher,
                 applicationProperties,
                 emailSettingsService,
-                Mappers.getMapper(AccountActionTokenMapper.class));
+                Mappers.getMapper(AccountActionTokenMapper.class),
+                null,
+                null);
     }
 
     public UserActionService(
@@ -148,12 +154,19 @@ public class UserActionService {
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public void resetPassword(String rawToken, String newPassword) {
+        resetPassword(rawToken, newPassword, null);
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
+    public void resetPassword(String rawToken, String newPassword, String otpCode) {
         if (newPassword == null || newPassword.length() < 12 || newPassword.length() > 128) {
             throw ApiException.badRequest(
                     "newPassword", ApiErrorCode.INVALID_PASSWORD, "Password is invalid");
         }
         UserActionTokenEntity token = requireToken(rawToken, UserAction.UPDATE_PASSWORD);
         UserEntity user = token.getUser();
+        validateResetOtp(user, otpCode);
         passwordService.changePassword(user, newPassword);
         consume(token);
         userAccessInvalidationService.invalidate(user.getUsername());
@@ -191,14 +204,15 @@ public class UserActionService {
         Instant now = Instant.now();
         Optional<UserActionTokenEntity> latest =
                 tokenRepository.findFirstByUserIdAndActionOrderByIssuedAtDesc(user.getId(), action);
-        if (latest.isPresent() && latest.get().getIssuedAt().plus(RESEND_COOLDOWN).isAfter(now)) {
+        Duration resendCooldown = resetResendCooldown(action);
+        if (latest.isPresent() && latest.get().getIssuedAt().plus(resendCooldown).isAfter(now)) {
             if (suppressCooldown) {
                 return;
             }
             throw ApiException.conflict(
                     ApiErrorCode.ACTION_EMAIL_COOLDOWN, "Please wait before resending the email");
         }
-        final long lifespan = validateLifespan(requestedLifespan);
+        final long lifespan = validateLifespan(requestedLifespan, action);
         byte[] bytes = new byte[32];
         secureRandom.nextBytes(bytes);
         final String rawToken = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
@@ -319,8 +333,11 @@ public class UserActionService {
                 .orElseThrow(() -> ApiException.notFound("User not found"));
     }
 
-    private static long validateLifespan(Long requested) {
-        long value = requested == null ? DEFAULT_LIFESPAN_SECONDS : requested;
+    private long validateLifespan(Long requested, UserAction action) {
+        long value =
+                requested == null && action == UserAction.UPDATE_PASSWORD
+                        ? resetTokenLifespanSeconds()
+                        : requested == null ? DEFAULT_LIFESPAN_SECONDS : requested;
         if (value < MIN_LIFESPAN_SECONDS || value > MAX_LIFESPAN_SECONDS) {
             throw ApiException.badRequest(
                     "lifespan",
@@ -328,6 +345,59 @@ public class UserActionService {
                     "Lifespan must be between 60 and 86400 seconds");
         }
         return value;
+    }
+
+    private Duration resetResendCooldown(UserAction action) {
+        if (action == UserAction.UPDATE_PASSWORD && loginSettingsService != null) {
+            return loginSettingsService.passwordResetResendCooldown();
+        }
+        return RESEND_COOLDOWN;
+    }
+
+    private long resetTokenLifespanSeconds() {
+        if (loginSettingsService != null) {
+            return loginSettingsService.passwordResetTokenLifespan().toSeconds();
+        }
+        return DEFAULT_LIFESPAN_SECONDS;
+    }
+
+    private void validateResetOtp(UserEntity user, String otpCode) {
+        String mode =
+                loginSettingsService == null ? "none" : loginSettingsService.passwordResetOtpMode();
+        if (mode == null || mode.isBlank()) {
+            mode = "none";
+        }
+        if ("none".equalsIgnoreCase(mode)) {
+            return;
+        }
+        if (!user.isTotpEnabled() || user.getTotpSecret() == null) {
+            if ("required".equalsIgnoreCase(mode)) {
+                throw invalidResetOtp();
+            }
+            return;
+        }
+        if (otpCode == null || otpCode.isBlank() || totpService == null) {
+            throw invalidResetOtp();
+        }
+        var matchingCounter =
+                totpService.matchingCounter(
+                        user.getTotpSecret(),
+                        otpCode.trim(),
+                        loginSettingsService.otpAlgorithm(),
+                        loginSettingsService.otpDigits(),
+                        loginSettingsService.otpPeriodSeconds(),
+                        loginSettingsService.otpLookAheadWindow());
+        if (matchingCounter.isEmpty()
+                || (user.getTotpLastUsedCounter() != null
+                        && matchingCounter.getAsLong() <= user.getTotpLastUsedCounter())) {
+            throw invalidResetOtp();
+        }
+        user.setTotpLastUsedCounter(matchingCounter.getAsLong());
+    }
+
+    private static ApiException invalidResetOtp() {
+        return ApiException.badRequest(
+                "otpCode", ApiErrorCode.INVALID_TOTP_CODE, "The OTP code is invalid");
     }
 
     private static String normalizeEmail(String email) {

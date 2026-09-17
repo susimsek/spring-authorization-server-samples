@@ -13,17 +13,20 @@ import io.github.susimsek.springauthserversamples.domain.UserActionTokenEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.repository.UserActionTokenRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
+import io.github.susimsek.springauthserversamples.service.LoginSettingsService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
 import io.github.susimsek.springauthserversamples.service.admin.UserAccessInvalidationService;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import io.github.susimsek.springauthserversamples.service.security.PasswordService;
+import io.github.susimsek.springauthserversamples.service.security.TotpService;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.OptionalLong;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +45,8 @@ class UserActionServiceTest {
     @Mock private AdminAuditEventService auditEventService;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private ApplicationProperties applicationProperties;
+    @Mock private LoginSettingsService loginSettingsService;
+    @Mock private TotpService totpService;
 
     private UserActionService service;
 
@@ -155,6 +160,44 @@ class UserActionServiceTest {
         assertThat(token.getUser().getPassword()).isEqualTo("encoded-password");
         assertThat(token.getConsumedAt()).isNotNull();
         verify(invalidationService).invalidate("alice");
+    }
+
+    @Test
+    void requiresAndConsumesTotpForPasswordResetWhenPolicyRequiresIt() throws Exception {
+        service =
+                new UserActionService(
+                        userRepository,
+                        tokenRepository,
+                        passwordService,
+                        invalidationService,
+                        auditEventService,
+                        eventPublisher,
+                        applicationProperties,
+                        null,
+                        org.mapstruct.factory.Mappers.getMapper(
+                                io.github.susimsek.springauthserversamples.mapper
+                                        .AccountActionTokenMapper.class),
+                        loginSettingsService,
+                        totpService);
+        UserActionTokenEntity token =
+                token(UserAction.UPDATE_PASSWORD, Instant.now().plusSeconds(60));
+        token.getUser().setTotpEnabled(true);
+        token.getUser().setTotpSecret("JBSWY3DPEHPK3PXP");
+        when(loginSettingsService.passwordResetOtpMode()).thenReturn("required");
+        when(loginSettingsService.otpAlgorithm()).thenReturn("SHA1");
+        when(loginSettingsService.otpDigits()).thenReturn(6);
+        when(loginSettingsService.otpPeriodSeconds()).thenReturn(30);
+        when(loginSettingsService.otpLookAheadWindow()).thenReturn(1);
+        when(tokenRepository.findUserIdByTokenHash(hash("raw-token"))).thenReturn(Optional.of(7L));
+        when(userRepository.findForActionById(7L)).thenReturn(Optional.of(token.getUser()));
+        when(tokenRepository.findByTokenHash(hash("raw-token"))).thenReturn(Optional.of(token));
+        when(totpService.matchingCounter("JBSWY3DPEHPK3PXP", "123456", "SHA1", 6, 30, 1))
+                .thenReturn(OptionalLong.of(42));
+
+        service.resetPassword("raw-token", "new-password", "123456");
+
+        assertThat(token.getUser().getTotpLastUsedCounter()).isEqualTo(42L);
+        assertThat(token.getConsumedAt()).isNotNull();
     }
 
     private static UserEntity user() {

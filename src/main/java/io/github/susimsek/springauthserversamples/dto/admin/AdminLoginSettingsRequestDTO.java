@@ -13,6 +13,28 @@ public record AdminLoginSettingsRequestDTO(
         @Schema(description = "Allow visitors to create accounts.") boolean userRegistration,
         @Schema(description = "Show the forgot-password link and allow password reset requests.")
                 boolean forgotPassword,
+        @Schema(
+                        description =
+                                "OTP policy during password reset: none, if-configured, or"
+                                        + " required.",
+                        allowableValues = {"none", "if-configured", "required"})
+                @NotBlank
+                @Pattern(regexp = "(?i)none|if-configured|required")
+                String passwordResetOtpMode,
+        @Schema(
+                        description = "Password-reset token lifetime in seconds.",
+                        minimum = "60",
+                        maximum = "86400")
+                @Min(60)
+                @Max(86400)
+                int passwordResetTokenLifespanSeconds,
+        @Schema(
+                        description = "Minimum seconds between reset-email requests.",
+                        minimum = "0",
+                        maximum = "86400")
+                @Min(0)
+                @Max(86400)
+                int passwordResetResendCooldownSeconds,
         @Schema(description = "Show and honor the remember-me option on the login form.")
                 boolean rememberMe,
         @Schema(description = "Allow email addresses as login identifiers.") boolean loginWithEmail,
@@ -154,6 +176,9 @@ public record AdminLoginSettingsRequestDTO(
         this(
                 userRegistration,
                 forgotPassword,
+                "none",
+                43200,
+                30,
                 rememberMe,
                 loginWithEmail,
                 verifyEmail,

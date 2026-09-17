@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "@/routing/Link";
 import { useSearchParams } from "@/routing/navigation";
 import { usePathname } from "@/routing/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Alert, Button, Card, Form, Spinner, Stack } from "react-bootstrap";
 import { useForm } from "@/lib/form";
 import { z } from "zod";
@@ -108,6 +108,20 @@ export function ResetPasswordForm({ dictionary }: Props) {
   const token = useSearchParams().get("token");
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resetOtpMode, setResetOtpMode] = useState<"none" | "if-configured" | "required">("none");
+  useEffect(() => {
+    fetch("/api/auth/login-settings")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((value) => {
+        if (
+          value?.passwordResetOtpMode === "if-configured" ||
+          value?.passwordResetOtpMode === "required"
+        ) {
+          setResetOtpMode(value.passwordResetOtpMode);
+        }
+      })
+      .catch(() => {});
+  }, []);
   const schema = z
     .object({
       newPassword: z
@@ -115,10 +129,19 @@ export function ResetPasswordForm({ dictionary }: Props) {
         .min(12, dictionary.account.validation.password)
         .max(128, dictionary.account.validation.max200),
       confirmPassword: z.string(),
+      otpCode: z.string().trim().max(8, copy.otpInvalid).optional(),
     })
-    .refine((values) => values.newPassword === values.confirmPassword, {
-      path: ["confirmPassword"],
-      message: copy.passwordMismatch,
+    .superRefine((values, context) => {
+      if (values.newPassword !== values.confirmPassword) {
+        context.addIssue({
+          path: ["confirmPassword"],
+          code: "custom",
+          message: copy.passwordMismatch,
+        });
+      }
+      if (resetOtpMode === "required" && !/^\d{6,8}$/.test(values.otpCode ?? "")) {
+        context.addIssue({ path: ["otpCode"], code: "custom", message: copy.otpRequired });
+      }
     });
   const {
     register,
@@ -128,24 +151,30 @@ export function ResetPasswordForm({ dictionary }: Props) {
     formState: { errors, isSubmitting },
   } = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
-    defaultValues: { newPassword: "", confirmPassword: "" },
+    defaultValues: { newPassword: "", confirmPassword: "", otpCode: "" },
   });
 
   const submit = handleSubmit(async (values) => {
     if (!token) return;
     setError(null);
     try {
-      await submitAccountAction("reset-password", { token, newPassword: values.newPassword });
+      await submitAccountAction("reset-password", {
+        token,
+        newPassword: values.newPassword,
+        otpCode: values.otpCode?.trim() || undefined,
+      });
       reset();
       setDone(true);
       window.history.replaceState(null, "", window.location.pathname);
     } catch (failure) {
       const result = applyProblemToForm(failure, setFieldError, {
-        fields: ["newPassword", "confirmPassword"],
+        fields: ["newPassword", "confirmPassword", "otpCode"],
         fallbackMessage: (violation) =>
           violation.field === "newPassword"
             ? dictionary.account.validation.password
-            : copy.passwordMismatch,
+            : violation.field === "otpCode"
+              ? copy.otpInvalid
+              : copy.passwordMismatch,
       });
       if (!result.firstField) setError(accountActionError(failure, dictionary));
     }
@@ -184,6 +213,21 @@ export function ResetPasswordForm({ dictionary }: Props) {
                 {errors.confirmPassword?.message}
               </Form.Control.Feedback>
             </Form.Group>
+            {resetOtpMode !== "none" && (
+              <Form.Group controlId="action-otp-code">
+                <Form.Label>{copy.otpCode}</Form.Label>
+                <Form.Control
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  isInvalid={Boolean(errors.otpCode)}
+                  {...register("otpCode")}
+                />
+                <Form.Text>{copy.otpHelp}</Form.Text>
+                <Form.Control.Feedback type="invalid">
+                  {errors.otpCode?.message}
+                </Form.Control.Feedback>
+              </Form.Group>
+            )}
             <Button type="submit" size="lg" disabled={isSubmitting}>
               {isSubmitting ? (
                 <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />

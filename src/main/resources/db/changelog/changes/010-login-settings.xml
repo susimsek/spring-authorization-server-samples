@@ -11,6 +11,9 @@
 			</column>
 			<column name="user_registration_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
 			<column name="forgot_password_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+			<column name="password_reset_otp_mode" type="varchar(20)" defaultValue="none"><constraints nullable="false"/></column>
+			<column name="password_reset_token_lifespan_seconds" type="int" defaultValueNumeric="43200"><constraints nullable="false"/></column>
+			<column name="password_reset_resend_cooldown_seconds" type="int" defaultValueNumeric="30"><constraints nullable="false"/></column>
 			<column name="remember_me_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
 			<column name="passkeys_enabled" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
 			<column name="login_with_email" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
@@ -58,6 +61,9 @@
 			<column header="id" type="numeric"/>
 			<column header="user_registration_enabled" type="boolean"/>
 			<column header="forgot_password_enabled" type="boolean"/>
+			<column header="password_reset_otp_mode" type="string"/>
+			<column header="password_reset_token_lifespan_seconds" type="numeric"/>
+			<column header="password_reset_resend_cooldown_seconds" type="numeric"/>
 			<column header="remember_me_enabled" type="boolean"/>
 			<column header="passkeys_enabled" type="boolean"/>
 			<column header="login_with_email" type="boolean"/>
