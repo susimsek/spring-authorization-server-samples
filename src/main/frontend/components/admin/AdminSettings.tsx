@@ -18,6 +18,7 @@ import LoginSettings, { type LoginSettingsSection } from "./LoginSettings";
 const SETTINGS_SECTIONS = [
   "general",
   "login",
+  "webauthn",
   "email",
   "password-policy",
   "otp-policy",
@@ -44,6 +45,11 @@ export default function AdminSettings() {
       key: "login",
       label: dictionary.admin.settings.sections.login,
       href: "/admin/settings/login",
+    },
+    {
+      key: "webauthn",
+      label: dictionary.admin.settings.sections.webauthn,
+      href: "/admin/settings/webauthn",
     },
     {
       key: "email",

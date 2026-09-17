@@ -116,6 +116,15 @@ export async function authenticatePasskey(
   });
 }
 
+export async function supportsConditionalMediation() {
+  if (!window.PublicKeyCredential || !navigator.credentials) return false;
+  const credentialApi = window.PublicKeyCredential as typeof window.PublicKeyCredential & {
+    isConditionalMediationAvailable?: () => Promise<boolean>;
+  };
+  if (typeof credentialApi.isConditionalMediationAvailable !== "function") return false;
+  return credentialApi.isConditionalMediationAvailable();
+}
+
 function decode(value: string) {
   const binary = window.atob(
     value

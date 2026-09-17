@@ -14,6 +14,11 @@ public record AdminLoginSettingsDTO(
                 boolean verifyEmail,
         @Schema(
                         description =
+                                "WebAuthn credential mediation: none, optional, or conditional.",
+                        allowableValues = {"none", "optional", "conditional"})
+                String webauthnMediation,
+        @Schema(
+                        description =
                                 "Maximum age of authentication before an email change requires"
                                         + " current-password confirmation.",
                         minimum = "0")
@@ -126,6 +131,7 @@ public record AdminLoginSettingsDTO(
                 rememberMe,
                 loginWithEmail,
                 verifyEmail,
+                "none",
                 5,
                 sessionTimeoutMinutes,
                 passwordMinimumLength,

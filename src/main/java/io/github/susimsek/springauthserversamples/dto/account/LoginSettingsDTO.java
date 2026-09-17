@@ -13,4 +13,10 @@ public record LoginSettingsDTO(
                         description = "Whether the login page offers passkey sign-in.",
                         example = "true",
                         requiredMode = Schema.RequiredMode.REQUIRED)
-                boolean passkeys) {}
+                boolean passkeys,
+        @Schema(
+                        description =
+                                "WebAuthn credential mediation used by the login page: none,"
+                                        + " optional, or conditional.",
+                        allowableValues = {"none", "optional", "conditional"})
+                String webauthnMediation) {}

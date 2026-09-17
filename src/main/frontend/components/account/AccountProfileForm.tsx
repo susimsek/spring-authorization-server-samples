@@ -581,14 +581,12 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
                   showLabel={dictionary.login.showPassword}
                   hideLabel={dictionary.login.hidePassword}
                   autoComplete="current-password"
+                  error={errors.currentPassword?.message}
                   inputProps={{
                     isInvalid: Boolean(errors.currentPassword),
                     ...register("currentPassword"),
                   }}
                 />
-                {errors.currentPassword && (
-                  <div className="invalid-feedback d-block">{errors.currentPassword.message}</div>
-                )}
               </Col>
             )}
             <Col xs={12}>

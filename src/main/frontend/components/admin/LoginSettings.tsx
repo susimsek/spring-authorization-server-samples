@@ -21,6 +21,7 @@ type Settings = {
   passkeys: boolean;
   loginWithEmail: boolean;
   verifyEmail: boolean;
+  webauthnMediation: "none" | "optional" | "conditional";
   emailUpdateReauthenticationMinutes: number;
   sessionTimeoutMinutes: number;
   passwordMinimumLength: number;
@@ -61,7 +62,7 @@ type Settings = {
 };
 
 export type LoginSettingsSection =
-  "login" | "password-policy" | "otp-policy" | "brute-force" | "sessions";
+  "login" | "webauthn" | "password-policy" | "otp-policy" | "brute-force" | "sessions";
 
 export default function LoginSettingsPage({
   embedded = false,
@@ -84,6 +85,7 @@ export default function LoginSettingsPage({
     passkeys: z.boolean(),
     loginWithEmail: z.boolean(),
     verifyEmail: z.boolean(),
+    webauthnMediation: z.enum(["none", "optional", "conditional"]),
     emailUpdateReauthenticationMinutes: z
       .number()
       .int()
@@ -237,6 +239,23 @@ export default function LoginSettingsPage({
                     valueAsNumber: true,
                   })}
                 />
+                <SaveButton copy={copy.save} isSubmitting={isSubmitting} />
+              </section>
+
+              <section hidden={activeSection !== "webauthn"}>
+                <h2 className="h5 mb-3" id="login-settings-webauthn">
+                  {copy.sectionWebAuthn}
+                </h2>
+                <p className="text-body-secondary">{copy.webAuthnPolicyHelp}</p>
+                <Form.Group controlId="login-webauthn-mediation">
+                  <Form.Label>{copy.webauthnMediation}</Form.Label>
+                  <Form.Select {...register("webauthnMediation")}>
+                    <option value="none">{copy.webauthnMediationNone}</option>
+                    <option value="optional">{copy.webauthnMediationOptional}</option>
+                    <option value="conditional">{copy.webauthnMediationConditional}</option>
+                  </Form.Select>
+                  <Form.Text>{copy.webauthnMediationHelp}</Form.Text>
+                </Form.Group>
                 <SaveButton copy={copy.save} isSubmitting={isSubmitting} />
               </section>
 

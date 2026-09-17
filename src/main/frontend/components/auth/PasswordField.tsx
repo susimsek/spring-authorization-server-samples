@@ -13,6 +13,7 @@ type PasswordFieldProps = {
   placeholder: string;
   showLabel: string;
   hideLabel: string;
+  error?: string;
   inputProps?: ComponentProps<typeof Form.Control>;
 };
 
@@ -23,6 +24,7 @@ export function PasswordField({
   placeholder,
   showLabel,
   hideLabel,
+  error,
   inputProps,
 }: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);
@@ -30,7 +32,7 @@ export function PasswordField({
   return (
     <Form.Group className="mb-4" controlId={controlId}>
       <Form.Label>{label}</Form.Label>
-      <InputGroup>
+      <InputGroup hasValidation={Boolean(error)}>
         <InputGroup.Text>
           <Icon icon="lock" />
         </InputGroup.Text>
@@ -50,6 +52,11 @@ export function PasswordField({
           <ActionIcon action={visible ? "hide" : "show"} className="m-0" />
         </Button>
       </InputGroup>
+      {error && (
+        <Form.Control.Feedback className="d-block" type="invalid">
+          {error}
+        </Form.Control.Feedback>
+      )}
     </Form.Group>
   );
 }

@@ -19,6 +19,7 @@ public interface LoginSettingsMapper {
     @Mapping(target = "forgotPassword", source = "forgotPasswordEnabled")
     @Mapping(target = "rememberMe", source = "rememberMeEnabled")
     @Mapping(target = "passkeys", source = "passkeysEnabled")
+    @Mapping(target = "webauthnMediation", source = "webAuthnMediation")
     LoginSettingsDTO toPublicDTO(LoginSettingsEntity source);
 
     @Mapping(target = "userRegistration", source = "userRegistrationEnabled")
@@ -27,6 +28,7 @@ public interface LoginSettingsMapper {
     @Mapping(target = "passkeys", source = "passkeysEnabled")
     @Mapping(target = "loginWithEmail", source = "loginWithEmail")
     @Mapping(target = "verifyEmail", source = "verifyEmail")
+    @Mapping(target = "webauthnMediation", source = "webAuthnMediation")
     @Mapping(
             target = "emailUpdateReauthenticationMinutes",
             source = "emailUpdateReauthenticationMinutes")
@@ -84,6 +86,10 @@ public interface LoginSettingsMapper {
     @Mapping(target = "rememberMeEnabled", source = "rememberMe")
     @Mapping(target = "loginWithEmail", source = "loginWithEmail")
     @Mapping(target = "verifyEmail", source = "verifyEmail")
+    @Mapping(
+            target = "webAuthnMediation",
+            source = "webauthnMediation",
+            qualifiedByName = "normalizeMediation")
     @Mapping(
             target = "emailUpdateReauthenticationMinutes",
             source = "emailUpdateReauthenticationMinutes")
@@ -147,5 +153,10 @@ public interface LoginSettingsMapper {
     @Named("normalizeAlgorithm")
     default String normalizeAlgorithm(String value) {
         return value == null ? null : value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    @Named("normalizeMediation")
+    default String normalizeMediation(String value) {
+        return value == null ? "none" : value.trim().toLowerCase(Locale.ROOT);
     }
 }

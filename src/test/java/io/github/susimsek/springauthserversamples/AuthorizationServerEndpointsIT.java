@@ -61,7 +61,8 @@ class AuthorizationServerEndpointsIT {
     void publicLoginSettingsDisablePasskeysByDefault() throws Exception {
         mockMvc.perform(get("/api/auth/login-settings"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.passkeys").value(false));
+                .andExpect(jsonPath("$.passkeys").value(false))
+                .andExpect(jsonPath("$.webauthnMediation").value("none"));
     }
 
     @ParameterizedTest
