@@ -501,7 +501,8 @@
         "bruteForce": "Brute force",
         "sessions": "Oturumlar",
         "events": "Olaylar",
-        "userProfile": "Kullanıcı profili"
+        "userProfile": "Kullanıcı profili",
+        "localization": "Yerelleştirme"
       }
     },
     "clients": {
@@ -868,6 +869,39 @@
       "addOptional": "İsteğe bağlı olarak ekle",
       "remove": "Kaldır",
       "assignmentSaved": "İstemci scope atamaları güncellendi."
+    },
+    "localization": {
+      "title": "Yerelleştirme ayarları",
+      "subtitle": "Desteklenen dilleri, varsayılan locale değerini ve Keycloak tarzı mesaj geçersiz kılmalarını yapılandırın.",
+      "enabled": "Yerelleştirmeyi etkinleştir",
+      "defaultLocale": "Varsayılan locale",
+      "supportedLocales": "Desteklenen diller",
+      "save": "Kaydet",
+      "saved": "Yerelleştirme ayarları kaydedildi.",
+      "settingsTab": "Ayarlar",
+      "overridesTab": "Mesaj geçersiz kılmaları",
+      "effectiveTab": "Etkin mesajlar",
+      "overridesTitle": "Mesaj geçersiz kılmaları",
+      "overridesSubtitle": "Uygulama kaynaklarını değiştirmeden seçili locale için yerleşik mesajları geçersiz kılın.",
+      "effectiveTitle": "Etkin mesajlar",
+      "effectiveSubtitle": "Yerleşik mesajlar ile locale geçersiz kılmaları birleştirildikten sonraki frontend bundle’ını arayın.",
+      "effectiveEmpty": "Etkin mesaj bulunamadı.",
+      "bundle": "Bundle",
+      "source": "Kaynak",
+      "bundled": "Yerleşik",
+      "override": "Geçersiz kılma",
+      "locale": "Locale",
+      "messageKey": "Mesaj anahtarı",
+      "messageValue": "Mesaj değeri",
+      "search": "Mesaj geçersiz kılmalarında ara",
+      "searchEffective": "Etkin mesajlarda ara",
+      "create": "Geçersiz kılma ekle",
+      "update": "Geçersiz kılmayı güncelle",
+      "cancel": "İptal",
+      "edit": "Düzenle",
+      "delete": "Sil",
+      "empty": "Mesaj geçersiz kılması bulunamadı.",
+      "error": "Yerelleştirme ayarları yüklenemedi veya kaydedilemedi."
     }
   },
   "account": {
@@ -910,6 +944,8 @@
       "firstName": "Ad",
       "lastName": "Soyad",
       "email": "E-posta",
+      "locale": "Dil",
+      "localeHelp": "Hesap deneyiminizde kullanılacak dili seçin.",
       "currentPassword": "Mevcut parola",
       "reauthenticationRequired": "Güvenliğiniz için e-posta adresinizi değiştirmeden önce mevcut parolanızı doğrulayın.",
       "emailVerified": "Doğrulandı",

@@ -237,9 +237,17 @@ public class AuthorizationServerConfig {
             Optional<UserEntity> tokenUser = Optional.empty();
             if (isUserProfileToken(context)
                     || isUserEmailToken(context)
+                    || isUserLocaleToken(context)
                     || adminAccessToken
                     || !groupMappers.isEmpty()) {
                 tokenUser = userRepository.findByUsername(context.getPrincipal().getName());
+            }
+
+            if (isUserLocaleToken(context)) {
+                tokenUser
+                        .map(UserEntity::getPreferredLocale)
+                        .filter(locale -> locale != null && !locale.isBlank())
+                        .ifPresent(locale -> context.getClaims().claim("locale", locale));
             }
 
             if (isUserProfileToken(context)) {
@@ -344,6 +352,15 @@ public class AuthorizationServerConfig {
                                 context.getAuthorizationGrantType())
                         || AuthorizationGrantType.REFRESH_TOKEN.equals(
                                 context.getAuthorizationGrantType()));
+    }
+
+    private static boolean isUserLocaleToken(JwtEncodingContext context) {
+        return (AuthorizationGrantType.AUTHORIZATION_CODE.equals(
+                                context.getAuthorizationGrantType())
+                        || AuthorizationGrantType.REFRESH_TOKEN.equals(
+                                context.getAuthorizationGrantType()))
+                && (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())
+                        || OidcParameterNames.ID_TOKEN.equals(context.getTokenType().getValue()));
     }
 
     private static String groupPath(GroupEntity group) {

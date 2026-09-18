@@ -8,6 +8,7 @@ import { Alert, Button, Card, Form, Spinner } from "react-bootstrap";
 
 import { useDictionary } from "@/i18n/client";
 import { applyProblemToForm } from "@/lib/problem-detail";
+import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import { useAdminAuth } from "./AdminAuthProvider";
 import { adminRequest } from "@/lib/admin-api";
 import { AdminActionIcon } from "./AdminActionIcon";
@@ -31,11 +32,9 @@ export default function EmailSettingsPage({ embedded = false }: { embedded?: boo
   const copy = useDictionary().admin.emailSettings;
   const validation = useDictionary().admin.common.validation;
   const { accessToken } = useAdminAuth();
+  const alerts = useConsoleAlerts();
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [testError, setTestError] = useState(false);
-  const [testSucceeded, setTestSucceeded] = useState(false);
   const [testing, setTesting] = useState(false);
   const [passwordConfigured, setPasswordConfigured] = useState(false);
   const schema = z.object({
@@ -140,10 +139,7 @@ export default function EmailSettingsPage({ embedded = false }: { embedded?: boo
 
   const submit = handleSubmit(async (values) => {
     if (!accessToken) return;
-    setSaved(false);
     setError(false);
-    setTestError(false);
-    setTestSucceeded(false);
     try {
       const response = await adminRequest<EmailResponse>(accessToken, {
         method: "PUT",
@@ -156,18 +152,15 @@ export default function EmailSettingsPage({ embedded = false }: { embedded?: boo
       }
       reset({ ...response.data, password: "" } as Settings);
       setPasswordConfigured(Boolean(response.data.passwordConfigured));
-      setSaved(true);
+      alerts.addAlert(copy.saved);
     } catch {
-      setError(true);
+      alerts.addError(copy.error);
     }
   });
 
   const testConnection = handleSubmit(async (values) => {
     if (!accessToken) return;
-    setSaved(false);
     setError(false);
-    setTestError(false);
-    setTestSucceeded(false);
     setTesting(true);
     try {
       const response = await adminRequest<null>(accessToken, {
@@ -179,9 +172,9 @@ export default function EmailSettingsPage({ embedded = false }: { embedded?: boo
         applySettingsProblem(response.data, values);
         throw new Error();
       }
-      setTestSucceeded(true);
+      alerts.addAlert(copy.testConnectionSucceeded);
     } catch {
-      setTestError(true);
+      alerts.addError(copy.testConnectionError);
     } finally {
       setTesting(false);
     }
@@ -191,9 +184,6 @@ export default function EmailSettingsPage({ embedded = false }: { embedded?: boo
     <div className="d-grid gap-4">
       {!embedded && <ViewHeader title={copy.title} description={copy.subtitle} />}
       {error && <Alert variant="danger">{copy.error}</Alert>}
-      {saved && <Alert variant="success">{copy.saved}</Alert>}
-      {testError && <Alert variant="danger">{copy.testConnectionError}</Alert>}
-      {testSucceeded && <Alert variant="success">{copy.testConnectionSucceeded}</Alert>}
       <Card className="admin-panel-card">
         <Card.Body>
           {!loaded ? (

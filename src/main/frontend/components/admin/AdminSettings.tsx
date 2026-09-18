@@ -14,6 +14,7 @@ import AdminUserProfileSettings from "./AdminUserProfileSettings";
 import { DetailTabs } from "./DetailTabs";
 import EmailSettings from "./EmailSettings";
 import LoginSettings, { type LoginSettingsSection } from "./LoginSettings";
+import AdminLocalizationSettings, { type LocalizationSection } from "./AdminLocalizationSettings";
 
 const SETTINGS_SECTIONS = [
   "general",
@@ -26,19 +27,38 @@ const SETTINGS_SECTIONS = [
   "sessions",
   "events",
   "user-profile",
+  "localization",
 ] as const;
 type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 
 type ServerInfo = { issuer: string };
 
-export default function AdminSettings() {
+export default function AdminSettings({
+  localization = false,
+  localizationAction,
+}: {
+  localization?: boolean;
+  localizationAction?: "create";
+}) {
   const dictionary = useDictionary();
-  const { section: candidate } = useParams<{ section?: string }>();
+  const { section: candidate, localizationSection: localizationCandidate } = useParams<{
+    section?: string;
+    localizationSection?: string;
+  }>();
   const { access } = useAdminAuth();
   const availableSections = access?.isAdmin ? SETTINGS_SECTIONS : (["events"] as const);
-  const active = availableSections.includes(candidate as never)
-    ? (candidate as SettingsSection)
-    : availableSections[0];
+  const active =
+    localization && access?.isAdmin
+      ? "localization"
+      : availableSections.includes(candidate as never)
+        ? (candidate as SettingsSection)
+        : availableSections[0];
+  const localizationSection: LocalizationSection =
+    localizationAction === "create"
+      ? "overrides"
+      : ["settings", "overrides", "effective"].includes(localizationCandidate ?? "")
+        ? (localizationCandidate as LocalizationSection)
+        : "settings";
   const allTabs = [
     { key: "general", label: dictionary.admin.settings.sections.general, href: "/admin/settings" },
     {
@@ -86,6 +106,11 @@ export default function AdminSettings() {
       label: dictionary.admin.settings.sections.userProfile,
       href: "/admin/settings/user-profile",
     },
+    {
+      key: "localization",
+      label: dictionary.admin.settings.sections.localization,
+      href: "/admin/settings/localization",
+    },
   ] satisfies Array<{
     key: SettingsSection;
     label: string;
@@ -104,10 +129,18 @@ export default function AdminSettings() {
       {active === "email" ? <EmailSettings embedded /> : null}
       {active === "events" ? <AdminEventSettings /> : null}
       {active === "user-profile" ? <AdminUserProfileSettings dictionary={dictionary} /> : null}
+      {active === "localization" ? (
+        <AdminLocalizationSettings
+          dictionary={dictionary}
+          section={localizationSection}
+          mode={localizationAction === "create" ? "create" : "list"}
+        />
+      ) : null}
       {active !== "general" &&
       active !== "email" &&
       active !== "events" &&
-      active !== "user-profile" ? (
+      active !== "user-profile" &&
+      active !== "localization" ? (
         <LoginSettings embedded focusSection={active as LoginSettingsSection} />
       ) : null}
     </>

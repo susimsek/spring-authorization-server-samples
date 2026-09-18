@@ -23,7 +23,7 @@ type Props = {
 
 export function AdminShell({ locale, dictionary, children }: Props) {
   const pathname = usePathname();
-  const { access, idTokenParsed, logout, tokenParsed, username } = useAdminAuth();
+  const { access, accessToken, idTokenParsed, logout, tokenParsed, username } = useAdminAuth();
   const [navigationOpen, setNavigationOpen] = useState(false);
   const items: ReadonlyArray<readonly [string, string, IconName, boolean | undefined]> = [
     ["", dictionary.admin.nav.dashboard, "gaugeHigh", access?.isAdmin],
@@ -68,7 +68,11 @@ export function AdminShell({ locale, dictionary, children }: Props) {
             </div>
 
             <div className="admin-navbar-actions d-flex align-items-center gap-2">
-              <LanguageSwitcher locale={locale} label={dictionary.navbar.language} />
+              <LanguageSwitcher
+                locale={locale}
+                label={dictionary.navbar.language}
+                accessToken={accessToken}
+              />
               <ThemeSwitcher dictionary={dictionary} />
               <ConsoleUserMenu
                 username={username ?? "…"}

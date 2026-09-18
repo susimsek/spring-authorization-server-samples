@@ -26,9 +26,45 @@ export function ClientI18nProvider({ children }: { children: ReactNode }) {
       defaultNS={config.defaultNS}
     >
       <LocaleEffects />
+      <LocaleOverrideEffects />
       {children}
     </I18nProvider>
   );
+}
+
+function LocaleOverrideEffects() {
+  const { i18n } = useTranslation("common");
+
+  useEffect(() => {
+    if (typeof fetch !== "function") return;
+    let cancelled = false;
+    void Promise.all(
+      (["en", "tr"] as const).map(async (locale) => {
+        try {
+          const response = await fetch(
+            `/api/auth/localization/messages?locale=${locale}&bundle=common`,
+            {
+              credentials: "same-origin",
+            },
+          );
+          if (!response.ok) return;
+          const messages = (await response.json()) as Record<string, string>;
+          if (!cancelled) {
+            Object.entries(messages).forEach(([key, value]) => {
+              i18n.addResource(locale, "common", key, value);
+            });
+          }
+        } catch {
+          // Bundled dictionaries remain the fallback when the override endpoint is unavailable.
+        }
+      }),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [i18n]);
+
+  return null;
 }
 
 function LocaleEffects() {

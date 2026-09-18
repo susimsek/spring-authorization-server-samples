@@ -76,6 +76,7 @@ class AuthorizationServerConfigTest {
         GroupEntity group = new GroupEntity();
         group.setName("platform-administrators");
         user.setGroups(Set.of(group));
+        user.setPreferredLocale("tr");
         UserRepository userRepository = mock(UserRepository.class);
         when(userRepository.findByUsername("admin")).thenReturn(Optional.of(user));
         UserAvatarRepository.AvatarVersion avatar = mock(UserAvatarRepository.AvatarVersion.class);
@@ -101,6 +102,7 @@ class AuthorizationServerConfigTest {
                 .containsEntry(
                         "picture", "https://issuer.example/avatars/avatar-id?v=1767225600000")
                 .containsEntry("roles", List.of("ROLE_ADMIN", "ROLE_USER"))
+                .containsEntry("locale", "tr")
                 .containsEntry("groups", List.of("/platform-administrators"))
                 .containsEntry(
                         "sid",

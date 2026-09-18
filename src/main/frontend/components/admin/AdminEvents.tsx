@@ -142,7 +142,6 @@ export default function AdminEventsPage() {
         </div>
       )}
       <ResourceFilters
-        key={query}
         query={query}
         searchLabel={copy.search}
         onQueryChange={setQuery}

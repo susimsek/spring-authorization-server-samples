@@ -340,7 +340,6 @@ export function RoleDetail({
           </Card>
 
           <ResourceFilters
-            key={query}
             query={query}
             searchLabel={dictionary.admin.roles.searchAssignedUsers}
             onQueryChange={setQuery}

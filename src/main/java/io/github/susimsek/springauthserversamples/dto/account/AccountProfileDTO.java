@@ -39,6 +39,14 @@ public record AccountProfileDTO(
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 boolean emailVerified,
         @Schema(
+                        description =
+                                "Persisted BCP 47 locale preference, or null to follow application"
+                                        + " detection.",
+                        example = "tr",
+                        nullable = true,
+                        requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+                String preferredLocale,
+        @Schema(
                         description = "Account creation time.",
                         example = "2026-09-04T08:30:00Z",
                         format = "date-time",
@@ -58,6 +66,6 @@ public record AccountProfileDTO(
             String email,
             Instant createdAt,
             Instant updatedAt) {
-        this(username, firstName, lastName, email, null, false, createdAt, updatedAt);
+        this(username, firstName, lastName, email, null, false, null, createdAt, updatedAt);
     }
 }

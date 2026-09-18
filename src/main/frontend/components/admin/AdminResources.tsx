@@ -266,7 +266,6 @@ function AdminResourcesContent({
         }
       />
       <ResourceFilters
-        key={query}
         query={query}
         searchLabel={copy.search}
         sort={{ label: copy.sort, value: sort, options: sortOptions, onChange: setSort }}

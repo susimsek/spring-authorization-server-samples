@@ -133,7 +133,6 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
     <>
       <AdminPageHeader title={copy.title} description={copy.subtitle} />
       <ResourceFilters
-        key={query}
         query={query}
         searchLabel={copy.search}
         sort={{

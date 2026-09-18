@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { Badge, Button, Form, InputGroup } from "react-bootstrap";
 
 import { ActionIcon } from "@/components/shared/ActionIcon";
@@ -36,9 +36,21 @@ export function ResourceFilters({
   childrenClassName?: string;
 }) {
   const [value, setValue] = useState(query);
+  const lastNotifiedQuery = useRef(query);
+  const syncingQuery = useRef(false);
   const notifyQueryChange = useEffectEvent(onQueryChange);
   useEffect(() => {
+    if (query === lastNotifiedQuery.current) return;
+    lastNotifiedQuery.current = query;
+    syncingQuery.current = true;
+    setValue(query);
+  }, [query]);
+  useEffect(() => {
     if (value === query) return;
+    if (syncingQuery.current) {
+      syncingQuery.current = false;
+      return;
+    }
     const timeout = window.setTimeout(() => notifyQueryChange(value), 300);
     return () => window.clearTimeout(timeout);
   }, [query, value]);
@@ -51,7 +63,10 @@ export function ResourceFilters({
           </InputGroup.Text>
           <Form.Control
             aria-label={searchLabel}
-            onChange={(event) => setValue(event.target.value)}
+            onChange={(event) => {
+              syncingQuery.current = false;
+              setValue(event.target.value);
+            }}
             placeholder={searchLabel}
             value={value}
           />

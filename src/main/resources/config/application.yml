@@ -33,6 +33,7 @@ spring:
       hibernate.cache.region.factory_class: jcache
       hibernate.javax.cache.provider: com.github.benmanes.caffeine.jcache.spi.CaffeineCachingProvider
       hibernate.cache.use_second_level_cache: true
+      # Dynamic, filtered, and paginated repository queries must not share stale result sets.
       hibernate.cache.use_query_cache: false
       hibernate.generate_statistics: false
       hibernate.jdbc.batch_size: 50

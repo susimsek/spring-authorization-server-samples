@@ -58,6 +58,7 @@
 			<column name="first_name" type="varchar(100)"/>
 			<column name="last_name" type="varchar(100)"/>
 			<column name="email" type="varchar(200)"/>
+			<column name="preferred_locale" type="varchar(10)"/>
 			<column name="pending_email" type="varchar(200)"/>
 			<column name="email_verified" type="boolean" defaultValueBoolean="false">
 				<constraints nullable="false"/>

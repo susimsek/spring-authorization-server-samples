@@ -9,6 +9,7 @@ import { Alert, Button, Card, Form, Spinner } from "react-bootstrap";
 
 import { useDictionary } from "@/i18n/client";
 import { adminRequest } from "@/lib/admin-api";
+import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 
 import { useAdminAuth } from "./AdminAuthProvider";
 import { AdminActionIcon } from "./AdminActionIcon";
@@ -128,9 +129,9 @@ export default function LoginSettingsPage({
   const copy = dictionary.admin.loginSettings;
   const validation = dictionary.admin.common.validation;
   const { accessToken } = useAdminAuth();
+  const alerts = useConsoleAlerts();
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
-  const [saved, setSaved] = useState(false);
   const schema = z.object({
     userRegistration: z.boolean(),
     forgotPassword: z.boolean(),
@@ -229,7 +230,6 @@ export default function LoginSettingsPage({
 
   const submit = handleSubmit(async (values) => {
     if (!accessToken) return;
-    setSaved(false);
     setError(false);
     try {
       const response = await adminRequest<Settings>(accessToken, {
@@ -239,9 +239,9 @@ export default function LoginSettingsPage({
       });
       if (response.status >= 300) throw new Error();
       reset({ ...defaultSettings, ...response.data });
-      setSaved(true);
+      alerts.addAlert(copy.saved);
     } catch {
-      setError(true);
+      alerts.addError(copy.error);
     }
   });
 
@@ -249,7 +249,6 @@ export default function LoginSettingsPage({
     <div className="d-grid gap-4">
       {!embedded && <ViewHeader title={copy.title} description={copy.subtitle} />}
       {error && <Alert variant="danger">{copy.error}</Alert>}
-      {saved && <Alert variant="success">{copy.saved}</Alert>}
       <Card className="admin-panel-card">
         <Card.Body>
           {!loaded ? (

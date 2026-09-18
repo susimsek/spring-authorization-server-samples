@@ -501,7 +501,8 @@
         "bruteForce": "Brute force",
         "sessions": "Sessions",
         "events": "Events",
-        "userProfile": "User profile"
+        "userProfile": "User profile",
+        "localization": "Localization"
       }
     },
     "clients": {
@@ -868,6 +869,39 @@
       "addOptional": "Add as optional",
       "remove": "Remove",
       "assignmentSaved": "Client scope assignments updated."
+    },
+    "localization": {
+      "title": "Localization settings",
+      "subtitle": "Configure supported languages, the default locale, and Keycloak-style message overrides.",
+      "enabled": "Enable localization",
+      "defaultLocale": "Default locale",
+      "supportedLocales": "Supported locales",
+      "save": "Save",
+      "saved": "Localization settings saved.",
+      "settingsTab": "Settings",
+      "overridesTab": "Message overrides",
+      "effectiveTab": "Effective messages",
+      "overridesTitle": "Message overrides",
+      "overridesSubtitle": "Override bundled messages for a selected locale without changing the application resources.",
+      "effectiveTitle": "Effective messages",
+      "effectiveSubtitle": "Search the selected frontend bundle after bundled messages and locale overrides are merged.",
+      "effectiveEmpty": "No effective messages found.",
+      "bundle": "Bundle",
+      "source": "Source",
+      "bundled": "Bundled",
+      "override": "Override",
+      "locale": "Locale",
+      "messageKey": "Message key",
+      "messageValue": "Message value",
+      "search": "Search message overrides",
+      "searchEffective": "Search effective messages",
+      "create": "Add override",
+      "update": "Update override",
+      "cancel": "Cancel",
+      "edit": "Edit",
+      "delete": "Delete",
+      "empty": "No message overrides found.",
+      "error": "Localization settings could not be loaded or saved."
     }
   },
   "account": {
@@ -910,6 +944,8 @@
       "firstName": "First name",
       "lastName": "Last name",
       "email": "Email",
+      "locale": "Language",
+      "localeHelp": "Choose the language used for your account experience.",
       "currentPassword": "Current password",
       "reauthenticationRequired": "For your security, confirm your current password to change your email address.",
       "emailVerified": "Verified",

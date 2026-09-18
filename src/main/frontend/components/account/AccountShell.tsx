@@ -23,7 +23,7 @@ export function AccountShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { idTokenParsed, logout, tokenParsed, username } = useAccountAuth();
+  const { accessToken, idTokenParsed, logout, tokenParsed, username } = useAccountAuth();
   const [open, setOpen] = useState(false);
   const items: ReadonlyArray<readonly [string, string, IconName]> = [
     ["/personal-info", dictionary.account.nav.personalInfo, "addressCard"],
@@ -57,7 +57,11 @@ export function AccountShell({
               </Navbar.Brand>
             </div>
             <div className="admin-navbar-actions d-flex align-items-center gap-2">
-              <LanguageSwitcher locale={locale} label={dictionary.navbar.language} />
+              <LanguageSwitcher
+                locale={locale}
+                label={dictionary.navbar.language}
+                accessToken={accessToken}
+              />
               <ThemeSwitcher dictionary={dictionary} />
               <ConsoleUserMenu
                 username={username ?? "…"}

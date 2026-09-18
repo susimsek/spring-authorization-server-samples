@@ -6,10 +6,15 @@ import { adminRequest } from "@/lib/admin-api";
 import AdminEventSettings from "./AdminEventSettings";
 
 const mockAdminRequest = adminRequest as jest.MockedFunction<typeof adminRequest>;
+const mockAddAlert = jest.fn();
+const mockAddError = jest.fn();
 
 jest.mock("@/lib/admin-api", () => ({ adminRequest: jest.fn() }));
 jest.mock("./AdminAuthProvider", () => ({
   useAdminAuth: () => ({ accessToken: "token", access: { manageEvents: true } }),
+}));
+jest.mock("@/components/auth/ConsoleAlerts", () => ({
+  useConsoleAlerts: () => ({ addAlert: mockAddAlert, addError: mockAddError }),
 }));
 
 const settings = {
@@ -44,7 +49,7 @@ describe("AdminEventSettings", () => {
         data: settings,
       }),
     );
-    expect(screen.getByText(dictionary.admin.events.settingsSaved)).toBeVisible();
+    expect(mockAddAlert).toHaveBeenCalledWith(dictionary.admin.events.settingsSaved);
   });
 
   it("shows an error when settings cannot be saved", async () => {
@@ -60,6 +65,8 @@ describe("AdminEventSettings", () => {
     });
     await waitFor(() => expect(saveButton).toBeEnabled());
     fireEvent.click(saveButton);
-    expect(await screen.findByText(dictionary.admin.events.settingsError)).toBeVisible();
+    await waitFor(() =>
+      expect(mockAddError).toHaveBeenCalledWith(dictionary.admin.events.settingsError),
+    );
   });
 });
