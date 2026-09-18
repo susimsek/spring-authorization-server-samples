@@ -65,6 +65,7 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
     formState: { errors },
   } = useForm<Values>({
     resolver: zodResolver(clientScopeSchema),
+    mode: "onChange",
     defaultValues: EMPTY,
   });
 
@@ -132,7 +133,6 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
     <>
       <AdminPageHeader title={copy.title} description={copy.subtitle} />
       <ResourceFilters
-        key={query}
         query={query}
         searchLabel={copy.search}
         sort={{

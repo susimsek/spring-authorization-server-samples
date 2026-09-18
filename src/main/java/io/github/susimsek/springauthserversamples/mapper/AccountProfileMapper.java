@@ -30,7 +30,8 @@ public interface AccountProfileMapper {
         return new AccountProfileRequestDTO(
                 trimToNull(source.firstName()),
                 trimToNull(source.lastName()),
-                normalizeEmail(source.email()));
+                normalizeEmail(source.email()),
+                trimToNull(source.currentPassword()));
     }
 
     @Named("trimToNull")

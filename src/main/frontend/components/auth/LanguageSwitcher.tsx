@@ -1,16 +1,18 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocale } from "@/i18n/client";
 import { persistLocale } from "@/i18n/locale-cookie";
 import { Dropdown } from "react-bootstrap";
 import { Icon } from "@/components/shared/Icon";
 
-import type { Locale } from "@/i18n/config";
+import { locales, type Locale } from "@/i18n/config";
 
 type LanguageSwitcherProps = {
   locale: Locale;
   label: string;
+  accessToken?: string | null;
 };
 
 const languageNames: Record<Locale, string> = {
@@ -18,13 +20,65 @@ const languageNames: Record<Locale, string> = {
   tr: "Türkçe",
 };
 
-export function LanguageSwitcher({ label }: LanguageSwitcherProps) {
+type LocalizationSettings = {
+  internationalizationEnabled: boolean;
+  defaultLocale: Locale;
+  supportedLocales: Locale[];
+};
+
+export function LanguageSwitcher({ label, accessToken }: LanguageSwitcherProps) {
   const { i18n } = useTranslation("common");
   const activeLocale = useLocale();
+  const [supportedLocales, setSupportedLocales] = useState<Locale[]>([...locales]);
+
+  useEffect(() => {
+    if (typeof fetch !== "function") return;
+    void fetch("/api/auth/localization", { credentials: "same-origin" })
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error())))
+      .then((settings: LocalizationSettings) => {
+        const enabled = settings.internationalizationEnabled
+          ? settings.supportedLocales.filter((value): value is Locale => locales.includes(value))
+          : [settings.defaultLocale];
+        setSupportedLocales(enabled.length > 0 ? enabled : ["en"]);
+      })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (!accessToken || typeof fetch !== "function") return;
+    void fetch("/api/auth/localization/me", {
+      credentials: "same-origin",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error())))
+      .then((preference: { locale?: string | null }) => {
+        if (
+          preference.locale &&
+          locales.includes(preference.locale as Locale) &&
+          supportedLocales.includes(preference.locale as Locale)
+        ) {
+          const preferred = preference.locale as Locale;
+          persistLocale(preferred);
+          void i18n.changeLanguage(preferred);
+        }
+      })
+      .catch(() => undefined);
+  }, [accessToken, i18n, supportedLocales]);
 
   function changeLanguage(nextLocale: Locale) {
     persistLocale(nextLocale);
     void i18n.changeLanguage(nextLocale);
+    if (accessToken && typeof fetch === "function") {
+      void fetch("/api/auth/localization/me", {
+        method: "PUT",
+        credentials: "same-origin",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ locale: nextLocale }),
+      }).catch(() => undefined);
+    }
   }
 
   return (
@@ -39,7 +93,7 @@ export function LanguageSwitcher({ label }: LanguageSwitcherProps) {
         {languageNames[activeLocale]}
       </Dropdown.Toggle>
       <Dropdown.Menu>
-        {(Object.keys(languageNames) as Locale[]).map((language) => (
+        {supportedLocales.map((language) => (
           <Dropdown.Item
             key={language}
             active={language === activeLocale}

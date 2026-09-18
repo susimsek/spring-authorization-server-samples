@@ -78,6 +78,7 @@ export function ConsentForm({ dictionary }: ConsentFormProps) {
 }
 
 function ConsentRequest({ dictionary, consent }: ConsentFormProps & { consent: ConsentView }) {
+  const [pending, setPending] = useState<"approve" | "deny" | null>(null);
   const schema = z.object({
     scopes: z.array(z.string()).min(1, dictionary.consent.scopeRequired),
   });
@@ -95,7 +96,16 @@ function ConsentRequest({ dictionary, consent }: ConsentFormProps & { consent: C
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
-    void handleSubmit(() => form.submit())(event);
+    void handleSubmit(() => {
+      setPending("approve");
+      form.submit();
+    })(event);
+  };
+
+  const deny = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setPending("deny");
+    event.currentTarget.submit();
   };
 
   return (
@@ -159,18 +169,32 @@ function ConsentRequest({ dictionary, consent }: ConsentFormProps & { consent: C
           )}
         </div>
 
-        <Button type="submit" size="lg" className="w-100">
-          <ActionIcon action="check" />
+        <Button type="submit" size="lg" className="w-100" disabled={pending !== null}>
+          {pending === "approve" ? (
+            <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+          ) : (
+            <ActionIcon action="check" />
+          )}
           {dictionary.consent.submit}
         </Button>
       </Form>
 
-      <Form method="post" action={consent.requestUri} className="mt-2">
+      <Form method="post" action={consent.requestUri} className="mt-2" onSubmit={deny}>
         <input type="hidden" name="client_id" value={consent.clientId} />
         <input type="hidden" name="state" value={consent.state} />
         {consent.userCode && <input type="hidden" name="user_code" value={consent.userCode} />}
-        <Button type="submit" size="lg" variant="secondary" className="w-100">
-          <ActionIcon action="cancel" />
+        <Button
+          type="submit"
+          size="lg"
+          variant="secondary"
+          className="w-100"
+          disabled={pending !== null}
+        >
+          {pending === "deny" ? (
+            <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+          ) : (
+            <ActionIcon action="cancel" />
+          )}
           {dictionary.consent.deny}
         </Button>
       </Form>

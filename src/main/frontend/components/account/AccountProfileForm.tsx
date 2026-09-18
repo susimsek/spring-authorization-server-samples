@@ -13,7 +13,10 @@ import { ConfirmModal } from "@/components/admin/ConfirmModal";
 import { ReadOnlyMetadata } from "@/components/admin/ReadOnlyMetadata";
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import { ActionIcon } from "@/components/shared/ActionIcon";
+import { useLocale } from "@/i18n/client";
+import { locales, type Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
+import { persistLocale } from "@/i18n/locale-cookie";
 import { useDateTimeFormatter } from "@/i18n/useDateTimeFormatter";
 import { applyProblemToForm } from "@/lib/problem-detail";
 import {
@@ -24,11 +27,15 @@ import {
 } from "@/lib/account-api";
 
 import { useAccountAuth } from "./AccountAuthProvider";
+import { PasswordField } from "../auth/PasswordField";
+import { useTranslation } from "react-i18next";
 
 type Values = {
   firstName: string;
   lastName: string;
   email: string;
+  preferredLocale: Locale;
+  currentPassword: string;
   profile: Record<string, string[]>;
 };
 type ProfileDefinition = {
@@ -55,6 +62,8 @@ const PROFILE_BUILT_IN_NAMES = new Set(["username", "email", "firstName", "lastN
 
 export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
   const formatDateTime = useDateTimeFormatter();
+  const activeLocale = useLocale();
+  const { i18n } = useTranslation("common");
   const { accessToken } = useAccountAuth();
   const alerts = useConsoleAlerts();
   const copy = dictionary.account;
@@ -65,10 +74,12 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
   const [isError, setIsError] = useState(false);
   const [verificationSending, setVerificationSending] = useState(false);
   const [profileUpdating, setProfileUpdating] = useState(false);
+  const [emailReauthRequired, setEmailReauthRequired] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarSaving, setAvatarSaving] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [showAvatarDeleteConfirm, setShowAvatarDeleteConfirm] = useState(false);
+  const [supportedLocales, setSupportedLocales] = useState<Locale[]>([...locales]);
   const profileSchema = z
     .record(z.string(), z.array(z.string()))
     .superRefine((attributes, context) => {
@@ -126,6 +137,8 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
       .trim()
       .max(200, copy.validation.max200)
       .refine((value) => value === "" || z.email().safeParse(value).success, copy.validation.email),
+    preferredLocale: z.enum(locales),
+    currentPassword: z.string().max(200, copy.validation.max200),
     profile: profileSchema,
   });
   const {
@@ -141,9 +154,37 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
   } = useForm<Values>({
     resolver: zodResolver(schema),
     mode: "onChange",
-    defaultValues: { firstName: "", lastName: "", email: "", profile: {} },
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      preferredLocale: activeLocale,
+      currentPassword: "",
+      profile: {},
+    },
   });
   const profileAttributeValues = useWatch({ control, name: "profile", defaultValue: {} });
+
+  useEffect(() => {
+    if (typeof fetch !== "function") return;
+    void fetch("/api/auth/localization", { credentials: "same-origin" })
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error())))
+      .then(
+        (settings: {
+          internationalizationEnabled: boolean;
+          defaultLocale: string;
+          supportedLocales: string[];
+        }) => {
+          const enabled = settings.internationalizationEnabled
+            ? settings.supportedLocales.filter((value): value is Locale =>
+                locales.includes(value as Locale),
+              )
+            : locales.filter((value) => value === settings.defaultLocale);
+          setSupportedLocales(enabled.length > 0 ? enabled : ["en"]);
+        },
+      )
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -184,10 +225,15 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
         firstName: profile.firstName ?? "",
         lastName: profile.lastName ?? "",
         email: profile.email ?? "",
+        preferredLocale:
+          profile.preferredLocale && locales.includes(profile.preferredLocale as Locale)
+            ? (profile.preferredLocale as Locale)
+            : activeLocale,
+        currentPassword: "",
         profile: getValues("profile"),
       });
     }
-  }, [getValues, profile, reset]);
+  }, [activeLocale, getValues, profile, reset]);
 
   const submit = handleSubmit(async (values) => {
     if (!accessToken) return;
@@ -200,6 +246,7 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
           firstName: values.firstName.trim(),
           lastName: values.lastName.trim(),
           email: values.email.trim(),
+          currentPassword: values.currentPassword.trim() || undefined,
         },
       });
       const attributesResponse = await requestAccount<ProfileAttributes>(accessToken, {
@@ -207,19 +254,39 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
         url: "/api/account/profile/attributes",
         data: { attributes: values.profile },
       });
-      setProfile(updated);
+      await requestAccount<{ locale: Locale }>(accessToken, {
+        method: "PUT",
+        url: "/api/auth/localization/me",
+        data: { locale: values.preferredLocale },
+      });
+      persistLocale(values.preferredLocale);
+      await i18n.changeLanguage(values.preferredLocale);
+      setProfile({ ...updated, preferredLocale: values.preferredLocale });
       const safeAttributesResponse = attributesResponse ?? { definitions: [], attributes: {} };
       setProfileAttributes(safeAttributesResponse);
       reset({
         firstName: updated.firstName ?? "",
         lastName: updated.lastName ?? "",
         email: updated.email ?? "",
+        preferredLocale: values.preferredLocale,
+        currentPassword: "",
         profile: safeAttributesResponse.attributes ?? {},
       });
+      setEmailReauthRequired(false);
       alerts.addAlert(copy.profile.saved);
     } catch (error) {
+      const data = (error as AccountApiError).data;
+      if (
+        typeof data === "object" &&
+        data !== null &&
+        "errorCode" in data &&
+        data.errorCode === "reauthentication_required"
+      ) {
+        setEmailReauthRequired(true);
+        return;
+      }
       const result = applyProblemToForm((error as AccountApiError).data, setError, {
-        fields: ["firstName", "lastName", "email"],
+        fields: ["firstName", "lastName", "email", "preferredLocale", "currentPassword"],
         fallbackMessage: copy.validation.invalid,
       });
       if (result.firstField) setFocus(result.firstField as keyof Values);
@@ -415,6 +482,19 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
                 </Alert>
               )}
             </Col>
+            <Col xs={12}>
+              <Form.Group controlId="account-profile-locale">
+                <Form.Label>{copy.profile.locale}</Form.Label>
+                <Form.Select {...register("preferredLocale")}>
+                  {supportedLocales.map((locale) => (
+                    <option key={locale} value={locale}>
+                      {locale === "tr" ? "Türkçe" : "English"}
+                    </option>
+                  ))}
+                </Form.Select>
+                <Form.Text>{copy.profile.localeHelp}</Form.Text>
+              </Form.Group>
+            </Col>
             {renderedProfileDefinitions.map((definition) => {
               const values = profileAttributeValues[definition.name] ?? [];
               const value = definition.multivalued ? values.join("\n") : (values[0] ?? "");
@@ -553,6 +633,24 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
                 </Col>
               );
             })}
+            {emailReauthRequired && (
+              <Col xs={12}>
+                <Alert variant="info">{copy.profile.reauthenticationRequired}</Alert>
+                <PasswordField
+                  controlId="account-profile-current-password"
+                  label={copy.profile.currentPassword}
+                  placeholder={copy.profile.currentPassword}
+                  showLabel={dictionary.login.showPassword}
+                  hideLabel={dictionary.login.hidePassword}
+                  autoComplete="current-password"
+                  error={errors.currentPassword?.message}
+                  inputProps={{
+                    isInvalid: Boolean(errors.currentPassword),
+                    ...register("currentPassword"),
+                  }}
+                />
+              </Col>
+            )}
             <Col xs={12}>
               <div className="account-metadata-panel">
                 <div className="small fw-semibold mb-3">{copy.profile.metadata}</div>
@@ -593,6 +691,11 @@ export function AccountProfileForm({ dictionary }: { dictionary: Dictionary }) {
                   firstName: profile.firstName ?? "",
                   lastName: profile.lastName ?? "",
                   email: profile.email ?? "",
+                  preferredLocale:
+                    profile.preferredLocale && locales.includes(profile.preferredLocale as Locale)
+                      ? (profile.preferredLocale as Locale)
+                      : activeLocale,
+                  currentPassword: "",
                   profile: profileAttributes?.attributes ?? {},
                 });
               }}

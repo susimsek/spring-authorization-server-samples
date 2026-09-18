@@ -9,6 +9,7 @@ import { Alert, Button, Card, Form, Spinner } from "react-bootstrap";
 
 import { useDictionary } from "@/i18n/client";
 import { adminRequest } from "@/lib/admin-api";
+import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 
 import { useAdminAuth } from "./AdminAuthProvider";
 import { AdminActionIcon } from "./AdminActionIcon";
@@ -17,10 +18,15 @@ import { ViewHeader } from "./ViewHeader";
 type Settings = {
   userRegistration: boolean;
   forgotPassword: boolean;
+  passwordResetOtpMode: "none" | "if-configured" | "required";
+  passwordResetTokenLifespanSeconds: number;
+  passwordResetResendCooldownSeconds: number;
   rememberMe: boolean;
   passkeys: boolean;
   loginWithEmail: boolean;
   verifyEmail: boolean;
+  webauthnMediation: "none" | "optional" | "conditional";
+  emailUpdateReauthenticationMinutes: number;
   sessionTimeoutMinutes: number;
   passwordMinimumLength: number;
   bruteForceEnabled: boolean;
@@ -59,8 +65,58 @@ type Settings = {
   recoveryCodeWarningThreshold: number;
 };
 
+const defaultSettings: Settings = {
+  userRegistration: true,
+  forgotPassword: true,
+  passwordResetOtpMode: "none",
+  passwordResetTokenLifespanSeconds: 43200,
+  passwordResetResendCooldownSeconds: 30,
+  rememberMe: true,
+  passkeys: false,
+  loginWithEmail: false,
+  verifyEmail: false,
+  webauthnMediation: "none",
+  emailUpdateReauthenticationMinutes: 5,
+  sessionTimeoutMinutes: 30,
+  passwordMinimumLength: 12,
+  bruteForceEnabled: true,
+  bruteForceMaxFailures: 5,
+  bruteForceMaxSecondaryFailures: 0,
+  mfaVerificationTimeoutSeconds: 300,
+  passwordMaximumLength: 128,
+  passwordMinimumUppercase: 1,
+  passwordMinimumLowercase: 1,
+  passwordMinimumDigits: 1,
+  passwordMinimumSpecialCharacters: 1,
+  passwordRejectUsername: true,
+  passwordRejectEmail: true,
+  passwordRejectCommonPasswords: true,
+  passwordHistorySize: 5,
+  passwordExpirationDays: 90,
+  passwordCommonPasswords: "password,123456,12345678,qwerty,qwerty123,admin,letmein",
+  bruteForceQuickLoginWindowMillis: 1000,
+  bruteForceMinimumQuickLoginWaitSeconds: 60,
+  bruteForceWaitIncrementSeconds: 60,
+  bruteForceMaxWaitSeconds: 900,
+  bruteForceFailureResetTimeSeconds: 43200,
+  bruteForceMaxTemporaryLockouts: 3,
+  bruteForcePermanentLockout: false,
+  bruteForceIpRequestsPerMinute: 30,
+  bruteForceUsernameIpRequestsPerMinute: 5,
+  otpEnabled: false,
+  otpRequired: false,
+  otpIssuer: "Spring Authorization Server",
+  otpAlgorithm: "SHA1",
+  otpDigits: 6,
+  otpPeriodSeconds: 30,
+  otpLookAheadWindow: 1,
+  otpCodeReusable: false,
+  otpAddRecoveryCodes: false,
+  recoveryCodeWarningThreshold: 2,
+};
+
 export type LoginSettingsSection =
-  "login" | "password-policy" | "otp-policy" | "brute-force" | "sessions";
+  "login" | "webauthn" | "password-policy" | "otp-policy" | "brute-force" | "sessions";
 
 export default function LoginSettingsPage({
   embedded = false,
@@ -73,16 +129,33 @@ export default function LoginSettingsPage({
   const copy = dictionary.admin.loginSettings;
   const validation = dictionary.admin.common.validation;
   const { accessToken } = useAdminAuth();
+  const alerts = useConsoleAlerts();
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
-  const [saved, setSaved] = useState(false);
   const schema = z.object({
     userRegistration: z.boolean(),
     forgotPassword: z.boolean(),
+    passwordResetOtpMode: z.enum(["none", "if-configured", "required"]),
+    passwordResetTokenLifespanSeconds: z
+      .number()
+      .int()
+      .min(60, validation.positiveNumber)
+      .max(86400, validation.maximumNumber),
+    passwordResetResendCooldownSeconds: z
+      .number()
+      .int()
+      .min(0, validation.positiveNumber)
+      .max(86400, validation.maximumNumber),
     rememberMe: z.boolean(),
     passkeys: z.boolean(),
     loginWithEmail: z.boolean(),
     verifyEmail: z.boolean(),
+    webauthnMediation: z.enum(["none", "optional", "conditional"]),
+    emailUpdateReauthenticationMinutes: z
+      .number()
+      .int()
+      .min(0, validation.positiveNumber)
+      .max(1440, validation.maximumNumber),
     sessionTimeoutMinutes: z.number().int().min(1, validation.positiveNumber),
     passwordMinimumLength: z.number().int().min(8, validation.minimumPasswordLength),
     bruteForceEnabled: z.boolean(),
@@ -130,7 +203,8 @@ export default function LoginSettingsPage({
     formState: { errors, isSubmitting },
   } = useForm<Settings>({
     resolver: zodResolver(schema),
-    mode: "onBlur",
+    mode: "onChange",
+    defaultValues: defaultSettings,
   });
 
   useEffect(() => {
@@ -138,7 +212,7 @@ export default function LoginSettingsPage({
     adminRequest<Settings>(accessToken, { url: "/api/admin/settings/login" })
       .then((response) => {
         if (response.status >= 300) throw new Error();
-        reset(response.data);
+        reset({ ...defaultSettings, ...response.data });
         setLoaded(true);
       })
       .catch(() => setError(true));
@@ -156,7 +230,6 @@ export default function LoginSettingsPage({
 
   const submit = handleSubmit(async (values) => {
     if (!accessToken) return;
-    setSaved(false);
     setError(false);
     try {
       const response = await adminRequest<Settings>(accessToken, {
@@ -165,10 +238,10 @@ export default function LoginSettingsPage({
         data: values,
       });
       if (response.status >= 300) throw new Error();
-      reset(response.data);
-      setSaved(true);
+      reset({ ...defaultSettings, ...response.data });
+      alerts.addAlert(copy.saved);
     } catch {
-      setError(true);
+      alerts.addError(copy.error);
     }
   });
 
@@ -176,7 +249,6 @@ export default function LoginSettingsPage({
     <div className="d-grid gap-4">
       {!embedded && <ViewHeader title={copy.title} description={copy.subtitle} />}
       {error && <Alert variant="danger">{copy.error}</Alert>}
-      {saved && <Alert variant="success">{copy.saved}</Alert>}
       <Card className="admin-panel-card">
         <Card.Body>
           {!loaded ? (
@@ -199,6 +271,33 @@ export default function LoginSettingsPage({
                   label={copy.forgotPassword}
                   {...register("forgotPassword")}
                 />
+                <div className="d-grid gap-3 mb-4">
+                  <Form.Group controlId="login-password-reset-otp-mode">
+                    <Form.Label>{copy.passwordResetOtpMode}</Form.Label>
+                    <Form.Select {...register("passwordResetOtpMode")}>
+                      <option value="none">{copy.passwordResetOtpNone}</option>
+                      <option value="if-configured">{copy.passwordResetOtpIfConfigured}</option>
+                      <option value="required">{copy.passwordResetOtpRequired}</option>
+                    </Form.Select>
+                    <Form.Text>{copy.passwordResetOtpModeHelp}</Form.Text>
+                  </Form.Group>
+                  <NumberField
+                    id="login-password-reset-lifespan"
+                    label={copy.passwordResetTokenLifespan}
+                    error={errors.passwordResetTokenLifespanSeconds?.message}
+                    registration={register("passwordResetTokenLifespanSeconds", {
+                      valueAsNumber: true,
+                    })}
+                  />
+                  <NumberField
+                    id="login-password-reset-cooldown"
+                    label={copy.passwordResetResendCooldown}
+                    error={errors.passwordResetResendCooldownSeconds?.message}
+                    registration={register("passwordResetResendCooldownSeconds", {
+                      valueAsNumber: true,
+                    })}
+                  />
+                </div>
                 <Form.Check
                   className="mb-4"
                   type="switch"
@@ -223,6 +322,31 @@ export default function LoginSettingsPage({
                   label={copy.verifyEmail}
                   {...register("verifyEmail")}
                 />
+                <NumberField
+                  id="login-email-reauthentication"
+                  label={copy.emailUpdateReauthentication}
+                  error={errors.emailUpdateReauthenticationMinutes?.message}
+                  registration={register("emailUpdateReauthenticationMinutes", {
+                    valueAsNumber: true,
+                  })}
+                />
+                <SaveButton copy={copy.save} isSubmitting={isSubmitting} />
+              </section>
+
+              <section hidden={activeSection !== "webauthn"}>
+                <h2 className="h5 mb-3" id="login-settings-webauthn">
+                  {copy.sectionWebAuthn}
+                </h2>
+                <p className="text-body-secondary">{copy.webAuthnPolicyHelp}</p>
+                <Form.Group controlId="login-webauthn-mediation">
+                  <Form.Label>{copy.webauthnMediation}</Form.Label>
+                  <Form.Select {...register("webauthnMediation")}>
+                    <option value="none">{copy.webauthnMediationNone}</option>
+                    <option value="optional">{copy.webauthnMediationOptional}</option>
+                    <option value="conditional">{copy.webauthnMediationConditional}</option>
+                  </Form.Select>
+                  <Form.Text>{copy.webauthnMediationHelp}</Form.Text>
+                </Form.Group>
                 <SaveButton copy={copy.save} isSubmitting={isSubmitting} />
               </section>
 

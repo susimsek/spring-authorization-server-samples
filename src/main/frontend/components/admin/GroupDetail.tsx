@@ -116,6 +116,7 @@ export function GroupDetail({
     formState: { errors: groupSettingsErrors, isDirty: isGroupSettingsDirty },
   } = useForm<z.infer<typeof groupSettingsSchema>>({
     resolver: zodResolver(groupSettingsSchema),
+    mode: "onChange",
     defaultValues: { name: "", parentId: "", attributesJson: "", defaultGroup: false },
   });
   const permissionsForm = useForm<PermissionValues>({ defaultValues: { assignments: [] } });

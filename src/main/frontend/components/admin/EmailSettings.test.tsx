@@ -6,10 +6,15 @@ import { adminRequest } from "@/lib/admin-api";
 import EmailSettings from "./EmailSettings";
 
 const mockAdminRequest = adminRequest as jest.MockedFunction<typeof adminRequest>;
+const mockAddAlert = jest.fn();
+const mockAddError = jest.fn();
 
 jest.mock("@/lib/admin-api", () => ({ adminRequest: jest.fn() }));
 jest.mock("./AdminAuthProvider", () => ({
   useAdminAuth: () => ({ accessToken: "token" }),
+}));
+jest.mock("@/components/auth/ConsoleAlerts", () => ({
+  useConsoleAlerts: () => ({ addAlert: mockAddAlert, addError: mockAddError }),
 }));
 
 const settings = {
@@ -60,6 +65,8 @@ describe("EmailSettings", () => {
         },
       }),
     );
-    expect(screen.getByText(dictionary.admin.emailSettings.testConnectionSucceeded)).toBeVisible();
+    expect(mockAddAlert).toHaveBeenCalledWith(
+      dictionary.admin.emailSettings.testConnectionSucceeded,
+    );
   });
 });

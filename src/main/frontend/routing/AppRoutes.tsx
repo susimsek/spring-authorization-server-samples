@@ -353,6 +353,15 @@ export function AppRoutes() {
           }
         />
         <Route path="settings/user-profile/:id" element={<UserProfileEditPage />} />
+        <Route path="settings/localization" element={<AdminSettings localization />} />
+        <Route
+          path="settings/localization/overrides/new"
+          element={<AdminSettings localization localizationAction="create" />}
+        />
+        <Route
+          path="settings/localization/:localizationSection"
+          element={<AdminSettings localization />}
+        />
         <Route path="settings/:section?" element={<AdminSettings />} />
       </Route>
       <Route path="account" element={<AccountLayout />}>

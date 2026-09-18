@@ -84,6 +84,21 @@ public class LoginSettingsService {
     }
 
     @Transactional(readOnly = true)
+    public String passwordResetOtpMode() {
+        return settings().getPasswordResetOtpMode();
+    }
+
+    @Transactional(readOnly = true)
+    public Duration passwordResetTokenLifespan() {
+        return Duration.ofSeconds(settings().getPasswordResetTokenLifespanSeconds());
+    }
+
+    @Transactional(readOnly = true)
+    public Duration passwordResetResendCooldown() {
+        return Duration.ofSeconds(settings().getPasswordResetResendCooldownSeconds());
+    }
+
+    @Transactional(readOnly = true)
     public boolean isLoginWithEmailEnabled() {
         return settings().isLoginWithEmail();
     }
@@ -91,6 +106,11 @@ public class LoginSettingsService {
     @Transactional(readOnly = true)
     public boolean isVerifyEmailEnabled() {
         return settings().isVerifyEmail();
+    }
+
+    @Transactional(readOnly = true)
+    public Duration emailUpdateReauthenticationAge() {
+        return Duration.ofMinutes(settings().getEmailUpdateReauthenticationMinutes());
     }
 
     @Transactional(readOnly = true)
@@ -205,6 +225,19 @@ public class LoginSettingsService {
     }
 
     private static void validateOtpPolicy(AdminLoginSettingsRequestDTO request) {
+        String resetMode = request.passwordResetOtpMode().toLowerCase(Locale.ROOT);
+        if (!java.util.Set.of("none", "if-configured", "required").contains(resetMode)) {
+            throw io.github.susimsek.springauthserversamples.service.error.ApiException.badRequest(
+                    io.github.susimsek.springauthserversamples.service.error.ApiErrorCode
+                            .INVALID_REQUEST,
+                    "Password-reset OTP mode is invalid");
+        }
+        if ("required".equals(resetMode) && !request.otpEnabled()) {
+            throw io.github.susimsek.springauthserversamples.service.error.ApiException.badRequest(
+                    io.github.susimsek.springauthserversamples.service.error.ApiErrorCode
+                            .INVALID_REQUEST,
+                    "Password-reset OTP cannot be required when OTP is disabled");
+        }
         if (request.otpRequired() && !request.otpEnabled()) {
             throw io.github.susimsek.springauthserversamples.service.error.ApiException.badRequest(
                     io.github.susimsek.springauthserversamples.service.error.ApiErrorCode

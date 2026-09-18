@@ -107,6 +107,12 @@ This repo is a Java 25 + Spring Boot 4.1 sample application for the Authorizatio
   while it is busy; do not add a separate "Saving..." or "Signing in..." label. Restore the normal
   icon when the operation completes. This applies to login, account, administration, MFA, and
   required-action flows, including save, create, delete, and verification actions.
+- Frontend validation messages must remain inside the same field group immediately below the input
+  or input group. Use React-Bootstrap's built-in `Form.Control.Feedback` spacing so the
+  input-to-message vertical gap is consistent across login, account, administration, and
+  required-action screens; do not add one-off custom CSS for this spacing.
+- When a validated control is inside an `InputGroup`, use its `hasValidation` prop and Bootstrap's
+  `d-block` utility on the feedback so the grouped field's message remains visible.
 
 ## Testing Guidelines
 

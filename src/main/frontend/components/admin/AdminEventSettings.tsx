@@ -11,6 +11,7 @@ import { useForm } from "@/lib/form";
 
 import { useAdminAuth } from "./AdminAuthProvider";
 import { AdminActionIcon } from "./AdminActionIcon";
+import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 
 export type EventSettings = {
   eventsEnabled: boolean;
@@ -24,9 +25,9 @@ export default function AdminEventSettings() {
   const copy = dictionary.admin.events;
   const validation = dictionary.admin.common.validation;
   const { access, accessToken } = useAdminAuth();
+  const alerts = useConsoleAlerts();
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [settingsError, setSettingsError] = useState(false);
-  const [settingsSaved, setSettingsSaved] = useState(false);
   const schema = z.object({
     eventsEnabled: z.boolean(),
     adminEventsEnabled: z.boolean(),
@@ -40,7 +41,7 @@ export default function AdminEventSettings() {
     formState: { errors, isSubmitting },
   } = useForm<EventSettings>({
     resolver: zodResolver(schema),
-    mode: "onBlur",
+    mode: "onChange",
     defaultValues: {
       eventsEnabled: true,
       adminEventsEnabled: true,
@@ -63,7 +64,6 @@ export default function AdminEventSettings() {
 
   const saveSettings = handleSubmit(async (values) => {
     if (!accessToken) return;
-    setSettingsSaved(false);
     setSettingsError(false);
     try {
       const response = await adminRequest<EventSettings>(accessToken, {
@@ -73,16 +73,15 @@ export default function AdminEventSettings() {
       });
       if (response.status >= 300) throw new Error();
       reset(response.data);
-      setSettingsSaved(true);
+      alerts.addAlert(copy.settingsSaved);
     } catch {
-      setSettingsError(true);
+      alerts.addError(copy.settingsError);
     }
   });
 
   return (
     <div className="d-grid gap-4">
       {settingsError && <Alert variant="danger">{copy.settingsError}</Alert>}
-      {settingsSaved && <Alert variant="success">{copy.settingsSaved}</Alert>}
       <Card className="admin-panel-card">
         <Card.Body>
           {!settingsLoaded ? (

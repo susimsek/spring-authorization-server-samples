@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "@/routing/navigation";
 import Link from "@/routing/Link";
-import { Suspense, useEffect, useState, type FormEvent } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "@/lib/form";
 import { z } from "zod";
@@ -14,7 +14,7 @@ import { ActionIcon } from "@/components/shared/ActionIcon";
 import { Icon } from "@/components/shared/Icon";
 
 import { PasswordField } from "./PasswordField";
-import { authenticatePasskey } from "@/lib/webauthn";
+import { authenticatePasskey, supportsConditionalMediation } from "@/lib/webauthn";
 
 type LoginFormProps = {
   dictionary: Dictionary;
@@ -28,6 +28,7 @@ export function LoginForm({ dictionary }: LoginFormProps) {
     forgotPassword: true,
     rememberMe: true,
     passkeys: false,
+    webauthnMediation: "none" as "none" | "optional" | "conditional",
   });
   useEffect(() => {
     if (typeof fetch !== "function") return;
@@ -78,7 +79,7 @@ export function LoginForm({ dictionary }: LoginFormProps) {
         <Form method="post" action="/login" onSubmit={submit} noValidate>
           <Form.Group className="mb-3" controlId="username">
             <Form.Label>{dictionary.login.username}</Form.Label>
-            <InputGroup>
+            <InputGroup hasValidation={Boolean(errors.username)}>
               <InputGroup.Text>
                 <Icon icon="user" />
               </InputGroup.Text>
@@ -101,11 +102,9 @@ export function LoginForm({ dictionary }: LoginFormProps) {
             placeholder={dictionary.login.passwordPlaceholder}
             showLabel={dictionary.login.showPassword}
             hideLabel={dictionary.login.hidePassword}
+            error={errors.password?.message}
             inputProps={{ isInvalid: Boolean(errors.password), ...register("password") }}
           />
-          {errors.password && (
-            <div className="invalid-feedback d-block">{errors.password.message}</div>
-          )}
 
           {settings.rememberMe && (
             <Form.Check
@@ -134,7 +133,7 @@ export function LoginForm({ dictionary }: LoginFormProps) {
         </Form>
         {settings.passkeys && (
           <Suspense fallback={null}>
-            <PasskeyLoginButton dictionary={dictionary} />
+            <PasskeyLoginButton dictionary={dictionary} mediation={settings.webauthnMediation} />
           </Suspense>
         )}
         {settings.userRegistration && (
@@ -147,45 +146,86 @@ export function LoginForm({ dictionary }: LoginFormProps) {
   );
 }
 
-function PasskeyLoginButton({ dictionary }: LoginFormProps) {
+function PasskeyLoginButton({
+  dictionary,
+  mediation,
+}: LoginFormProps & { mediation: "none" | "optional" | "conditional" }) {
   const searchParams = useSearchParams();
   const [submitting, setSubmitting] = useState(false);
+  const [automaticPending, setAutomaticPending] = useState(false);
   const [error, setError] = useState(false);
+  const requestController = useRef<AbortController | null>(null);
+  const conditionalAttempted = useRef(false);
   const returnTo = searchParams.get("return_to") || "/";
 
-  async function signIn() {
-    setSubmitting(true);
-    setError(false);
-    try {
-      const response = await authenticatePasskey(async (url, init) => {
-        const value = await fetch(url, { ...init, credentials: "same-origin" });
-        let data: unknown = null;
-        try {
-          data = await value.json();
-        } catch {
-          // A successful WebAuthn response has no body.
+  const signIn = useCallback(
+    async (automatic = false) => {
+      requestController.current?.abort();
+      const controller = new AbortController();
+      requestController.current = controller;
+      setAutomaticPending(automatic);
+      setSubmitting(true);
+      setError(false);
+      try {
+        const response = await authenticatePasskey(
+          async (url, init) => {
+            const value = await fetch(url, {
+              ...init,
+              credentials: "same-origin",
+              signal: controller.signal,
+            });
+            let data: unknown = null;
+            try {
+              data = await value.json();
+            } catch {
+              // A successful WebAuthn response has no body.
+            }
+            return {
+              status: value.status,
+              data,
+              url: value.url,
+              redirectUrl: value.headers.get("Location"),
+            };
+          },
+          {
+            mediation:
+              automatic && mediation !== "none" ? mediation : automatic ? undefined : "optional",
+            signal: controller.signal,
+          },
+        );
+        if (response.status >= 300) throw new Error();
+        const redirectedUrl = response.redirectUrl
+          ? new URL(response.redirectUrl, window.location.origin)
+          : response.url
+            ? new URL(response.url, window.location.origin)
+            : null;
+        const redirectedTarget = redirectedUrl
+          ? redirectedUrl.pathname + redirectedUrl.search
+          : "/";
+        const target = returnTo.startsWith("/") && returnTo !== "/" ? returnTo : redirectedTarget;
+        window.location.assign(target.startsWith("/") ? target : "/");
+      } catch {
+        if (!automatic) setError(true);
+      } finally {
+        if (automatic) setAutomaticPending(false);
+        if (requestController.current === controller) {
+          requestController.current = null;
+          setSubmitting(false);
         }
-        return {
-          status: value.status,
-          data,
-          url: value.url,
-          redirectUrl: value.headers.get("Location"),
-        };
-      });
-      if (response.status >= 300) throw new Error();
-      const redirectedUrl = response.redirectUrl
-        ? new URL(response.redirectUrl, window.location.origin)
-        : response.url
-          ? new URL(response.url, window.location.origin)
-          : null;
-      const redirectedTarget = redirectedUrl ? redirectedUrl.pathname + redirectedUrl.search : "/";
-      const target = returnTo.startsWith("/") && returnTo !== "/" ? returnTo : redirectedTarget;
-      window.location.assign(target.startsWith("/") ? target : "/");
-    } catch {
-      setError(true);
-      setSubmitting(false);
-    }
-  }
+      }
+    },
+    [mediation, returnTo],
+  );
+
+  useEffect(() => {
+    if (mediation !== "conditional" || conditionalAttempted.current) return;
+    conditionalAttempted.current = true;
+    void supportsConditionalMediation()
+      .then((available) => {
+        if (available) void signIn(true);
+      })
+      .catch(() => {});
+  }, [mediation, signIn]);
 
   return (
     <div className="mt-3">
@@ -202,7 +242,7 @@ function PasskeyLoginButton({ dictionary }: LoginFormProps) {
         className="w-100"
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => void signIn()}
-        disabled={submitting}
+        disabled={submitting && !automaticPending}
       >
         {submitting ? (
           <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />

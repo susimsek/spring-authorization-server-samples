@@ -7,14 +7,16 @@ export function DataTable({
   isEmpty,
   emptyMessage,
   footer,
+  className,
 }: {
   children: ReactNode;
   isEmpty: boolean;
   emptyMessage: string;
   footer?: ReactNode;
+  className?: string;
 }) {
   return (
-    <section className="console-table-surface">
+    <section className={`console-table-surface${className ? ` ${className}` : ""}`}>
       {isEmpty ? (
         <EmptyState message={emptyMessage} />
       ) : (

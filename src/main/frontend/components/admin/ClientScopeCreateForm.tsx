@@ -50,7 +50,7 @@ export function ClientScopeCreateForm({ dictionary }: { dictionary: Dictionary; 
     setError,
   } = useForm<Values>({
     resolver: zodResolver(schema),
-    mode: "onBlur",
+    mode: "onChange",
     defaultValues: {
       name: "",
       displayName: "",

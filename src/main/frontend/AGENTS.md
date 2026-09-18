@@ -69,10 +69,13 @@ These instructions apply to `src/main/frontend/**` and supplement the repository
 - All user-editable create and update forms must use React Hook Form with a Zod schema and `zodResolver`.
 - Define required, trimming, length, format, range, collection, and cross-field rules in the schema; do not rely on HTML `required` alone or validate only after the API call.
 - Use `noValidate` with React Hook Form, render field-level errors through the shared Bootstrap invalid-control pattern, and ensure submit validation focuses or navigates to the first invalid field/step.
+- Render each field's validation message inside the same `Form.Group`, immediately after its control or `InputGroup`, using React-Bootstrap's built-in `Form.Control.Feedback` spacing. Do not render a password or other field error as a sibling below a completed field group; all screens must keep the input-to-message vertical gap consistent without one-off CSS.
+- For validation inside an `InputGroup`, set `hasValidation` and render the feedback with Bootstrap's `d-block` utility immediately after the group so the message is visible with the grouped control.
 - Do not manage submitted field values or validation errors with component-local state. Keep only transient UI state local, such as search input, selected table row, modal visibility, and loading state.
 - Form validation messages must come from the localized dictionary. Map backend `ProblemDetail` violations to the matching React Hook Form fields where applicable.
 - Clear a server-side field error as soon as the user changes that field, including forms using `onBlur` or the default `onSubmit` mode, so stale backend errors do not remain visible after the value is edited.
 - Disable submission while a mutation is pending, show localized success/error feedback, and reset form values only after a successful server response.
+- Route mutation success/error feedback through the shared `ConsoleAlerts` provider so notifications are rendered consistently and auto-dismiss after the standard timeout. Reserve inline alerts for persistent load failures and field-level validation; do not leave save or test-operation success alerts mounted indefinitely.
 - Keep frontend validation consistent with backend constraints, but treat backend validation and authorization as authoritative; never remove server-side checks because a client schema exists.
 - Administration settings forms keep editable controls in a single vertical column, matching the Keycloak-style settings layout; do not place settings inputs side by side in grid columns.
 

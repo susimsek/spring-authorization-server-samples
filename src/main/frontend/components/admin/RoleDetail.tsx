@@ -79,7 +79,7 @@ export function RoleDetail({
     formState: { errors: descriptionErrors, isSubmitting: descriptionSaving },
   } = useForm<z.infer<typeof descriptionSchema>>({
     resolver: zodResolver(descriptionSchema),
-    mode: "onBlur",
+    mode: "onChange",
     defaultValues: { description: "" },
   });
 
@@ -340,7 +340,6 @@ export function RoleDetail({
           </Card>
 
           <ResourceFilters
-            key={query}
             query={query}
             searchLabel={dictionary.admin.roles.searchAssignedUsers}
             onQueryChange={setQuery}

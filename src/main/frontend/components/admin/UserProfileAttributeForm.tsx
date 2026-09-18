@@ -86,7 +86,7 @@ export function UserProfileAttributeForm({
     formState: { errors, isSubmitting },
   } = useForm<Values>({
     resolver: zodResolver(schema),
-    mode: "onBlur",
+    mode: "onChange",
     defaultValues: {
       name: "",
       displayName: "",

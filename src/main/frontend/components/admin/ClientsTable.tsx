@@ -56,7 +56,6 @@ export function ClientsTable({ dictionary }: { locale: Locale; dictionary: Dicti
   return (
     <>
       <ResourceFilters
-        key={query}
         query={query}
         searchLabel={dictionary.admin.clients.search}
         sort={{

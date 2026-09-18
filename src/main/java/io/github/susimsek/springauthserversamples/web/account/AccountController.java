@@ -236,13 +236,21 @@ public class AccountController {
     @ApiResponse(responseCode = "200", description = "Updated account profile returned.")
     AccountProfileDTO updateProfile(
             Authentication authentication,
+            @AuthenticationPrincipal Jwt jwt,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                             description = "Editable profile fields.",
                             required = true)
                     @Valid
                     @RequestBody
                     AccountProfileRequestDTO request) {
-        return accountProfileService.updateProfile(authentication.getName(), request);
+        java.time.Instant authenticationTime =
+                jwt == null
+                        ? java.time.Instant.now()
+                        : jwt.getClaimAsInstant("auth_time") != null
+                                ? jwt.getClaimAsInstant("auth_time")
+                                : jwt.getIssuedAt();
+        return accountProfileService.updateProfile(
+                authentication.getName(), request, authenticationTime);
     }
 
     @GetMapping("/profile/avatar")

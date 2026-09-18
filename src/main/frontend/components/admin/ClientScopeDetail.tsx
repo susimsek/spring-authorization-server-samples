@@ -73,7 +73,7 @@ export function ClientScopeDetail({
     formState: { errors, isSubmitting },
   } = useForm<Values>({
     resolver: zodResolver(schema),
-    mode: "onBlur",
+    mode: "onChange",
     defaultValues: {
       name: "",
       displayName: "",

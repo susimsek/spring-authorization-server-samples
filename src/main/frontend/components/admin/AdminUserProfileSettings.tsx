@@ -164,7 +164,6 @@ export default function AdminUserProfileSettings({ dictionary }: { dictionary: D
     <>
       {error && <ErrorState message={copy.error} />}
       <ResourceFilters
-        key={query}
         onQueryChange={setQuery}
         query={query}
         searchLabel={copy.search}

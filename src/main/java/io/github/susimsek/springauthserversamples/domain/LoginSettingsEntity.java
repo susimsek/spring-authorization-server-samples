@@ -27,6 +27,15 @@ public class LoginSettingsEntity {
     @Column(name = "forgot_password_enabled", nullable = false)
     private boolean forgotPasswordEnabled;
 
+    @Column(name = "password_reset_otp_mode", nullable = false, length = 20)
+    private String passwordResetOtpMode;
+
+    @Column(name = "password_reset_token_lifespan_seconds", nullable = false)
+    private int passwordResetTokenLifespanSeconds;
+
+    @Column(name = "password_reset_resend_cooldown_seconds", nullable = false)
+    private int passwordResetResendCooldownSeconds;
+
     @Column(name = "remember_me_enabled", nullable = false)
     private boolean rememberMeEnabled;
 
@@ -38,6 +47,12 @@ public class LoginSettingsEntity {
 
     @Column(name = "verify_email", nullable = false)
     private boolean verifyEmail;
+
+    @Column(name = "webauthn_mediation", nullable = false, length = 20)
+    private String webAuthnMediation;
+
+    @Column(name = "email_update_reauthentication_minutes", nullable = false)
+    private int emailUpdateReauthenticationMinutes;
 
     @Column(name = "session_timeout_minutes", nullable = false)
     private int sessionTimeoutMinutes;

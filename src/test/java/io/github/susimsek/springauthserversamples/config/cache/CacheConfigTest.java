@@ -9,6 +9,8 @@ import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentEntity;
 import io.github.susimsek.springauthserversamples.domain.EmailSettingsEntity;
 import io.github.susimsek.springauthserversamples.domain.GroupEntity;
+import io.github.susimsek.springauthserversamples.domain.LocalizationMessageOverrideEntity;
+import io.github.susimsek.springauthserversamples.domain.LocalizationSettingsEntity;
 import io.github.susimsek.springauthserversamples.domain.LoginSettingsEntity;
 import io.github.susimsek.springauthserversamples.domain.OAuth2KeyEntity;
 import io.github.susimsek.springauthserversamples.domain.RegisteredClientEntity;
@@ -18,6 +20,8 @@ import io.github.susimsek.springauthserversamples.domain.UserProfileAttributeDef
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientScopeRepository;
+import io.github.susimsek.springauthserversamples.repository.LocalizationMessageOverrideRepository;
+import io.github.susimsek.springauthserversamples.repository.LocalizationSettingsRepository;
 import io.github.susimsek.springauthserversamples.repository.OAuth2KeyRepository;
 import io.github.susimsek.springauthserversamples.repository.RequiredActionDefinitionRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
@@ -76,7 +80,20 @@ class CacheConfigTest {
         assertThat(cacheManager.getCache(EmailSettingsEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(GroupEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(GroupEntity.class.getName() + ".authorities")).isNotNull();
+        assertThat(cacheManager.getCache(GroupEntity.class.getName() + ".attributes")).isNotNull();
         assertThat(cacheManager.getCache(LoginSettingsEntity.class.getName())).isNotNull();
+        assertThat(cacheManager.getCache(LocalizationMessageOverrideEntity.class.getName()))
+                .isNotNull();
+        assertThat(cacheManager.getCache(LocalizationSettingsEntity.class.getName())).isNotNull();
+        assertThat(
+                        cacheManager.getCache(
+                                LocalizationMessageOverrideRepository
+                                        .LOCALIZATION_MESSAGE_OVERRIDE_BY_KEY_CACHE))
+                .isNotNull();
+        assertThat(
+                        cacheManager.getCache(
+                                LocalizationSettingsRepository.LOCALIZATION_SETTINGS_BY_ID_CACHE))
+                .isNotNull();
         assertThat(cacheManager.getCache(OAuth2KeyEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(RegisteredClientEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(RequiredActionDefinitionEntity.class.getName()))

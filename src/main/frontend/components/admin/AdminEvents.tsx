@@ -135,13 +135,13 @@ export default function AdminEventsPage() {
       {access?.manageEvents && (
         <div className="admin-form-actions mb-4">
           <Button variant="danger" onClick={() => setClearDialog(true)}>
+            <ActionIcon action="delete" />
             {copy.clearAll}
           </Button>
           {clearError && <span className="text-danger">{copy.clearAllError}</span>}
         </div>
       )}
       <ResourceFilters
-        key={query}
         query={query}
         searchLabel={copy.search}
         onQueryChange={setQuery}

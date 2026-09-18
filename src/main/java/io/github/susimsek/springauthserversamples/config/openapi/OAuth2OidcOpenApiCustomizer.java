@@ -86,7 +86,7 @@ final class OAuth2OidcOpenApiCustomizer implements OpenApiCustomizer {
                 jsonGet(
                         "UserInfo Endpoint",
                         "Returns claims for an OIDC access token.",
-                        Map.of("sub", "user", "preferred_username", "user")));
+                        Map.of("sub", "user", "preferred_username", "user", "locale", "tr")));
         paths.addPathItem(
                 "/connect/logout",
                 get("RP-Initiated Logout Endpoint", "Ends the browser SSO session.", "302"));

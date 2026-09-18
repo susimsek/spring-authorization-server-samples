@@ -10,6 +10,8 @@ import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentEnt
 import io.github.susimsek.springauthserversamples.domain.ClientScopeEntity;
 import io.github.susimsek.springauthserversamples.domain.EmailSettingsEntity;
 import io.github.susimsek.springauthserversamples.domain.GroupEntity;
+import io.github.susimsek.springauthserversamples.domain.LocalizationMessageOverrideEntity;
+import io.github.susimsek.springauthserversamples.domain.LocalizationSettingsEntity;
 import io.github.susimsek.springauthserversamples.domain.LoginSettingsEntity;
 import io.github.susimsek.springauthserversamples.domain.OAuth2KeyEntity;
 import io.github.susimsek.springauthserversamples.domain.RegisteredClientEntity;
@@ -19,6 +21,8 @@ import io.github.susimsek.springauthserversamples.domain.UserProfileAttributeDef
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientScopeRepository;
+import io.github.susimsek.springauthserversamples.repository.LocalizationMessageOverrideRepository;
+import io.github.susimsek.springauthserversamples.repository.LocalizationSettingsRepository;
 import io.github.susimsek.springauthserversamples.repository.OAuth2KeyRepository;
 import io.github.susimsek.springauthserversamples.repository.RequiredActionDefinitionRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
@@ -94,7 +98,17 @@ public class CacheConfig {
                 createCache(cacheManager, EmailSettingsEntity.class.getName());
                 createCache(cacheManager, GroupEntity.class.getName());
                 createCache(cacheManager, GroupEntity.class.getName() + ".authorities");
+                createCache(cacheManager, GroupEntity.class.getName() + ".attributes");
                 createCache(cacheManager, LoginSettingsEntity.class.getName());
+                createCache(cacheManager, LocalizationMessageOverrideEntity.class.getName());
+                createCache(cacheManager, LocalizationSettingsEntity.class.getName());
+                createCache(
+                        cacheManager,
+                        LocalizationMessageOverrideRepository
+                                .LOCALIZATION_MESSAGE_OVERRIDE_BY_KEY_CACHE);
+                createCache(
+                        cacheManager,
+                        LocalizationSettingsRepository.LOCALIZATION_SETTINGS_BY_ID_CACHE);
                 createCache(cacheManager, AuthorityEntity.class.getName());
                 createCache(cacheManager, OAuth2KeyEntity.class.getName());
                 createCache(cacheManager, RegisteredClientEntity.class.getName());

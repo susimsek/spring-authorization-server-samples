@@ -5,16 +5,20 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.susimsek.springauthserversamples.domain.UserAction;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.dto.account.AccountProfileDTO;
 import io.github.susimsek.springauthserversamples.dto.account.AccountProfileRequestDTO;
 import io.github.susimsek.springauthserversamples.mapper.AccountProfileMapper;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
+import io.github.susimsek.springauthserversamples.service.LoginSettingsService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
 import io.github.susimsek.springauthserversamples.service.admin.UserAccessInvalidationService;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import io.github.susimsek.springauthserversamples.service.security.PasswordService;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +35,7 @@ class AccountProfileServiceTest {
     @Mock private AdminAuditEventService auditEventService;
     @Mock private UserAccessInvalidationService userAccessInvalidationService;
     @Mock private UserActionService userActionService;
+    @Mock private LoginSettingsService loginSettingsService;
 
     @Test
     void normalizesAndUpdatesProfile() {
@@ -86,6 +91,54 @@ class AccountProfileServiceTest {
                 .isEqualTo(ApiErrorCode.INVALID_CURRENT_PASSWORD);
     }
 
+    @Test
+    void requiresReauthenticationWhenEmailChangeAuthenticationIsStale() {
+        UserEntity user = user();
+        user.setEmail("old@example.test");
+        var request = new AccountProfileRequestDTO("Alice", "User", "new@example.test");
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(accountProfileMapper.normalize(request)).thenReturn(request);
+        when(loginSettingsService.emailUpdateReauthenticationAge())
+                .thenReturn(Duration.ofMinutes(5));
+
+        assertThatThrownBy(
+                        () ->
+                                serviceWithSettings()
+                                        .updateProfile(
+                                                "alice",
+                                                request,
+                                                Instant.now().minus(Duration.ofMinutes(6))))
+                .isInstanceOf(ApiException.class)
+                .extracting(exception -> ((ApiException) exception).getErrorCode())
+                .isEqualTo(ApiErrorCode.REAUTHENTICATION_REQUIRED);
+    }
+
+    @Test
+    void acceptsCurrentPasswordForStaleEmailChange() {
+        UserEntity user = user();
+        user.setEmail("old@example.test");
+        var request =
+                new AccountProfileRequestDTO("Alice", "User", "new@example.test", "old-password");
+        var expected =
+                new AccountProfileDTO("alice", "Alice", "User", "old@example.test", null, null);
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(accountProfileMapper.normalize(request)).thenReturn(request);
+        when(loginSettingsService.emailUpdateReauthenticationAge())
+                .thenReturn(Duration.ofMinutes(5));
+        when(passwordService.matchesCurrentPassword("old-password", user)).thenReturn(true);
+        when(accountProfileMapper.toDTO(user)).thenReturn(expected);
+
+        assertThat(
+                        serviceWithSettings()
+                                .updateProfile(
+                                        "alice",
+                                        request,
+                                        Instant.now().minus(Duration.ofMinutes(6))))
+                .isEqualTo(expected);
+        verify(userActionService)
+                .executeActionsEmail(7L, UserAction.UPDATE_EMAIL, null, java.util.Locale.ENGLISH);
+    }
+
     private AccountProfileService service() {
         return new AccountProfileService(
                 userRepository,
@@ -94,6 +147,17 @@ class AccountProfileServiceTest {
                 auditEventService,
                 userAccessInvalidationService,
                 userActionService);
+    }
+
+    private AccountProfileService serviceWithSettings() {
+        return new AccountProfileService(
+                userRepository,
+                accountProfileMapper,
+                passwordService,
+                auditEventService,
+                userAccessInvalidationService,
+                userActionService,
+                loginSettingsService);
     }
 
     private static UserEntity user() {

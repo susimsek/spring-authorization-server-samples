@@ -54,6 +54,7 @@ public class GroupEntity {
     private Set<AuthorityEntity> authorities = new HashSet<>();
 
     @ElementCollection(fetch = FetchType.EAGER)
+    @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
     @CollectionTable(name = "group_attributes", joinColumns = @JoinColumn(name = "group_id"))
     private Set<GroupAttribute> attributes = new HashSet<>();
 }

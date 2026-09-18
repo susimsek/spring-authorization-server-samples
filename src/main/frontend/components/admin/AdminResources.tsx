@@ -328,7 +328,6 @@ function AdminResourcesContent({
         }
       />
       <ResourceFilters
-        key={query}
         query={query}
         searchLabel={copy.search}
         sort={{ label: copy.sort, value: sort, options: sortOptions, onChange: setSort }}
@@ -760,7 +759,7 @@ function SessionsTable({
                     ) : (
                       <AdminActionIcon action="view" />
                     )}
-                    View details
+                    {copy.details}
                   </Dropdown.Item>
                   {canManage && !expired && (
                     <>
@@ -959,7 +958,7 @@ function ConsentsTable({
                   {detailHref && (
                     <Dropdown.Item as={Link} href={detailHref}>
                       <AdminActionIcon action="view" />
-                      View details
+                      {copy.details}
                     </Dropdown.Item>
                   )}
                   {canManage && (

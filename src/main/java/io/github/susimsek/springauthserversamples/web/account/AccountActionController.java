@@ -125,12 +125,13 @@ public class AccountActionController {
     @ApiResponse(responseCode = "204", description = "Password reset completed.")
     ResponseEntity<Void> resetPassword(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                            description = "Reset token and replacement password.",
+                            description =
+                                    "Reset token, replacement password, and optional OTP code.",
                             required = true)
                     @Valid
                     @RequestBody
                     ResetPasswordRequestDTO request) {
-        userActionService.resetPassword(request.token(), request.newPassword());
+        userActionService.resetPassword(request.token(), request.newPassword(), request.otpCode());
         return ResponseEntity.noContent().build();
     }
 }

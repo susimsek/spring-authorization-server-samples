@@ -14,6 +14,7 @@ export function PaginationControls({
   last,
   onPageChange,
   onSizeChange,
+  pageSizeId = "admin-page-size",
 }: {
   page: number;
   totalPages: number;
@@ -27,6 +28,7 @@ export function PaginationControls({
   last: string;
   onPageChange: (page: number) => void;
   onSizeChange: (size: number) => void;
+  pageSizeId?: string;
 }) {
   if (totalElements === 0) return null;
   const safePage = Math.min(Math.max(page, 0), Math.max(totalPages - 1, 0));
@@ -41,11 +43,11 @@ export function PaginationControls({
         <span className="text-body-secondary"> / {totalElements}</span>
       </div>
       <div className="admin-pagination-size">
-        <label className="text-body-secondary" htmlFor="admin-page-size">
+        <label className="text-body-secondary" htmlFor={pageSizeId}>
           {rowsPerPage}
         </label>
         <Form.Select
-          id="admin-page-size"
+          id={pageSizeId}
           size="sm"
           value={size}
           onChange={(e) => onSizeChange(Number(e.target.value))}

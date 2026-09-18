@@ -22,4 +22,12 @@ public record ResetPasswordRequestDTO(
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 @NotBlank
                 @Size(min = 12, max = 128)
-                String newPassword) {}
+                String newPassword,
+        @Schema(
+                        description =
+                                "Optional TOTP code when the password-reset OTP policy requires"
+                                        + " it.",
+                        example = "123456",
+                        requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+                @Size(max = 8)
+                String otpCode) {}

@@ -142,11 +142,9 @@ export function RegistrationForm({ dictionary }: RegistrationFormProps) {
               showLabel={dictionary.login.showPassword}
               hideLabel={dictionary.login.hidePassword}
               autoComplete="new-password"
+              error={errors.password?.message}
               inputProps={{ isInvalid: Boolean(errors.password), ...register("password") }}
             />
-            {errors.password && (
-              <div className="invalid-feedback d-block">{errors.password.message}</div>
-            )}
             <PasswordField
               controlId="registration-confirm-password"
               label={copy.confirmPassword}
@@ -154,14 +152,12 @@ export function RegistrationForm({ dictionary }: RegistrationFormProps) {
               showLabel={dictionary.login.showPassword}
               hideLabel={dictionary.login.hidePassword}
               autoComplete="new-password"
+              error={errors.confirmPassword?.message}
               inputProps={{
                 isInvalid: Boolean(errors.confirmPassword),
                 ...register("confirmPassword"),
               }}
             />
-            {errors.confirmPassword && (
-              <div className="invalid-feedback d-block">{errors.confirmPassword.message}</div>
-            )}
             <Button type="submit" size="lg" className="w-100" disabled={isSubmitting}>
               {isSubmitting ? (
                 <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />

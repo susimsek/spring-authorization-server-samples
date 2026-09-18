@@ -13,11 +13,48 @@ public record AdminLoginSettingsRequestDTO(
         @Schema(description = "Allow visitors to create accounts.") boolean userRegistration,
         @Schema(description = "Show the forgot-password link and allow password reset requests.")
                 boolean forgotPassword,
+        @Schema(
+                        description =
+                                "OTP policy during password reset: none, if-configured, or"
+                                        + " required.",
+                        allowableValues = {"none", "if-configured", "required"})
+                @NotBlank
+                @Pattern(regexp = "(?i)none|if-configured|required")
+                String passwordResetOtpMode,
+        @Schema(
+                        description = "Password-reset token lifetime in seconds.",
+                        minimum = "60",
+                        maximum = "86400")
+                @Min(60)
+                @Max(86400)
+                int passwordResetTokenLifespanSeconds,
+        @Schema(
+                        description = "Minimum seconds between reset-email requests.",
+                        minimum = "0",
+                        maximum = "86400")
+                @Min(0)
+                @Max(86400)
+                int passwordResetResendCooldownSeconds,
         @Schema(description = "Show and honor the remember-me option on the login form.")
                 boolean rememberMe,
         @Schema(description = "Allow email addresses as login identifiers.") boolean loginWithEmail,
         @Schema(description = "Require verified email addresses for new accounts.")
                 boolean verifyEmail,
+        @Schema(
+                        description =
+                                "WebAuthn credential mediation: none, optional, or conditional.",
+                        allowableValues = {"none", "optional", "conditional"})
+                @NotBlank
+                @Pattern(regexp = "(?i)none|optional|conditional")
+                String webauthnMediation,
+        @Schema(
+                        description =
+                                "Maximum age of authentication before an email change requires"
+                                        + " current-password confirmation.",
+                        minimum = "0")
+                @Min(0)
+                @Max(1440)
+                int emailUpdateReauthenticationMinutes,
         @Schema(description = "Maximum browser session duration in minutes.", minimum = "1") @Min(1)
                 int sessionTimeoutMinutes,
         @Schema(description = "Minimum accepted password length.", minimum = "8") @Min(8) @Max(128)
@@ -139,9 +176,14 @@ public record AdminLoginSettingsRequestDTO(
         this(
                 userRegistration,
                 forgotPassword,
+                "none",
+                43200,
+                30,
                 rememberMe,
                 loginWithEmail,
                 verifyEmail,
+                "none",
+                5,
                 sessionTimeoutMinutes,
                 passwordMinimumLength,
                 bruteForceEnabled,

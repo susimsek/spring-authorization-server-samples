@@ -78,7 +78,6 @@ export function RolesTable({ dictionary }: { dictionary: Dictionary }) {
     <>
       {error && <ErrorState message={copy.operationError} />}
       <ResourceFilters
-        key={query}
         onQueryChange={setQuery}
         query={query}
         searchLabel={dictionary.admin.resources.search}

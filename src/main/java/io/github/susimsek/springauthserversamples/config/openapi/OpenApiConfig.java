@@ -69,7 +69,8 @@ public class OpenApiConfig {
                                         new ObjectSchema()
                                                 .addProperty("sub", new StringSchema())
                                                 .addProperty("name", new StringSchema())
-                                                .addProperty("email", new StringSchema())));
+                                                .addProperty("email", new StringSchema())
+                                                .addProperty("locale", new StringSchema())));
     }
 
     @Bean

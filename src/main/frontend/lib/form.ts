@@ -9,6 +9,7 @@ import {
   type UseFormClearErrors,
   type UseFormProps,
   type UseFormReturn,
+  type UseFormSetFocus,
 } from "react-hook-form";
 
 function errorPaths(errors: FieldErrors, prefix = ""): string[] {
@@ -18,6 +19,20 @@ function errorPaths(errors: FieldErrors, prefix = ""): string[] {
     if ("type" in error) return error.type === "server" ? [path] : [];
     return errorPaths(error as FieldErrors, path);
   });
+}
+
+function firstServerErrorPath(errors: FieldErrors, prefix = ""): string | undefined {
+  for (const [name, error] of Object.entries(errors)) {
+    if (!error || typeof error !== "object") continue;
+    const path = prefix ? `${prefix}.${name}` : name;
+    if ("type" in error) {
+      if (error.type === "server") return path;
+      continue;
+    }
+    const nestedPath = firstServerErrorPath(error as FieldErrors, path);
+    if (nestedPath) return nestedPath;
+  }
+  return undefined;
 }
 
 function readPath(value: unknown, path: string): unknown {
@@ -66,6 +81,24 @@ function useClearServerErrorsOnChange<
   }, [clearErrors, errors, values]);
 }
 
+function useFocusServerErrorOnSubmit<TFieldValues extends FieldValues>(
+  errors: FieldErrors<TFieldValues>,
+  submitCount: number,
+  setFocus: UseFormSetFocus<TFieldValues>,
+) {
+  const lastFocusedError = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (submitCount === 0) return;
+    const path = firstServerErrorPath(errors);
+    if (!path) return;
+    const focusKey = `${submitCount}:${path}`;
+    if (lastFocusedError.current === focusKey) return;
+    lastFocusedError.current = focusKey;
+    setFocus(path as Path<TFieldValues>);
+  }, [errors, setFocus, submitCount]);
+}
+
 export function useForm<
   TFieldValues extends FieldValues = FieldValues,
   TContext = unknown,
@@ -73,7 +106,11 @@ export function useForm<
 >(
   props?: UseFormProps<TFieldValues, TContext, TTransformedValues>,
 ): UseFormReturn<TFieldValues, TContext, TTransformedValues> {
-  const form = useReactHookForm<TFieldValues, TContext, TTransformedValues>(props);
+  const form = useReactHookForm<TFieldValues, TContext, TTransformedValues>({
+    shouldFocusError: true,
+    ...props,
+  });
   useClearServerErrorsOnChange(form.control, form.formState.errors, form.clearErrors);
+  useFocusServerErrorOnSubmit(form.formState.errors, form.formState.submitCount, form.setFocus);
   return form;
 }

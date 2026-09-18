@@ -182,11 +182,12 @@ export function ClientForm({
     getValues,
     reset,
     setValue,
+    setFocus,
     setError: setFieldError,
     control,
   } = useForm<FormState>({
     resolver: zodResolver(clientSchema(dictionary.admin.common.validation)),
-    mode: "onBlur",
+    mode: "onChange",
     defaultValues: EMPTY,
   });
   const clientAuthenticationMethods = useWatch({
@@ -317,7 +318,7 @@ export function ClientForm({
         },
       );
       if (response.status >= 300) {
-        applyProblemToForm(response.data, setFieldError, {
+        const result = applyProblemToForm(response.data, setFieldError, {
           fields: Object.keys(EMPTY),
           fallbackMessage: ({ field }, problem) =>
             problem.errorCode === "admin_client_duplicate_client_id"
@@ -330,6 +331,18 @@ export function ClientForm({
                     ? dictionary.admin.common.validation.selection
                     : dictionary.admin.common.validation.required,
         });
+        if (mode === "create" && result.firstField) {
+          const firstInvalidField = result.firstField as keyof FormState;
+          const invalidStep = CLIENT_FORM_STEP_FIELDS.findIndex((fields) =>
+            fields.includes(firstInvalidField),
+          );
+          if (invalidStep >= 0) {
+            setStep(invalidStep);
+            window.setTimeout(() => setFocus(firstInvalidField), 0);
+          } else {
+            setFocus(firstInvalidField);
+          }
+        }
         throw new Error(
           typeof response.data === "object" &&
             response.data !== null &&
@@ -371,7 +384,14 @@ export function ClientForm({
     const invalidStep = firstInvalidField
       ? CLIENT_FORM_STEP_FIELDS.findIndex((fields) => fields.includes(firstInvalidField))
       : -1;
-    if (invalidStep >= 0) setStep(invalidStep);
+    if (invalidStep >= 0) {
+      setStep(invalidStep);
+      if (firstInvalidField) {
+        window.setTimeout(() => setFocus(firstInvalidField), 0);
+      }
+    } else if (firstInvalidField) {
+      setFocus(firstInvalidField);
+    }
   };
 
   if (missingId) {

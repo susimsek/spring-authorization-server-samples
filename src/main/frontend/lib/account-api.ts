@@ -15,6 +15,7 @@ export type AccountProfile = {
   lastName: string | null;
   email: string | null;
   emailVerified: boolean;
+  preferredLocale: string | null;
   createdAt: string;
   updatedAt: string;
 };

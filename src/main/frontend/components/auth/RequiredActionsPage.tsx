@@ -211,7 +211,7 @@ export function RequiredActionsPage({ dictionary }: { dictionary: Dictionary }) 
   if (loading)
     return (
       <Card className="auth-card">
-        <Card.Body>{copy.loading}</Card.Body>
+        <Card.Body role="status">{copy.loading}</Card.Body>
       </Card>
     );
   if (fatalError)

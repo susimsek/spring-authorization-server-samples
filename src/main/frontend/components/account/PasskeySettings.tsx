@@ -268,8 +268,10 @@ function PasskeyRow({
           >
             <Form.Control aria-label={copy.label} maxLength={100} {...form.register("label")} />
             <Button disabled={renaming} type="submit" variant="secondary">
-              {renaming && (
+              {renaming ? (
                 <Spinner animation="border" aria-hidden="true" className="me-2" size="sm" />
+              ) : (
+                <ActionIcon action="save" />
               )}
               {copy.rename}
             </Button>
