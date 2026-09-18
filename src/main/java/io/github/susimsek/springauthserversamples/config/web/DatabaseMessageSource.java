@@ -50,9 +50,13 @@ public class DatabaseMessageSource implements MessageSource {
         }
         return overrideRepository
                 .findByLocaleAndBundleAndMessageKey(
-                        LocaleConfig.normalize(locale).getLanguage(), "backend", code)
+                        LocaleConfig.normalize(locale).getLanguage(), bundleFor(code), code)
                 .map(entity -> entity.getMessageValue())
                 .orElse(null);
+    }
+
+    private static String bundleFor(String code) {
+        return code.startsWith("mail.") ? "email" : "backend";
     }
 
     private static String format(String value, Object[] args, Locale locale) {

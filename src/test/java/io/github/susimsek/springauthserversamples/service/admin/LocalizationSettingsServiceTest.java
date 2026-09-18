@@ -46,7 +46,8 @@ class LocalizationSettingsServiceTest {
         assertThat(result.defaultLocale()).isEqualTo("en");
         assertThat(result.supportedLocales()).containsExactly("en", "tr");
         assertThat(result.availableLocales()).containsExactly("en", "tr");
-        assertThat(result.availableBundles()).containsExactly("backend", "common");
+        assertThat(result.availableBundles())
+                .containsExactly("login", "account", "admin", "email", "backend");
     }
 
     @Test
@@ -78,6 +79,15 @@ class LocalizationSettingsServiceTest {
 
         assertThat(result)
                 .containsEntry("app.security.unauthorized", "Authentication is required.");
+        assertThat(result).doesNotContainKey("mail.test.subject");
+    }
+
+    @Test
+    void exposesBundledEmailMessagesForEffectiveMessageSearch() {
+        var result = service().bundledMessages("en", "email");
+
+        assertThat(result).containsEntry("mail.test.subject", "SMTP connection test");
+        assertThat(result).doesNotContainKey("app.security.unauthorized");
     }
 
     private LocalizationSettingsService service() {

@@ -40,7 +40,7 @@ public class LocalizationController {
     @Operation(summary = "Get public message overrides for a bundle")
     @ApiResponse(responseCode = "200", description = "Message overrides returned.")
     public java.util.Map<String, String> messages(
-            @RequestParam String locale, @RequestParam(defaultValue = "common") String bundle) {
+            @RequestParam String locale, @RequestParam(defaultValue = "admin") String bundle) {
         return service.publicOverrides(locale, bundle);
     }
 

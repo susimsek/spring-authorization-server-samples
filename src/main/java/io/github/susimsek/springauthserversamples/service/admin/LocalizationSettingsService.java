@@ -35,7 +35,8 @@ public class LocalizationSettingsService {
 
     private static final long SETTINGS_ID = 1L;
     private static final List<String> AVAILABLE_LOCALES = List.of("en", "tr");
-    private static final List<String> AVAILABLE_BUNDLES = List.of("backend", "common");
+    private static final List<String> AVAILABLE_BUNDLES =
+            List.of("login", "account", "admin", "email", "backend");
 
     private final LocalizationSettingsRepository settingsRepository;
     private final LocalizationMessageOverrideRepository overrideRepository;
@@ -167,12 +168,13 @@ public class LocalizationSettingsService {
     public Map<String, String> bundledMessages(String locale, String bundle) {
         String normalizedLocale = normalizeLocale(locale);
         String normalizedBundle = validatePublicBundle(bundle);
-        if (!AVAILABLE_LOCALES.contains(normalizedLocale) || !"backend".equals(normalizedBundle)) {
+        if (!AVAILABLE_LOCALES.contains(normalizedLocale)) {
             return Map.of();
         }
         ResourceBundle resourceBundle =
                 ResourceBundle.getBundle("i18n.messages", Locale.forLanguageTag(normalizedLocale));
         return resourceBundle.keySet().stream()
+                .filter(key -> belongsToBundle(key, normalizedBundle))
                 .sorted()
                 .collect(
                         Collectors.toMap(
@@ -270,8 +272,18 @@ public class LocalizationSettingsService {
     }
 
     private static String validatePublicBundle(String bundle) {
-        String normalized = bundle == null || bundle.isBlank() ? "common" : bundle;
+        String normalized = bundle == null || bundle.isBlank() ? "admin" : bundle;
         return validateBundle(normalized);
+    }
+
+    private static boolean belongsToBundle(String key, String bundle) {
+        if ("email".equals(bundle)) {
+            return key.startsWith("mail.");
+        }
+        if ("backend".equals(bundle)) {
+            return !key.startsWith("mail.");
+        }
+        return false;
     }
 
     private LocalizationSettingsEntity entity() {

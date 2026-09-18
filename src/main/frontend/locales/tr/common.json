@@ -895,6 +895,13 @@
       "effectiveSubtitle": "Yerleşik mesajlar ile locale geçersiz kılmaları birleştirildikten sonraki frontend bundle’ını arayın.",
       "effectiveEmpty": "Etkin mesaj bulunamadı.",
       "bundle": "Bundle",
+      "bundleNames": {
+        "login": "Giriş",
+        "account": "Hesap",
+        "admin": "Yönetim konsolu",
+        "email": "E-posta",
+        "backend": "Backend mesajları"
+      },
       "source": "Kaynak",
       "bundled": "Yerleşik",
       "override": "Geçersiz kılma",

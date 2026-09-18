@@ -4,10 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Button, Card, Form, Spinner } from "react-bootstrap";
 
 import type { Dictionary } from "@/i18n/get-dictionary";
+import type { Locale } from "@/i18n/config";
 import Link from "@/routing/Link";
 import { useRouter } from "@/routing/navigation";
-import enMessages from "@/locales/en/common.json";
-import trMessages from "@/locales/tr/common.json";
+import { frontendBundleMessages, type MessageBundle } from "@/i18n/bundles";
 import { adminRequest } from "@/lib/admin-api";
 import type { PageResponse } from "@/lib/api-types";
 
@@ -57,13 +57,13 @@ export default function AdminLocalizationSettings({
   const [draft, setDraft] = useState<Settings | null>(null);
   const [override, setOverride] = useState({
     locale: "en",
-    bundle: "common",
+    bundle: "admin",
     messageKey: "",
     messageValue: "",
   });
-  const [bundleFilter, setBundleFilter] = useState("common");
-  const [effectiveLocale, setEffectiveLocale] = useState("en");
-  const [effectiveBundle, setEffectiveBundle] = useState("common");
+  const [bundleFilter, setBundleFilter] = useState<MessageBundle>("admin");
+  const [effectiveLocale, setEffectiveLocale] = useState<Locale>("en");
+  const [effectiveBundle, setEffectiveBundle] = useState<MessageBundle>("admin");
   const [effectiveQuery, setEffectiveQuery] = useState("");
   const [effectivePage, setEffectivePage] = useState(0);
   const [effectiveSize, setEffectiveSize] = useState(20);
@@ -115,9 +115,9 @@ export default function AdminLocalizationSettings({
       { credentials: "same-origin" },
     ).then((response) => (response.ok ? response.json() : {}));
     const bundledRequest =
-      effectiveBundle === "backend"
+      effectiveBundle === "backend" || effectiveBundle === "email"
         ? adminRequest<Record<string, string>>(accessToken, {
-            url: `/api/admin/settings/localization/bundled?locale=${encodeURIComponent(effectiveLocale)}&bundle=backend`,
+            url: `/api/admin/settings/localization/bundled?locale=${encodeURIComponent(effectiveLocale)}&bundle=${encodeURIComponent(effectiveBundle)}`,
           }).then((response) => (response.status < 300 ? response.data : {}))
         : Promise.resolve({});
     void Promise.all([overrideRequest, bundledRequest])
@@ -139,8 +139,10 @@ export default function AdminLocalizationSettings({
   }, [accessToken, effectiveBundle, effectiveLocale]);
 
   const effectiveMessages = useMemo(() => {
-    const dictionary = effectiveLocale === "tr" ? trMessages : enMessages;
-    const bundled = effectiveBundle === "backend" ? effectiveBundled : flattenMessages(dictionary);
+    const bundled =
+      effectiveBundle === "backend" || effectiveBundle === "email"
+        ? effectiveBundled
+        : frontendBundleMessages(effectiveLocale, effectiveBundle);
     const keys = new Set([...Object.keys(bundled), ...Object.keys(effectiveOverrides)]);
     const normalizedQuery = effectiveQuery.trim().toLowerCase();
     const messages = [...keys]
@@ -422,7 +424,7 @@ export default function AdminLocalizationSettings({
               aria-label={copy.locale}
               value={effectiveLocale}
               onChange={(event) => {
-                setEffectiveLocale(event.target.value);
+                setEffectiveLocale(event.target.value as Locale);
                 setEffectivePage(0);
               }}
               className="admin-resource-filter-control"
@@ -437,14 +439,14 @@ export default function AdminLocalizationSettings({
               aria-label={copy.bundle}
               value={effectiveBundle}
               onChange={(event) => {
-                setEffectiveBundle(event.target.value);
+                setEffectiveBundle(event.target.value as MessageBundle);
                 setEffectivePage(0);
               }}
               className="admin-resource-filter-control"
             >
               {settings.availableBundles.map((bundle) => (
                 <option key={bundle} value={bundle}>
-                  {bundle}
+                  {copy.bundleNames[bundle as MessageBundle] ?? bundle}
                 </option>
               ))}
             </Form.Select>
@@ -527,7 +529,7 @@ export default function AdminLocalizationSettings({
                   >
                     {settings.availableBundles.map((bundle) => (
                       <option key={bundle} value={bundle}>
-                        {bundle}
+                        {copy.bundleNames[bundle as MessageBundle] ?? bundle}
                       </option>
                     ))}
                   </Form.Select>
@@ -610,7 +612,7 @@ export default function AdminLocalizationSettings({
                       {
                         label: copy.bundle,
                         value: bundleFilter,
-                        onRemove: () => setBundleFilter(""),
+                        onRemove: () => setBundleFilter("admin"),
                       },
                     ]
                   : []),
@@ -707,15 +709,4 @@ export default function AdminLocalizationSettings({
       )}
     </div>
   );
-}
-
-function flattenMessages(value: Record<string, unknown>, prefix = "") {
-  return Object.entries(value).reduce<Record<string, string>>((result, [key, child]) => {
-    const path = prefix ? `${prefix}.${key}` : key;
-    if (typeof child === "string") result[path] = child;
-    else if (child && typeof child === "object" && !Array.isArray(child)) {
-      Object.assign(result, flattenMessages(child as Record<string, unknown>, path));
-    }
-    return result;
-  }, {});
 }

@@ -16,7 +16,7 @@ public record LocalizationMessageOverrideDTO(
                 String locale,
         @Schema(
                         description = "Message bundle namespace.",
-                        example = "common",
+                        example = "admin",
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 String bundle,
         @Schema(

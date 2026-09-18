@@ -895,6 +895,13 @@
       "effectiveSubtitle": "Search the selected frontend bundle after bundled messages and locale overrides are merged.",
       "effectiveEmpty": "No effective messages found.",
       "bundle": "Bundle",
+      "bundleNames": {
+        "login": "Login",
+        "account": "Account",
+        "admin": "Admin console",
+        "email": "Email",
+        "backend": "Backend messages"
+      },
       "source": "Source",
       "bundled": "Bundled",
       "override": "Override",
