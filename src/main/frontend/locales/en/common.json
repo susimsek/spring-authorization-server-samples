@@ -249,6 +249,7 @@
       "events": "Events",
       "clientScopes": "Client scopes",
       "serverInfo": "Server info",
+      "authentication": "Authentication",
       "settings": "Settings",
       "loginSettings": "Login settings",
       "emailSettings": "Email settings"
@@ -482,9 +483,19 @@
         "clientScope": "Client scope"
       }
     },
+    "authentication": {
+      "title": "Authentication",
+      "subtitle": "Configure authentication policies and sign-in security behavior.",
+      "policies": "Policies",
+      "policiesTitle": "Authentication policies",
+      "policiesDescription": "Manage password, one-time password and WebAuthn policies.",
+      "passwordPolicy": "Password policy",
+      "otpPolicy": "OTP policy",
+      "webauthnPolicy": "WebAuthn policy"
+    },
     "settings": {
       "title": "Settings",
-      "subtitle": "Configure the sign-in experience, sessions, security policies, email delivery and event auditing.",
+      "subtitle": "Configure the sign-in experience, sessions, email delivery and event auditing.",
       "navigation": "Settings sections",
       "issuer": "Issuer",
       "generalTitle": "General settings",
@@ -494,10 +505,7 @@
       "sections": {
         "general": "General",
         "login": "Login",
-        "webauthn": "WebAuthn policy",
         "email": "Email",
-        "passwordPolicy": "Password policy",
-        "otpPolicy": "OTP policy",
         "bruteForce": "Brute force",
         "sessions": "Sessions",
         "events": "Events",

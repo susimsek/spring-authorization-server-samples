@@ -53,6 +53,7 @@ import { MfaChallengePage } from "@/components/auth/MfaChallengePage";
 import AdminEvents from "@/components/admin/AdminEvents";
 import ServerInfo from "@/components/admin/ServerInfo";
 import AdminSettings from "@/components/admin/AdminSettings";
+import AdminAuthentication from "@/components/admin/AdminAuthentication";
 import {
   ForgotPasswordForm,
   ResetPasswordForm,
@@ -340,6 +341,8 @@ export function AppRoutes() {
         />
         <Route path="events" element={<AdminEvents />} />
         <Route path="server-info" element={<ServerInfo />} />
+        <Route path="authentication" element={<AdminAuthentication />} />
+        <Route path="authentication/policies/:policy" element={<AdminAuthentication />} />
         <Route
           path="settings/user-profile/new"
           element={
@@ -361,6 +364,18 @@ export function AppRoutes() {
         <Route
           path="settings/localization/:localizationSection"
           element={<AdminSettings localization />}
+        />
+        <Route
+          path="settings/webauthn"
+          element={<Navigate to="/admin/authentication/policies/webauthn" replace />}
+        />
+        <Route
+          path="settings/password-policy"
+          element={<Navigate to="/admin/authentication/policies/password-policy" replace />}
+        />
+        <Route
+          path="settings/otp-policy"
+          element={<Navigate to="/admin/authentication/policies/otp-policy" replace />}
         />
         <Route path="settings/:section?" element={<AdminSettings />} />
       </Route>

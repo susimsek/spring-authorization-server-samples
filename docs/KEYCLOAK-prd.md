@@ -65,7 +65,8 @@ The following model is the recommended subset of Keycloak's realm administration
 | Client scopes | Reusable scopes and protocol claims | Existing client-scope screens | Admin capability where implemented |
 | Sessions | Active browser/session visibility and invalidation | Existing session screens | Admin capability where implemented |
 | Events | Stored event history and filters | `/admin/events` | `ROLE_EVENT_VIEWER`/`ROLE_EVENT_MANAGER` equivalent |
-| Settings | Realm-wide login, password, OTP, brute-force, session, email, and event configuration | `/admin/settings/*` | Admin, plus event-specific access for Events settings |
+| Authentication | Authentication flows, required actions, and authentication policies | `/admin/authentication/*` | Admin |
+| Settings | Realm-wide general, login, session, email, profile, localization, and event configuration | `/admin/settings/*` | Admin, plus event-specific access for Events settings |
 
 Keycloak also has areas such as Identity Providers, Organizations, Authorization, and realm-management roles. They should remain explicit roadmap items until the corresponding server behavior, API, persistence, and access tests exist; a navigation placeholder must not imply that the feature is available.
 
@@ -76,7 +77,8 @@ Keycloak uses resource-specific detail views with tabs or sections for related c
 - **User detail**: profile, credentials/required actions, group membership, role mappings, sessions, consents, and events where implemented.
 - **Group detail**: group profile, child groups, members, and role mappings.
 - **Client detail**: general settings, capabilities, login settings, credentials, scopes, sessions, consents, and events.
-- **Settings**: a stable tab strip for general, login, email, password policy, OTP policy, brute-force, sessions, and events.
+- **Authentication**: the home for authentication policies, with password, OTP, and WebAuthn policy tabs.
+- **Settings**: a stable tab strip for general, login, email, brute-force, sessions, events, user profile, and localization.
 
 Tabs must not be used as a substitute for authorization. A tab that is not available to the current authority should be omitted, and a direct request for its API must return the centralized forbidden response.
 
@@ -89,6 +91,12 @@ Keycloak's event documentation presents configuration under **Realm settings →
 The application follows the same model:
 
 ```text
+Authentication
+└── Policies
+    ├── Password policy
+    ├── OTP policy
+    └── WebAuthn policy
+
 Settings
 └── Events
     ├── Event recording
@@ -219,7 +227,7 @@ The following matrix compares the behavior currently implemented in this reposit
 | SAML | No SAML IdP/SP | SAML client and identity-provider support | Missing | Separate protocol product decision. |
 | Authentication flows | Fixed Spring Security flow with custom MFA filter and required actions | Configurable browser, registration, reset-credential, first-broker-login, and conditional flows[^8] | Partial | Introduce a flow graph only when administrators need reordering/conditions. |
 | WebAuthn/passkeys | Spring Security WebAuthn registration/authentication ceremonies, account/admin credential inventory, labels, deletion, and required-action enrollment | WebAuthn credential and passkey authenticators | Partial | Registration, persistence, primary-factor sign-in, OTP step-up, account/admin inventory with signature and verification metadata, label management, deletion, configurable mediation, conditional sign-in, automatic passkey autofill, and standard/passwordless required actions are implemented. The remaining gap is the broader Keycloak WebAuthn policy surface such as RP and authenticator policy editing. |
-| WebAuthn policy and mediation | Admin policy screen with `conditional`, `optional`, and `none` mediation, persisted API validation, and conditional passkey autofill | Configurable WebAuthn policy and browser mediation behavior for passkeys | Partial | The Settings > WebAuthn policy screen persists the mediation choice and exposes it through the public login-settings API. `conditional` starts conditional WebAuthn autofill when the browser supports it, `optional` uses browser-optional mediation for the explicit passkey button, and `none` disables automatic mediation. RP, timeout, resident-key, user-verification, attestation, and authenticator-attachment policies remain application configuration rather than editable realm settings. |
+| WebAuthn policy and mediation | Admin policy screen with `conditional`, `optional`, and `none` mediation, persisted API validation, and conditional passkey autofill | Configurable WebAuthn policy and browser mediation behavior for passkeys | Partial | The Authentication > Policies > WebAuthn policy screen persists the mediation choice and exposes it through the public login-settings API. `conditional` starts conditional WebAuthn autofill when the browser supports it, `optional` uses browser-optional mediation for the explicit passkey button, and `none` disables automatic mediation. RP, timeout, resident-key, user-verification, attestation, and authenticator-attachment policies remain application configuration rather than editable realm settings. |
 | Identity brokering | Local JPA users only | OIDC/SAML/social providers, mappers, account linking | Missing | Add provider registry and first-login policy before adding UI. |
 | LDAP/Active Directory federation | Not implemented | Federated user stores with sync and mapper policies[^9] | Missing | Requires provider lifecycle, sync jobs, and failure handling. |
 | Sessions | JPA browser sessions, admin/account views, revoke | Online and offline sessions, client sessions, revocation and not-before policies | Partial | Add offline session model and realm/client/user not-before policy if required. |
@@ -272,6 +280,7 @@ Every authenticated administration screen uses the same structure:
 │ Consents      │                                                │
 │ Keys          │                                                │
 │ Events        │                                                │
+│ Authentication│                                                │
 │ Settings      │                                                │
 └───────────────┴─────────────────────────────────────────────┘
 ```
@@ -353,6 +362,20 @@ Detail tabs:
 
 The current project already has a multi-step client create/edit flow, redirect URI validation, secret rotation, scopes, sessions, consents, and events. The missing layout sections should be added only when their backend contracts exist.
 
+### Authentication
+
+Authentication is the home for sign-in policy controls, matching Keycloak's Authentication area. The current implementation exposes the policy family with stable nested routes:
+
+```text
+Authentication
+└── Policies
+    ├── Password policy
+    ├── OTP policy
+    └── WebAuthn policy
+```
+
+Policy screens use the same shared settings card and form action row as the rest of the console. The legacy `/admin/settings/password-policy`, `/admin/settings/otp-policy`, and `/admin/settings/webauthn` URLs redirect to the new Authentication policy routes so saved bookmarks continue to work. Full flow graph editing remains a roadmap item until the backend can persist and execute configurable flow steps.
+
 ### Settings
 
 Settings is a single page family with a stable tab strip:
@@ -362,8 +385,6 @@ Settings
 ├── General
 ├── Login
 ├── Email
-├── Password policy
-├── OTP policy
 ├── Brute force
 ├── Sessions
 ├── Events

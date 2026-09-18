@@ -72,7 +72,7 @@ describe("admin console", () => {
     cy.intercept("PUT", "/api/admin/events/config").as("saveEventSettings");
     cy.intercept("DELETE", "/api/admin/events").as("clearEvents");
     cy.contains(".admin-sidebar a", "Settings").click();
-    cy.contains(".admin-settings-nav a", "Events").click();
+    cy.contains(".admin-detail-tabs a", "Events").click();
     cy.wait("@eventSettings");
     cy.contains("button", "Save event settings", { timeout: 15_000 }).should("be.visible").click();
     cy.wait("@saveEventSettings");
@@ -91,7 +91,7 @@ describe("admin console", () => {
       "saveEventSettingsError",
     );
     cy.contains(".admin-sidebar a", "Settings").click();
-    cy.contains(".admin-settings-nav a", "Events").click();
+    cy.contains(".admin-detail-tabs a", "Events").click();
     cy.wait("@eventSettings");
     cy.contains("button", "Save event settings", { timeout: 15_000 }).should("be.visible").click();
     cy.wait("@saveEventSettingsError");
@@ -103,8 +103,6 @@ describe("admin console", () => {
       ["General", "/admin/settings", null],
       ["Login", "/admin/settings/login", "Save settings"],
       ["Email", "/admin/settings/email", "Save email settings"],
-      ["Password policy", "/admin/settings/password-policy", "Save settings"],
-      ["OTP policy", "/admin/settings/otp-policy", "Save settings"],
       ["Brute force", "/admin/settings/brute-force", "Save settings"],
       ["Sessions", "/admin/settings/sessions", "Save settings"],
       ["Events", "/admin/settings/events", "Save event settings"],
@@ -115,9 +113,9 @@ describe("admin console", () => {
     cy.location("pathname").should("match", /^\/admin\/settings\/?$/);
 
     sections.forEach(([label, path, saveLabel]) => {
-      cy.contains(".admin-settings-nav a", label).click();
+      cy.contains(".admin-detail-tabs a", label).click();
       cy.location("pathname", { timeout: 15_000 }).should("eq", path);
-      cy.get('.admin-settings-nav a[aria-current="page"]').should("contain.text", label);
+      cy.get('.admin-detail-tabs a[aria-current="page"]').should("contain.text", label);
       if (saveLabel) cy.contains("button", saveLabel, { timeout: 15_000 }).should("be.visible");
       if (label === "Email") {
         cy.intercept("POST", "/api/admin/settings/email/test", { statusCode: 204 }).as(
@@ -128,6 +126,17 @@ describe("admin console", () => {
         cy.contains("Test email sent successfully.").should("be.visible");
       }
     });
+  });
+
+  it("opens authentication policies under their own navigation", () => {
+    signInAdmin();
+    cy.contains(".admin-sidebar a", "Authentication").click();
+    cy.location("pathname").should("match", /^\/admin\/authentication\/?$/);
+    cy.contains(".admin-detail-tabs a", "OTP policy").click();
+    cy.location("pathname").should("eq", "/admin/authentication/policies/otp-policy");
+    cy.contains("button", "Save settings", { timeout: 15_000 }).should("be.visible");
+    cy.contains(".admin-detail-tabs a", "WebAuthn policy").click();
+    cy.location("pathname").should("eq", "/admin/authentication/policies/webauthn");
   });
 
   it("opens the create forms and validates required fields", () => {
