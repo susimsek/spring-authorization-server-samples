@@ -1,5 +1,6 @@
 import { library } from "@fortawesome/fontawesome-svg-core";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
+import { faGithub, faGoogle, faLinkedinIn, faMicrosoft } from "@fortawesome/free-brands-svg-icons";
 import {
   faAddressCard,
   faAnglesLeft,
@@ -126,7 +127,11 @@ export type IconName =
   | "user"
   | "userShield"
   | "users"
-  | "xmark";
+  | "xmark"
+  | "github"
+  | "google"
+  | "linkedin"
+  | "microsoft";
 
 export const actionIcons: Record<ActionIconName, IconDefinition> = {
   add: faPlus,
@@ -196,6 +201,10 @@ export const icons: Record<IconName, IconDefinition> = {
   userShield: faUserShield,
   users: faUsers,
   xmark: faXmark,
+  github: faGithub,
+  google: faGoogle,
+  linkedin: faLinkedinIn,
+  microsoft: faMicrosoft,
 };
 
 let loaded = false;
@@ -233,11 +242,14 @@ export const loadIcons = () => {
     faFilter,
     faFloppyDisk,
     faGaugeHigh,
+    faGithub,
     faGlobe,
+    faGoogle,
     faHeartPulse,
     faKey,
     faLaptop,
     faLayerGroup,
+    faLinkedinIn,
     faLock,
     faMagnifyingGlass,
     faMoon,

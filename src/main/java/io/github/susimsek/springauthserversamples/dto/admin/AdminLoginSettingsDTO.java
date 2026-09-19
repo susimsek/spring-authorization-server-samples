@@ -33,6 +33,10 @@ public record AdminLoginSettingsDTO(
                                         + " current-password confirmation.",
                         minimum = "0")
                 int emailUpdateReauthenticationMinutes,
+        @Schema(description = "Allow Google social sign-in.") boolean googleLoginEnabled,
+        @Schema(description = "Allow GitHub social sign-in.") boolean githubLoginEnabled,
+        @Schema(description = "Allow LinkedIn social sign-in.") boolean linkedinLoginEnabled,
+        @Schema(description = "Allow Microsoft social sign-in.") boolean microsoftLoginEnabled,
         @Schema(description = "Maximum browser session duration in minutes.", minimum = "1")
                 int sessionTimeoutMinutes,
         @Schema(description = "Minimum accepted password length.", minimum = "8")
@@ -146,6 +150,10 @@ public record AdminLoginSettingsDTO(
                 verifyEmail,
                 "none",
                 5,
+                true,
+                true,
+                true,
+                false,
                 sessionTimeoutMinutes,
                 passwordMinimumLength,
                 bruteForceEnabled,

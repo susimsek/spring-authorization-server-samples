@@ -15,6 +15,41 @@ function rolePage(...roles: { name: string }[]) {
   return { content: roles };
 }
 
+function profileDefinitions() {
+  return [
+    {
+      id: 1,
+      name: "username",
+      displayName: "Username",
+      description: null,
+      type: "STRING",
+      required: true,
+      multivalued: false,
+      minLength: null,
+      maxLength: 100,
+      pattern: null,
+      enabled: true,
+      displayOrder: 10,
+      builtIn: true,
+    },
+    {
+      id: 2,
+      name: "department",
+      displayName: "Department",
+      description: null,
+      type: "STRING",
+      required: false,
+      multivalued: false,
+      minLength: null,
+      maxLength: 100,
+      pattern: null,
+      enabled: true,
+      displayOrder: 20,
+      builtIn: false,
+    },
+  ];
+}
+
 jest.mock("@/lib/admin-api", () => ({ adminRequest: jest.fn() }));
 jest.mock("./AdminAuthProvider", () => ({
   useAdminAuth: () => ({ access: { manageUsers: true }, accessToken: "token" }),
@@ -36,6 +71,8 @@ describe("UserForm", () => {
     mockAdminRequest.mockImplementation(async (_token, config) => {
       if (config.url === "/api/admin/roles?page=0&size=100")
         return { status: 200, data: rolePage({ name: "ROLE_USER" }) } as never;
+      if (config.url === "/api/admin/profile-attributes")
+        return { status: 200, data: profileDefinitions() } as never;
       return { status: 201, data: { id: 1, username: "ada" } } as never;
     });
 
@@ -50,6 +87,35 @@ describe("UserForm", () => {
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.save }));
 
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/admin/users"));
+  });
+
+  it("does not validate built-in profile fields as nested attributes", async () => {
+    mockAdminRequest.mockImplementation(async (_token, config) => {
+      if (config.url === "/api/admin/roles?page=0&size=100")
+        return { status: 200, data: rolePage({ name: "ROLE_USER" }) } as never;
+      if (config.url === "/api/admin/profile-attributes")
+        return { status: 200, data: profileDefinitions() } as never;
+      return { status: 201, data: { id: 2, username: "profile-user" } } as never;
+    });
+
+    render(<UserForm dictionary={dictionary} locale="en" />);
+    await screen.findByLabelText("Username *");
+    fireEvent.change(screen.getByLabelText("Username *"), {
+      target: { value: "profile-user" },
+    });
+    fireEvent.change(document.querySelector('input[name="password"]')!, {
+      target: { value: "StrongPassword1!" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.save }));
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/admin/users"));
+    expect(mockAdminRequest).toHaveBeenCalledWith(
+      "token",
+      expect.objectContaining({
+        url: "/api/admin/users",
+        method: "POST",
+      }),
+    );
   });
 
   it("shows the avatar validation message before uploading an unsupported file", async () => {

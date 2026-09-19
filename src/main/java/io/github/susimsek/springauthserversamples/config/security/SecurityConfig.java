@@ -3,9 +3,11 @@ package io.github.susimsek.springauthserversamples.config.security;
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
 import io.github.susimsek.springauthserversamples.security.LocalizedAccessDeniedHandler;
 import io.github.susimsek.springauthserversamples.security.LocalizedAuthenticationEntryPoint;
+import io.github.susimsek.springauthserversamples.service.SocialLoginService;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Set;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
@@ -20,6 +22,15 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.endpoint.OAuth2AccessTokenResponseClient;
+import org.springframework.security.oauth2.client.endpoint.OAuth2AuthorizationCodeGrantRequest;
+import org.springframework.security.oauth2.client.endpoint.RestClientAuthorizationCodeTokenResponseClient;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
+import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
+import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
@@ -85,7 +96,13 @@ public class SecurityConfig {
             ApplicationProperties applicationProperties,
             AuthenticationManager webAuthnAuthenticationManager,
             PublicKeyCredentialRequestOptionsRepository webAuthnRequestOptionsRepository,
-            WebAuthnRelyingPartyOperations webAuthnRelyingPartyOperations) {
+            WebAuthnRelyingPartyOperations webAuthnRelyingPartyOperations,
+            ObjectProvider<ClientRegistrationRepository> clientRegistrationRepository,
+            ObjectProvider<SocialLoginAuthenticationSuccessHandler> socialLoginSuccessHandler,
+            ObjectProvider<OAuth2AuthorizationRequestResolver> socialAuthorizationRequestResolver,
+            SocialLoginService socialLoginService,
+            OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest>
+                    socialTokenResponseClient) {
         URI issuer = URI.create(applicationProperties.authorizationServer().issuer());
         ApplicationProperties.WebAuthn policy = applicationProperties.webAuthn();
         String configuredRpId = policy.rpId() == null ? "" : policy.rpId().trim();
@@ -122,6 +139,8 @@ public class SecurityConfig {
                                         .requestMatchers("/api/auth/mfa/**")
                                         .authenticated()
                                         .requestMatchers("/account/avatar")
+                                        .authenticated()
+                                        .requestMatchers("/account/social-links/**")
                                         .authenticated()
                                         .requestMatchers("/api/auth/**")
                                         .permitAll()
@@ -168,7 +187,9 @@ public class SecurityConfig {
                         formLogin ->
                                 formLogin
                                         .loginPage("/login")
-                                        .successHandler(successHandler)
+                                        .successHandler(
+                                                new SocialAccountLinkingAuthenticationSuccessHandler(
+                                                        socialLoginService, successHandler))
                                         .securityContextRepository(securityContextRepository)
                                         .permitAll())
                 .rememberMe(rememberMe -> rememberMe.rememberMeServices(rememberMeServices));
@@ -206,9 +227,110 @@ public class SecurityConfig {
 
         http.addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class);
 
+        if (clientRegistrationRepository.getIfAvailable() != null) {
+            http.oauth2Login(
+                    oauth2 ->
+                            oauth2.loginPage("/login")
+                                    .successHandler(socialLoginSuccessHandler.getObject())
+                                    .authorizationEndpoint(
+                                            authorizationEndpoint ->
+                                                    authorizationEndpoint
+                                                            .authorizationRequestResolver(
+                                                                    socialAuthorizationRequestResolver
+                                                                            .getObject()))
+                                    .tokenEndpoint(
+                                            tokenEndpoint ->
+                                                    tokenEndpoint.accessTokenResponseClient(
+                                                            socialTokenResponseClient))
+                                    .failureHandler(
+                                            new SimpleUrlAuthenticationFailureHandler(
+                                                    "/login?error"))
+                                    .permitAll());
+        }
+
         http.oauth2ResourceServer(resourceServer -> resourceServer.jwt(Customizer.withDefaults()));
 
         return http.build();
+    }
+
+    @Bean
+    OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest>
+            socialTokenResponseClient() {
+        RestClientAuthorizationCodeTokenResponseClient client =
+                new RestClientAuthorizationCodeTokenResponseClient();
+        return client;
+    }
+
+    @Bean
+    OAuth2AuthorizationRequestResolver socialAuthorizationRequestResolver(
+            ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider,
+            SocialLoginService socialLoginService) {
+        ClientRegistrationRepository clientRegistrationRepository =
+                clientRegistrationRepositoryProvider.getIfAvailable();
+        if (clientRegistrationRepository == null) {
+            return new OAuth2AuthorizationRequestResolver() {
+                @Override
+                public OAuth2AuthorizationRequest resolve(
+                        jakarta.servlet.http.HttpServletRequest request) {
+                    return null;
+                }
+
+                @Override
+                public OAuth2AuthorizationRequest resolve(
+                        jakarta.servlet.http.HttpServletRequest request,
+                        String clientRegistrationId) {
+                    return null;
+                }
+            };
+        }
+        DefaultOAuth2AuthorizationRequestResolver delegate =
+                new DefaultOAuth2AuthorizationRequestResolver(
+                        clientRegistrationRepository,
+                        DefaultOAuth2AuthorizationRequestResolver
+                                .DEFAULT_AUTHORIZATION_REQUEST_BASE_URI);
+        return new OAuth2AuthorizationRequestResolver() {
+            @Override
+            public OAuth2AuthorizationRequest resolve(
+                    jakarta.servlet.http.HttpServletRequest request) {
+                return withoutLinkedInNonce(
+                        onlyEnabled(delegate.resolve(request), socialLoginService));
+            }
+
+            @Override
+            public OAuth2AuthorizationRequest resolve(
+                    jakarta.servlet.http.HttpServletRequest request, String clientRegistrationId) {
+                if (!socialLoginService.isProviderEnabled(clientRegistrationId)) {
+                    return null;
+                }
+                return withoutLinkedInNonce(delegate.resolve(request, clientRegistrationId));
+            }
+        };
+    }
+
+    private static OAuth2AuthorizationRequest onlyEnabled(
+            OAuth2AuthorizationRequest authorizationRequest,
+            SocialLoginService socialLoginService) {
+        if (authorizationRequest == null) {
+            return null;
+        }
+        String registrationId =
+                authorizationRequest.getAttribute(OAuth2ParameterNames.REGISTRATION_ID);
+        return socialLoginService.isProviderEnabled(registrationId) ? authorizationRequest : null;
+    }
+
+    private static OAuth2AuthorizationRequest withoutLinkedInNonce(
+            OAuth2AuthorizationRequest authorizationRequest) {
+        if (authorizationRequest == null
+                || !"linkedin"
+                        .equals(
+                                authorizationRequest.getAttribute(
+                                        OAuth2ParameterNames.REGISTRATION_ID))) {
+            return authorizationRequest;
+        }
+        return OAuth2AuthorizationRequest.from(authorizationRequest)
+                .additionalParameters(parameters -> parameters.remove(OidcParameterNames.NONCE))
+                .attributes(attributes -> attributes.remove(OidcParameterNames.NONCE))
+                .build();
     }
 
     @Bean
@@ -216,6 +338,17 @@ public class SecurityConfig {
         return new DelegatingSecurityContextRepository(
                 new RequestAttributeSecurityContextRepository(),
                 new HttpSessionSecurityContextRepository());
+    }
+
+    @Bean
+    SocialLoginAuthenticationSuccessHandler socialLoginAuthenticationSuccessHandler(
+            io.github.susimsek.springauthserversamples.service.SocialLoginService
+                    socialLoginService,
+            org.springframework.security.core.userdetails.UserDetailsService userDetailsService,
+            @Qualifier("browserSecurityContextRepository")
+                    SecurityContextRepository securityContextRepository) {
+        return new SocialLoginAuthenticationSuccessHandler(
+                socialLoginService, userDetailsService, securityContextRepository);
     }
 
     @Bean

@@ -11,7 +11,7 @@ import { Alert, Button, Card, Form, InputGroup, Spinner, Stack } from "react-boo
 import type { Dictionary } from "@/i18n/get-dictionary";
 import type { Locale } from "@/i18n/config";
 import { ActionIcon } from "@/components/shared/ActionIcon";
-import { Icon } from "@/components/shared/Icon";
+import { Icon, type IconName } from "@/components/shared/Icon";
 
 import { PasswordField } from "./PasswordField";
 import { authenticatePasskey, supportsConditionalMediation } from "@/lib/webauthn";
@@ -30,12 +30,38 @@ export function LoginForm({ dictionary }: LoginFormProps) {
     passkeys: false,
     webauthnMediation: "none" as "none" | "optional" | "conditional",
   });
+  const [socialProviders, setSocialProviders] = useState<SocialProvider[]>([]);
   useEffect(() => {
     if (typeof fetch !== "function") return;
     fetch("/api/auth/login-settings")
       .then((response) => (response.ok ? response.json() : null))
       .then((value) => {
         if (value) setSettings((current) => ({ ...current, ...value }));
+      })
+      .catch(() => {});
+    fetch("/api/auth/social-providers")
+      .then((response) => (response.ok ? response.json() : []))
+      .then((value: unknown) => {
+        if (Array.isArray(value)) {
+          setSocialProviders(
+            value.flatMap((provider) => {
+              if (typeof provider === "string") {
+                return [{ provider, configured: true }];
+              }
+              if (
+                provider &&
+                typeof provider === "object" &&
+                "provider" in provider &&
+                typeof provider.provider === "string" &&
+                "configured" in provider &&
+                typeof provider.configured === "boolean"
+              ) {
+                return [{ provider: provider.provider, configured: provider.configured }];
+              }
+              return [];
+            }),
+          );
+        }
       })
       .catch(() => {});
   }, []);
@@ -136,6 +162,9 @@ export function LoginForm({ dictionary }: LoginFormProps) {
             <PasskeyLoginButton dictionary={dictionary} mediation={settings.webauthnMediation} />
           </Suspense>
         )}
+        {socialProviders.length > 0 && (
+          <SocialLoginButtons providers={socialProviders} dictionary={dictionary} />
+        )}
         {settings.userRegistration && (
           <Link className="d-block text-center mt-3" href={`/register`}>
             {dictionary.login.register}
@@ -143,6 +172,82 @@ export function LoginForm({ dictionary }: LoginFormProps) {
         )}
       </Card.Body>
     </Card>
+  );
+}
+
+const SOCIAL_PROVIDER_LABELS: Record<string, string> = {
+  google: "Google",
+  github: "GitHub",
+  linkedin: "LinkedIn",
+  microsoft: "Microsoft",
+};
+
+const SOCIAL_PROVIDER_ICONS: Record<string, IconName> = {
+  google: "google",
+  github: "github",
+  linkedin: "linkedin",
+  microsoft: "microsoft",
+};
+
+type SocialProvider = {
+  provider: string;
+  configured: boolean;
+};
+
+function SocialLoginButtons({
+  providers,
+  dictionary,
+}: {
+  providers: SocialProvider[];
+  dictionary: LoginFormProps["dictionary"];
+}) {
+  const [submittingProvider, setSubmittingProvider] = useState<string | null>(null);
+  const supportedProviders = providers.filter(
+    (provider) =>
+      SOCIAL_PROVIDER_LABELS[provider.provider] && SOCIAL_PROVIDER_ICONS[provider.provider],
+  );
+
+  if (supportedProviders.length === 0) return null;
+
+  return (
+    <div className="mt-4">
+      <div className="d-flex align-items-center gap-2 text-body-secondary small mb-2">
+        <hr className="flex-grow-1 my-0" />
+        <span>{dictionary.login.socialDivider}</span>
+        <hr className="flex-grow-1 my-0" />
+      </div>
+      <div className="d-flex justify-content-center gap-2">
+        {supportedProviders.map((provider) => (
+          <Button
+            key={provider.provider}
+            as="a"
+            href={provider.configured ? `/oauth2/authorization/${provider.provider}` : undefined}
+            role="button"
+            variant="secondary"
+            size="lg"
+            className="social-login-button p-0"
+            title={`${dictionary.login.socialLogin} ${SOCIAL_PROVIDER_LABELS[provider.provider]}`}
+            aria-label={`${dictionary.login.socialLogin} ${SOCIAL_PROVIDER_LABELS[provider.provider]}`}
+            disabled={!provider.configured || submittingProvider !== null}
+            aria-disabled={!provider.configured || submittingProvider !== null}
+            onClick={(event) => {
+              if (!provider.configured || submittingProvider !== null) {
+                event.preventDefault();
+                return;
+              }
+              setSubmittingProvider(provider.provider);
+            }}
+          >
+            {submittingProvider === provider.provider && (
+              <Spinner animation="border" aria-hidden="true" size="sm" />
+            )}
+            {submittingProvider !== provider.provider && (
+              <Icon icon={SOCIAL_PROVIDER_ICONS[provider.provider]} size="lg" />
+            )}
+          </Button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -257,11 +362,15 @@ function PasskeyLoginButton({
 
 function LoginStatusAlerts({ dictionary }: LoginFormProps) {
   const searchParams = useSearchParams();
-  const loginError = searchParams.has("error");
+  const accountLinkRequired = searchParams.has("account_link_required");
+  const loginError = searchParams.has("error") && !accountLinkRequired;
   const loggedOut = searchParams.has("logout");
 
   return (
     <>
+      {accountLinkRequired && (
+        <Alert variant="warning">{dictionary.login.accountLinkRequired}</Alert>
+      )}
       {loginError && <Alert variant="danger">{dictionary.login.invalidCredentials}</Alert>}
       {loggedOut && <Alert variant="success">{dictionary.login.loggedOut}</Alert>}
       {searchParams.has("deleted") && (

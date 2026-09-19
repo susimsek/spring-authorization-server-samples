@@ -47,7 +47,7 @@ class LocalizationSettingsServiceTest {
         assertThat(result.supportedLocales()).containsExactly("en", "tr");
         assertThat(result.availableLocales()).containsExactly("en", "tr");
         assertThat(result.availableBundles())
-                .containsExactly("login", "account", "admin", "email", "backend");
+                .containsExactly("login", "account", "admin", "email", "backend", "common");
     }
 
     @Test

@@ -20,6 +20,18 @@
 			<column name="verify_email" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
 			<column name="webauthn_mediation" type="varchar(20)" defaultValue="none"><constraints nullable="false"/></column>
 			<column name="email_update_reauthentication_minutes" type="int" defaultValueNumeric="5"><constraints nullable="false"/></column>
+			<column name="google_login_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+			<column name="github_login_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+			<column name="linkedin_login_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+			<column name="microsoft_login_enabled" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="google_client_id" type="varchar(500)"/>
+			<column name="google_client_secret_encrypted" type="varchar(2000)"/>
+			<column name="github_client_id" type="varchar(500)"/>
+			<column name="github_client_secret_encrypted" type="varchar(2000)"/>
+			<column name="linkedin_client_id" type="varchar(500)"/>
+			<column name="linkedin_client_secret_encrypted" type="varchar(2000)"/>
+			<column name="microsoft_client_id" type="varchar(500)"/>
+			<column name="microsoft_client_secret_encrypted" type="varchar(2000)"/>
 			<column name="session_timeout_minutes" type="int" defaultValueNumeric="30"><constraints nullable="false"/></column>
 			<column name="password_minimum_length" type="int" defaultValueNumeric="12"><constraints nullable="false"/></column>
 			<column name="brute_force_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
@@ -70,6 +82,18 @@
 			<column header="verify_email" type="boolean"/>
 			<column header="webauthn_mediation" type="string"/>
 			<column header="email_update_reauthentication_minutes" type="numeric"/>
+			<column header="google_login_enabled" type="boolean"/>
+			<column header="github_login_enabled" type="boolean"/>
+			<column header="linkedin_login_enabled" type="boolean"/>
+			<column header="microsoft_login_enabled" type="boolean"/>
+			<column header="google_client_id" type="string"/>
+			<column header="google_client_secret_encrypted" type="string"/>
+			<column header="github_client_id" type="string"/>
+			<column header="github_client_secret_encrypted" type="string"/>
+			<column header="linkedin_client_id" type="string"/>
+			<column header="linkedin_client_secret_encrypted" type="string"/>
+			<column header="microsoft_client_id" type="string"/>
+			<column header="microsoft_client_secret_encrypted" type="string"/>
 			<column header="session_timeout_minutes" type="numeric"/>
 			<column header="password_minimum_length" type="numeric"/>
 			<column header="brute_force_enabled" type="boolean"/>

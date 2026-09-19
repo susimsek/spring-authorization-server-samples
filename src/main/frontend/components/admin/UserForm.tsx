@@ -250,6 +250,11 @@ export function UserForm({
     .record(z.string(), z.array(z.string()))
     .superRefine((attributes, context) => {
       for (const definition of profileDefinitions) {
+        // Built-in fields are registered as top-level form values below. They
+        // must not be validated a second time as profile attributes because
+        // that would always see an empty profile.username/profile.email value
+        // and block a valid user creation request.
+        if (definition.builtIn) continue;
         const values = (attributes[definition.name] ?? [])
           .map((value) => value.trim())
           .filter(Boolean);

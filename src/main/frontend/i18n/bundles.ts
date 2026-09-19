@@ -1,7 +1,7 @@
 import en from "@/locales/en/common.json";
 import tr from "@/locales/tr/common.json";
 
-export const messageBundles = ["login", "account", "admin", "email", "backend"] as const;
+export const messageBundles = ["login", "account", "admin", "email", "backend", "common"] as const;
 export type MessageBundle = (typeof messageBundles)[number];
 
 const frontendRoots: Record<Exclude<MessageBundle, "email" | "backend">, string[]> = {
@@ -18,6 +18,7 @@ const frontendRoots: Record<Exclude<MessageBundle, "email" | "backend">, string[
   ],
   account: ["brand", "navbar", "theme", "account", "error"],
   admin: ["brand", "navbar", "theme", "admin", "error"],
+  common: ["brand", "navbar", "theme", "error"],
 };
 
 export function frontendBundleMessages(locale: "en" | "tr", bundle: MessageBundle) {

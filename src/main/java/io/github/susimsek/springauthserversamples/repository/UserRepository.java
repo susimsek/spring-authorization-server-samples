@@ -78,6 +78,9 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @EntityGraph(value = "User.withAuthorities")
     java.util.List<UserEntity> findAllByUsernameIn(java.util.Collection<String> usernames);
 
+    @EntityGraph(value = "User.withEffectiveAuthorities")
+    List<UserEntity> findAllByIdIn(Collection<Long> ids);
+
     @EntityGraph(value = "User.withAuthorities")
     Page<UserEntity> findByAuthoritiesNameAndUsernameContainingIgnoreCase(
             String authorityName, String username, Pageable pageable);

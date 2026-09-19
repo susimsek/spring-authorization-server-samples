@@ -54,6 +54,42 @@ public class LoginSettingsEntity {
     @Column(name = "email_update_reauthentication_minutes", nullable = false)
     private int emailUpdateReauthenticationMinutes;
 
+    @Column(name = "google_login_enabled", nullable = false)
+    private boolean googleLoginEnabled;
+
+    @Column(name = "github_login_enabled", nullable = false)
+    private boolean githubLoginEnabled;
+
+    @Column(name = "linkedin_login_enabled", nullable = false)
+    private boolean linkedinLoginEnabled;
+
+    @Column(name = "microsoft_login_enabled", nullable = false)
+    private boolean microsoftLoginEnabled;
+
+    @Column(name = "google_client_id", length = 500)
+    private String googleClientId;
+
+    @Column(name = "google_client_secret_encrypted", length = 2000)
+    private String googleClientSecretEncrypted;
+
+    @Column(name = "github_client_id", length = 500)
+    private String githubClientId;
+
+    @Column(name = "github_client_secret_encrypted", length = 2000)
+    private String githubClientSecretEncrypted;
+
+    @Column(name = "linkedin_client_id", length = 500)
+    private String linkedinClientId;
+
+    @Column(name = "linkedin_client_secret_encrypted", length = 2000)
+    private String linkedinClientSecretEncrypted;
+
+    @Column(name = "microsoft_client_id", length = 500)
+    private String microsoftClientId;
+
+    @Column(name = "microsoft_client_secret_encrypted", length = 2000)
+    private String microsoftClientSecretEncrypted;
+
     @Column(name = "session_timeout_minutes", nullable = false)
     private int sessionTimeoutMinutes;
 

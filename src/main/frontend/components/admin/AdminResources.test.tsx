@@ -131,6 +131,47 @@ describe("AdminResources", () => {
     );
   });
 
+  it("selects users on the current page and applies a confirmed bulk lifecycle action", async () => {
+    mockAdminRequest.mockImplementation(async (_token, config) => {
+      if (!config.method) {
+        return {
+          status: 200,
+          data: page([
+            { id: 1, username: "ada", enabled: true, avatarUrl: null, authorities: ["ROLE_USER"] },
+            { id: 2, username: "lin", enabled: true, avatarUrl: null, authorities: ["ROLE_USER"] },
+          ]),
+        } as never;
+      }
+      return { status: 200, data: { action: "DISABLE", userCount: 2 } } as never;
+    });
+
+    render(<AdminResources copy={dictionary.admin.resources} locale="en" resource="users" />);
+    await screen.findByRole("link", { name: "ada" });
+
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: dictionary.admin.resources.selectAllUsers }),
+    );
+    expect(screen.getByText("2 users selected")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.resources.bulkDisable }));
+    expect(screen.getByText(dictionary.admin.resources.bulkDisableConfirm)).toBeInTheDocument();
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: dictionary.admin.resources.bulkDisable,
+      }),
+    );
+
+    await waitFor(() =>
+      expect(mockAdminRequest).toHaveBeenCalledWith(
+        "token",
+        expect.objectContaining({
+          method: "POST",
+          url: "/api/admin/users/bulk",
+          data: { userIds: [1, 2], action: "DISABLE" },
+        }),
+      ),
+    );
+  });
+
   it("uses the session entity property when requesting the default sort", async () => {
     mockAdminRequest.mockResolvedValue({ status: 200, data: page([]) } as never);
 

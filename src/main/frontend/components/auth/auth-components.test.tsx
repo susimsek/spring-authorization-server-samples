@@ -109,6 +109,47 @@ describe("authentication components", () => {
     expect(screen.getByRole("button", { name: dictionary.theme.label })).toBeVisible();
   });
 
+  it("renders configured social providers and prevents duplicate submissions", async () => {
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      return {
+        ok: true,
+        json: async () =>
+          url.includes("social-providers")
+            ? [
+                { provider: "google", configured: true },
+                { provider: "github", configured: true },
+                { provider: "microsoft", configured: false },
+              ]
+            : {},
+      } as Response;
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<LoginForm dictionary={dictionary} />);
+
+    const google = await screen.findByRole("button", {
+      name: `${dictionary.login.socialLogin} Google`,
+    });
+    const github = screen.getByRole("button", {
+      name: `${dictionary.login.socialLogin} GitHub`,
+    });
+    const microsoft = screen.getByRole("button", {
+      name: `${dictionary.login.socialLogin} Microsoft`,
+    });
+    expect(google).toHaveClass("social-login-button");
+    expect(github).toHaveClass("social-login-button");
+    expect(microsoft).toHaveClass("social-login-button");
+    expect(microsoft).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(google);
+
+    expect(google).toHaveAttribute("aria-disabled", "true");
+    expect(github).toHaveAttribute("aria-disabled", "true");
+    expect(google.querySelector(".spinner-border")).not.toBeNull();
+
+    delete (globalThis as { fetch?: typeof fetch }).fetch;
+  });
+
   it("validates login fields and submits a valid form", async () => {
     const submit = jest
       .spyOn(HTMLFormElement.prototype, "submit")

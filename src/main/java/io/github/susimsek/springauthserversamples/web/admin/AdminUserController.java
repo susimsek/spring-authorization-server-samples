@@ -5,6 +5,8 @@ import io.github.susimsek.springauthserversamples.domain.UserAction;
 import io.github.susimsek.springauthserversamples.dto.account.WebAuthnCredentialDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminAvatarDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminUserBulkOperationDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminUserBulkRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminUserDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminUserEnabledRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminUserRequestDTO;
@@ -227,6 +229,19 @@ class AdminUserController {
                                 request.roles(),
                                 authentication.getName());
         return ResponseEntity.status(201).body(user);
+    }
+
+    @PostMapping("/bulk")
+    @Operation(
+            summary = "Apply a bulk user lifecycle operation",
+            description =
+                    "Enables, disables, or deletes up to 100 selected users atomically."
+                            + " Every selected user must be manageable by the caller.")
+    @ApiResponse(responseCode = "200", description = "Bulk user operation completed.")
+    AdminUserBulkOperationDTO bulkOperate(
+            @Valid @RequestBody AdminUserBulkRequestDTO request, Authentication authentication) {
+        return adminUserService.bulkOperate(
+                request.userIds(), request.action(), authentication.getName());
     }
 
     @PutMapping("/{id}")

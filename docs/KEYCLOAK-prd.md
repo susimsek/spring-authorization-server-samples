@@ -202,7 +202,7 @@ The following matrix compares the behavior currently implemented in this reposit
 | --- | --- | --- | --- | --- |
 | Realm boundary | One configured issuer and one shared data space | Isolated realms contain users, clients, groups, roles, sessions, and realm settings; a master realm can administer other realms[^1] | Missing | Add realm/tenant IDs before claiming multi-tenant support. |
 | Realm settings | Login, password, OTP, brute-force, email, session, and event settings | Realm Settings is the central configuration area with separate tabs | Partial | Keep the Settings route and add realm ownership when multi-tenancy is approved. |
-| User CRUD | Admin API and UI | User list/detail, credentials, required actions, groups, roles, sessions, and consents | Partial | Credential inventory and individual lifecycle operations are covered; bulk lifecycle operations remain. |
+| User CRUD | Admin API and UI | User list/detail, credentials, required actions, groups, roles, sessions, and consents | Partial | Credential inventory, individual lifecycle operations, and current-page bulk enable/disable/delete operations are covered; cross-page selection and bulk credential/required-action workflows remain. |
 | Dynamic user profile | Application-wide configurable attributes with validation, requiredness, type checks, pattern/length rules, and optional multi-value support; managed under Settings and rendered in admin/account profile forms | Configurable user-profile attributes with validation and requiredness | Implemented for the single-issuer application | Keep the schema application-wide while realms are intentionally out of scope; add localized labels, token mappers, and per-realm ownership only if realm support is introduced. |
 | Password and account recovery | Password policy, history, expiry, email verification, single-use reset tokens, configurable re-authentication age for email changes, administrator-managed reset-token lifetime/resend cooldown, and none/if-configured/required OTP reset policy | Password credentials and required actions are configured per realm; the reset-credentials authentication flow can be composed from executions such as reset-password and OTP, with realm-level required-action and token behavior[^8] | Partial | Add a durable admin-managed reset-credential execution flow and broader integration coverage before claiming full Keycloak parity. |
 | TOTP and recovery codes | TOTP enrollment/verification, required TOTP, hashed recovery codes, WebAuthn/passkey enrollment and credential verification, and required passkeys | OTP/WebAuthn credentials and configurable required actions | Partial | TOTP and primary passkey sign-in are implemented, including OTP fallback, account/admin credential inventory, device metadata, label management, deletion, and both standard and passwordless required actions, plus configurable WebAuthn mediation with conditional passkey autofill. Broader Keycloak authenticator policy controls remain outside this sample. |
@@ -228,7 +228,7 @@ The following matrix compares the behavior currently implemented in this reposit
 | Authentication flows | Fixed Spring Security flow with custom MFA filter and required actions | Configurable browser, registration, reset-credential, first-broker-login, and conditional flows[^8] | Partial | Introduce a flow graph only when administrators need reordering/conditions. |
 | WebAuthn/passkeys | Spring Security WebAuthn registration/authentication ceremonies, account/admin credential inventory, labels, deletion, and required-action enrollment | WebAuthn credential and passkey authenticators | Partial | Registration, persistence, primary-factor sign-in, OTP step-up, account/admin inventory with signature and verification metadata, label management, deletion, configurable mediation, conditional sign-in, automatic passkey autofill, and standard/passwordless required actions are implemented. The remaining gap is the broader Keycloak WebAuthn policy surface such as RP and authenticator policy editing. |
 | WebAuthn policy and mediation | Admin policy screen with `conditional`, `optional`, and `none` mediation, persisted API validation, and conditional passkey autofill | Configurable WebAuthn policy and browser mediation behavior for passkeys | Partial | The Authentication > Policies > WebAuthn policy screen persists the mediation choice and exposes it through the public login-settings API. `conditional` starts conditional WebAuthn autofill when the browser supports it, `optional` uses browser-optional mediation for the explicit passkey button, and `none` disables automatic mediation. RP, timeout, resident-key, user-verification, attestation, and authenticator-attachment policies remain application configuration rather than editable realm settings. |
-| Identity brokering | Local JPA users only | OIDC/SAML/social providers, mappers, account linking | Missing | Add provider registry and first-login policy before adding UI. |
+| Identity brokering | Google, GitHub, LinkedIn, and Microsoft OAuth2/OIDC providers; provider-subject identities; safe first-broker account linking; account-console link management; admin-managed credentials | OIDC/SAML/social providers, mappers, account linking | Partial | The four-provider OAuth2/OIDC subset is implemented and tested. SAML, LDAP/AD, provider mappers, additional provider types, and realm-scoped broker configuration remain roadmap work. |
 | LDAP/Active Directory federation | Not implemented | Federated user stores with sync and mapper policies[^9] | Missing | Requires provider lifecycle, sync jobs, and failure handling. |
 | Sessions | JPA browser sessions, admin/account views, revoke | Online and offline sessions, client sessions, revocation and not-before policies | Partial | Add offline session model and realm/client/user not-before policy if required. |
 | Consent | OAuth authorization and consent persistence/revoke | User consents and client-specific consent management | Implemented / Partial | Preserve current screens; add client-scope and realm boundaries later. |
@@ -240,7 +240,7 @@ The following matrix compares the behavior currently implemented in this reposit
 | Authorization Services / UMA | Spring Security authorities protect endpoints | Resources, scopes, policies, permissions, permission tickets, and RPTs[^7] | Missing | Separate resource-server authorization product from admin RBAC. |
 | Admin REST | Documented custom `/api/admin` contract with OpenAPI | Keycloak Admin REST under `/admin/realms/{realm}` | Partial | Keep the application contract; map semantics explicitly rather than copying paths. |
 | Account Console | Custom account pages for profile, security, sessions, consents, and configurable profile attributes | Keycloak Account Console and account REST capabilities | Partial | Preserve the current user experience and add credential inventory and device views. |
-| Themes and localization | Next.js theme switcher, English/Turkish dictionaries, application-wide locale settings, persisted per-user locale preference, separate `login`/`account`/`admin`/`email`/`backend` bundles, database message overrides, and an effective-message browser | Themes, message bundles, supported locales, default locale, user locale preference, realm overrides, and effective bundle search | Implemented (application scope) | Built-in messages remain bundled resources; administrators can enable supported locales, choose one of the five message bundles, override individual messages, and inspect the merged frontend or backend bundle without a realm. The authenticated user's language preference is available as a separate field in the account profile and is persisted on the user record. Locale resolution follows the Keycloak order: an explicitly selected locale cookie, the authenticated user's profile preference, OIDC `ui_locales`, the browser cookie, the `Accept-Language` header, and the configured default. |
+| Themes and localization | Next.js theme switcher, English/Turkish dictionaries, application-wide locale settings, persisted per-user locale preference, separate `login`/`account`/`admin`/`email`/`backend`/`common` bundles, database message overrides, and an effective-message browser | Themes, message bundles, supported locales, default locale, user locale preference, realm overrides, and effective bundle search | Implemented (application scope) | Built-in messages remain bundled resources; administrators can enable supported locales, choose one of the six message bundles, override individual messages, and inspect the merged frontend or backend bundle without a realm. The authenticated user's language preference is available as a separate field in the account profile and is persisted on the user record. Locale resolution follows the Keycloak order: an explicitly selected locale cookie, the authenticated user's profile preference, OIDC `ui_locales`, the browser cookie, the `Accept-Language` header, and the configured default. |
 
 ### Existing roles and Keycloak equivalents
 
@@ -476,6 +476,17 @@ Session screens list active sessions with device/IP/time metadata, support row-l
 
 The Account Console should retain a user-centered layout: profile, password, MFA/recovery codes, sessions, consents, required actions, and logout. Dynamic user-profile attributes and WebAuthn devices should appear as additional cards without changing the existing navigation or card grammar. The WebAuthn card now supports passkey registration, credential labels, inventory, and deletion; the browser's native ceremony remains responsible for authenticator verification.
 
+### Social identity brokering (implemented subset)
+
+The application now implements the OAuth2/OIDC identity-broker subset needed for Google, GitHub, LinkedIn, and Microsoft:
+
+- Social login is disabled by default. The public login page discovers only administrator-enabled providers from `GET /api/auth/social-providers`; an enabled provider without credentials remains visible but disabled. Provider callbacks use `/login/oauth2/code/{registrationId}`.
+- Administrators manage each provider's Client ID and Client Secret from `/admin/settings/login` through `/api/admin/settings/social-providers`. Client Secrets are never returned to the UI and are persisted encrypted with AES-GCM in `login_settings`; `SOCIAL_LOGIN_ENCRYPTION_KEY` must remain stable across restarts. Registration metadata can start empty and is refreshed after an admin update.
+- A first successful provider login creates a local user with a deterministic provider/subject-derived username, imported profile data, a random encoded local password, and only `ROLE_USER`. A previously linked `(provider, subject)` reuses the existing local user.
+- An existing local email is never silently linked. The verified provider subject is kept server-side and the user must complete local authentication before the link is created, matching the safe part of Keycloak's First Broker Login behavior.
+- The Account Console security page exposes `Bağla` for configured, unlinked providers and a confirmed `Kaldır` action for linked providers. A linked provider remains removable even if an administrator later disables it. Provider subjects remain server-side, and `social_identities` enforces a unique `(provider, subject)` link with a cascading user foreign key.
+- The implemented boundary is intentional: SAML, LDAP/Active Directory federation, provider mapper configuration, realm-scoped broker settings, and Keycloak's broader provider catalog are not included in this sample.
+
 ## Product requirements by priority
 
 ### P0 — complete the current authorization model
@@ -497,7 +508,7 @@ The Account Console should retain a user-centered layout: profile, password, MFA
 
 ### P2 — optional Keycloak platform parity
 
-- Identity brokering and LDAP/AD federation.
+- Extend the implemented identity-broker subset with SAML, LDAP/AD federation, provider mappers, additional provider types, and realm-scoped broker configuration.
 - SAML, token exchange, CIBA, DPoP, resource indicators.
 - Organizations and organization groups.
 - Authorization Services/UMA.
@@ -580,6 +591,17 @@ Liquibase changelogs, CSV seed data, and i18n bundles must remain available to n
 - [ ] Clear all requires confirmation, is manager-only, refreshes the table, and creates an audit record.
 - [ ] Empty, loading, forbidden, and server-error states are distinct.
 
+### Social identity brokering
+
+- [x] Google, GitHub, LinkedIn, and Microsoft provider discovery and OAuth2/OIDC callback flows are supported.
+- [x] Social login is disabled by default, provider toggles are enforced server-side, and unconfigured providers cannot start a browser redirect.
+- [x] First login creates a `ROLE_USER` local account, reuses an existing provider-subject link, and does not silently link by email.
+- [x] Existing-email collisions require local re-authentication before account linking.
+- [x] Administrators can update Client IDs and rotate Client Secrets without exposing secrets to the browser; secrets are encrypted at rest.
+- [x] Account security exposes configured connect and linked remove flows, including removal of a link after its provider is disabled.
+- [x] Provider, account-link, persistence, API, UI, spinner, duplicate-click, and empty-credential startup behavior have focused test coverage.
+- [ ] SAML, LDAP/AD, provider mappers, additional provider types, and realm-scoped broker configuration remain future parity work.
+
 ### Quality and security
 
 - [ ] Controller, service, authorization, persistence, and UI tests cover viewer and manager decisions.
@@ -599,6 +621,7 @@ The following parity items remain product decisions rather than silent assumptio
 4. **Representation details**: The current boolean expresses the policy. Persisting request JSON requires a bounded representation column, redaction rules, and a storage-size limit before enabling it for sensitive data.
 5. **Realm isolation**: The current issuer is single-realm from the administrator's perspective. A future multi-tenant design must add a tenant/realm boundary to every resource, cache key, audit record, and authorization check.
 6. **Forgot-password reset flow and OTP behavior**: The application now exposes reset-token lifespan, resend cooldown, and none/if-configured/required OTP reset policy in Login settings, and consumes the policy during reset. A durable execution model for composing the complete reset-credential flow is still outside the sample's single-issuer scope.
+7. **Social identity brokering**: The Google/GitHub/LinkedIn/Microsoft OAuth2/OIDC subset is implemented with Keycloak-like provider-subject reuse, safe first-broker linking, admin-managed encrypted credentials, and account-console link/unlink behavior. Full Keycloak parity still requires SAML, LDAP/AD federation, provider mappers, a larger provider catalog, and realm-scoped broker configuration.
 
 ## Delivery plan
 
