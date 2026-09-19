@@ -113,6 +113,12 @@ This repo is a Java 25 + Spring Boot 4.1 sample application for the Authorizatio
   authorization check, and do not place the create button inside `ResourceFilters`. Create pages
   must keep their breadcrumb directly above the page header so all resource screens use the same
   visual order.
+- For collection sections embedded under a settings or detail tab, place the section title,
+  description, and its create/add action together in the section's `admin-detail-heading`, with
+  the action aligned to the right. Examples include User profile attributes, Message overrides,
+  and identity-provider Mappers. Do not move these section actions into the global page header or
+  the filter toolbar. `ResourceFilters` must contain search, sorting, active-filter, and result
+  count controls only.
 - Frontend validation messages must remain inside the same field group immediately below the input
   or input group. Use React-Bootstrap's built-in `Form.Control.Feedback` spacing so the
   input-to-message vertical gap is consistent across login, account, administration, and
