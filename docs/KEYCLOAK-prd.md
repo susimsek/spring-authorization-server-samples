@@ -482,6 +482,8 @@ The application now implements the OAuth2/OIDC identity-broker subset needed for
 
 - Social login is disabled by default. The public login page discovers only administrator-enabled providers from `GET /api/auth/social-providers`; an enabled provider without credentials remains visible but disabled. Provider callbacks use `/login/oauth2/code/{registrationId}`.
 - Administrators manage each provider's Client ID and Client Secret from `/admin/settings/login` through `/api/admin/settings/social-providers`. Client Secrets are never returned to the UI and are persisted encrypted with AES-GCM in `login_settings`; `SOCIAL_LOGIN_ENCRYPTION_KEY` must remain stable across restarts. Registration metadata can start empty and is refreshed after an admin update.
+- Each identity-provider catalog entry also stores an allowlisted `iconKey`. The login and Account Console render that key through the shared icon registry, while unknown values fall back to the generic globe icon; remote icon URLs and arbitrary icon names are not accepted.
+- Provider administration also exposes Keycloak-compatible `Requires short state parameter` and `Case-sensitive username` switches. Short state replaces the outbound broker state with a compact cryptographically random value, while username mapping preserves the provider's original case only when enabled and otherwise lower-cases it.
 - Administrators can configure each provider's alias, login-page visibility, account-linking-only mode, GUI order, and Account Console visibility (`always`, `when-linked`, or `never`). Aliases are validated for uniqueness and are used in callback and account-link URLs. A hidden provider remains available through an explicit provider redirect, while an account-linking-only provider is rejected for new public logins and accepted only from an authenticated account-link flow.
 - A first successful provider login creates a local user with a deterministic provider/subject-derived username, imported profile data, a random encoded local password, and only `ROLE_USER`. A previously linked `(provider, subject)` reuses the existing local user.
 - The standard OIDC `picture` claim and provider avatar aliases (`avatar_url`, `profile_image_url`) are imported as a validated HTTPS avatar URL. Local uploads take precedence, and the URL is exposed through the account/admin avatar views and the OIDC `picture` claim without downloading third-party image bytes.
@@ -490,8 +492,8 @@ The application now implements the OAuth2/OIDC identity-broker subset needed for
 - The implementation rejects provider login when the global social-login switch is off, rejects disabled or locked local accounts after a successful provider callback, prevents a second identity from being silently attached for the same provider, and only trusts an explicit `email_verified` claim for newly imported accounts.
 - Administrators can independently enable encrypted provider-token storage and token readability for each provider. Successful broker logins persist the access token, optional refresh token, expiry, type, and scopes in `social_identities`; the authenticated Account API exposes them at `GET /api/account/social-links/{provider}/token` only when readability is enabled. Token fields are cleared when storage is disabled and are never included in provider-list responses.
 - Each provider has a server-enforced security policy for trusting the returned email, requiring named claims, and requiring an enrolled TOTP step-up after broker authentication. Provider enablement remains independently controlled and is checked again at callback time.
-- OIDC logout records the provider used by the browser session and starts the provider's upstream logout flow for Google and Microsoft before returning to the registered post-logout URI. Providers without a standard browser logout endpoint still receive local OIDC logout. Token revocation and provider-specific API proxy calls remain explicit future work.
-- The implemented boundary is intentional: first/post-login flow selection, sync modes, case-sensitive usernames, SAML, LDAP/Active Directory federation, provider mapper configuration, realm-scoped broker settings, and Keycloak's broader provider catalog are not included in this sample.
+- OIDC logout records the provider used by the browser session and resolves the upstream logout endpoint from the provider's OpenID configuration when an `end_session_endpoint` is published. Google, Microsoft, GitHub, and LinkedIn use their provider logout flows before returning to the registered post-logout URI; providers without a usable upstream endpoint still receive local OIDC logout. Token revocation and provider-specific API proxy calls remain explicit future work.
+- The implemented boundary is intentional: first/post-login flow selection, sync modes, SAML, LDAP/Active Directory federation, provider mapper configuration, realm-scoped broker settings, and Keycloak's broader provider catalog are not included in this sample.
 
 ## Product requirements by priority
 
@@ -610,9 +612,10 @@ Liquibase changelogs, CSV seed data, and i18n bundles must remain available to n
 - [x] Provider aliases, hide-on-login, account-linking-only, GUI order, and Account Console visibility are configurable and enforced.
 - [x] Provider-level encrypted token storage and an authenticated readable-token API are configurable and enforced; readable access requires storage to be enabled.
 - [x] Social profile picture claims are imported as validated HTTPS URLs with local-avatar precedence and OIDC `picture` propagation.
-- [x] OIDC logout starts an upstream Google or Microsoft logout flow when the linked browser session identifies one of those providers.
+- [x] OIDC logout discovers generic OIDC `end_session_endpoint` metadata and starts upstream Google, Microsoft, GitHub, or LinkedIn logout when the linked browser session identifies one of those providers.
 - [x] Provider-level trust-email policy, required-claim validation, MFA step-up, and callback-time enablement checks are enforced and configurable.
-- [ ] Provider-level first/post-login flow selection, sync mode, and case-sensitive usernames remain future parity work.
+- [x] Provider-level short state parameters and case-sensitive username mapping are configurable and enforced.
+- [ ] Provider-level first/post-login flow selection and sync mode remain future parity work.
 - [ ] SAML, LDAP/AD, provider mappers, additional provider types, and realm-scoped broker configuration remain future parity work.
 
 ### Quality and security

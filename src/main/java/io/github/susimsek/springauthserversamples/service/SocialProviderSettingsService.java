@@ -184,7 +184,10 @@ public class SocialProviderSettingsService {
                 entity.getIssuerUri(),
                 entity.getClientAuthenticationMethod(),
                 entity.getScopes(),
-                entity.getUserNameAttribute());
+                entity.getUserNameAttribute(),
+                SocialProviderIconKeys.normalize(entity.getIconKey(), entity.getProviderType()),
+                entity.isShortStateParameter(),
+                entity.isCaseSensitiveUsername());
     }
 
     private ProviderCredentials credentials(
@@ -215,7 +218,10 @@ public class SocialProviderSettingsService {
                         dynamic.issuerUri(),
                         dynamic.clientAuthenticationMethod(),
                         dynamic.scopes(),
-                        dynamic.userNameAttribute())
+                        dynamic.userNameAttribute(),
+                        dynamic.iconKey(),
+                        dynamic.shortStateParameter(),
+                        dynamic.caseSensitiveUsername())
                 : dynamic;
     }
 
@@ -687,8 +693,122 @@ public class SocialProviderSettingsService {
             String issuerUri,
             String clientAuthenticationMethod,
             String scopes,
-            String userNameAttribute)
+            String userNameAttribute,
+            String iconKey,
+            boolean shortStateParameter,
+            boolean caseSensitiveUsername)
             implements Comparable<ProviderCredentials> {
+        public ProviderCredentials(
+                String registrationId,
+                String alias,
+                String displayName,
+                String providerType,
+                String clientId,
+                String clientSecret,
+                boolean enabled,
+                boolean hideOnLogin,
+                boolean accountLinkingOnly,
+                boolean trustEmail,
+                boolean mfaRequired,
+                String requiredClaims,
+                boolean storeTokens,
+                boolean storedTokensReadable,
+                int guiOrder,
+                String showInAccountConsole,
+                String authorizationUri,
+                String tokenUri,
+                String userInfoUri,
+                String jwkSetUri,
+                String issuerUri,
+                String clientAuthenticationMethod,
+                String scopes,
+                String userNameAttribute,
+                String iconKey) {
+            this(
+                    registrationId,
+                    alias,
+                    displayName,
+                    providerType,
+                    clientId,
+                    clientSecret,
+                    enabled,
+                    hideOnLogin,
+                    accountLinkingOnly,
+                    trustEmail,
+                    mfaRequired,
+                    requiredClaims,
+                    storeTokens,
+                    storedTokensReadable,
+                    guiOrder,
+                    showInAccountConsole,
+                    authorizationUri,
+                    tokenUri,
+                    userInfoUri,
+                    jwkSetUri,
+                    issuerUri,
+                    clientAuthenticationMethod,
+                    scopes,
+                    userNameAttribute,
+                    iconKey,
+                    false,
+                    false);
+        }
+
+        public ProviderCredentials(
+                String registrationId,
+                String alias,
+                String displayName,
+                String providerType,
+                String clientId,
+                String clientSecret,
+                boolean enabled,
+                boolean hideOnLogin,
+                boolean accountLinkingOnly,
+                boolean trustEmail,
+                boolean mfaRequired,
+                String requiredClaims,
+                boolean storeTokens,
+                boolean storedTokensReadable,
+                int guiOrder,
+                String showInAccountConsole,
+                String authorizationUri,
+                String tokenUri,
+                String userInfoUri,
+                String jwkSetUri,
+                String issuerUri,
+                String clientAuthenticationMethod,
+                String scopes,
+                String userNameAttribute) {
+            this(
+                    registrationId,
+                    alias,
+                    displayName,
+                    providerType,
+                    clientId,
+                    clientSecret,
+                    enabled,
+                    hideOnLogin,
+                    accountLinkingOnly,
+                    trustEmail,
+                    mfaRequired,
+                    requiredClaims,
+                    storeTokens,
+                    storedTokensReadable,
+                    guiOrder,
+                    showInAccountConsole,
+                    authorizationUri,
+                    tokenUri,
+                    userInfoUri,
+                    jwkSetUri,
+                    issuerUri,
+                    clientAuthenticationMethod,
+                    scopes,
+                    userNameAttribute,
+                    SocialProviderIconKeys.normalize(alias, providerType),
+                    false,
+                    false);
+        }
+
         public ProviderCredentials(String registrationId, String clientId, String clientSecret) {
             this(
                     registrationId,

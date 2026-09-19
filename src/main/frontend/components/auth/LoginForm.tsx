@@ -11,7 +11,8 @@ import { Alert, Button, Card, Form, InputGroup, Spinner, Stack } from "react-boo
 import type { Dictionary } from "@/i18n/get-dictionary";
 import type { Locale } from "@/i18n/config";
 import { ActionIcon } from "@/components/shared/ActionIcon";
-import { Icon, type IconName } from "@/components/shared/Icon";
+import { Icon } from "@/components/shared/Icon";
+import { providerIcon } from "@/lib/provider-icons";
 
 import { PasswordField } from "./PasswordField";
 import { authenticatePasskey, supportsConditionalMediation } from "@/lib/webauthn";
@@ -46,7 +47,7 @@ export function LoginForm({ dictionary }: LoginFormProps) {
           setSocialProviders(
             value.flatMap((provider) => {
               if (typeof provider === "string") {
-                return [{ provider, providerType: provider, configured: true }];
+                return [{ provider, providerType: provider, iconKey: "generic", configured: true }];
               }
               if (
                 provider &&
@@ -63,6 +64,10 @@ export function LoginForm({ dictionary }: LoginFormProps) {
                       "providerType" in provider && typeof provider.providerType === "string"
                         ? provider.providerType
                         : provider.provider,
+                    iconKey:
+                      "iconKey" in provider && typeof provider.iconKey === "string"
+                        ? provider.iconKey
+                        : "generic",
                     configured: provider.configured,
                   },
                 ];
@@ -191,16 +196,10 @@ const SOCIAL_PROVIDER_LABELS: Record<string, string> = {
   microsoft: "Microsoft",
 };
 
-const SOCIAL_PROVIDER_ICONS: Record<string, IconName> = {
-  google: "google",
-  github: "github",
-  linkedin: "linkedin",
-  microsoft: "microsoft",
-};
-
 type SocialProvider = {
   provider: string;
   providerType: string;
+  iconKey: string;
   configured: boolean;
 };
 
@@ -226,7 +225,7 @@ function SocialLoginButtons({
       <div className="d-flex justify-content-center gap-2">
         {supportedProviders.map((provider) => {
           const label = SOCIAL_PROVIDER_LABELS[provider.providerType] ?? provider.provider;
-          const icon: IconName = SOCIAL_PROVIDER_ICONS[provider.providerType] ?? "globe";
+          const icon = providerIcon(provider.iconKey);
           return (
             <Button
               key={provider.provider}

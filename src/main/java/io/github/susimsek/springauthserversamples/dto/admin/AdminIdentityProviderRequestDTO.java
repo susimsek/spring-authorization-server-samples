@@ -39,6 +39,17 @@ public record AdminIdentityProviderRequestDTO(
                 @NotBlank
                 @Pattern(regexp = "[a-z0-9][a-z0-9_-]{0,49}")
                 String alias,
+        @Schema(
+                        description = "Allowlisted icon key rendered by login and account UIs.",
+                        example = "generic",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                @NotBlank
+                @Pattern(regexp = "[a-z][a-z0-9_-]{0,39}")
+                String iconKey,
+        @Schema(description = "Use a shorter OAuth state value for this provider.")
+                boolean shortStateParameter,
+        @Schema(description = "Preserve case when importing provider usernames.")
+                boolean caseSensitiveUsername,
         @Schema(description = "Whether the provider is enabled.") boolean enabled,
         @Schema(description = "OAuth client id.", requiredMode = Schema.RequiredMode.REQUIRED)
                 @NotBlank

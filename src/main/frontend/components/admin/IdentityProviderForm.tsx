@@ -18,6 +18,9 @@ export type IdentityProviderFormData = {
   providerType: string;
   displayName: string;
   alias: string;
+  iconKey: string;
+  shortStateParameter: boolean;
+  caseSensitiveUsername: boolean;
   enabled: boolean;
   clientId: string;
   clientSecret: string;
@@ -67,6 +70,9 @@ export function IdentityProviderForm({
           .string()
           .trim()
           .regex(/^[a-z0-9][a-z0-9_-]{0,49}$/, copy.aliasInvalid),
+        iconKey: z.string().regex(/^[a-z][a-z0-9_-]{0,39}$/),
+        shortStateParameter: z.boolean(),
+        caseSensitiveUsername: z.boolean(),
         enabled: z.boolean(),
         clientId: z.string().trim().min(1, dictionary.admin.common.validation.required),
         clientSecret: z.string().max(1000),
@@ -95,6 +101,9 @@ export function IdentityProviderForm({
     providerType: "oidc",
     displayName: "",
     alias: "",
+    iconKey: "generic",
+    shortStateParameter: false,
+    caseSensitiveUsername: false,
     enabled: true,
     clientId: "",
     clientSecret: "",
@@ -171,6 +180,19 @@ export function IdentityProviderForm({
               {field("registrationId", copy.registrationId)}
               {field("alias", copy.alias)}
               {field("providerType", copy.type)}
+              <Form.Group className="mb-3" controlId="provider-icon-key">
+                <Form.Label>{copy.icon}</Form.Label>
+                <Form.Select {...register("iconKey")}>
+                  <option value="generic">{copy.iconGeneric}</option>
+                  <option value="google">Google</option>
+                  <option value="github">GitHub</option>
+                  <option value="linkedin">LinkedIn</option>
+                  <option value="microsoft">Microsoft</option>
+                  <option value="building">{copy.iconBuilding}</option>
+                  <option value="key">{copy.iconKey}</option>
+                  <option value="shield">{copy.iconShield}</option>
+                </Form.Select>
+              </Form.Group>
               {field("clientId", copy.clientId)}
               {field("clientSecret", copy.clientSecret, "password")}
               {field("guiOrder", copy.order, "number")}
@@ -189,6 +211,8 @@ export function IdentityProviderForm({
             {(
               [
                 "enabled",
+                "shortStateParameter",
+                "caseSensitiveUsername",
                 "hideOnLogin",
                 "accountLinkingOnly",
                 "trustEmail",

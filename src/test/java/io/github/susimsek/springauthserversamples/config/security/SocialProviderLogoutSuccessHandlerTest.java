@@ -45,7 +45,69 @@ class SocialProviderLogoutSuccessHandlerTest {
 
         verify(response)
                 .sendRedirect(
-                        "https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri=http%3A%2F%2Flocalhost%3A9090%2Faccount%2F");
+                        "https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri=http%3A%2F%2Flocalhost%3A9090%2Faccount%2F&id_token_hint=id-token-hint");
         verify(session).removeAttribute(SocialLoginService.SOCIAL_LOGIN_PROVIDER);
+    }
+
+    @Test
+    void startsGitHubLogoutWithReturnToUri() throws Exception {
+        SocialProviderSettingsService settings = mock(SocialProviderSettingsService.class);
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        HttpSession session = mock(HttpSession.class);
+        Authentication principal =
+                UsernamePasswordAuthenticationToken.authenticated("ada", null, java.util.List.of());
+        OidcLogoutAuthenticationToken logout =
+                new OidcLogoutAuthenticationToken(
+                        "id-token-hint",
+                        principal,
+                        "account-console",
+                        null,
+                        "http://localhost:9090/account/",
+                        null);
+        when(request.getSession(false)).thenReturn(session);
+        when(session.getAttribute(SocialLoginService.SOCIAL_LOGIN_PROVIDER)).thenReturn("github");
+        when(settings.provider("github"))
+                .thenReturn(
+                        new SocialProviderSettingsService.ProviderCredentials(
+                                "github", "client", "secret"));
+
+        new SocialProviderLogoutSuccessHandler(settings)
+                .onAuthenticationSuccess(request, response, logout);
+
+        verify(response)
+                .sendRedirect(
+                        "https://github.com/logout?return_to=http%3A%2F%2Flocalhost%3A9090%2Faccount%2F");
+    }
+
+    @Test
+    void startsLinkedInLogoutWithRedirectUri() throws Exception {
+        SocialProviderSettingsService settings = mock(SocialProviderSettingsService.class);
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        HttpSession session = mock(HttpSession.class);
+        Authentication principal =
+                UsernamePasswordAuthenticationToken.authenticated("ada", null, java.util.List.of());
+        OidcLogoutAuthenticationToken logout =
+                new OidcLogoutAuthenticationToken(
+                        "id-token-hint",
+                        principal,
+                        "account-console",
+                        null,
+                        "http://localhost:9090/account/",
+                        null);
+        when(request.getSession(false)).thenReturn(session);
+        when(session.getAttribute(SocialLoginService.SOCIAL_LOGIN_PROVIDER)).thenReturn("linkedin");
+        when(settings.provider("linkedin"))
+                .thenReturn(
+                        new SocialProviderSettingsService.ProviderCredentials(
+                                "linkedin", "client", "secret"));
+
+        new SocialProviderLogoutSuccessHandler(settings)
+                .onAuthenticationSuccess(request, response, logout);
+
+        verify(response)
+                .sendRedirect(
+                        "https://www.linkedin.com/m/logout?redirect_uri=http%3A%2F%2Flocalhost%3A9090%2Faccount%2F");
     }
 }

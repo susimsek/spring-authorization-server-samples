@@ -31,6 +31,15 @@ public record AdminIdentityProviderDTO(
                         example = "google",
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 String alias,
+        @Schema(
+                        description = "Allowlisted icon key rendered by login and account UIs.",
+                        example = "google",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                String iconKey,
+        @Schema(description = "Use a shorter OAuth state value for this provider.")
+                boolean shortStateParameter,
+        @Schema(description = "Preserve case when importing provider usernames.")
+                boolean caseSensitiveUsername,
         @Schema(description = "Whether the provider is enabled.") boolean enabled,
         @Schema(description = "Whether credentials are configured.") boolean configured,
         @Schema(description = "Hide from the login page.") boolean hideOnLogin,

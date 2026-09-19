@@ -5,7 +5,9 @@ import io.github.susimsek.springauthserversamples.security.LocalizedAccessDenied
 import io.github.susimsek.springauthserversamples.security.LocalizedAuthenticationEntryPoint;
 import io.github.susimsek.springauthserversamples.service.SocialLoginService;
 import java.net.URI;
+import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Set;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -51,6 +53,8 @@ import org.springframework.security.web.webauthn.management.WebAuthnRelyingParty
 
 @Configuration(proxyBeanMethods = false)
 public class SecurityConfig {
+
+    private static final SecureRandom SOCIAL_STATE_RANDOM = new SecureRandom();
 
     private static final MediaTypeRequestMatcher HTML_REQUEST_MATCHER = htmlRequestMatcher();
 
@@ -302,7 +306,9 @@ public class SecurityConfig {
             public OAuth2AuthorizationRequest resolve(
                     jakarta.servlet.http.HttpServletRequest request) {
                 return withoutLinkedInNonce(
-                        onlyEnabled(delegate.resolve(request), socialLoginService),
+                        withShortStateParameter(
+                                onlyEnabled(delegate.resolve(request), socialLoginService),
+                                socialLoginService),
                         socialLoginService);
             }
 
@@ -313,7 +319,10 @@ public class SecurityConfig {
                     return null;
                 }
                 return withoutLinkedInNonce(
-                        delegate.resolve(request, clientRegistrationId), socialLoginService);
+                        withShortStateParameter(
+                                delegate.resolve(request, clientRegistrationId),
+                                socialLoginService),
+                        socialLoginService);
             }
         };
     }
@@ -343,6 +352,23 @@ public class SecurityConfig {
                 .additionalParameters(parameters -> parameters.remove(OidcParameterNames.NONCE))
                 .attributes(attributes -> attributes.remove(OidcParameterNames.NONCE))
                 .build();
+    }
+
+    private static OAuth2AuthorizationRequest withShortStateParameter(
+            OAuth2AuthorizationRequest authorizationRequest,
+            SocialLoginService socialLoginService) {
+        if (authorizationRequest == null
+                || !socialLoginService.requiresShortStateParameter(
+                        authorizationRequest.getAttribute(OAuth2ParameterNames.REGISTRATION_ID))) {
+            return authorizationRequest;
+        }
+        return OAuth2AuthorizationRequest.from(authorizationRequest).state(shortState()).build();
+    }
+
+    static String shortState() {
+        byte[] bytes = new byte[16];
+        SOCIAL_STATE_RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
     @Bean
@@ -380,8 +406,10 @@ public class SecurityConfig {
     @Bean
     SocialProviderLogoutSuccessHandler socialProviderLogoutSuccessHandler(
             io.github.susimsek.springauthserversamples.service.SocialProviderSettingsService
-                    providerSettingsService) {
-        return new SocialProviderLogoutSuccessHandler(providerSettingsService);
+                    providerSettingsService,
+            SocialProviderLogoutEndpointResolver logoutEndpointResolver) {
+        return new SocialProviderLogoutSuccessHandler(
+                providerSettingsService, logoutEndpointResolver);
     }
 
     @Bean

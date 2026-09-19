@@ -240,6 +240,7 @@ public class SocialLoginService {
                                 new SocialProviderDTO(
                                         provider.alias(),
                                         provider.registrationId(),
+                                        provider.iconKey(),
                                         provider.configured()))
                 .toList();
     }
@@ -257,7 +258,8 @@ public class SocialLoginService {
                         provider ->
                                 new SocialLinkDTO(
                                         provider.alias(),
-                                        displayName(provider.registrationId()),
+                                        provider.displayName(),
+                                        provider.iconKey(),
                                         linked.contains(provider.registrationId()),
                                         provider.configured(),
                                         isProviderEnabled(provider.registrationId())))
@@ -273,6 +275,12 @@ public class SocialLoginService {
                         : provider != null
                                 && loginSettingsService.isSocialProviderEnabled(
                                         provider.toLowerCase(Locale.ROOT)));
+    }
+
+    public boolean requiresShortStateParameter(String provider) {
+        SocialProviderSettingsService.ProviderCredentials configuredProvider =
+                socialProviderSettingsService.provider(provider);
+        return configuredProvider != null && configuredProvider.shortStateParameter();
     }
 
     /** Returns whether a provider may be used to start a new public login. */
@@ -321,22 +329,6 @@ public class SocialLoginService {
                     "provider", ApiErrorCode.INVALID_REQUEST, "The social provider is invalid");
         }
         return normalized;
-    }
-
-    private String displayName(String provider) {
-        SocialProviderSettingsService.ProviderCredentials configured =
-                socialProviderSettingsService.provider(provider);
-        if (configured != null
-                && configured.displayName() != null
-                && !configured.displayName().isBlank()) {
-            return configured.displayName();
-        }
-        return switch (provider) {
-            case "github" -> "GitHub";
-            case "linkedin" -> "LinkedIn";
-            case "microsoft" -> "Microsoft";
-            default -> "Google";
-        };
     }
 
     private static boolean accountConsoleVisible(
@@ -471,7 +463,12 @@ public class SocialLoginService {
         SocialProviderSettingsService.ProviderCredentials configured =
                 socialProviderSettingsService.provider(provider);
         String alias = configured == null ? provider : configured.alias();
-        return socialIdentityMapperService.apply(alias, attributes, user, firstLogin);
+        return socialIdentityMapperService.apply(
+                alias,
+                attributes,
+                user,
+                firstLogin,
+                configured != null && configured.caseSensitiveUsername());
     }
 
     private void persistMappedClaims(

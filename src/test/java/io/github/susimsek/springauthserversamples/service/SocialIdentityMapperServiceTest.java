@@ -89,6 +89,22 @@ class SocialIdentityMapperServiceTest {
         assertThat(mapped).containsEntry("id_token", Map.of("department", "Engineering"));
     }
 
+    @Test
+    void normalizesMappedUsernameUnlessProviderPreservesCase() {
+        SocialProviderMapperEntity mapper = mapper("login", "username", "force");
+        when(mapperRepository.findAllByProviderAliasIgnoreCase("google"))
+                .thenReturn(List.of(mapper));
+        UserEntity user = new UserEntity();
+        user.setUsername("generated");
+
+        service().apply("google", Map.of("login", "MiXeD.User"), user, true, false);
+        assertThat(user.getUsername()).isEqualTo("mixed.user");
+
+        user.setUsername("generated");
+        service().apply("google", Map.of("login", "MiXeD.User"), user, true, true);
+        assertThat(user.getUsername()).isEqualTo("MiXeD.User");
+    }
+
     private SocialIdentityMapperService service() {
         return new SocialIdentityMapperService(mapperRepository, userProfileService);
     }

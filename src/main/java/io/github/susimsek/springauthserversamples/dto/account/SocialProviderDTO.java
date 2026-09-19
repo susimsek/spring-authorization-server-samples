@@ -15,6 +15,11 @@ public record SocialProviderDTO(
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 String providerType,
         @Schema(
+                        description = "Allowlisted icon key used by the login UI.",
+                        example = "google",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                String iconKey,
+        @Schema(
                         description =
                                 "Whether the provider has a usable Client ID and Client Secret.",
                         example = "false",

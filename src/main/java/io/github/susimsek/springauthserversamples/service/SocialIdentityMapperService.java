@@ -25,6 +25,16 @@ public class SocialIdentityMapperService {
     @Transactional
     public Map<String, Map<String, Object>> apply(
             String providerAlias, Map<String, Object> claims, UserEntity user, boolean firstLogin) {
+        return apply(providerAlias, claims, user, firstLogin, false);
+    }
+
+    @Transactional
+    public Map<String, Map<String, Object>> apply(
+            String providerAlias,
+            Map<String, Object> claims,
+            UserEntity user,
+            boolean firstLogin,
+            boolean caseSensitiveUsername) {
         if (providerAlias == null || providerAlias.isBlank()) {
             return Map.of();
         }
@@ -49,7 +59,7 @@ public class SocialIdentityMapperService {
                 continue;
             }
             if ("user-attribute".equalsIgnoreCase(mapper.getMapperType())) {
-                if (applyBuiltIn(user, target, values.getFirst())) {
+                if (applyBuiltIn(user, target, values.getFirst(), caseSensitiveUsername)) {
                     userChanged = true;
                 } else if (!isBuiltInTarget(target)) {
                     profileValues.put(target, values);
@@ -105,10 +115,14 @@ public class SocialIdentityMapperService {
         };
     }
 
-    private static boolean applyBuiltIn(UserEntity user, String target, String value) {
+    private static boolean applyBuiltIn(
+            UserEntity user, String target, String value, boolean caseSensitiveUsername) {
         if ("username".equals(target)) {
-            // The application deliberately keeps provider/subject-derived usernames stable.
-            return false;
+            String username = value.trim();
+            if (!caseSensitiveUsername) {
+                username = username.toLowerCase(Locale.ROOT);
+            }
+            return set(user.getUsername(), username, user::setUsername);
         }
         return switch (target) {
             case "email" -> set(user.getEmail(), normalizeEmail(value), user::setEmail);

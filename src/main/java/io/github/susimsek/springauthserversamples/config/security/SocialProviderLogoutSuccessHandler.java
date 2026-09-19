@@ -8,7 +8,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.server.authorization.oidc.authentication.OidcLogoutAuthenticationToken;
 import org.springframework.security.oauth2.server.authorization.oidc.web.authentication.OidcLogoutAuthenticationSuccessHandler;
@@ -16,14 +15,26 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 
 /** Starts an upstream broker logout when the provider exposes a browser logout endpoint. */
-@RequiredArgsConstructor
 public class SocialProviderLogoutSuccessHandler implements AuthenticationSuccessHandler {
 
     private final SocialProviderSettingsService providerSettingsService;
+    private final SocialProviderLogoutEndpointResolver logoutEndpointResolver;
     private final OidcLogoutAuthenticationSuccessHandler delegate =
             new OidcLogoutAuthenticationSuccessHandler();
     private final SecurityContextLogoutHandler securityContextLogoutHandler =
             new SecurityContextLogoutHandler();
+
+    public SocialProviderLogoutSuccessHandler(
+            SocialProviderSettingsService providerSettingsService,
+            SocialProviderLogoutEndpointResolver logoutEndpointResolver) {
+        this.providerSettingsService = providerSettingsService;
+        this.logoutEndpointResolver = logoutEndpointResolver;
+    }
+
+    public SocialProviderLogoutSuccessHandler(
+            SocialProviderSettingsService providerSettingsService) {
+        this(providerSettingsService, new SocialProviderLogoutEndpointResolver());
+    }
 
     @Override
     public void onAuthenticationSuccess(
@@ -40,11 +51,7 @@ public class SocialProviderLogoutSuccessHandler implements AuthenticationSuccess
                         : (String) session.getAttribute(SocialLoginService.SOCIAL_LOGIN_PROVIDER);
         SocialProviderSettingsService.ProviderCredentials credentials =
                 providerSettingsService.provider(provider);
-        String upstreamLogout =
-                credentials == null
-                        ? null
-                        : upstreamLogout(
-                                credentials.registrationId(), logout.getPostLogoutRedirectUri());
+        String upstreamLogout = credentials == null ? null : upstreamLogout(credentials, logout);
         if (upstreamLogout == null) {
             delegate.onAuthenticationSuccess(request, response, authentication);
             return;
@@ -59,15 +66,41 @@ public class SocialProviderLogoutSuccessHandler implements AuthenticationSuccess
         response.sendRedirect(upstreamLogout);
     }
 
-    private static String upstreamLogout(String provider, String redirectUri) {
-        String redirect = redirectUri == null || redirectUri.isBlank() ? "/" : redirectUri;
-        String encoded = URLEncoder.encode(redirect, StandardCharsets.UTF_8);
-        return switch (provider) {
-            case "google" -> "https://accounts.google.com/Logout?continue=" + encoded;
-            case "microsoft" ->
-                    "https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri="
-                            + encoded;
-            default -> null;
-        };
+    private String upstreamLogout(
+            SocialProviderSettingsService.ProviderCredentials provider,
+            OidcLogoutAuthenticationToken logout) {
+        String endpoint = logoutEndpointResolver.resolve(provider);
+        if (endpoint == null) {
+            return null;
+        }
+        String redirect =
+                logout.getPostLogoutRedirectUri() == null
+                                || logout.getPostLogoutRedirectUri().isBlank()
+                        ? "/"
+                        : logout.getPostLogoutRedirectUri();
+        String providerType = provider.providerType().toLowerCase(java.util.Locale.ROOT);
+        if ("google".equals(providerType) && isBlank(provider.issuerUri())) {
+            return appendParameter(endpoint, "continue", redirect);
+        }
+        if ("github".equals(providerType)) {
+            return appendParameter(endpoint, "return_to", redirect);
+        }
+        if ("linkedin".equals(providerType)) {
+            return appendParameter(endpoint, "redirect_uri", redirect);
+        }
+        String upstream = appendParameter(endpoint, "post_logout_redirect_uri", redirect);
+        if (!isBlank(logout.getIdTokenHint())) {
+            upstream = appendParameter(upstream, "id_token_hint", logout.getIdTokenHint());
+        }
+        return upstream;
+    }
+
+    private static String appendParameter(String endpoint, String name, String value) {
+        String separator = endpoint.contains("?") ? "&" : "?";
+        return endpoint + separator + name + "=" + URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }

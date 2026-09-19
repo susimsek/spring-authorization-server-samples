@@ -15,6 +15,11 @@ public record SocialLinkDTO(
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 String displayName,
         @Schema(
+                        description = "Allowlisted icon key used by the account UI.",
+                        example = "github",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                String iconKey,
+        @Schema(
                         description =
                                 "Whether this provider is linked to the authenticated account.",
                         example = "true",

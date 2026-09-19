@@ -5,6 +5,8 @@ import { Button, Card, Spinner, Stack } from "react-bootstrap";
 import { useSearchParams } from "@/routing/navigation";
 import { ConfirmModal } from "@/components/admin/ConfirmModal";
 import { ActionIcon } from "@/components/shared/ActionIcon";
+import { Icon } from "@/components/shared/Icon";
+import { providerIcon } from "@/lib/provider-icons";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { requestAccount } from "@/lib/account-api";
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
@@ -13,6 +15,7 @@ import { useAccountAuth } from "./AccountAuthProvider";
 type SocialLink = {
   provider: string;
   displayName: string;
+  iconKey: string;
   linked: boolean;
   configured: boolean;
   enabled: boolean;
@@ -93,14 +96,17 @@ export function SocialAccountLinks({ dictionary }: { dictionary: Dictionary }) {
                 className="d-flex align-items-center justify-content-between gap-3 border rounded-2 p-3"
                 key={link.provider}
               >
-                <div>
-                  <div className="fw-semibold">{link.displayName}</div>
-                  <div className="small text-body-secondary">
-                    {link.linked
-                      ? copy.connected
-                      : !link.configured
-                        ? copy.notConfigured
-                        : copy.notConnected}
+                <div className="d-flex align-items-center gap-3">
+                  <Icon icon={providerIcon(link.iconKey)} size="lg" />
+                  <div>
+                    <div className="fw-semibold">{link.displayName}</div>
+                    <div className="small text-body-secondary">
+                      {link.linked
+                        ? copy.connected
+                        : !link.configured
+                          ? copy.notConfigured
+                          : copy.notConnected}
+                    </div>
                   </div>
                 </div>
                 <Button

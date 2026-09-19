@@ -10,6 +10,7 @@ import io.github.susimsek.springauthserversamples.dto.admin.AdminProviderMapperR
 import io.github.susimsek.springauthserversamples.repository.SocialIdentityRepository;
 import io.github.susimsek.springauthserversamples.repository.SocialProviderMapperRepository;
 import io.github.susimsek.springauthserversamples.repository.SocialProviderRepository;
+import io.github.susimsek.springauthserversamples.service.SocialProviderIconKeys;
 import io.github.susimsek.springauthserversamples.service.SocialProviderSettingsService;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
@@ -260,6 +261,14 @@ public class AdminIdentityProviderService {
         }
         entity.setDisplayName(request.displayName().trim());
         entity.setAlias(alias);
+        String iconKey = request.iconKey().trim().toLowerCase(Locale.ROOT);
+        if (!SocialProviderIconKeys.isAllowed(iconKey)) {
+            throw ApiException.badRequest(
+                    "iconKey", ApiErrorCode.INVALID_REQUEST, "Provider icon is invalid");
+        }
+        entity.setIconKey(iconKey);
+        entity.setShortStateParameter(request.shortStateParameter());
+        entity.setCaseSensitiveUsername(request.caseSensitiveUsername());
         entity.setEnabled(request.enabled());
         entity.setHideOnLogin(request.hideOnLogin());
         entity.setAccountLinkingOnly(request.accountLinkingOnly());
@@ -314,6 +323,9 @@ public class AdminIdentityProviderService {
                 e.getProviderType(),
                 e.getDisplayName(),
                 e.getAlias(),
+                SocialProviderIconKeys.normalize(e.getIconKey(), e.getProviderType()),
+                e.isShortStateParameter(),
+                e.isCaseSensitiveUsername(),
                 e.isEnabled(),
                 e.getClientId() != null
                         && !e.getClientId().isBlank()

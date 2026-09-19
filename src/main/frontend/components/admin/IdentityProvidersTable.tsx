@@ -9,6 +9,8 @@ import type { PageResponse } from "@/lib/api-types";
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import { useAdminAuth } from "./AdminAuthProvider";
 import { AdminActionIcon } from "./AdminActionIcon";
+import { Icon } from "@/components/shared/Icon";
+import { providerIcon } from "@/lib/provider-icons";
 import { DataTable } from "./DataTable";
 import { ConfirmModal } from "./ConfirmModal";
 import { ErrorState, LoadingState } from "./AsyncState";
@@ -24,6 +26,7 @@ export type IdentityProvider = {
   providerType: string;
   displayName: string;
   alias: string;
+  iconKey: string;
   enabled: boolean;
   configured: boolean;
   hideOnLogin: boolean;
@@ -172,7 +175,10 @@ export function IdentityProvidersTable({ dictionary }: { dictionary: Dictionary 
                   href={`/admin/identity-providers/${row.id}/details`}
                   className="fw-semibold text-decoration-none"
                 >
-                  {row.displayName}
+                  <span className="d-inline-flex align-items-center gap-2">
+                    <Icon icon={providerIcon(row.iconKey)} />
+                    {row.displayName}
+                  </span>
                 </Link>
                 <div className="small text-body-secondary font-monospace">{row.alias}</div>
               </td>
