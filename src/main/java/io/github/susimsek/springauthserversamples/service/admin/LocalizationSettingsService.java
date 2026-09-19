@@ -36,6 +36,8 @@ public class LocalizationSettingsService {
     private static final long SETTINGS_ID = 1L;
     private static final List<String> AVAILABLE_LOCALES = List.of("en", "tr");
     private static final List<String> AVAILABLE_BUNDLES = List.of("backend", "common");
+    private static final ResourceBundle.Control NO_FALLBACK_CONTROL =
+            ResourceBundle.Control.getNoFallbackControl(ResourceBundle.Control.FORMAT_PROPERTIES);
 
     private final LocalizationSettingsRepository settingsRepository;
     private final LocalizationMessageOverrideRepository overrideRepository;
@@ -171,7 +173,10 @@ public class LocalizationSettingsService {
             return Map.of();
         }
         ResourceBundle resourceBundle =
-                ResourceBundle.getBundle("i18n.messages", Locale.forLanguageTag(normalizedLocale));
+                ResourceBundle.getBundle(
+                        "i18n.messages",
+                        Locale.forLanguageTag(normalizedLocale),
+                        NO_FALLBACK_CONTROL);
         return resourceBundle.keySet().stream()
                 .sorted()
                 .collect(

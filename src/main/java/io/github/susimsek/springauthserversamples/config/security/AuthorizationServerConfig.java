@@ -32,6 +32,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.OAuth2Token;
+import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
@@ -276,6 +277,22 @@ public class AuthorizationServerConfig {
                                 context.getClaims().claim("email_verified", user.isEmailVerified());
                             }
                         });
+            }
+
+            if (OidcParameterNames.ID_TOKEN.equals(context.getTokenType().getValue())
+                    && context.getAuthorization() != null) {
+                OAuth2AuthorizationRequest authorizationRequest =
+                        context.getAuthorization()
+                                .getAttribute(OAuth2AuthorizationRequest.class.getName());
+                if (authorizationRequest != null) {
+                    Object nonceValue =
+                            authorizationRequest
+                                    .getAdditionalParameters()
+                                    .get(OidcParameterNames.NONCE);
+                    if (nonceValue instanceof String nonce && !nonce.isBlank()) {
+                        context.getClaims().claim(OidcParameterNames.NONCE, nonce);
+                    }
+                }
             }
 
             if (adminAccessToken) {

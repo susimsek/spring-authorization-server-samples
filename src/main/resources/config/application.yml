@@ -1,4 +1,6 @@
 spring:
+  config:
+    import: optional:file:.env[.properties]
   main:
     allow-bean-definition-overriding: true
     keep-alive: true
@@ -78,6 +80,21 @@ management:
 app:
   session:
     cleanup-cron: "0 * * * * *"
+  social-login:
+    enabled: ${APP_SOCIAL_LOGIN_ENABLED:false}
+    encryption-key: ${SOCIAL_LOGIN_ENCRYPTION_KEY:}
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
+    github:
+      client-id: ${GITHUB_CLIENT_ID:}
+      client-secret: ${GITHUB_CLIENT_SECRET:}
+    linkedin:
+      client-id: ${LINKEDIN_CLIENT_ID:}
+      client-secret: ${LINKEDIN_CLIENT_SECRET:}
+    microsoft:
+      client-id: ${MICROSOFT_CLIENT_ID:}
+      client-secret: ${MICROSOFT_CLIENT_SECRET:}
   authorization-server:
     issuer: https://spring-authorization-server-samples.local
   web-authn:

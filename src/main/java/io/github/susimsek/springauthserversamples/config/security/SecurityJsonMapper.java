@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -50,7 +51,10 @@ public final class SecurityJsonMapper {
         BasicPolymorphicTypeValidator.Builder typeValidator =
                 BasicPolymorphicTypeValidator.builder()
                         .allowIfSubType(WebAuthnAuthentication.class)
-                        .allowIfSubType(ImmutablePublicKeyCredentialUserEntity.class);
+                        .allowIfSubType(ImmutablePublicKeyCredentialUserEntity.class)
+                        .allowIfSubType(Number.class)
+                        .allowIfSubType(Boolean.class)
+                        .allowIfSubType(String.class);
         this.delegate =
                 JsonMapper.builder()
                         .addModules(SecurityJacksonModules.getModules(classLoader, typeValidator))
@@ -79,6 +83,13 @@ public final class SecurityJsonMapper {
                         options) {
             outputStream.write(WEBAUTHN_REQUEST_OPTIONS_MARKER);
             webauthnDelegate.writeValue(outputStream, options);
+            return;
+        }
+        if (value instanceof Map<?, ?> map) {
+            // Java's immutable Map implementations are final, so Jackson omits the
+            // polymorphic type id required when the session attribute is read as Object.
+            // Normalize map roots before persistence while keeping the session mapper isolated.
+            delegate.writeValue(outputStream, new LinkedHashMap<>(map));
             return;
         }
         delegate.writeValue(outputStream, value);

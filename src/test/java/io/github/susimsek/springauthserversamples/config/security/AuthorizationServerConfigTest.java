@@ -17,12 +17,15 @@ import io.github.susimsek.springauthserversamples.security.OAuth2KeyJwkSource;
 import io.github.susimsek.springauthserversamples.service.OAuth2KeyService;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
+import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
@@ -134,12 +137,43 @@ class AuthorizationServerConfigTest {
                 .findByUsername(org.mockito.ArgumentMatchers.anyString());
     }
 
+    @Test
+    void preservesNonceInOidcIdToken() {
+        UserRepository userRepository = mock(UserRepository.class);
+        UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
+        AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
+        JwtClaimsSet.Builder claims = JwtClaimsSet.builder();
+
+        config.jwtTokenCustomizer(userRepository, avatarRepository, authorizationRepository)
+                .customize(
+                        jwtContext(
+                                claims,
+                                new OAuth2TokenType(OidcParameterNames.ID_TOKEN),
+                                AuthorizationGrantType.AUTHORIZATION_CODE,
+                                "account-console",
+                                Set.of("openid"),
+                                "nonce-value"));
+
+        assertThat(claims.build().getClaims())
+                .containsEntry(OidcParameterNames.NONCE, "nonce-value");
+    }
+
     private static JwtEncodingContext jwtContext(
             JwtClaimsSet.Builder claims,
             OAuth2TokenType tokenType,
             AuthorizationGrantType grantType,
             String clientId,
             Set<String> scopes) {
+        return jwtContext(claims, tokenType, grantType, clientId, scopes, null);
+    }
+
+    private static JwtEncodingContext jwtContext(
+            JwtClaimsSet.Builder claims,
+            OAuth2TokenType tokenType,
+            AuthorizationGrantType grantType,
+            String clientId,
+            Set<String> scopes,
+            String nonce) {
         RegisteredClient registeredClient =
                 RegisteredClient.withId("client-id")
                         .clientId(clientId)
@@ -153,12 +187,24 @@ class AuthorizationServerConfigTest {
                         List.of(
                                 new SimpleGrantedAuthority("ROLE_USER"),
                                 new SimpleGrantedAuthority("ROLE_ADMIN")));
-        OAuth2Authorization authorization =
+        var authorizationBuilder =
                 OAuth2Authorization.withRegisteredClient(registeredClient)
                         .id("authorization-id")
                         .principalName("admin")
-                        .authorizationGrantType(grantType)
-                        .build();
+                        .authorizationGrantType(grantType);
+        Map<String, Object> additionalParameters =
+                nonce == null ? Map.of() : Map.of(OidcParameterNames.NONCE, nonce);
+        authorizationBuilder.attribute(
+                OAuth2AuthorizationRequest.class.getName(),
+                OAuth2AuthorizationRequest.authorizationCode()
+                        .authorizationUri("https://issuer.example/oauth2/authorize")
+                        .clientId(clientId)
+                        .redirectUri("https://client.example/callback")
+                        .scopes(scopes)
+                        .state("state")
+                        .additionalParameters(additionalParameters)
+                        .build());
+        OAuth2Authorization authorization = authorizationBuilder.build();
         return JwtEncodingContext.with(JwsHeader.with(SignatureAlgorithm.RS256), claims)
                 .registeredClient(registeredClient)
                 .authorization(authorization)

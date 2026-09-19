@@ -29,6 +29,10 @@ import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
+import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
+import org.springframework.security.oauth2.core.user.OAuth2UserAuthority;
 import org.springframework.security.web.savedrequest.DefaultSavedRequest;
 import org.springframework.security.web.webauthn.api.AuthenticatorSelectionCriteria;
 import org.springframework.security.web.webauthn.api.Bytes;
@@ -69,6 +73,24 @@ class SessionConfigTest {
     }
 
     @Test
+    void springSessionConversionServiceRoundTripsImmutableMapPayloads() {
+        ConversionService conversionService =
+                config.springSessionConversionService(
+                        new SecurityJsonMapper(getClass().getClassLoader()));
+
+        byte[] serialized =
+                conversionService.convert(
+                        Map.of("username", "user", "provider", "github"), byte[].class);
+        Object deserialized = conversionService.convert(serialized, Object.class);
+
+        assertThat(deserialized)
+                .isInstanceOf(Map.class)
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                .containsEntry("username", "user")
+                .containsEntry("provider", "github");
+    }
+
+    @Test
     void springSessionConversionServiceRoundTripsSavedRequest() {
         ConversionService conversionService =
                 config.springSessionConversionService(
@@ -86,6 +108,50 @@ class SessionConfigTest {
                 .isInstanceOf(DefaultSavedRequest.class)
                 .extracting(value -> ((DefaultSavedRequest) value).getRedirectUrl())
                 .isEqualTo("http://localhost:9090/account/");
+    }
+
+    @Test
+    void springSessionConversionServiceRoundTripsOAuth2AuthorizationRequest() {
+        ConversionService conversionService =
+                config.springSessionConversionService(
+                        new SecurityJsonMapper(getClass().getClassLoader()));
+        OAuth2AuthorizationRequest authorizationRequest =
+                OAuth2AuthorizationRequest.authorizationCode()
+                        .authorizationUri("https://github.com/login/oauth/authorize")
+                        .clientId("github-client")
+                        .redirectUri("http://localhost:9090/login/oauth2/code/github")
+                        .scopes(java.util.Set.of("read:user", "user:email"))
+                        .state("state-value")
+                        .attributes(
+                                Map.of(
+                                        org.springframework.security.oauth2.core.endpoint
+                                                .OAuth2ParameterNames.REGISTRATION_ID,
+                                        "github"))
+                        .build();
+
+        byte[] serialized = conversionService.convert(authorizationRequest, byte[].class);
+        Object deserialized = conversionService.convert(serialized, Object.class);
+
+        assertThat(deserialized).isEqualTo(authorizationRequest);
+    }
+
+    @Test
+    void springSessionConversionServiceRoundTripsOAuth2Authentication() {
+        ConversionService conversionService =
+                config.springSessionConversionService(
+                        new SecurityJsonMapper(getClass().getClassLoader()));
+        DefaultOAuth2User user =
+                new DefaultOAuth2User(
+                        List.of(new OAuth2UserAuthority(Map.of("id", 123L, "login", "octocat"))),
+                        Map.of("id", 123L, "login", "octocat"),
+                        "id");
+        OAuth2AuthenticationToken authentication =
+                new OAuth2AuthenticationToken(user, user.getAuthorities(), "github");
+
+        byte[] serialized = conversionService.convert(authentication, byte[].class);
+        Object deserialized = conversionService.convert(serialized, Object.class);
+
+        assertThat(deserialized).isEqualTo(authentication);
     }
 
     @Test

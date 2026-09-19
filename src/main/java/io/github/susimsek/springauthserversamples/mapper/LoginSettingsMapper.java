@@ -40,6 +40,10 @@ public interface LoginSettingsMapper {
     @Mapping(
             target = "emailUpdateReauthenticationMinutes",
             source = "emailUpdateReauthenticationMinutes")
+    @Mapping(target = "googleLoginEnabled", source = "googleLoginEnabled")
+    @Mapping(target = "githubLoginEnabled", source = "githubLoginEnabled")
+    @Mapping(target = "linkedinLoginEnabled", source = "linkedinLoginEnabled")
+    @Mapping(target = "microsoftLoginEnabled", source = "microsoftLoginEnabled")
     @Mapping(target = "sessionTimeoutMinutes", source = "sessionTimeoutMinutes")
     @Mapping(target = "passwordMinimumLength", source = "passwordMinimumLength")
     @Mapping(target = "bruteForceEnabled", source = "bruteForceEnabled")
@@ -111,6 +115,10 @@ public interface LoginSettingsMapper {
     @Mapping(
             target = "emailUpdateReauthenticationMinutes",
             source = "emailUpdateReauthenticationMinutes")
+    @Mapping(target = "googleLoginEnabled", source = "googleLoginEnabled")
+    @Mapping(target = "githubLoginEnabled", source = "githubLoginEnabled")
+    @Mapping(target = "linkedinLoginEnabled", source = "linkedinLoginEnabled")
+    @Mapping(target = "microsoftLoginEnabled", source = "microsoftLoginEnabled")
     @Mapping(target = "sessionTimeoutMinutes", source = "sessionTimeoutMinutes")
     @Mapping(target = "passwordMinimumLength", source = "passwordMinimumLength")
     @Mapping(target = "bruteForceEnabled", source = "bruteForceEnabled")

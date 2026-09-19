@@ -18,6 +18,7 @@ class LoginSettingsMapperTest {
         assertThat(mapper.toPublicDTO(entity).userRegistration()).isTrue();
         assertThat(mapper.toAdminDTO(entity).otpAlgorithm()).isEqualTo("SHA256");
         assertThat(mapper.toAdminDTO(entity).recoveryCodeWarningThreshold()).isEqualTo(3);
+        assertThat(mapper.toAdminDTO(entity).githubLoginEnabled()).isFalse();
     }
 
     @Test
@@ -39,6 +40,9 @@ class LoginSettingsMapperTest {
         entity.setRememberMeEnabled(false);
         entity.setLoginWithEmail(true);
         entity.setVerifyEmail(true);
+        entity.setGoogleLoginEnabled(true);
+        entity.setGithubLoginEnabled(false);
+        entity.setLinkedinLoginEnabled(true);
         entity.setOtpAlgorithm("SHA256");
         entity.setRecoveryCodeWarningThreshold(3);
         return entity;

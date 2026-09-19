@@ -308,6 +308,22 @@ curl http://localhost:9090/actuator/health/readiness
 - Keep console authentication aligned with the Keycloak JavaScript adapter model: use Authorization Code + PKCE, refresh only when the access token is near expiry (or explicitly forced), and invoke the OIDC logout endpoint with the ID-token hint and registered post-logout URI.
 - Persist each console's access, ID, and refresh token set in its namespaced browser `localStorage` record so a browser reload can hydrate Redux before the next API request. Replace that record atomically after every successful authorization-code or refresh-token exchange and remove it on logout or permanent refresh failure. OAuth authorization and token records remain in `oauth2_authorization`.
 
+### Social login
+
+- Social login is implemented with Spring Security OAuth2 Client and is disabled by default. Enable it with `APP_SOCIAL_LOGIN_ENABLED=true` and provide provider credentials through `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET`, `LINKEDIN_CLIENT_ID`/`LINKEDIN_CLIENT_SECRET`, or `MICROSOFT_CLIENT_ID`/`MICROSOFT_CLIENT_SECRET`.
+- Supported registrations are `google`, `github`, `linkedin`, and `microsoft`. Their callback URI is `http://localhost:9090/login/oauth2/code/{registrationId}` in local development; each provider application must register its exact callback URI.
+- The login page obtains configured registrations from `GET /api/auth/social-providers` and starts the standard `/oauth2/authorization/{registrationId}` flow. It must keep the existing label, disable duplicate clicks, and show an inline spinner while redirecting.
+- A successful provider response is converted into a local session authentication. `SocialLoginService` stores a unique `(provider, subject)` link in `social_identities`, creates the local `UserEntity` on first login, and assigns only `ROLE_USER`. The local username is a deterministic provider/subject-derived value; provider email and profile names are imported when present.
+- A previously linked `(provider, subject)` always reuses its local user. A provider identity is never silently attached to an existing local account with the same email; the first-login flow stores the verified provider subject server-side, redirects to local login, and links it only after successful local re-authentication. The account security console also exposes an explicit provider-link flow backed by `/account/social-links/{registrationId}/start`; it must show `Bağla` for unlinked providers and a confirmed `Kaldır` action for linked providers, backed by the authenticated account DELETE endpoint. Never trust an email alone as a provider subject.
+- Social users receive a random encoded password so the non-null local password invariant remains intact; the OAuth2 provider remains the only supported authentication path until the user explicitly establishes local credentials.
+- Administrators can manage social provider Client IDs and rotate Client Secrets from `/admin/settings/login` through `/api/admin/settings/social-providers`. Secrets are encrypted with AES-GCM before persistence in `login_settings`; keep `SOCIAL_LOGIN_ENCRYPTION_KEY` stable across restarts and deployments. A blank secret means keep the currently configured secret. Microsoft credentials are entered there in production; no production client ID or secret is committed to the repository.
+
+### Keycloak parity review
+
+- The implementation follows Keycloak’s identity-broker model for provider-specific subject links, first-login local-user creation, profile import, local session establishment, and provider callback flows.
+- When an unlinked social identity reports an email already owned locally, the sample follows the safe part of Keycloak’s First Broker Login behavior: it returns `account_link_required`, keeps only the verified provider subject in the server session, and requires local authentication before linking. Authenticated users can also start linking from the Account Console security page. It does not enable Keycloak’s deliberately unsafe automatic-linking variant.
+- The implementation is intentionally limited to Google, GitHub, LinkedIn, and Microsoft. Additional Keycloak providers or arbitrary OIDC/SAML providers should be added through a focused registration/configuration change, not by accepting provider URLs from user input.
+
 ### Database and Liquibase
 
 - Use XML-based Liquibase changelogs.
@@ -315,6 +331,7 @@ curl http://localhost:9090/actuator/health/readiness
 - Shared Liquibase properties such as `${now}` belong in `db.changelog-master.xml`.
 - Registered client seed data lives in CSV and must stay aligned with `RegisteredClientEntity`, `RegisteredClientMapper`, and Spring Authorization Server's registered-client model.
 - For DB changes: add a new Liquibase XML changelog and include it from `db/changelog/db.changelog-master.xml`.
+- Social provider links are persisted in `social_identities`; keep the `(provider, subject)` unique constraint and cascading `user_id` foreign key aligned with `SocialIdentityEntity` and `SocialLoginService`.
 - Do not modify existing changelogs that have already been applied unless this is still local sample bootstrap work and no migration history needs preservation.
 - This repository is a demo bootstrap: do not use Liquibase `update`, `alter`, or follow-up seed correction changesets for schema or initial data changes. Put the final columns, constraints, and initial rows in the create changelog and its first seed CSV; keep related seed data in the existing feature CSV instead of adding separate correction files.
 - Hibernate second-level cache uses JCache backed by Caffeine. Cache regions are configured in `config/cache/CacheConfig`.
@@ -355,6 +372,7 @@ curl http://localhost:9090/actuator/health/readiness
 - No secrets or environment-specific values are committed.
 - PR description clearly explains what changed, how to verify, and any risks.
 - Tests are added or updated when behavior changes.
+- Social login changes must cover first-login creation, stable provider-subject reuse, safe handling of an existing local email, explicit account linking after local re-authentication, configured-provider discovery, account-console link status, and login-page redirect/spinner behavior.
 - Cross-cutting impacts are explicitly called out when relevant:
   - Liquibase migrations
   - Security rules (`AuthorizationServerConfig`, `SecurityConfig`)

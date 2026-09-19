@@ -114,6 +114,18 @@ public class LoginSettingsService {
     }
 
     @Transactional(readOnly = true)
+    public boolean isSocialProviderEnabled(String provider) {
+        LoginSettingsEntity value = settings();
+        return switch (provider.toLowerCase(Locale.ROOT)) {
+            case "google" -> value.isGoogleLoginEnabled();
+            case "github" -> value.isGithubLoginEnabled();
+            case "linkedin" -> value.isLinkedinLoginEnabled();
+            case "microsoft" -> value.isMicrosoftLoginEnabled();
+            default -> false;
+        };
+    }
+
+    @Transactional(readOnly = true)
     public boolean isBruteForceEnabled() {
         return settings().isBruteForceEnabled();
     }

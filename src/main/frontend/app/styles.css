@@ -208,6 +208,21 @@ textarea.form-control {
   min-height: var(--console-control-height);
 }
 
+.social-login-button {
+  width: var(--console-control-height);
+  height: var(--console-control-height);
+  flex: 0 0 var(--console-control-height);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.social-login-button .svg-inline--fa {
+  width: 1.15em;
+  height: 1.15em;
+}
+
 .auth-card .form-control:focus {
   box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.12);
 }

@@ -27,6 +27,10 @@ type Settings = {
   verifyEmail: boolean;
   webauthnMediation: "none" | "optional" | "conditional";
   emailUpdateReauthenticationMinutes: number;
+  googleLoginEnabled: boolean;
+  githubLoginEnabled: boolean;
+  linkedinLoginEnabled: boolean;
+  microsoftLoginEnabled: boolean;
   sessionTimeoutMinutes: number;
   passwordMinimumLength: number;
   bruteForceEnabled: boolean;
@@ -113,6 +117,17 @@ const defaultSettings: Settings = {
   otpCodeReusable: false,
   otpAddRecoveryCodes: false,
   recoveryCodeWarningThreshold: 2,
+  googleLoginEnabled: true,
+  githubLoginEnabled: true,
+  linkedinLoginEnabled: true,
+  microsoftLoginEnabled: false,
+};
+
+type SocialProviderSetting = {
+  provider: string;
+  clientId: string;
+  clientSecretConfigured: boolean;
+  clientSecret: string;
 };
 
 export type LoginSettingsSection =
@@ -132,6 +147,9 @@ export default function LoginSettingsPage({
   const alerts = useConsoleAlerts();
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
+  const [socialProviders, setSocialProviders] = useState<SocialProviderSetting[]>([]);
+  const [socialProvidersLoaded, setSocialProvidersLoaded] = useState(false);
+  const [socialProvidersSubmitting, setSocialProvidersSubmitting] = useState(false);
   const schema = z.object({
     userRegistration: z.boolean(),
     forgotPassword: z.boolean(),
@@ -156,6 +174,10 @@ export default function LoginSettingsPage({
       .int()
       .min(0, validation.positiveNumber)
       .max(1440, validation.maximumNumber),
+    googleLoginEnabled: z.boolean(),
+    githubLoginEnabled: z.boolean(),
+    linkedinLoginEnabled: z.boolean(),
+    microsoftLoginEnabled: z.boolean(),
     sessionTimeoutMinutes: z.number().int().min(1, validation.positiveNumber),
     passwordMinimumLength: z.number().int().min(8, validation.minimumPasswordLength),
     bruteForceEnabled: z.boolean(),
@@ -219,6 +241,19 @@ export default function LoginSettingsPage({
   }, [accessToken, reset]);
 
   useEffect(() => {
+    if (!accessToken) return;
+    adminRequest<Array<Omit<SocialProviderSetting, "clientSecret">>>(accessToken, {
+      url: "/api/admin/settings/social-providers",
+    })
+      .then((response) => {
+        if (response.status >= 300) throw new Error();
+        setSocialProviders(response.data.map((provider) => ({ ...provider, clientSecret: "" })));
+        setSocialProvidersLoaded(true);
+      })
+      .catch(() => setError(true));
+  }, [accessToken]);
+
+  useEffect(() => {
     if (!loaded || !focusSection) return;
     const element = document.getElementById(`login-settings-${focusSection}`);
     if (element && typeof element.scrollIntoView === "function") {
@@ -244,6 +279,36 @@ export default function LoginSettingsPage({
       alerts.addError(copy.error);
     }
   });
+
+  const saveSocialProviders = async () => {
+    if (!accessToken) return;
+    setError(false);
+    setSocialProvidersSubmitting(true);
+    try {
+      const response = await adminRequest<Array<Omit<SocialProviderSetting, "clientSecret">>>(
+        accessToken,
+        {
+          method: "PUT",
+          url: "/api/admin/settings/social-providers",
+          data: {
+            providers: socialProviders.map(({ provider, clientId, clientSecret }) => ({
+              provider,
+              clientId,
+              clientSecret,
+            })),
+          },
+        },
+      );
+      if (response.status >= 300) throw new Error();
+      setSocialProviders(response.data.map((provider) => ({ ...provider, clientSecret: "" })));
+    } catch {
+      setError(true);
+    } finally {
+      setSocialProvidersSubmitting(false);
+    }
+  };
+
+  const providerLabel = (provider: string) => provider.charAt(0).toUpperCase() + provider.slice(1);
 
   return (
     <div className="d-grid gap-4">
@@ -330,6 +395,110 @@ export default function LoginSettingsPage({
                     valueAsNumber: true,
                   })}
                 />
+                <h3 className="h6 mt-4 mb-3">{copy.socialLogin}</h3>
+                <Form.Check
+                  className="mb-4"
+                  type="switch"
+                  id="login-google-provider"
+                  label={copy.googleLogin}
+                  {...register("googleLoginEnabled")}
+                />
+                <Form.Check
+                  className="mb-4"
+                  type="switch"
+                  id="login-github-provider"
+                  label={copy.githubLogin}
+                  {...register("githubLoginEnabled")}
+                />
+                <Form.Check
+                  className="mb-4"
+                  type="switch"
+                  id="login-linkedin-provider"
+                  label={copy.linkedinLogin}
+                  {...register("linkedinLoginEnabled")}
+                />
+                <Form.Check
+                  className="mb-4"
+                  type="switch"
+                  id="login-microsoft-provider"
+                  label={copy.microsoftLogin}
+                  {...register("microsoftLoginEnabled")}
+                />
+                {socialProvidersLoaded && (
+                  <>
+                    <h3 className="h6 mt-4 mb-2">{copy.socialCredentials}</h3>
+                    <p className="text-body-secondary small">{copy.socialCredentialsHelp}</p>
+                    <div className="d-grid gap-3">
+                      {socialProviders.map((provider) => (
+                        <Card key={provider.provider} className="admin-panel-card">
+                          <Card.Body>
+                            <h4 className="h6">{providerLabel(provider.provider)}</h4>
+                            <Form.Group controlId={`social-${provider.provider}-client-id`}>
+                              <Form.Label>{copy.clientId}</Form.Label>
+                              <Form.Control
+                                value={provider.clientId}
+                                onChange={(event) =>
+                                  setSocialProviders((current) =>
+                                    current.map((item) =>
+                                      item.provider === provider.provider
+                                        ? { ...item, clientId: event.target.value }
+                                        : item,
+                                    ),
+                                  )
+                                }
+                              />
+                            </Form.Group>
+                            <Form.Group
+                              className="mt-3"
+                              controlId={`social-${provider.provider}-client-secret`}
+                            >
+                              <Form.Label>{copy.clientSecret}</Form.Label>
+                              <Form.Control
+                                type="password"
+                                autoComplete="new-password"
+                                placeholder={copy.clientSecretPlaceholder}
+                                value={provider.clientSecret}
+                                onChange={(event) =>
+                                  setSocialProviders((current) =>
+                                    current.map((item) =>
+                                      item.provider === provider.provider
+                                        ? { ...item, clientSecret: event.target.value }
+                                        : item,
+                                    ),
+                                  )
+                                }
+                              />
+                              {provider.clientSecretConfigured && (
+                                <Form.Text className="text-success">
+                                  {copy.clientSecretConfigured}
+                                </Form.Text>
+                              )}
+                            </Form.Group>
+                          </Card.Body>
+                        </Card>
+                      ))}
+                    </div>
+                    <div className="admin-form-actions mt-4">
+                      <Button
+                        type="button"
+                        disabled={socialProvidersSubmitting}
+                        onClick={saveSocialProviders}
+                      >
+                        {socialProvidersSubmitting ? (
+                          <Spinner
+                            animation="border"
+                            aria-hidden="true"
+                            className="me-2"
+                            size="sm"
+                          />
+                        ) : (
+                          <AdminActionIcon action="save" />
+                        )}
+                        {copy.socialCredentialsSave}
+                      </Button>
+                    </div>
+                  </>
+                )}
                 <SaveButton copy={copy.save} isSubmitting={isSubmitting} />
               </section>
 
