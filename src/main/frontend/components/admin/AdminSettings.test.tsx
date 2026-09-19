@@ -61,20 +61,20 @@ describe("AdminSettings", () => {
         "href",
         key === "general"
           ? "/admin/settings"
-          : `/admin/settings/${key === "passwordPolicy" ? "password-policy" : key === "otpPolicy" ? "otp-policy" : key === "bruteForce" ? "brute-force" : key === "userProfile" ? "user-profile" : key}`,
+          : `/admin/settings/${key === "bruteForce" ? "brute-force" : key === "userProfile" ? "user-profile" : key}`,
       );
     }
 
     fireEvent.click(
-      screen.getByRole("link", { name: dictionary.admin.settings.sections.otpPolicy }),
+      screen.getByRole("link", { name: dictionary.admin.settings.sections.bruteForce }),
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId("location")).toHaveTextContent("/admin/settings/otp-policy"),
+      expect(screen.getByTestId("location")).toHaveTextContent("/admin/settings/brute-force"),
     );
-    expect(screen.getByTestId("login-settings")).toHaveTextContent("otp-policy");
+    expect(screen.getByTestId("login-settings")).toHaveTextContent("brute-force");
     expect(
-      screen.getByRole("link", { name: dictionary.admin.settings.sections.otpPolicy }),
+      screen.getByRole("link", { name: dictionary.admin.settings.sections.bruteForce }),
     ).toHaveClass("active");
   });
 });

@@ -35,7 +35,8 @@ public class LocalizationSettingsService {
 
     private static final long SETTINGS_ID = 1L;
     private static final List<String> AVAILABLE_LOCALES = List.of("en", "tr");
-    private static final List<String> AVAILABLE_BUNDLES = List.of("backend", "common");
+    private static final List<String> AVAILABLE_BUNDLES =
+            List.of("login", "account", "admin", "email", "backend", "common");
     private static final ResourceBundle.Control NO_FALLBACK_CONTROL =
             ResourceBundle.Control.getNoFallbackControl(ResourceBundle.Control.FORMAT_PROPERTIES);
 
@@ -169,7 +170,7 @@ public class LocalizationSettingsService {
     public Map<String, String> bundledMessages(String locale, String bundle) {
         String normalizedLocale = normalizeLocale(locale);
         String normalizedBundle = validatePublicBundle(bundle);
-        if (!AVAILABLE_LOCALES.contains(normalizedLocale) || !"backend".equals(normalizedBundle)) {
+        if (!AVAILABLE_LOCALES.contains(normalizedLocale)) {
             return Map.of();
         }
         ResourceBundle resourceBundle =
@@ -178,6 +179,7 @@ public class LocalizationSettingsService {
                         Locale.forLanguageTag(normalizedLocale),
                         NO_FALLBACK_CONTROL);
         return resourceBundle.keySet().stream()
+                .filter(key -> belongsToBundle(key, normalizedBundle))
                 .sorted()
                 .collect(
                         Collectors.toMap(
@@ -275,8 +277,18 @@ public class LocalizationSettingsService {
     }
 
     private static String validatePublicBundle(String bundle) {
-        String normalized = bundle == null || bundle.isBlank() ? "common" : bundle;
+        String normalized = bundle == null || bundle.isBlank() ? "admin" : bundle;
         return validateBundle(normalized);
+    }
+
+    private static boolean belongsToBundle(String key, String bundle) {
+        if ("email".equals(bundle)) {
+            return key.startsWith("mail.");
+        }
+        if ("backend".equals(bundle)) {
+            return !key.startsWith("mail.");
+        }
+        return false;
     }
 
     private LocalizationSettingsEntity entity() {

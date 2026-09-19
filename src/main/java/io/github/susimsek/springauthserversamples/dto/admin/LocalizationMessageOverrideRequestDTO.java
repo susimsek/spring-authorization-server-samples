@@ -22,7 +22,7 @@ public record LocalizationMessageOverrideRequestDTO(
                 @Pattern(regexp = "[A-Za-z0-9_-]+")
                 @Schema(
                         description = "Message bundle namespace.",
-                        example = "common",
+                        example = "admin",
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 String bundle,
         @NotBlank

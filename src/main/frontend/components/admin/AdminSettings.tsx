@@ -19,10 +19,7 @@ import AdminLocalizationSettings, { type LocalizationSection } from "./AdminLoca
 const SETTINGS_SECTIONS = [
   "general",
   "login",
-  "webauthn",
   "email",
-  "password-policy",
-  "otp-policy",
   "brute-force",
   "sessions",
   "events",
@@ -67,24 +64,9 @@ export default function AdminSettings({
       href: "/admin/settings/login",
     },
     {
-      key: "webauthn",
-      label: dictionary.admin.settings.sections.webauthn,
-      href: "/admin/settings/webauthn",
-    },
-    {
       key: "email",
       label: dictionary.admin.settings.sections.email,
       href: "/admin/settings/email",
-    },
-    {
-      key: "password-policy",
-      label: dictionary.admin.settings.sections.passwordPolicy,
-      href: "/admin/settings/password-policy",
-    },
-    {
-      key: "otp-policy",
-      label: dictionary.admin.settings.sections.otpPolicy,
-      href: "/admin/settings/otp-policy",
     },
     {
       key: "brute-force",

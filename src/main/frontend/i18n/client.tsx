@@ -10,6 +10,7 @@ import type { Dictionary } from "./get-dictionary";
 import { detectLocale, persistLocale } from "./locale-cookie";
 import { setLocale } from "@/store/locale-slice";
 import { useAppDispatch } from "@/store/hooks";
+import { messageBundles } from "./bundles";
 
 export function ClientI18nProvider({ children }: { children: ReactNode }) {
   const [initialLocale] = useState(() => detectLocale(document.cookie, navigator.languages));
@@ -39,25 +40,27 @@ function LocaleOverrideEffects() {
     if (typeof fetch !== "function") return;
     let cancelled = false;
     void Promise.all(
-      (["en", "tr"] as const).map(async (locale) => {
-        try {
-          const response = await fetch(
-            `/api/auth/localization/messages?locale=${locale}&bundle=common`,
-            {
-              credentials: "same-origin",
-            },
-          );
-          if (!response.ok) return;
-          const messages = (await response.json()) as Record<string, string>;
-          if (!cancelled) {
-            Object.entries(messages).forEach(([key, value]) => {
-              i18n.addResource(locale, "common", key, value);
-            });
-          }
-        } catch {
-          // Bundled dictionaries remain the fallback when the override endpoint is unavailable.
-        }
-      }),
+      (["en", "tr"] as const).flatMap((locale) =>
+        messageBundles
+          .filter((bundle) => bundle !== "backend" && bundle !== "email")
+          .map(async (bundle) => {
+            try {
+              const response = await fetch(
+                `/api/auth/localization/messages?locale=${locale}&bundle=${bundle}`,
+                { credentials: "same-origin" },
+              );
+              if (!response.ok) return;
+              const messages = (await response.json()) as Record<string, string>;
+              if (!cancelled) {
+                Object.entries(messages).forEach(([key, value]) => {
+                  i18n.addResource(locale, "common", key, value);
+                });
+              }
+            } catch {
+              // Bundled dictionaries remain the fallback when the override endpoint is unavailable.
+            }
+          }),
+      ),
     );
     return () => {
       cancelled = true;

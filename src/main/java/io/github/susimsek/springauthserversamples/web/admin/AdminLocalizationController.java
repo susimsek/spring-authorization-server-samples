@@ -72,7 +72,7 @@ class AdminLocalizationController {
             @Parameter(description = "Locale filter.", example = "tr")
                     @RequestParam(defaultValue = "")
                     String locale,
-            @Parameter(description = "Message bundle filter.", example = "common")
+            @Parameter(description = "Message bundle filter.", example = "admin")
                     @RequestParam(defaultValue = "")
                     String bundle,
             @PageableDefault(

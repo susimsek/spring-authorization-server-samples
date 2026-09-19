@@ -252,6 +252,7 @@
       "events": "Olaylar",
       "clientScopes": "İstemci scope’ları",
       "serverInfo": "Sunucu bilgisi",
+      "authentication": "Kimlik doğrulama",
       "settings": "Ayarlar",
       "loginSettings": "Giriş ayarları",
       "emailSettings": "E-posta ayarları"
@@ -497,9 +498,19 @@
         "clientScope": "İstemci scope'u"
       }
     },
+    "authentication": {
+      "title": "Kimlik doğrulama",
+      "subtitle": "Kimlik doğrulama politikalarını ve giriş güvenliği davranışını yapılandırın.",
+      "policies": "Politikalar",
+      "policiesTitle": "Kimlik doğrulama politikaları",
+      "policiesDescription": "Parola, tek kullanımlık parola ve WebAuthn politikalarını yönetin.",
+      "passwordPolicy": "Parola politikası",
+      "otpPolicy": "OTP politikası",
+      "webauthnPolicy": "WebAuthn politikası"
+    },
     "settings": {
       "title": "Ayarlar",
-      "subtitle": "Giriş deneyimini, oturumları, güvenlik politikalarını, e-posta gönderimini ve olay denetimini yapılandırın.",
+      "subtitle": "Giriş deneyimini, oturumları, e-posta gönderimini ve olay denetimini yapılandırın.",
       "navigation": "Ayar bölümleri",
       "issuer": "Yayıncı",
       "generalTitle": "Genel ayarlar",
@@ -509,10 +520,7 @@
       "sections": {
         "general": "Genel",
         "login": "Giriş",
-        "webauthn": "WebAuthn politikası",
         "email": "E-posta",
-        "passwordPolicy": "Parola politikası",
-        "otpPolicy": "OTP politikası",
         "bruteForce": "Brute force",
         "sessions": "Oturumlar",
         "events": "Olaylar",
@@ -912,6 +920,14 @@
       "effectiveSubtitle": "Yerleşik mesajlar ile locale geçersiz kılmaları birleştirildikten sonraki frontend bundle’ını arayın.",
       "effectiveEmpty": "Etkin mesaj bulunamadı.",
       "bundle": "Bundle",
+      "bundleNames": {
+        "login": "Giriş",
+        "account": "Hesap",
+        "admin": "Yönetim konsolu",
+        "email": "E-posta",
+        "backend": "Backend mesajları",
+        "common": "Ortak mesajlar"
+      },
       "source": "Kaynak",
       "bundled": "Yerleşik",
       "override": "Geçersiz kılma",
