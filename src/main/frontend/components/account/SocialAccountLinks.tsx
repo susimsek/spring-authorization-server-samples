@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, Spinner, Stack } from "react-bootstrap";
+import { Button, Card, Spinner, Stack } from "react-bootstrap";
 import { useSearchParams } from "@/routing/navigation";
 import { ConfirmModal } from "@/components/admin/ConfirmModal";
 import { ActionIcon } from "@/components/shared/ActionIcon";
@@ -39,6 +39,12 @@ export function SocialAccountLinks({ dictionary }: { dictionary: Dictionary }) {
       .catch(() => setError(true));
   }, [accessToken]);
 
+  useEffect(() => {
+    if (searchParams.get("social_linked") === "1") {
+      alerts.addAlert(copy.success);
+    }
+  }, [alerts, copy.success, searchParams]);
+
   const startLink = (provider: string) => {
     setStartingProvider(provider);
     window.open(`/account/social-links/${encodeURIComponent(provider)}/start`, "_self");
@@ -74,10 +80,7 @@ export function SocialAccountLinks({ dictionary }: { dictionary: Dictionary }) {
         <div className="small text-body-secondary">{copy.help}</div>
       </Card.Header>
       <Card.Body className="p-4">
-        {searchParams.get("social_linked") === "1" && (
-          <Alert variant="success">{copy.success}</Alert>
-        )}
-        {error && <Alert variant="danger">{copy.error}</Alert>}
+        {error && <div className="alert alert-danger">{copy.error}</div>}
         {!links && !error ? (
           <div className="d-flex align-items-center gap-2" role="status">
             <Spinner animation="border" size="sm" />

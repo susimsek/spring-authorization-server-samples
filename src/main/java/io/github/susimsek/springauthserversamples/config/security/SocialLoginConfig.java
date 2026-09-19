@@ -49,16 +49,43 @@ public class SocialLoginConfig {
                         addRegistration(
                                 registrations,
                                 provider,
-                                switch (provider.registrationId()) {
+                                switch (provider.providerType()) {
                                     case "google" -> SocialLoginConfig::google;
                                     case "github" -> SocialLoginConfig::github;
                                     case "linkedin" -> SocialLoginConfig::linkedin;
                                     case "microsoft" -> SocialLoginConfig::microsoft;
-                                    default ->
-                                            throw new IllegalArgumentException(
-                                                    "Unsupported social provider");
+                                    default -> SocialLoginConfig::genericOidc;
                                 }));
         return registrations;
+    }
+
+    private static ClientRegistration genericOidc(ProviderCredentials provider) {
+        if (provider.authorizationUri() == null || provider.tokenUri() == null) {
+            throw new IllegalArgumentException("Authorization and token endpoints are required");
+        }
+        ClientRegistration.Builder builder =
+                ClientRegistration.withRegistrationId(provider.alias())
+                        .clientId(provider.clientId())
+                        .clientSecret(provider.clientSecret())
+                        .clientAuthenticationMethod(
+                                "client_secret_post".equals(provider.clientAuthenticationMethod())
+                                        ? ClientAuthenticationMethod.CLIENT_SECRET_POST
+                                        : ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                        .redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
+                        .scope(provider.scopes().split(","))
+                        .authorizationUri(provider.authorizationUri())
+                        .tokenUri(provider.tokenUri())
+                        .userInfoUri(provider.userInfoUri())
+                        .userNameAttributeName(provider.userNameAttribute())
+                        .clientName(provider.displayName());
+        if (provider.jwkSetUri() != null && !provider.jwkSetUri().isBlank()) {
+            builder.jwkSetUri(provider.jwkSetUri());
+        }
+        if (provider.issuerUri() != null && !provider.issuerUri().isBlank()) {
+            builder.issuerUri(provider.issuerUri());
+        }
+        return builder.build();
     }
 
     private static void addRegistration(
@@ -157,7 +184,7 @@ public class SocialLoginConfig {
                 .userNameAttributeName("sub")
                 .clientSettings(
                         ClientRegistration.ClientSettings.builder()
-                                .requireProofKey(!"linkedin".equals(provider.registrationId()))
+                                .requireProofKey(!"linkedin".equals(provider.providerType()))
                                 .build())
                 .clientName(capitalize(provider.registrationId()))
                 .build();

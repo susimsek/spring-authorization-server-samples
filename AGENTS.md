@@ -107,6 +107,12 @@ This repo is a Java 25 + Spring Boot 4.1 sample application for the Authorizatio
   while it is busy; do not add a separate "Saving..." or "Signing in..." label. Restore the normal
   icon when the operation completes. This applies to login, account, administration, MFA, and
   required-action flows, including save, create, delete, and verification actions.
+- Administration list pages must render their primary create action in the shared
+  `AdminPageHeader` actions area, aligned with the page title as on the Users page. Use the
+  standard `btn-primary` style and `AdminActionIcon action="add"`, preserve the existing
+  authorization check, and do not place the create button inside `ResourceFilters`. Create pages
+  must keep their breadcrumb directly above the page header so all resource screens use the same
+  visual order.
 - Frontend validation messages must remain inside the same field group immediately below the input
   or input group. Use React-Bootstrap's built-in `Form.Control.Feedback` spacing so the
   input-to-message vertical gap is consistent across login, account, administration, and

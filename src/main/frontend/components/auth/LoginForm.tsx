@@ -46,7 +46,7 @@ export function LoginForm({ dictionary }: LoginFormProps) {
           setSocialProviders(
             value.flatMap((provider) => {
               if (typeof provider === "string") {
-                return [{ provider, configured: true }];
+                return [{ provider, providerType: provider, configured: true }];
               }
               if (
                 provider &&
@@ -56,7 +56,16 @@ export function LoginForm({ dictionary }: LoginFormProps) {
                 "configured" in provider &&
                 typeof provider.configured === "boolean"
               ) {
-                return [{ provider: provider.provider, configured: provider.configured }];
+                return [
+                  {
+                    provider: provider.provider,
+                    providerType:
+                      "providerType" in provider && typeof provider.providerType === "string"
+                        ? provider.providerType
+                        : provider.provider,
+                    configured: provider.configured,
+                  },
+                ];
               }
               return [];
             }),
@@ -191,6 +200,7 @@ const SOCIAL_PROVIDER_ICONS: Record<string, IconName> = {
 
 type SocialProvider = {
   provider: string;
+  providerType: string;
   configured: boolean;
 };
 
@@ -202,10 +212,7 @@ function SocialLoginButtons({
   dictionary: LoginFormProps["dictionary"];
 }) {
   const [submittingProvider, setSubmittingProvider] = useState<string | null>(null);
-  const supportedProviders = providers.filter(
-    (provider) =>
-      SOCIAL_PROVIDER_LABELS[provider.provider] && SOCIAL_PROVIDER_ICONS[provider.provider],
-  );
+  const supportedProviders = providers.filter((provider) => provider.provider.length > 0);
 
   if (supportedProviders.length === 0) return null;
 
@@ -217,35 +224,37 @@ function SocialLoginButtons({
         <hr className="flex-grow-1 my-0" />
       </div>
       <div className="d-flex justify-content-center gap-2">
-        {supportedProviders.map((provider) => (
-          <Button
-            key={provider.provider}
-            as="a"
-            href={provider.configured ? `/oauth2/authorization/${provider.provider}` : undefined}
-            role="button"
-            variant="secondary"
-            size="lg"
-            className="social-login-button p-0"
-            title={`${dictionary.login.socialLogin} ${SOCIAL_PROVIDER_LABELS[provider.provider]}`}
-            aria-label={`${dictionary.login.socialLogin} ${SOCIAL_PROVIDER_LABELS[provider.provider]}`}
-            disabled={!provider.configured || submittingProvider !== null}
-            aria-disabled={!provider.configured || submittingProvider !== null}
-            onClick={(event) => {
-              if (!provider.configured || submittingProvider !== null) {
-                event.preventDefault();
-                return;
-              }
-              setSubmittingProvider(provider.provider);
-            }}
-          >
-            {submittingProvider === provider.provider && (
-              <Spinner animation="border" aria-hidden="true" size="sm" />
-            )}
-            {submittingProvider !== provider.provider && (
-              <Icon icon={SOCIAL_PROVIDER_ICONS[provider.provider]} size="lg" />
-            )}
-          </Button>
-        ))}
+        {supportedProviders.map((provider) => {
+          const label = SOCIAL_PROVIDER_LABELS[provider.providerType] ?? provider.provider;
+          const icon: IconName = SOCIAL_PROVIDER_ICONS[provider.providerType] ?? "globe";
+          return (
+            <Button
+              key={provider.provider}
+              as="a"
+              href={provider.configured ? `/oauth2/authorization/${provider.provider}` : undefined}
+              role="button"
+              variant="secondary"
+              size="lg"
+              className="social-login-button p-0"
+              title={`${dictionary.login.socialLogin} ${label}`}
+              aria-label={`${dictionary.login.socialLogin} ${label}`}
+              disabled={!provider.configured || submittingProvider !== null}
+              aria-disabled={!provider.configured || submittingProvider !== null}
+              onClick={(event) => {
+                if (!provider.configured || submittingProvider !== null) {
+                  event.preventDefault();
+                  return;
+                }
+                setSubmittingProvider(provider.provider);
+              }}
+            >
+              {submittingProvider === provider.provider && (
+                <Spinner animation="border" aria-hidden="true" size="sm" />
+              )}
+              {submittingProvider !== provider.provider && <Icon icon={icon} size="lg" />}
+            </Button>
+          );
+        })}
       </div>
     </div>
   );

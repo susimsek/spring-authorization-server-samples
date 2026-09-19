@@ -10,6 +10,11 @@ public record SocialProviderDTO(
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 String provider,
         @Schema(
+                        description = "Built-in provider type used for display and icon selection.",
+                        example = "microsoft",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                String providerType,
+        @Schema(
                         description =
                                 "Whether the provider has a usable Client ID and Client Secret.",
                         example = "false",

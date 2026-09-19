@@ -5,11 +5,13 @@ import io.github.susimsek.springauthserversamples.config.security.SocialLoginPro
 import io.github.susimsek.springauthserversamples.config.security.SocialLoginSecretCipher;
 import io.github.susimsek.springauthserversamples.domain.LoginSettingsEntity;
 import io.github.susimsek.springauthserversamples.domain.SocialIdentityEntity;
+import io.github.susimsek.springauthserversamples.domain.SocialProviderEntity;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminSocialProviderDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminSocialProviderRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminSocialProvidersRequestDTO;
 import io.github.susimsek.springauthserversamples.repository.LoginSettingsRepository;
 import io.github.susimsek.springauthserversamples.repository.SocialIdentityRepository;
+import io.github.susimsek.springauthserversamples.repository.SocialProviderRepository;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
@@ -33,6 +35,7 @@ public class SocialProviderSettingsService {
 
     private final LoginSettingsRepository repository;
     private final SocialIdentityRepository socialIdentityRepository;
+    private final SocialProviderRepository socialProviderRepository;
     private final SocialLoginProperties properties;
     private final SocialLoginSecretCipher secretCipher;
     private final ObjectProvider<ReloadableClientRegistrationRepository>
@@ -57,8 +60,8 @@ public class SocialProviderSettingsService {
         return effectiveProviders(settings())
                 .filter(
                         provider ->
-                                provider.registrationId().equals(value)
-                                        || provider.alias().equals(value))
+                                provider.registrationId().equalsIgnoreCase(value)
+                                        || provider.alias().equalsIgnoreCase(value))
                 .findFirst()
                 .orElse(null);
     }
@@ -137,8 +140,83 @@ public class SocialProviderSettingsService {
 
     private java.util.stream.Stream<ProviderCredentials> effectiveProviders(
             LoginSettingsEntity settings) {
-        return Arrays.stream(new String[] {"google", "github", "linkedin", "microsoft"})
-                .map(provider -> credentials(provider, settings));
+        Set<String> builtIns = Set.of("google", "github", "linkedin", "microsoft");
+        java.util.stream.Stream<ProviderCredentials> seeded =
+                Arrays.stream(new String[] {"google", "github", "linkedin", "microsoft"})
+                        .map(provider -> merge(credentials(provider, settings), provider));
+        java.util.stream.Stream<ProviderCredentials> custom =
+                socialProviderRepository.findAll().stream()
+                        .filter(entity -> !builtIns.contains(entity.getRegistrationId()))
+                        .map(this::credentials);
+        return java.util.stream.Stream.concat(seeded, custom);
+    }
+
+    private ProviderCredentials merge(ProviderCredentials legacy, String registrationId) {
+        return socialProviderRepository
+                .findByRegistrationId(registrationId)
+                .map(entity -> credentials(entity, legacy))
+                .orElse(legacy);
+    }
+
+    private ProviderCredentials credentials(SocialProviderEntity entity) {
+        String secret = entity.getClientSecretEncrypted();
+        return new ProviderCredentials(
+                entity.getRegistrationId(),
+                entity.getAlias(),
+                entity.getDisplayName(),
+                entity.getProviderType(),
+                entity.getClientId(),
+                secret == null || secret.isBlank() ? "" : secretCipher.decrypt(secret),
+                entity.isEnabled(),
+                entity.isHideOnLogin(),
+                entity.isAccountLinkingOnly(),
+                entity.isTrustEmail(),
+                entity.isMfaRequired(),
+                entity.getRequiredClaims(),
+                entity.isStoreTokens(),
+                entity.isStoredTokensReadable(),
+                entity.getGuiOrder(),
+                entity.getShowInAccountConsole(),
+                entity.getAuthorizationUri(),
+                entity.getTokenUri(),
+                entity.getUserInfoUri(),
+                entity.getJwkSetUri(),
+                entity.getIssuerUri(),
+                entity.getClientAuthenticationMethod(),
+                entity.getScopes(),
+                entity.getUserNameAttribute());
+    }
+
+    private ProviderCredentials credentials(
+            SocialProviderEntity entity, ProviderCredentials legacy) {
+        ProviderCredentials dynamic = credentials(entity);
+        return dynamic.clientId() == null || dynamic.clientId().isBlank()
+                ? new ProviderCredentials(
+                        dynamic.registrationId(),
+                        dynamic.alias(),
+                        dynamic.displayName(),
+                        dynamic.providerType(),
+                        legacy.clientId(),
+                        legacy.clientSecret(),
+                        dynamic.enabled(),
+                        dynamic.hideOnLogin(),
+                        dynamic.accountLinkingOnly(),
+                        dynamic.trustEmail(),
+                        dynamic.mfaRequired(),
+                        dynamic.requiredClaims(),
+                        dynamic.storeTokens(),
+                        dynamic.storedTokensReadable(),
+                        dynamic.guiOrder(),
+                        dynamic.showInAccountConsole(),
+                        dynamic.authorizationUri(),
+                        dynamic.tokenUri(),
+                        dynamic.userInfoUri(),
+                        dynamic.jwkSetUri(),
+                        dynamic.issuerUri(),
+                        dynamic.clientAuthenticationMethod(),
+                        dynamic.scopes(),
+                        dynamic.userNameAttribute())
+                : dynamic;
     }
 
     private ProviderCredentials credentials(String provider, LoginSettingsEntity settings) {
@@ -151,6 +229,8 @@ public class SocialProviderSettingsService {
         return new ProviderCredentials(
                 provider,
                 firstNonBlank(storedAlias(provider, settings), provider),
+                capitalize(provider),
+                provider,
                 clientId,
                 clientSecret,
                 enabled(provider, settings),
@@ -162,7 +242,15 @@ public class SocialProviderSettingsService {
                 storeTokens(provider, settings),
                 storedTokensReadable(provider, settings),
                 guiOrder(provider, settings),
-                showInAccountConsole(provider, settings));
+                showInAccountConsole(provider, settings),
+                null,
+                null,
+                null,
+                null,
+                null,
+                "client_secret_basic",
+                "openid,profile,email",
+                "sub");
     }
 
     private AdminSocialProviderDTO toAdminDTO(ProviderCredentials credentials) {
@@ -545,6 +633,10 @@ public class SocialProviderSettingsService {
         return result;
     }
 
+    private static String capitalize(String value) {
+        return Character.toUpperCase(value.charAt(0)) + value.substring(1);
+    }
+
     private static String firstNonBlank(String first, String fallback) {
         return first == null || first.isBlank() ? (fallback == null ? "" : fallback) : first;
     }
@@ -574,6 +666,8 @@ public class SocialProviderSettingsService {
     public record ProviderCredentials(
             String registrationId,
             String alias,
+            String displayName,
+            String providerType,
             String clientId,
             String clientSecret,
             boolean enabled,
@@ -585,11 +679,21 @@ public class SocialProviderSettingsService {
             boolean storeTokens,
             boolean storedTokensReadable,
             int guiOrder,
-            String showInAccountConsole)
+            String showInAccountConsole,
+            String authorizationUri,
+            String tokenUri,
+            String userInfoUri,
+            String jwkSetUri,
+            String issuerUri,
+            String clientAuthenticationMethod,
+            String scopes,
+            String userNameAttribute)
             implements Comparable<ProviderCredentials> {
         public ProviderCredentials(String registrationId, String clientId, String clientSecret) {
             this(
                     registrationId,
+                    registrationId,
+                    capitalize(registrationId),
                     registrationId,
                     clientId,
                     clientSecret,
@@ -602,7 +706,15 @@ public class SocialProviderSettingsService {
                     false,
                     false,
                     0,
-                    "always");
+                    "always",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    "client_secret_basic",
+                    "openid,profile,email",
+                    "sub");
         }
 
         public ProviderCredentials(
@@ -618,6 +730,8 @@ public class SocialProviderSettingsService {
             this(
                     registrationId,
                     alias,
+                    capitalize(registrationId),
+                    registrationId,
                     clientId,
                     clientSecret,
                     enabled,
@@ -629,7 +743,15 @@ public class SocialProviderSettingsService {
                     false,
                     false,
                     guiOrder,
-                    showInAccountConsole);
+                    showInAccountConsole,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    "client_secret_basic",
+                    "openid,profile,email",
+                    "sub");
         }
 
         public ProviderCredentials(
@@ -647,6 +769,8 @@ public class SocialProviderSettingsService {
             this(
                     registrationId,
                     alias,
+                    capitalize(registrationId),
+                    registrationId,
                     clientId,
                     clientSecret,
                     enabled,
@@ -658,7 +782,15 @@ public class SocialProviderSettingsService {
                     storeTokens,
                     storedTokensReadable,
                     guiOrder,
-                    showInAccountConsole);
+                    showInAccountConsole,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    "client_secret_basic",
+                    "openid,profile,email",
+                    "sub");
         }
 
         public ProviderCredentials(
@@ -679,6 +811,8 @@ public class SocialProviderSettingsService {
             this(
                     registrationId,
                     alias,
+                    capitalize(registrationId),
+                    registrationId,
                     clientId,
                     clientSecret,
                     enabled,
@@ -690,7 +824,57 @@ public class SocialProviderSettingsService {
                     storeTokens,
                     storedTokensReadable,
                     guiOrder,
-                    showInAccountConsole);
+                    showInAccountConsole,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    "client_secret_basic",
+                    "openid,profile,email",
+                    "sub");
+        }
+
+        public ProviderCredentials(
+                String registrationId,
+                String alias,
+                String clientId,
+                String clientSecret,
+                boolean enabled,
+                boolean hideOnLogin,
+                boolean accountLinkingOnly,
+                boolean trustEmail,
+                boolean mfaRequired,
+                String requiredClaims,
+                boolean storeTokens,
+                boolean storedTokensReadable,
+                int guiOrder,
+                String showInAccountConsole) {
+            this(
+                    registrationId,
+                    alias,
+                    capitalize(registrationId),
+                    registrationId,
+                    clientId,
+                    clientSecret,
+                    enabled,
+                    hideOnLogin,
+                    accountLinkingOnly,
+                    trustEmail,
+                    mfaRequired,
+                    requiredClaims,
+                    storeTokens,
+                    storedTokensReadable,
+                    guiOrder,
+                    showInAccountConsole,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    "client_secret_basic",
+                    "openid,profile,email",
+                    "sub");
         }
 
         public boolean configured() {
@@ -704,6 +888,12 @@ public class SocialProviderSettingsService {
         public int compareTo(ProviderCredentials other) {
             int order = Integer.compare(guiOrder, other.guiOrder);
             return order != 0 ? order : registrationId.compareTo(other.registrationId);
+        }
+
+        private static String capitalize(String value) {
+            return value == null || value.isBlank()
+                    ? "Provider"
+                    : Character.toUpperCase(value.charAt(0)) + value.substring(1);
         }
     }
 }

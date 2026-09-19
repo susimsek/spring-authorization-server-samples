@@ -7,9 +7,11 @@ import config from "@/i18n.config";
 import { SocialAccountLinks } from "./SocialAccountLinks";
 
 const mockRequestAccount = jest.fn();
+let mockSearchParams = new URLSearchParams();
+const mockAddAlert = jest.fn();
 
 jest.mock("@/routing/navigation", () => ({
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => mockSearchParams,
 }));
 
 jest.mock("@/components/account/AccountAuthProvider", () => ({
@@ -18,7 +20,7 @@ jest.mock("@/components/account/AccountAuthProvider", () => ({
 
 jest.mock("@/components/auth/ConsoleAlerts", () => ({
   useConsoleAlerts: () => ({
-    addAlert: jest.fn(),
+    addAlert: mockAddAlert,
     addError: jest.fn(),
   }),
 }));
@@ -44,6 +46,19 @@ function renderSettings() {
 describe("social account links", () => {
   beforeEach(() => {
     mockRequestAccount.mockReset();
+    mockSearchParams = new URLSearchParams();
+    mockAddAlert.mockReset();
+  });
+
+  it("routes the link callback success through the shared alert", async () => {
+    mockSearchParams = new URLSearchParams("social_linked=1");
+    mockRequestAccount.mockResolvedValue([]);
+
+    renderSettings();
+
+    await waitFor(() =>
+      expect(mockAddAlert).toHaveBeenCalledWith(dictionary.account.security.socialLinks.success),
+    );
   });
 
   it("shows connect for unlinked providers and remove for linked providers", async () => {

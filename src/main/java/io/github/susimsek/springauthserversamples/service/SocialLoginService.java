@@ -204,7 +204,12 @@ public class SocialLoginService {
                                 isProviderEnabled(provider.registrationId())
                                         && !provider.hideOnLogin()
                                         && !provider.accountLinkingOnly())
-                .map(provider -> new SocialProviderDTO(provider.alias(), provider.configured()))
+                .map(
+                        provider ->
+                                new SocialProviderDTO(
+                                        provider.alias(),
+                                        provider.registrationId(),
+                                        provider.configured()))
                 .toList();
     }
 
@@ -273,8 +278,13 @@ public class SocialLoginService {
         }
     }
 
-    private static String normalizeProvider(String provider) {
+    private String normalizeProvider(String provider) {
         String normalized = provider == null ? "" : provider.trim().toLowerCase(Locale.ROOT);
+        SocialProviderSettingsService.ProviderCredentials configured =
+                socialProviderSettingsService.provider(normalized);
+        if (configured != null) {
+            return configured.registrationId();
+        }
         if (!SUPPORTED_PROVIDERS.contains(normalized)) {
             throw ApiException.badRequest(
                     "provider", ApiErrorCode.INVALID_REQUEST, "The social provider is invalid");
@@ -282,7 +292,14 @@ public class SocialLoginService {
         return normalized;
     }
 
-    private static String displayName(String provider) {
+    private String displayName(String provider) {
+        SocialProviderSettingsService.ProviderCredentials configured =
+                socialProviderSettingsService.provider(provider);
+        if (configured != null
+                && configured.displayName() != null
+                && !configured.displayName().isBlank()) {
+            return configured.displayName();
+        }
         return switch (provider) {
             case "github" -> "GitHub";
             case "linkedin" -> "LinkedIn";

@@ -8,6 +8,7 @@ import { useDictionary } from "@/i18n/client";
 import { adminRequest } from "@/lib/admin-api";
 
 import { AdminPageHeader } from "./AdminPageHeader";
+import { AdminBreadcrumb } from "./AdminBreadcrumb";
 import { useAdminAuth } from "./AdminAuthProvider";
 import AdminEventSettings from "./AdminEventSettings";
 import AdminUserProfileSettings from "./AdminUserProfileSettings";
@@ -105,9 +106,23 @@ export default function AdminSettings({
     href: string;
   }>;
   const tabs = access?.isAdmin ? allTabs : allTabs.filter((tab) => tab.key === "events");
-
   return (
     <>
+      {localizationAction === "create" && (
+        <AdminBreadcrumb
+          items={[
+            {
+              label: dictionary.admin.settings.sections.localization,
+              href: "/admin/settings/localization",
+            },
+            {
+              label: dictionary.admin.localization.overridesTab,
+              href: "/admin/settings/localization/overrides",
+            },
+            { label: dictionary.admin.localization.create },
+          ]}
+        />
+      )}
       <AdminPageHeader
         title={dictionary.admin.settings.title}
         description={dictionary.admin.settings.subtitle}

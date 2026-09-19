@@ -15,6 +15,7 @@ import io.github.susimsek.springauthserversamples.domain.LoginSettingsEntity;
 import io.github.susimsek.springauthserversamples.domain.OAuth2KeyEntity;
 import io.github.susimsek.springauthserversamples.domain.RegisteredClientEntity;
 import io.github.susimsek.springauthserversamples.domain.RequiredActionDefinitionEntity;
+import io.github.susimsek.springauthserversamples.domain.SocialProviderEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.domain.UserProfileAttributeDefinitionEntity;
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
@@ -98,6 +99,7 @@ class CacheConfigTest {
         assertThat(cacheManager.getCache(RegisteredClientEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(RequiredActionDefinitionEntity.class.getName()))
                 .isNotNull();
+        assertThat(cacheManager.getCache(SocialProviderEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(UserEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(UserEntity.class.getName() + ".authorities")).isNotNull();
         assertThat(cacheManager.getCache(UserEntity.class.getName() + ".groups")).isNotNull();
