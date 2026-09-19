@@ -57,6 +57,9 @@ public class SocialIdentityEntity {
     @Column(name = "token_scopes", length = 2000)
     private String tokenScopes;
 
+    @Column(name = "mapped_claims", length = 8000)
+    private String mappedClaims;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;

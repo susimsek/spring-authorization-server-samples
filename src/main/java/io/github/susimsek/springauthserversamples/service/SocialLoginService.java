@@ -32,6 +32,8 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 @RequiredArgsConstructor
@@ -50,6 +52,8 @@ public class SocialLoginService {
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private final LoginSettingsService loginSettingsService;
     private final SocialProviderSettingsService socialProviderSettingsService;
+    private final SocialIdentityMapperService socialIdentityMapperService;
+    private final ObjectMapper objectMapper;
     private final UserAccessInvalidationService userAccessInvalidationService;
     private final AdminAuditEventService auditEventService;
 
@@ -72,12 +76,14 @@ public class SocialLoginService {
                 socialIdentityRepository.findByProviderAndSubject(provider, subject).orElse(null);
         if (existing != null) {
             syncPicture(existing.getUser(), socialPicture(attributes));
+            persistMappedClaims(
+                    existing, applyMappers(provider, attributes, existing.getUser(), false));
             return existing.getUser().getUsername();
         }
 
         String email = normalizeEmail(attribute(attributes, "email"));
         if (email != null && userRepository.findByEmailIgnoreCase(email).isPresent()) {
-            throw new SocialAccountLinkRequiredException(provider, subject, email);
+            throw new SocialAccountLinkRequiredException(provider, subject, email, attributes);
         }
 
         AuthorityEntity userAuthority =
@@ -104,7 +110,9 @@ public class SocialLoginService {
         user.setTemporaryPassword(false);
         user.setAuthorities(java.util.Set.of(userAuthority));
         UserEntity saved = userRepository.save(user);
-        socialIdentityRepository.save(new SocialIdentityEntity(provider, subject, saved));
+        SocialIdentityEntity identity = new SocialIdentityEntity(provider, subject, saved);
+        persistMappedClaims(identity, applyMappers(provider, attributes, saved, true));
+        socialIdentityRepository.save(identity);
         return saved.getUsername();
     }
 
@@ -126,6 +134,17 @@ public class SocialLoginService {
                 socialProviderSettingsService.provider(provider));
         UserEntity user = link(username, provider, subject);
         syncPicture(user, socialPicture(authentication.getPrincipal().getAttributes()));
+        SocialIdentityEntity identity =
+                socialIdentityRepository
+                        .findByProviderAndSubject(provider, subject)
+                        .orElseThrow(
+                                () ->
+                                        new IllegalStateException(
+                                                "The social identity link was not persisted"));
+        persistMappedClaims(
+                identity,
+                applyMappers(provider, authentication.getPrincipal().getAttributes(), user, true));
+        socialIdentityRepository.save(identity);
         return username;
     }
 
@@ -140,7 +159,19 @@ public class SocialLoginService {
                     "The pending social account link is invalid");
         }
         ensureProviderEnabled(provider);
-        link(username, provider, subject);
+        UserEntity user = link(username, provider, subject);
+        Map<String, Object> attributes = pendingAttributes(pendingLink);
+        if (!attributes.isEmpty()) {
+            SocialIdentityEntity identity =
+                    socialIdentityRepository
+                            .findByProviderAndSubject(provider, subject)
+                            .orElseThrow(
+                                    () ->
+                                            new IllegalStateException(
+                                                    "The social identity link was not persisted"));
+            persistMappedClaims(identity, applyMappers(provider, attributes, user, true));
+            socialIdentityRepository.save(identity);
+        }
     }
 
     public Set<String> linkedProviders(String username) {
@@ -385,6 +416,16 @@ public class SocialLoginService {
         return value == null ? null : String.valueOf(value).trim();
     }
 
+    private static Map<String, Object> pendingAttributes(Map<?, ?> pendingLink) {
+        Object value = pendingLink.get("attributes");
+        if (!(value instanceof Map<?, ?> attributes)) {
+            return Map.of();
+        }
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        attributes.forEach((key, item) -> result.put(String.valueOf(key), item));
+        return result;
+    }
+
     private static String attribute(Map<String, Object> attributes, String name) {
         Object value = attributes.get(name);
         return value == null ? null : String.valueOf(value).trim();
@@ -423,6 +464,27 @@ public class SocialLoginService {
 
     private static String lastName(Map<String, Object> attributes) {
         return firstNonBlank(attributes, "family_name", "localizedLastName", "last_name");
+    }
+
+    private Map<String, Map<String, Object>> applyMappers(
+            String provider, Map<String, Object> attributes, UserEntity user, boolean firstLogin) {
+        SocialProviderSettingsService.ProviderCredentials configured =
+                socialProviderSettingsService.provider(provider);
+        String alias = configured == null ? provider : configured.alias();
+        return socialIdentityMapperService.apply(alias, attributes, user, firstLogin);
+    }
+
+    private void persistMappedClaims(
+            SocialIdentityEntity identity, Map<String, Map<String, Object>> mappedClaims) {
+        if (mappedClaims == null || mappedClaims.isEmpty()) {
+            return;
+        }
+        try {
+            identity.setMappedClaims(objectMapper.writeValueAsString(mappedClaims));
+        } catch (JacksonException exception) {
+            throw new IllegalStateException(
+                    "The social provider claims could not be stored", exception);
+        }
     }
 
     private void syncPicture(UserEntity user, String pictureUrl) {

@@ -31,6 +31,7 @@
 			<column name="access_token_expires_at" type="timestamp"/>
 			<column name="token_type" type="varchar(50)"/>
 			<column name="token_scopes" type="varchar(2000)"/>
+			<column name="mapped_claims" type="varchar(8000)"/>
 			<column name="user_id" type="bigint">
 				<constraints nullable="false"/>
 			</column>

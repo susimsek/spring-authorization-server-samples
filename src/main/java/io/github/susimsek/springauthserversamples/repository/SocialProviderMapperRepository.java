@@ -22,6 +22,8 @@ public interface SocialProviderMapperRepository
 
     boolean existsByProviderAliasAndNameIgnoreCase(String providerAlias, String name);
 
+    List<SocialProviderMapperEntity> findAllByProviderAliasIgnoreCase(String providerAlias);
+
     long countByProviderAlias(String providerAlias);
 
     @Query(

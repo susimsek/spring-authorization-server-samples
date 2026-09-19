@@ -196,6 +196,64 @@ public class UserProfileService {
         return saveUserAttributes(user, values, actor);
     }
 
+    /** Persists mapper-owned built-in fields without replacing the stable username. */
+    @Transactional
+    public void saveMappedUser(UserEntity user, boolean firstLogin) {
+        userRepository.save(user);
+        if (!firstLogin) {
+            userAccessInvalidationService.invalidate(user.getUsername());
+            auditEventService.record("social.mapper.user.updated", "user", user.getId().toString());
+        }
+    }
+
+    /** Merges only the profile attributes supplied by an identity-provider mapper. */
+    @Transactional
+    public void mergeMappedAttributes(
+            UserEntity user, Map<String, List<String>> mappedValues, String actor) {
+        if (mappedValues == null || mappedValues.isEmpty()) {
+            return;
+        }
+        Map<String, UserProfileAttributeDefinitionEntity> definitions =
+                definitionRepository.findAllByEnabledTrueOrderByDisplayOrderAscNameAsc().stream()
+                        .filter(definition -> !isBuiltIn(definition))
+                        .collect(
+                                Collectors.toMap(
+                                        UserProfileAttributeDefinitionEntity::getName, d -> d));
+        List<UserProfileAttributeEntity> rows = new ArrayList<>();
+        boolean changed = false;
+        for (Map.Entry<String, List<String>> entry : mappedValues.entrySet()) {
+            UserProfileAttributeDefinitionEntity definition = definitions.get(entry.getKey());
+            if (definition == null) {
+                continue;
+            }
+            List<String> values =
+                    entry.getValue() == null
+                            ? List.of()
+                            : entry.getValue().stream()
+                                    .filter(Objects::nonNull)
+                                    .map(String::trim)
+                                    .filter(value -> !value.isEmpty())
+                                    .toList();
+            if (!definition.isMultivalued() && values.size() > 1) {
+                values = values.subList(0, 1);
+            }
+            values.forEach(value -> validateValue(definition, value));
+            attributeRepository.deleteAllByUserIdAndDefinitionId(user.getId(), definition.getId());
+            for (int index = 0; index < values.size(); index++) {
+                rows.add(
+                        new UserProfileAttributeEntity(user, definition, index, values.get(index)));
+            }
+            changed = true;
+        }
+        if (changed) {
+            entityManager.flush();
+            attributeRepository.saveAll(rows);
+            userAccessInvalidationService.invalidate(user.getUsername());
+            auditEventService.record(
+                    "social.mapper.profile.updated", "user", user.getId().toString());
+        }
+    }
+
     private UserProfileAttributesDTO saveUserAttributes(
             UserEntity user, Map<String, List<String>> values, String actor) {
         Map<String, List<String>> normalized = validateValues(values == null ? Map.of() : values);

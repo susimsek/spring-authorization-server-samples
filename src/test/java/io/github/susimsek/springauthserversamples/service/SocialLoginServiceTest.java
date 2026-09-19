@@ -32,6 +32,7 @@ import org.springframework.security.oauth2.client.authentication.OAuth2Authentic
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import tools.jackson.databind.ObjectMapper;
 
 @ExtendWith(MockitoExtension.class)
 class SocialLoginServiceTest {
@@ -48,6 +49,8 @@ class SocialLoginServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private LoginSettingsService loginSettingsService;
     @Mock private SocialProviderSettingsService socialProviderSettingsService;
+    @Mock private SocialIdentityMapperService socialIdentityMapperService;
+    @Mock private ObjectMapper objectMapper;
     @Mock private UserAccessInvalidationService userAccessInvalidationService;
     @Mock private AdminAuditEventService auditEventService;
 
@@ -502,6 +505,8 @@ class SocialLoginServiceTest {
                 passwordEncoder,
                 loginSettingsService,
                 socialProviderSettingsService,
+                socialIdentityMapperService,
+                objectMapper,
                 userAccessInvalidationService,
                 auditEventService);
     }
