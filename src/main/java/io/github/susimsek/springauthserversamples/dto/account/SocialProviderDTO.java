@@ -5,7 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(name = "SocialProvider", description = "Social login provider availability.")
 public record SocialProviderDTO(
         @Schema(
-                        description = "Social provider registration identifier.",
+                        description = "Social provider alias used by the authorization endpoint.",
                         example = "microsoft",
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 String provider,

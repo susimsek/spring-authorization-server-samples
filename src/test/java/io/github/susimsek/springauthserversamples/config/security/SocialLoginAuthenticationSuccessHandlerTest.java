@@ -60,4 +60,29 @@ class SocialLoginAuthenticationSuccessHandlerTest {
                                         && factor.getIssuedAt() != null);
         verify(securityContextRepository).saveContext(any(), any(), any());
     }
+
+    @Test
+    void rejectsDisabledLocalAccountAfterSocialAuthentication() throws Exception {
+        SocialLoginService socialLoginService = mock(SocialLoginService.class);
+        UserDetailsService userDetailsService = mock(UserDetailsService.class);
+        SecurityContextRepository securityContextRepository = mock(SecurityContextRepository.class);
+        OAuth2AuthenticationToken oauth2Authentication = mock(OAuth2AuthenticationToken.class);
+        UserDetails disabled =
+                User.withUsername("disabled").password("encoded").disabled(true).build();
+        when(socialLoginService.findOrCreate(oauth2Authentication)).thenReturn("disabled");
+        when(userDetailsService.loadUserByUsername("disabled")).thenReturn(disabled);
+
+        SocialLoginAuthenticationSuccessHandler handler =
+                new SocialLoginAuthenticationSuccessHandler(
+                        socialLoginService, userDetailsService, securityContextRepository);
+        HttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        handler.onAuthenticationSuccess(request, response, oauth2Authentication);
+
+        assertThat(response.getRedirectedUrl()).isEqualTo("/login?error");
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        verify(securityContextRepository, org.mockito.Mockito.never())
+                .saveContext(any(), any(), any());
+    }
 }

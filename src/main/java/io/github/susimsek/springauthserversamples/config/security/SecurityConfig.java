@@ -27,7 +27,9 @@ import org.springframework.security.oauth2.client.endpoint.OAuth2AuthorizationCo
 import org.springframework.security.oauth2.client.endpoint.RestClientAuthorizationCodeTokenResponseClient;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.client.web.HttpSessionOAuth2AuthorizedClientRepository;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
 import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames;
@@ -101,6 +103,7 @@ public class SecurityConfig {
             ObjectProvider<SocialLoginAuthenticationSuccessHandler> socialLoginSuccessHandler,
             ObjectProvider<OAuth2AuthorizationRequestResolver> socialAuthorizationRequestResolver,
             SocialLoginService socialLoginService,
+            OAuth2AuthorizedClientRepository socialAuthorizedClientRepository,
             OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest>
                     socialTokenResponseClient) {
         URI issuer = URI.create(applicationProperties.authorizationServer().issuer());
@@ -231,6 +234,7 @@ public class SecurityConfig {
             http.oauth2Login(
                     oauth2 ->
                             oauth2.loginPage("/login")
+                                    .authorizedClientRepository(socialAuthorizedClientRepository)
                                     .successHandler(socialLoginSuccessHandler.getObject())
                                     .authorizationEndpoint(
                                             authorizationEndpoint ->
@@ -251,6 +255,11 @@ public class SecurityConfig {
         http.oauth2ResourceServer(resourceServer -> resourceServer.jwt(Customizer.withDefaults()));
 
         return http.build();
+    }
+
+    @Bean
+    OAuth2AuthorizedClientRepository socialAuthorizedClientRepository() {
+        return new HttpSessionOAuth2AuthorizedClientRepository();
     }
 
     @Bean
@@ -293,16 +302,18 @@ public class SecurityConfig {
             public OAuth2AuthorizationRequest resolve(
                     jakarta.servlet.http.HttpServletRequest request) {
                 return withoutLinkedInNonce(
-                        onlyEnabled(delegate.resolve(request), socialLoginService));
+                        onlyEnabled(delegate.resolve(request), socialLoginService),
+                        socialLoginService);
             }
 
             @Override
             public OAuth2AuthorizationRequest resolve(
                     jakarta.servlet.http.HttpServletRequest request, String clientRegistrationId) {
-                if (!socialLoginService.isProviderEnabled(clientRegistrationId)) {
+                if (!socialLoginService.isProviderLoginAllowed(clientRegistrationId)) {
                     return null;
                 }
-                return withoutLinkedInNonce(delegate.resolve(request, clientRegistrationId));
+                return withoutLinkedInNonce(
+                        delegate.resolve(request, clientRegistrationId), socialLoginService);
             }
         };
     }
@@ -315,16 +326,17 @@ public class SecurityConfig {
         }
         String registrationId =
                 authorizationRequest.getAttribute(OAuth2ParameterNames.REGISTRATION_ID);
-        return socialLoginService.isProviderEnabled(registrationId) ? authorizationRequest : null;
+        return socialLoginService.isProviderLoginAllowed(registrationId)
+                ? authorizationRequest
+                : null;
     }
 
     private static OAuth2AuthorizationRequest withoutLinkedInNonce(
-            OAuth2AuthorizationRequest authorizationRequest) {
+            OAuth2AuthorizationRequest authorizationRequest,
+            SocialLoginService socialLoginService) {
         if (authorizationRequest == null
-                || !"linkedin"
-                        .equals(
-                                authorizationRequest.getAttribute(
-                                        OAuth2ParameterNames.REGISTRATION_ID))) {
+                || !socialLoginService.isLinkedInProvider(
+                        authorizationRequest.getAttribute(OAuth2ParameterNames.REGISTRATION_ID))) {
             return authorizationRequest;
         }
         return OAuth2AuthorizationRequest.from(authorizationRequest)
@@ -346,14 +358,30 @@ public class SecurityConfig {
                     socialLoginService,
             org.springframework.security.core.userdetails.UserDetailsService userDetailsService,
             @Qualifier("browserSecurityContextRepository")
-                    SecurityContextRepository securityContextRepository) {
+                    SecurityContextRepository securityContextRepository,
+            OAuth2AuthorizedClientRepository socialAuthorizedClientRepository,
+            io.github.susimsek.springauthserversamples.service.SocialTokenService
+                    socialTokenService,
+            io.github.susimsek.springauthserversamples.service.account.MfaService mfaService) {
         return new SocialLoginAuthenticationSuccessHandler(
-                socialLoginService, userDetailsService, securityContextRepository);
+                socialLoginService,
+                userDetailsService,
+                securityContextRepository,
+                socialAuthorizedClientRepository,
+                socialTokenService,
+                mfaService);
     }
 
     @Bean
     SecurityContextRepository authorizationServerSecurityContextRepository() {
         return new AuthorizationServerSecurityContextRepository();
+    }
+
+    @Bean
+    SocialProviderLogoutSuccessHandler socialProviderLogoutSuccessHandler(
+            io.github.susimsek.springauthserversamples.service.SocialProviderSettingsService
+                    providerSettingsService) {
+        return new SocialProviderLogoutSuccessHandler(providerSettingsService);
     }
 
     @Bean

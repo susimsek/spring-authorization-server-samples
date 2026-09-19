@@ -29,6 +29,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
@@ -38,6 +39,7 @@ class SocialLoginServiceTest {
     @org.junit.jupiter.api.BeforeEach
     void enableSocialProviders() {
         lenient().when(loginSettingsService.isSocialProviderEnabled(anyString())).thenReturn(true);
+        lenient().when(socialProviderSettingsService.isEnabled()).thenReturn(true);
     }
 
     @Mock private UserRepository userRepository;
@@ -74,6 +76,7 @@ class SocialLoginServiceTest {
         UserEntity created = userCaptor.getValue();
         assertThat(created.getEmail()).isEqualTo("ada@example.test");
         assertThat(created.isEmailVerified()).isTrue();
+        assertThat(created.getPictureUrl()).isEqualTo("https://images.example.test/ada.jpg");
         assertThat(created.getAuthorities()).containsExactly(userRole);
         ArgumentCaptor<SocialIdentityEntity> identityCaptor =
                 ArgumentCaptor.forClass(SocialIdentityEntity.class);
@@ -81,6 +84,122 @@ class SocialLoginServiceTest {
         assertThat(identityCaptor.getValue().getProvider()).isEqualTo("google");
         assertThat(identityCaptor.getValue().getSubject()).isEqualTo("google-subject");
         assertThat(identityCaptor.getValue().getUser()).isSameAs(created);
+    }
+
+    @Test
+    void doesNotTrustAnUnverifiedSocialEmail() {
+        AuthorityEntity userRole = new AuthorityEntity(2L, AuthoritiesConstants.USER);
+        when(socialIdentityRepository.findByProviderAndSubject("google", "google-subject"))
+                .thenReturn(Optional.empty());
+        when(userRepository.findByEmailIgnoreCase("ada@example.test")).thenReturn(Optional.empty());
+        when(authorityRepository.findByName(AuthoritiesConstants.USER))
+                .thenReturn(Optional.of(userRole));
+        when(passwordEncoder.encode(anyString())).thenReturn("encoded-random-password");
+        when(userRepository.save(any(UserEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            UserEntity user = invocation.getArgument(0);
+                            user.setId(42L);
+                            return user;
+                        });
+
+        OAuth2User user =
+                new DefaultOAuth2User(
+                        java.util.Set.of(new SimpleGrantedAuthority("ROLE_OAUTH2_USER")),
+                        Map.of(
+                                "sub", "google-subject",
+                                "email", "ada@example.test"),
+                        "sub");
+        OAuth2AuthenticationToken unverified =
+                new OAuth2AuthenticationToken(user, user.getAuthorities(), "google");
+
+        service().findOrCreate(unverified);
+
+        ArgumentCaptor<UserEntity> userCaptor = ArgumentCaptor.forClass(UserEntity.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().isEmailVerified()).isFalse();
+    }
+
+    @Test
+    void trustsEmailWhenProviderPolicyAllowsIt() {
+        AuthorityEntity userRole = new AuthorityEntity(2L, AuthoritiesConstants.USER);
+        when(socialProviderSettingsService.provider("google"))
+                .thenReturn(
+                        new SocialProviderSettingsService.ProviderCredentials(
+                                "google",
+                                "google",
+                                "google-id",
+                                "google-secret",
+                                true,
+                                false,
+                                false,
+                                true,
+                                false,
+                                "sub,email",
+                                false,
+                                false,
+                                10,
+                                "always"));
+        when(socialIdentityRepository.findByProviderAndSubject("google", "google-subject"))
+                .thenReturn(Optional.empty());
+        when(userRepository.findByEmailIgnoreCase("ada@example.test")).thenReturn(Optional.empty());
+        when(authorityRepository.findByName(AuthoritiesConstants.USER))
+                .thenReturn(Optional.of(userRole));
+        when(passwordEncoder.encode(anyString())).thenReturn("encoded-random-password");
+        when(userRepository.save(any(UserEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            UserEntity user = invocation.getArgument(0);
+                            user.setId(42L);
+                            return user;
+                        });
+
+        OAuth2User user =
+                new DefaultOAuth2User(
+                        java.util.Set.of(new SimpleGrantedAuthority("ROLE_OAUTH2_USER")),
+                        Map.of("sub", "google-subject", "email", "ada@example.test"),
+                        "sub");
+        service()
+                .findOrCreate(new OAuth2AuthenticationToken(user, user.getAuthorities(), "google"));
+
+        ArgumentCaptor<UserEntity> userCaptor = ArgumentCaptor.forClass(UserEntity.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().isEmailVerified()).isTrue();
+    }
+
+    @Test
+    void rejectsAuthenticationWhenAnEssentialClaimIsMissing() {
+        when(socialProviderSettingsService.provider("google"))
+                .thenReturn(
+                        new SocialProviderSettingsService.ProviderCredentials(
+                                "google",
+                                "google",
+                                "google-id",
+                                "google-secret",
+                                true,
+                                false,
+                                false,
+                                false,
+                                false,
+                                "sub,email",
+                                false,
+                                false,
+                                10,
+                                "always"));
+        OAuth2User user =
+                new DefaultOAuth2User(
+                        java.util.Set.of(new SimpleGrantedAuthority("ROLE_OAUTH2_USER")),
+                        Map.of("sub", "google-subject"),
+                        "sub");
+
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .findOrCreate(
+                                                new OAuth2AuthenticationToken(
+                                                        user, user.getAuthorities(), "google")))
+                .isInstanceOf(OAuth2AuthenticationException.class)
+                .hasMessageContaining("required claim");
     }
 
     @Test
@@ -92,7 +211,8 @@ class SocialLoginServiceTest {
                         Optional.of(new SocialIdentityEntity("google", "google-subject", user)));
 
         assertThat(service().findOrCreate(authentication())).isEqualTo("social_google_existing");
-        verify(userRepository, never()).save(any(UserEntity.class));
+        verify(userRepository).save(user);
+        assertThat(user.getPictureUrl()).isEqualTo("https://images.example.test/ada.jpg");
         verify(socialIdentityRepository, never()).save(any(SocialIdentityEntity.class));
     }
 
@@ -144,6 +264,30 @@ class SocialLoginServiceTest {
 
         service().linkPending("ada", Map.of("provider", "github", "subject", "123"));
 
+        verify(socialIdentityRepository, never()).save(any(SocialIdentityEntity.class));
+    }
+
+    @Test
+    void rejectsLinkingAnotherIdentityFromSameProviderWithoutOverrideFlow() {
+        UserEntity existing = new UserEntity();
+        existing.setId(42L);
+        existing.setUsername("ada");
+        when(userRepository.findForLoginUpdate("ada")).thenReturn(Optional.of(existing));
+        when(socialIdentityRepository.findByProviderAndSubject("github", "456"))
+                .thenReturn(Optional.empty());
+        when(socialIdentityRepository.findAllByUserUsernameAndProvider("ada", "github"))
+                .thenReturn(java.util.List.of(new SocialIdentityEntity("github", "123", existing)));
+
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .linkPending(
+                                                "ada",
+                                                Map.of("provider", "github", "subject", "456")))
+                .isInstanceOf(
+                        org.springframework.security.oauth2.core.OAuth2AuthenticationException
+                                .class)
+                .hasMessageContaining("already linked");
         verify(socialIdentityRepository, never()).save(any(SocialIdentityEntity.class));
     }
 
@@ -213,6 +357,18 @@ class SocialLoginServiceTest {
     }
 
     @Test
+    void hidesProvidersWhenSocialLoginIsGloballyDisabled() {
+        when(socialProviderSettingsService.isEnabled()).thenReturn(false);
+        when(socialProviderSettingsService.effectiveProviders())
+                .thenReturn(
+                        java.util.List.of(
+                                new SocialProviderSettingsService.ProviderCredentials(
+                                        "google", "google-id", "google-secret")));
+
+        assertThat(service().availableProviders()).isEmpty();
+    }
+
+    @Test
     void listsEnabledSocialLinksIncludingUnconfiguredMicrosoft() {
         when(socialProviderSettingsService.effectiveProviders())
                 .thenReturn(
@@ -268,6 +424,61 @@ class SocialLoginServiceTest {
     }
 
     @Test
+    void rejectsPublicLoginForAccountLinkingOnlyProvider() {
+        when(socialProviderSettingsService.provider("google"))
+                .thenReturn(
+                        new SocialProviderSettingsService.ProviderCredentials(
+                                "google",
+                                "google",
+                                "google-id",
+                                "google-secret",
+                                true,
+                                false,
+                                true,
+                                10,
+                                "always"));
+
+        assertThatThrownBy(() -> service().findOrCreate(authentication()))
+                .isInstanceOf(
+                        org.springframework.security.oauth2.core.OAuth2AuthenticationException
+                                .class)
+                .hasMessageContaining("disabled for public sign-in");
+        verify(socialIdentityRepository, never())
+                .findByProviderAndSubject(anyString(), anyString());
+    }
+
+    @Test
+    void usesAliasesAndGuiOrderForPublicProviders() {
+        when(socialProviderSettingsService.effectiveProviders())
+                .thenReturn(
+                        java.util.List.of(
+                                new SocialProviderSettingsService.ProviderCredentials(
+                                        "google",
+                                        "z-login",
+                                        "google-id",
+                                        "google-secret",
+                                        true,
+                                        false,
+                                        false,
+                                        20,
+                                        "always"),
+                                new SocialProviderSettingsService.ProviderCredentials(
+                                        "github",
+                                        "a-login",
+                                        "github-id",
+                                        "github-secret",
+                                        true,
+                                        false,
+                                        false,
+                                        10,
+                                        "always")));
+
+        assertThat(service().availableProviders())
+                .extracting(provider -> provider.provider() + ":" + provider.configured())
+                .containsExactly("a-login:true", "z-login:true");
+    }
+
+    @Test
     void unlinksAllIdentitiesForProviderAndInvalidatesAccess() {
         UserEntity user = new UserEntity();
         user.setUsername("ada");
@@ -302,8 +513,10 @@ class SocialLoginServiceTest {
                         Map.of(
                                 "sub", "google-subject",
                                 "email", "ada@example.test",
+                                "email_verified", true,
                                 "given_name", "Ada",
-                                "family_name", "Lovelace"),
+                                "family_name", "Lovelace",
+                                "picture", "https://images.example.test/ada.jpg"),
                         "sub");
         return new OAuth2AuthenticationToken(user, user.getAuthorities(), "google");
     }

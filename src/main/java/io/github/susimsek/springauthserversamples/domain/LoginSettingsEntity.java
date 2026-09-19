@@ -66,6 +66,126 @@ public class LoginSettingsEntity {
     @Column(name = "microsoft_login_enabled", nullable = false)
     private boolean microsoftLoginEnabled;
 
+    @Column(name = "google_alias", nullable = false, length = 50)
+    private String googleAlias;
+
+    @Column(name = "google_hide_on_login", nullable = false)
+    private boolean googleHideOnLogin;
+
+    @Column(name = "google_account_linking_only", nullable = false)
+    private boolean googleAccountLinkingOnly;
+
+    @Column(name = "google_trust_email", nullable = false)
+    private boolean googleTrustEmail;
+
+    @Column(name = "google_mfa_required", nullable = false)
+    private boolean googleMfaRequired;
+
+    @Column(name = "google_required_claims", nullable = false, length = 500)
+    private String googleRequiredClaims;
+
+    @Column(name = "google_store_tokens", nullable = false)
+    private boolean googleStoreTokens;
+
+    @Column(name = "google_stored_tokens_readable", nullable = false)
+    private boolean googleStoredTokensReadable;
+
+    @Column(name = "google_gui_order", nullable = false)
+    private int googleGuiOrder;
+
+    @Column(name = "google_show_in_account_console", nullable = false, length = 20)
+    private String googleShowInAccountConsole;
+
+    @Column(name = "github_alias", nullable = false, length = 50)
+    private String githubAlias;
+
+    @Column(name = "github_hide_on_login", nullable = false)
+    private boolean githubHideOnLogin;
+
+    @Column(name = "github_account_linking_only", nullable = false)
+    private boolean githubAccountLinkingOnly;
+
+    @Column(name = "github_trust_email", nullable = false)
+    private boolean githubTrustEmail;
+
+    @Column(name = "github_mfa_required", nullable = false)
+    private boolean githubMfaRequired;
+
+    @Column(name = "github_required_claims", nullable = false, length = 500)
+    private String githubRequiredClaims;
+
+    @Column(name = "github_store_tokens", nullable = false)
+    private boolean githubStoreTokens;
+
+    @Column(name = "github_stored_tokens_readable", nullable = false)
+    private boolean githubStoredTokensReadable;
+
+    @Column(name = "github_gui_order", nullable = false)
+    private int githubGuiOrder;
+
+    @Column(name = "github_show_in_account_console", nullable = false, length = 20)
+    private String githubShowInAccountConsole;
+
+    @Column(name = "linkedin_alias", nullable = false, length = 50)
+    private String linkedinAlias;
+
+    @Column(name = "linkedin_hide_on_login", nullable = false)
+    private boolean linkedinHideOnLogin;
+
+    @Column(name = "linkedin_account_linking_only", nullable = false)
+    private boolean linkedinAccountLinkingOnly;
+
+    @Column(name = "linkedin_trust_email", nullable = false)
+    private boolean linkedinTrustEmail;
+
+    @Column(name = "linkedin_mfa_required", nullable = false)
+    private boolean linkedinMfaRequired;
+
+    @Column(name = "linkedin_required_claims", nullable = false, length = 500)
+    private String linkedinRequiredClaims;
+
+    @Column(name = "linkedin_store_tokens", nullable = false)
+    private boolean linkedinStoreTokens;
+
+    @Column(name = "linkedin_stored_tokens_readable", nullable = false)
+    private boolean linkedinStoredTokensReadable;
+
+    @Column(name = "linkedin_gui_order", nullable = false)
+    private int linkedinGuiOrder;
+
+    @Column(name = "linkedin_show_in_account_console", nullable = false, length = 20)
+    private String linkedinShowInAccountConsole;
+
+    @Column(name = "microsoft_alias", nullable = false, length = 50)
+    private String microsoftAlias;
+
+    @Column(name = "microsoft_hide_on_login", nullable = false)
+    private boolean microsoftHideOnLogin;
+
+    @Column(name = "microsoft_account_linking_only", nullable = false)
+    private boolean microsoftAccountLinkingOnly;
+
+    @Column(name = "microsoft_trust_email", nullable = false)
+    private boolean microsoftTrustEmail;
+
+    @Column(name = "microsoft_mfa_required", nullable = false)
+    private boolean microsoftMfaRequired;
+
+    @Column(name = "microsoft_required_claims", nullable = false, length = 500)
+    private String microsoftRequiredClaims;
+
+    @Column(name = "microsoft_store_tokens", nullable = false)
+    private boolean microsoftStoreTokens;
+
+    @Column(name = "microsoft_stored_tokens_readable", nullable = false)
+    private boolean microsoftStoredTokensReadable;
+
+    @Column(name = "microsoft_gui_order", nullable = false)
+    private int microsoftGuiOrder;
+
+    @Column(name = "microsoft_show_in_account_console", nullable = false, length = 20)
+    private String microsoftShowInAccountConsole;
+
     @Column(name = "google_client_id", length = 500)
     private String googleClientId;
 

@@ -71,6 +71,7 @@ public class AuthorizationServerConfig {
             RegisteredClientRepository registeredClientRepository,
             RequiredActionAuthorizationFilter requiredActionAuthorizationFilter,
             MfaAuthorizationFilter mfaAuthorizationFilter,
+            SocialProviderLogoutSuccessHandler socialProviderLogoutSuccessHandler,
             @Qualifier("authorizationServerSecurityContextRepository")
                     SecurityContextRepository securityContextRepository) {
         OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
@@ -93,7 +94,13 @@ public class AuthorizationServerConfig {
                         authorizationServer ->
                                 authorizationServer
                                         .tokenGenerator(tokenGenerator)
-                                        .oidc(Customizer.withDefaults())
+                                        .oidc(
+                                                oidc ->
+                                                        oidc.logoutEndpoint(
+                                                                logout ->
+                                                                        logout
+                                                                                .logoutResponseHandler(
+                                                                                        socialProviderLogoutSuccessHandler)))
                                         .authorizationEndpoint(
                                                 authorizationEndpoint ->
                                                         authorizationEndpoint
@@ -252,21 +259,26 @@ public class AuthorizationServerConfig {
             }
 
             if (isUserProfileToken(context)) {
-                tokenUser
-                        .flatMap(user -> userAvatarRepository.findVersionByUserId(user.getId()))
-                        .ifPresent(
-                                avatar ->
-                                        context.getClaims()
-                                                .claim(
-                                                        "picture",
-                                                        applicationProperties
-                                                                        .authorizationServer()
-                                                                        .issuer()
-                                                                + "/avatars/"
-                                                                + avatar.getPublicId()
-                                                                + "?v="
-                                                                + avatar.getUpdatedAt()
-                                                                        .toEpochMilli()));
+                tokenUser.ifPresent(
+                        user -> {
+                            String picture =
+                                    userAvatarRepository
+                                            .findVersionByUserId(user.getId())
+                                            .map(
+                                                    avatar ->
+                                                            applicationProperties
+                                                                            .authorizationServer()
+                                                                            .issuer()
+                                                                    + "/avatars/"
+                                                                    + avatar.getPublicId()
+                                                                    + "?v="
+                                                                    + avatar.getUpdatedAt()
+                                                                            .toEpochMilli())
+                                            .orElse(user.getPictureUrl());
+                            if (picture != null && !picture.isBlank()) {
+                                context.getClaims().claim("picture", picture);
+                            }
+                        });
             }
 
             if (isUserEmailToken(context)) {

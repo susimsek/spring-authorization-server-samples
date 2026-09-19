@@ -41,7 +41,7 @@ export function SocialAccountLinks({ dictionary }: { dictionary: Dictionary }) {
 
   const startLink = (provider: string) => {
     setStartingProvider(provider);
-    window.location.assign(`/account/social-links/${encodeURIComponent(provider)}/start`);
+    window.open(`/account/social-links/${encodeURIComponent(provider)}/start`, "_self");
   };
 
   const removeLink = async () => {
@@ -102,7 +102,7 @@ export function SocialAccountLinks({ dictionary }: { dictionary: Dictionary }) {
                 </div>
                 <Button
                   type="button"
-                  variant={link.linked ? "outline-danger" : "primary"}
+                  variant={link.linked ? "danger" : "primary"}
                   disabled={
                     ((!link.configured || !link.enabled) && !link.linked) ||
                     startingProvider !== null ||

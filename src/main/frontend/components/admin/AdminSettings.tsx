@@ -19,6 +19,7 @@ import AdminLocalizationSettings, { type LocalizationSection } from "./AdminLoca
 const SETTINGS_SECTIONS = [
   "general",
   "login",
+  "social-login",
   "email",
   "brute-force",
   "sessions",
@@ -62,6 +63,11 @@ export default function AdminSettings({
       key: "login",
       label: dictionary.admin.settings.sections.login,
       href: "/admin/settings/login",
+    },
+    {
+      key: "social-login",
+      label: dictionary.admin.settings.sections.socialLogin,
+      href: "/admin/settings/social-login",
     },
     {
       key: "email",

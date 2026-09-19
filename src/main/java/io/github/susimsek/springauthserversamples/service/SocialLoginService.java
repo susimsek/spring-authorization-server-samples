@@ -14,6 +14,7 @@ import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventS
 import io.github.susimsek.springauthserversamples.service.admin.UserAccessInvalidationService;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -41,6 +42,7 @@ public class SocialLoginService {
 
     public static final String PENDING_SOCIAL_LINK = "socialLogin.pendingLink";
     public static final String PENDING_SOCIAL_LINK_TARGET = "socialLogin.pendingLinkTarget";
+    public static final String SOCIAL_LOGIN_PROVIDER = "socialLogin.provider";
 
     private final UserRepository userRepository;
     private final SocialIdentityRepository socialIdentityRepository;
@@ -54,14 +56,22 @@ public class SocialLoginService {
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public String findOrCreate(OAuth2AuthenticationToken authentication) {
-        String provider =
-                authentication.getAuthorizedClientRegistrationId().toLowerCase(Locale.ROOT);
-        ensureProviderEnabled(provider);
+        String provider = canonicalProvider(authentication.getAuthorizedClientRegistrationId());
+        if (provider == null) {
+            throw new OAuth2AuthenticationException(
+                    new OAuth2Error("social_provider_invalid"),
+                    "The social login provider is invalid");
+        }
+        ensureProviderLoginAllowed(provider);
         Map<String, Object> attributes = authentication.getPrincipal().getAttributes();
+        SocialProviderSettingsService.ProviderCredentials providerSettings =
+                socialProviderSettingsService.provider(provider);
+        ensureRequiredClaims(attributes, providerSettings);
         String subject = requiredAttribute(attributes, "sub", "id");
         SocialIdentityEntity existing =
                 socialIdentityRepository.findByProviderAndSubject(provider, subject).orElse(null);
         if (existing != null) {
+            syncPicture(existing.getUser(), socialPicture(attributes));
             return existing.getUser().getUsername();
         }
 
@@ -83,7 +93,11 @@ public class SocialLoginService {
         user.setFirstName(firstName(attributes));
         user.setLastName(lastName(attributes));
         user.setEmail(email);
-        user.setEmailVerified(email != null);
+        user.setEmailVerified(
+                email != null
+                        && ((providerSettings != null && providerSettings.trustEmail())
+                                || emailVerified(attributes)));
+        user.setPictureUrl(socialPicture(attributes));
         user.setEnabled(true);
         user.setPasswordChangedAt(Instant.now());
         user.setMustChangePassword(false);
@@ -98,15 +112,20 @@ public class SocialLoginService {
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public String linkExisting(
             String username, String expectedProvider, OAuth2AuthenticationToken authentication) {
-        String provider = provider(authentication);
+        String provider = canonicalProvider(provider(authentication));
+        String expected = canonicalProvider(expectedProvider);
         ensureProviderEnabled(provider);
-        if (!expectedProvider.equals(provider)) {
+        if (expected == null || !expected.equals(provider)) {
             throw new OAuth2AuthenticationException(
                     new OAuth2Error("social_provider_mismatch"),
                     "The social provider did not match the pending account link");
         }
         String subject = subject(authentication.getPrincipal().getAttributes());
-        link(username, provider, subject);
+        ensureRequiredClaims(
+                authentication.getPrincipal().getAttributes(),
+                socialProviderSettingsService.provider(provider));
+        UserEntity user = link(username, provider, subject);
+        syncPicture(user, socialPicture(authentication.getPrincipal().getAttributes()));
         return username;
     }
 
@@ -133,7 +152,12 @@ public class SocialLoginService {
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public void unlink(String username, String provider) {
-        String normalizedProvider = normalizeProvider(provider);
+        SocialProviderSettingsService.ProviderCredentials configuredProvider =
+                socialProviderSettingsService.provider(provider);
+        String normalizedProvider =
+                configuredProvider == null
+                        ? normalizeProvider(provider)
+                        : configuredProvider.registrationId();
         List<SocialIdentityEntity> identities =
                 socialIdentityRepository.findAllByUserUsernameAndProvider(
                         username, normalizedProvider);
@@ -157,7 +181,9 @@ public class SocialLoginService {
                 .filter(
                         configuration ->
                                 configuration.provider().configured()
-                                        && isProviderEnabled(configuration.registrationId()))
+                                        && socialProviderSettingsService.isEnabled()
+                                        && loginSettingsService.isSocialProviderEnabled(
+                                                configuration.registrationId()))
                 .map(ProviderConfiguration::registrationId)
                 .sorted()
                 .toList();
@@ -172,25 +198,29 @@ public class SocialLoginService {
 
     public List<SocialProviderDTO> availableProviders() {
         return socialProviderSettingsService.effectiveProviders().stream()
-                .filter(provider -> isProviderEnabled(provider.registrationId()))
-                .map(
+                .sorted()
+                .filter(
                         provider ->
-                                new SocialProviderDTO(
-                                        provider.registrationId(), provider.configured()))
+                                isProviderEnabled(provider.registrationId())
+                                        && !provider.hideOnLogin()
+                                        && !provider.accountLinkingOnly())
+                .map(provider -> new SocialProviderDTO(provider.alias(), provider.configured()))
                 .toList();
     }
 
     public List<SocialLinkDTO> socialLinks(String username) {
         Set<String> linked = linkedProviders(username);
         return socialProviderSettingsService.effectiveProviders().stream()
+                .sorted()
                 .filter(
                         provider ->
-                                isProviderEnabled(provider.registrationId())
-                                        || linked.contains(provider.registrationId()))
+                                (isProviderEnabled(provider.registrationId())
+                                                || linked.contains(provider.registrationId()))
+                                        && accountConsoleVisible(provider, linked))
                 .map(
                         provider ->
                                 new SocialLinkDTO(
-                                        provider.registrationId(),
+                                        provider.alias(),
                                         displayName(provider.registrationId()),
                                         linked.contains(provider.registrationId()),
                                         provider.configured(),
@@ -199,7 +229,32 @@ public class SocialLoginService {
     }
 
     public boolean isProviderEnabled(String provider) {
-        return provider != null && loginSettingsService.isSocialProviderEnabled(provider);
+        SocialProviderSettingsService.ProviderCredentials configuredProvider =
+                socialProviderSettingsService.provider(provider);
+        return socialProviderSettingsService.isEnabled()
+                && (configuredProvider != null
+                        ? configuredProvider.enabled()
+                        : provider != null
+                                && loginSettingsService.isSocialProviderEnabled(
+                                        provider.toLowerCase(Locale.ROOT)));
+    }
+
+    /** Returns whether a provider may be used to start a new public login. */
+    public boolean isProviderLoginAllowed(String provider) {
+        SocialProviderSettingsService.ProviderCredentials configuredProvider =
+                socialProviderSettingsService.provider(provider);
+        return isProviderEnabled(provider)
+                && (configuredProvider == null || !configuredProvider.accountLinkingOnly());
+    }
+
+    public boolean isLinkedInProvider(String provider) {
+        return "linkedin".equals(canonicalProvider(provider));
+    }
+
+    public boolean providerRequiresMfa(String provider) {
+        SocialProviderSettingsService.ProviderCredentials configuredProvider =
+                socialProviderSettingsService.provider(provider);
+        return configuredProvider != null && configuredProvider.mfaRequired();
     }
 
     private void ensureProviderEnabled(String provider) {
@@ -207,6 +262,14 @@ public class SocialLoginService {
             throw new OAuth2AuthenticationException(
                     new OAuth2Error("social_provider_disabled"),
                     "This social login provider is disabled");
+        }
+    }
+
+    private void ensureProviderLoginAllowed(String provider) {
+        if (!isProviderLoginAllowed(provider)) {
+            throw new OAuth2AuthenticationException(
+                    new OAuth2Error("social_provider_disabled"),
+                    "This social login provider is disabled for public sign-in");
         }
     }
 
@@ -228,10 +291,19 @@ public class SocialLoginService {
         };
     }
 
+    private static boolean accountConsoleVisible(
+            SocialProviderSettingsService.ProviderCredentials provider, Set<String> linked) {
+        return switch (provider.showInAccountConsole()) {
+            case "never" -> false;
+            case "when-linked" -> linked.contains(provider.registrationId());
+            default -> true;
+        };
+    }
+
     private record ProviderConfiguration(
             String registrationId, SocialLoginProperties.Provider provider) {}
 
-    private void link(String username, String provider, String subject) {
+    private UserEntity link(String username, String provider, String subject) {
         UserEntity user =
                 userRepository
                         .findForLoginUpdate(username)
@@ -248,9 +320,17 @@ public class SocialLoginService {
                         new OAuth2Error("social_identity_already_linked"),
                         "This social account is already linked to another local account");
             }
-            return;
+            return user;
+        }
+        if (!socialIdentityRepository
+                .findAllByUserUsernameAndProvider(username, provider)
+                .isEmpty()) {
+            throw new OAuth2AuthenticationException(
+                    new OAuth2Error("social_provider_already_linked"),
+                    "A different account is already linked for this social provider");
         }
         socialIdentityRepository.save(new SocialIdentityEntity(provider, subject, user));
+        return user;
     }
 
     private static String requiredAttribute(Map<String, Object> attributes, String... names) {
@@ -267,6 +347,16 @@ public class SocialLoginService {
 
     private static String provider(OAuth2AuthenticationToken authentication) {
         return authentication.getAuthorizedClientRegistrationId().toLowerCase(Locale.ROOT);
+    }
+
+    private String canonicalProvider(String value) {
+        SocialProviderSettingsService.ProviderCredentials provider =
+                socialProviderSettingsService.provider(value);
+        if (provider != null) {
+            return provider.registrationId();
+        }
+        String normalized = value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+        return SUPPORTED_PROVIDERS.contains(normalized) ? normalized : null;
     }
 
     private static String subject(Map<String, Object> attributes) {
@@ -287,6 +377,28 @@ public class SocialLoginService {
         return value == null || value.isBlank() ? null : value.toLowerCase(Locale.ROOT);
     }
 
+    private static boolean emailVerified(Map<String, Object> attributes) {
+        Object value = attributes.get("email_verified");
+        return value instanceof Boolean booleanValue
+                ? booleanValue
+                : value != null && Boolean.parseBoolean(String.valueOf(value));
+    }
+
+    private static void ensureRequiredClaims(
+            Map<String, Object> attributes,
+            SocialProviderSettingsService.ProviderCredentials provider) {
+        String requiredClaims = provider == null ? "sub" : provider.requiredClaims();
+        for (String claim :
+                requiredClaims == null ? new String[] {"sub"} : requiredClaims.split(",")) {
+            String value = attribute(attributes, claim.trim());
+            if (value == null || value.isBlank()) {
+                throw new OAuth2AuthenticationException(
+                        new OAuth2Error("social_claim_missing"),
+                        "The social provider did not return the required claim: " + claim.trim());
+            }
+        }
+    }
+
     private static String firstName(Map<String, Object> attributes) {
         String value = firstNonBlank(attributes, "given_name", "localizedFirstName", "first_name");
         return value == null ? firstNonBlank(attributes, "name") : value;
@@ -294,6 +406,32 @@ public class SocialLoginService {
 
     private static String lastName(Map<String, Object> attributes) {
         return firstNonBlank(attributes, "family_name", "localizedLastName", "last_name");
+    }
+
+    private void syncPicture(UserEntity user, String pictureUrl) {
+        if ((user.getPictureUrl() == null || user.getPictureUrl().isBlank())
+                && pictureUrl != null) {
+            user.setPictureUrl(pictureUrl);
+            userRepository.save(user);
+        }
+    }
+
+    private static String socialPicture(Map<String, Object> attributes) {
+        String value = firstNonBlank(attributes, "picture", "avatar_url", "profile_image_url");
+        if (value == null || value.length() > 1000) {
+            return null;
+        }
+        try {
+            URI uri = URI.create(value);
+            return "https".equalsIgnoreCase(uri.getScheme())
+                            && uri.getHost() != null
+                            && uri.getUserInfo() == null
+                            && uri.getFragment() == null
+                    ? uri.toString()
+                    : null;
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
     }
 
     private static String firstNonBlank(Map<String, Object> attributes, String... names) {

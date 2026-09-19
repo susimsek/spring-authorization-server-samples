@@ -5,7 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "Enabled social provider and its account link status.")
 public record SocialLinkDTO(
         @Schema(
-                        description = "Social provider registration identifier.",
+                        description = "Social provider alias used by account-linking endpoints.",
                         example = "github",
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 String provider,

@@ -32,6 +32,7 @@ public final class SocialAccountLinkingAuthenticationSuccessHandler
             delegate.onAuthenticationSuccess(request, response, authentication);
             return;
         }
+        request.getSession(false).removeAttribute(SocialLoginService.SOCIAL_LOGIN_PROVIDER);
         Object pending =
                 request.getSession(false).getAttribute(SocialLoginService.PENDING_SOCIAL_LINK);
         if (!(pending instanceof Map<?, ?> pendingLink)) {

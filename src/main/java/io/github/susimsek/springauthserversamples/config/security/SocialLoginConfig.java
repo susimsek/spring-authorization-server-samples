@@ -24,7 +24,11 @@ public class SocialLoginConfig {
         factory.setJwtValidatorFactory(
                 registration ->
                         JwtValidators.createDefaultWithValidators(
-                                "microsoft".equals(registration.getRegistrationId())
+                                registration.getProviderDetails().getIssuerUri() != null
+                                                && registration
+                                                        .getProviderDetails()
+                                                        .getIssuerUri()
+                                                        .contains("login.microsoftonline.com")
                                         ? new MicrosoftOidcIdTokenValidator(registration)
                                         : new OidcIdTokenValidator(registration)));
         return factory;
@@ -77,7 +81,7 @@ public class SocialLoginConfig {
     }
 
     private static ClientRegistration github(ProviderCredentials provider) {
-        return ClientRegistration.withRegistrationId(provider.registrationId())
+        return ClientRegistration.withRegistrationId(provider.alias())
                 .clientId(provider.clientId())
                 .clientSecret(provider.clientSecret())
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
@@ -138,7 +142,7 @@ public class SocialLoginConfig {
             String jwkSetUri,
             String issuerUri,
             ClientAuthenticationMethod clientAuthenticationMethod) {
-        return ClientRegistration.withRegistrationId(provider.registrationId())
+        return ClientRegistration.withRegistrationId(provider.alias())
                 .clientId(provider.clientId())
                 .clientSecret(provider.clientSecret())
                 .clientAuthenticationMethod(clientAuthenticationMethod)

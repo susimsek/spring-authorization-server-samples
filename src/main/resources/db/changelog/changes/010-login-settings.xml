@@ -24,6 +24,46 @@
 			<column name="github_login_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
 			<column name="linkedin_login_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
 			<column name="microsoft_login_enabled" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="google_alias" type="varchar(50)" defaultValue="google"><constraints nullable="false"/></column>
+			<column name="google_hide_on_login" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="google_account_linking_only" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="google_trust_email" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="google_mfa_required" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="google_required_claims" type="varchar(500)" defaultValue="sub"><constraints nullable="false"/></column>
+			<column name="google_store_tokens" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="google_stored_tokens_readable" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="google_gui_order" type="int" defaultValueNumeric="10"><constraints nullable="false"/></column>
+			<column name="google_show_in_account_console" type="varchar(20)" defaultValue="always"><constraints nullable="false"/></column>
+			<column name="github_alias" type="varchar(50)" defaultValue="github"><constraints nullable="false"/></column>
+			<column name="github_hide_on_login" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="github_account_linking_only" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="github_trust_email" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="github_mfa_required" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="github_required_claims" type="varchar(500)" defaultValue="sub"><constraints nullable="false"/></column>
+			<column name="github_store_tokens" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="github_stored_tokens_readable" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="github_gui_order" type="int" defaultValueNumeric="20"><constraints nullable="false"/></column>
+			<column name="github_show_in_account_console" type="varchar(20)" defaultValue="always"><constraints nullable="false"/></column>
+			<column name="linkedin_alias" type="varchar(50)" defaultValue="linkedin"><constraints nullable="false"/></column>
+			<column name="linkedin_hide_on_login" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="linkedin_account_linking_only" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="linkedin_trust_email" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="linkedin_mfa_required" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="linkedin_required_claims" type="varchar(500)" defaultValue="sub"><constraints nullable="false"/></column>
+			<column name="linkedin_store_tokens" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="linkedin_stored_tokens_readable" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="linkedin_gui_order" type="int" defaultValueNumeric="30"><constraints nullable="false"/></column>
+			<column name="linkedin_show_in_account_console" type="varchar(20)" defaultValue="always"><constraints nullable="false"/></column>
+			<column name="microsoft_alias" type="varchar(50)" defaultValue="microsoft"><constraints nullable="false"/></column>
+			<column name="microsoft_hide_on_login" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="microsoft_account_linking_only" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="microsoft_trust_email" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="microsoft_mfa_required" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="microsoft_required_claims" type="varchar(500)" defaultValue="sub"><constraints nullable="false"/></column>
+			<column name="microsoft_store_tokens" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="microsoft_stored_tokens_readable" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="microsoft_gui_order" type="int" defaultValueNumeric="40"><constraints nullable="false"/></column>
+			<column name="microsoft_show_in_account_console" type="varchar(20)" defaultValue="always"><constraints nullable="false"/></column>
 			<column name="google_client_id" type="varchar(500)"/>
 			<column name="google_client_secret_encrypted" type="varchar(2000)"/>
 			<column name="github_client_id" type="varchar(500)"/>
@@ -86,6 +126,46 @@
 			<column header="github_login_enabled" type="boolean"/>
 			<column header="linkedin_login_enabled" type="boolean"/>
 			<column header="microsoft_login_enabled" type="boolean"/>
+			<column header="google_alias" type="string"/>
+			<column header="google_hide_on_login" type="boolean"/>
+			<column header="google_account_linking_only" type="boolean"/>
+			<column header="google_trust_email" type="boolean"/>
+			<column header="google_mfa_required" type="boolean"/>
+			<column header="google_required_claims" type="string"/>
+			<column header="google_store_tokens" type="boolean"/>
+			<column header="google_stored_tokens_readable" type="boolean"/>
+			<column header="google_gui_order" type="numeric"/>
+			<column header="google_show_in_account_console" type="string"/>
+			<column header="github_alias" type="string"/>
+			<column header="github_hide_on_login" type="boolean"/>
+			<column header="github_account_linking_only" type="boolean"/>
+			<column header="github_trust_email" type="boolean"/>
+			<column header="github_mfa_required" type="boolean"/>
+			<column header="github_required_claims" type="string"/>
+			<column header="github_store_tokens" type="boolean"/>
+			<column header="github_stored_tokens_readable" type="boolean"/>
+			<column header="github_gui_order" type="numeric"/>
+			<column header="github_show_in_account_console" type="string"/>
+			<column header="linkedin_alias" type="string"/>
+			<column header="linkedin_hide_on_login" type="boolean"/>
+			<column header="linkedin_account_linking_only" type="boolean"/>
+			<column header="linkedin_trust_email" type="boolean"/>
+			<column header="linkedin_mfa_required" type="boolean"/>
+			<column header="linkedin_required_claims" type="string"/>
+			<column header="linkedin_store_tokens" type="boolean"/>
+			<column header="linkedin_stored_tokens_readable" type="boolean"/>
+			<column header="linkedin_gui_order" type="numeric"/>
+			<column header="linkedin_show_in_account_console" type="string"/>
+			<column header="microsoft_alias" type="string"/>
+			<column header="microsoft_hide_on_login" type="boolean"/>
+			<column header="microsoft_account_linking_only" type="boolean"/>
+			<column header="microsoft_trust_email" type="boolean"/>
+			<column header="microsoft_mfa_required" type="boolean"/>
+			<column header="microsoft_required_claims" type="string"/>
+			<column header="microsoft_store_tokens" type="boolean"/>
+			<column header="microsoft_stored_tokens_readable" type="boolean"/>
+			<column header="microsoft_gui_order" type="numeric"/>
+			<column header="microsoft_show_in_account_console" type="string"/>
 			<column header="google_client_id" type="string"/>
 			<column header="google_client_secret_encrypted" type="string"/>
 			<column header="github_client_id" type="string"/>

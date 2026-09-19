@@ -26,6 +26,11 @@
 			<column name="subject" type="varchar(255)">
 				<constraints nullable="false"/>
 			</column>
+			<column name="access_token_encrypted" type="varchar(8000)"/>
+			<column name="refresh_token_encrypted" type="varchar(8000)"/>
+			<column name="access_token_expires_at" type="timestamp"/>
+			<column name="token_type" type="varchar(50)"/>
+			<column name="token_scopes" type="varchar(2000)"/>
 			<column name="user_id" type="bigint">
 				<constraints nullable="false"/>
 			</column>
