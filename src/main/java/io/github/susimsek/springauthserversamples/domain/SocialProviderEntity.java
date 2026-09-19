@@ -35,6 +35,15 @@ public class SocialProviderEntity extends AuditableEntity {
     @Column(name = "alias", nullable = false, unique = true, length = 50)
     private String alias;
 
+    @Column(name = "icon_key", nullable = false, length = 40)
+    private String iconKey = "generic";
+
+    @Column(name = "short_state_parameter", nullable = false)
+    private boolean shortStateParameter;
+
+    @Column(name = "case_sensitive_username", nullable = false)
+    private boolean caseSensitiveUsername;
+
     @Column(name = "enabled", nullable = false)
     private boolean enabled;
 
