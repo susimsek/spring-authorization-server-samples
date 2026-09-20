@@ -26,6 +26,7 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -77,6 +78,14 @@ public class UserProfileService {
     }
 
     @Transactional
+    @CacheEvict(
+            cacheNames = {
+                UserProfileAttributeDefinitionRepository.ALL_PROFILE_ATTRIBUTE_DEFINITIONS_CACHE,
+                UserProfileAttributeDefinitionRepository
+                        .ENABLED_PROFILE_ATTRIBUTE_DEFINITIONS_CACHE,
+                UserProfileAttributeDefinitionRepository.PROFILE_ATTRIBUTE_DEFINITION_BY_NAME_CACHE
+            },
+            allEntries = true)
     public UserProfileAttributeDefinitionDTO create(
             UserProfileAttributeDefinitionRequestDTO request) {
         validateDefinition(request, null);
@@ -92,6 +101,14 @@ public class UserProfileService {
     }
 
     @Transactional
+    @CacheEvict(
+            cacheNames = {
+                UserProfileAttributeDefinitionRepository.ALL_PROFILE_ATTRIBUTE_DEFINITIONS_CACHE,
+                UserProfileAttributeDefinitionRepository
+                        .ENABLED_PROFILE_ATTRIBUTE_DEFINITIONS_CACHE,
+                UserProfileAttributeDefinitionRepository.PROFILE_ATTRIBUTE_DEFINITION_BY_NAME_CACHE
+            },
+            allEntries = true)
     public UserProfileAttributeDefinitionDTO update(
             Long id, UserProfileAttributeDefinitionRequestDTO request) {
         UserProfileAttributeDefinitionEntity definition = findDefinition(id);
@@ -108,6 +125,14 @@ public class UserProfileService {
     }
 
     @Transactional
+    @CacheEvict(
+            cacheNames = {
+                UserProfileAttributeDefinitionRepository.ALL_PROFILE_ATTRIBUTE_DEFINITIONS_CACHE,
+                UserProfileAttributeDefinitionRepository
+                        .ENABLED_PROFILE_ATTRIBUTE_DEFINITIONS_CACHE,
+                UserProfileAttributeDefinitionRepository.PROFILE_ATTRIBUTE_DEFINITION_BY_NAME_CACHE
+            },
+            allEntries = true)
     public List<UserProfileAttributeDefinitionDTO> reorder(
             UserProfileAttributeOrderRequestDTO request) {
         List<Long> ids = request.ids();
@@ -145,6 +170,14 @@ public class UserProfileService {
     }
 
     @Transactional
+    @CacheEvict(
+            cacheNames = {
+                UserProfileAttributeDefinitionRepository.ALL_PROFILE_ATTRIBUTE_DEFINITIONS_CACHE,
+                UserProfileAttributeDefinitionRepository
+                        .ENABLED_PROFILE_ATTRIBUTE_DEFINITIONS_CACHE,
+                UserProfileAttributeDefinitionRepository.PROFILE_ATTRIBUTE_DEFINITION_BY_NAME_CACHE
+            },
+            allEntries = true)
     public void delete(Long id) {
         UserProfileAttributeDefinitionEntity definition = findDefinition(id);
         if (isBuiltIn(definition)) {

@@ -17,6 +17,7 @@ import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -73,6 +74,12 @@ public class AdminIdentityProviderService {
     }
 
     @Transactional
+    @CacheEvict(
+            cacheNames = {
+                SocialProviderRepository.SOCIAL_PROVIDER_BY_REGISTRATION_ID_CACHE,
+                SocialProviderRepository.SOCIAL_PROVIDER_BY_ALIAS_CACHE
+            },
+            allEntries = true)
     public AdminIdentityProviderDTO create(AdminIdentityProviderRequestDTO request) {
         String registrationId = normalize(request.registrationId());
         String alias = normalize(request.alias());
@@ -96,6 +103,13 @@ public class AdminIdentityProviderService {
     }
 
     @Transactional
+    @CacheEvict(
+            cacheNames = {
+                SocialProviderRepository.SOCIAL_PROVIDER_BY_REGISTRATION_ID_CACHE,
+                SocialProviderRepository.SOCIAL_PROVIDER_BY_ALIAS_CACHE,
+                SocialProviderMapperRepository.MAPPERS_BY_PROVIDER_ALIAS_CACHE
+            },
+            allEntries = true)
     public AdminIdentityProviderDTO update(String id, AdminIdentityProviderRequestDTO request) {
         SocialProviderEntity entity =
                 providerRepository
@@ -139,6 +153,13 @@ public class AdminIdentityProviderService {
     }
 
     @Transactional
+    @CacheEvict(
+            cacheNames = {
+                SocialProviderRepository.SOCIAL_PROVIDER_BY_REGISTRATION_ID_CACHE,
+                SocialProviderRepository.SOCIAL_PROVIDER_BY_ALIAS_CACHE,
+                SocialProviderMapperRepository.MAPPERS_BY_PROVIDER_ALIAS_CACHE
+            },
+            allEntries = true)
     public void delete(String id) {
         SocialProviderEntity entity =
                 providerRepository
@@ -172,6 +193,9 @@ public class AdminIdentityProviderService {
     }
 
     @Transactional
+    @CacheEvict(
+            cacheNames = SocialProviderMapperRepository.MAPPERS_BY_PROVIDER_ALIAS_CACHE,
+            allEntries = true)
     public AdminProviderMapperDTO createMapper(
             String providerId, AdminProviderMapperRequestDTO request) {
         SocialProviderEntity provider = require(providerId);
@@ -190,6 +214,9 @@ public class AdminIdentityProviderService {
     }
 
     @Transactional
+    @CacheEvict(
+            cacheNames = SocialProviderMapperRepository.MAPPERS_BY_PROVIDER_ALIAS_CACHE,
+            allEntries = true)
     public AdminProviderMapperDTO updateMapper(
             String providerId, String mapperId, AdminProviderMapperRequestDTO request) {
         SocialProviderEntity provider = require(providerId);
@@ -218,6 +245,9 @@ public class AdminIdentityProviderService {
     }
 
     @Transactional
+    @CacheEvict(
+            cacheNames = SocialProviderMapperRepository.MAPPERS_BY_PROVIDER_ALIAS_CACHE,
+            allEntries = true)
     public void deleteMapper(String providerId, String mapperId) {
         SocialProviderEntity provider = require(providerId);
         SocialProviderMapperEntity entity =

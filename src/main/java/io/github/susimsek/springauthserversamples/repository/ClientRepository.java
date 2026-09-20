@@ -11,7 +11,7 @@ public interface ClientRepository extends JpaRepository<RegisteredClientEntity, 
 
     String REGISTERED_CLIENT_BY_CLIENT_ID_CACHE = "registeredClientsByClientId";
 
-    @Cacheable(cacheNames = REGISTERED_CLIENT_BY_CLIENT_ID_CACHE)
+    @Cacheable(cacheNames = REGISTERED_CLIENT_BY_CLIENT_ID_CACHE, key = "#clientId")
     Optional<RegisteredClientEntity> findByClientId(String clientId);
 
     boolean existsByClientId(String clientId);

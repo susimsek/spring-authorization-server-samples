@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.mapstruct.factory.Mappers;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -75,6 +76,7 @@ public class LoginSettingsService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = LoginSettingsRepository.LOGIN_SETTINGS_BY_ID_CACHE, allEntries = true)
     public AdminLoginSettingsDTO update(AdminLoginSettingsRequestDTO request) {
         validateOtpPolicy(request);
         LoginSettingsEntity settings = settings();

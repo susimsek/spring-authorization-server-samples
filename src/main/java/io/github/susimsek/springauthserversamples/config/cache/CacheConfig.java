@@ -17,15 +17,23 @@ import io.github.susimsek.springauthserversamples.domain.OAuth2KeyEntity;
 import io.github.susimsek.springauthserversamples.domain.RegisteredClientEntity;
 import io.github.susimsek.springauthserversamples.domain.RequiredActionDefinitionEntity;
 import io.github.susimsek.springauthserversamples.domain.SocialProviderEntity;
+import io.github.susimsek.springauthserversamples.domain.SocialProviderMapperEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.domain.UserProfileAttributeDefinitionEntity;
+import io.github.susimsek.springauthserversamples.repository.AdminEventSettingsRepository;
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientScopeRepository;
+import io.github.susimsek.springauthserversamples.repository.EmailSettingsRepository;
+import io.github.susimsek.springauthserversamples.repository.GroupRepository;
 import io.github.susimsek.springauthserversamples.repository.LocalizationMessageOverrideRepository;
 import io.github.susimsek.springauthserversamples.repository.LocalizationSettingsRepository;
+import io.github.susimsek.springauthserversamples.repository.LoginSettingsRepository;
 import io.github.susimsek.springauthserversamples.repository.OAuth2KeyRepository;
 import io.github.susimsek.springauthserversamples.repository.RequiredActionDefinitionRepository;
+import io.github.susimsek.springauthserversamples.repository.SocialProviderMapperRepository;
+import io.github.susimsek.springauthserversamples.repository.SocialProviderRepository;
+import io.github.susimsek.springauthserversamples.repository.UserProfileAttributeDefinitionRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import java.util.OptionalLong;
 import javax.cache.Cache;
@@ -119,6 +127,7 @@ public class CacheConfig {
                 createCache(cacheManager, UserProfileAttributeDefinitionEntity.class.getName());
                 createCache(cacheManager, RequiredActionDefinitionEntity.class.getName());
                 createCache(cacheManager, SocialProviderEntity.class.getName());
+                createCache(cacheManager, SocialProviderMapperEntity.class.getName());
                 createCache(cacheManager, ClientRepository.REGISTERED_CLIENT_BY_CLIENT_ID_CACHE);
                 createCache(cacheManager, AuthorityRepository.AUTHORITY_BY_NAME_CACHE);
                 createCache(cacheManager, ClientScopeRepository.CLIENT_SCOPE_BY_NAME_CACHE);
@@ -127,6 +136,31 @@ public class CacheConfig {
                         cacheManager,
                         RequiredActionDefinitionRepository.ENABLED_REQUIRED_ACTIONS_CACHE);
                 createCache(cacheManager, UserRepository.USER_BY_USERNAME_CACHE);
+                createCache(cacheManager, GroupRepository.DEFAULT_GROUPS_CACHE);
+                createCache(
+                        cacheManager,
+                        AdminEventSettingsRepository.ADMIN_EVENT_SETTINGS_BY_ID_CACHE);
+                createCache(cacheManager, EmailSettingsRepository.EMAIL_SETTINGS_BY_ID_CACHE);
+                createCache(cacheManager, LoginSettingsRepository.LOGIN_SETTINGS_BY_ID_CACHE);
+                createCache(
+                        cacheManager,
+                        UserProfileAttributeDefinitionRepository
+                                .ALL_PROFILE_ATTRIBUTE_DEFINITIONS_CACHE);
+                createCache(
+                        cacheManager,
+                        UserProfileAttributeDefinitionRepository
+                                .ENABLED_PROFILE_ATTRIBUTE_DEFINITIONS_CACHE);
+                createCache(
+                        cacheManager,
+                        UserProfileAttributeDefinitionRepository
+                                .PROFILE_ATTRIBUTE_DEFINITION_BY_NAME_CACHE);
+                createCache(
+                        cacheManager,
+                        SocialProviderRepository.SOCIAL_PROVIDER_BY_REGISTRATION_ID_CACHE);
+                createCache(cacheManager, SocialProviderRepository.SOCIAL_PROVIDER_BY_ALIAS_CACHE);
+                createCache(
+                        cacheManager,
+                        SocialProviderMapperRepository.MAPPERS_BY_PROVIDER_ALIAS_CACHE);
             };
         }
 

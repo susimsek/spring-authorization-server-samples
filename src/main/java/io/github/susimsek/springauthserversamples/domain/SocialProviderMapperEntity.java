@@ -8,11 +8,14 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @Entity
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 @Table(name = "social_provider_mappers")
 public class SocialProviderMapperEntity extends AuditableEntity {
 

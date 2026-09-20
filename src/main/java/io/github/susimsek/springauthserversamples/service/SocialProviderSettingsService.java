@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -94,6 +95,7 @@ public class SocialProviderSettingsService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = LoginSettingsRepository.LOGIN_SETTINGS_BY_ID_CACHE, allEntries = true)
     public List<AdminSocialProviderDTO> update(AdminSocialProvidersRequestDTO request) {
         LoginSettingsEntity settings = settings();
         Set<String> seen = new java.util.HashSet<>();

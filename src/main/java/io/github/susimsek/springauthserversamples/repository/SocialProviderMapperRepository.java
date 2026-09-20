@@ -3,6 +3,7 @@ package io.github.susimsek.springauthserversamples.repository;
 import io.github.susimsek.springauthserversamples.domain.SocialProviderMapperEntity;
 import java.util.Collection;
 import java.util.List;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,6 +12,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface SocialProviderMapperRepository
         extends JpaRepository<SocialProviderMapperEntity, String> {
+
+    String MAPPERS_BY_PROVIDER_ALIAS_CACHE = "socialProviderMappersByProviderAlias";
 
     Page<SocialProviderMapperEntity>
             findByProviderAliasAndNameContainingIgnoreCaseOrProviderAliasAndSourceClaimContainingIgnoreCase(
@@ -22,6 +25,7 @@ public interface SocialProviderMapperRepository
 
     boolean existsByProviderAliasAndNameIgnoreCase(String providerAlias, String name);
 
+    @Cacheable(cacheNames = MAPPERS_BY_PROVIDER_ALIAS_CACHE, key = "#providerAlias")
     List<SocialProviderMapperEntity> findAllByProviderAliasIgnoreCase(String providerAlias);
 
     long countByProviderAlias(String providerAlias);
