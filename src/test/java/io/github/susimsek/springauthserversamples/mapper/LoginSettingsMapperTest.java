@@ -31,6 +31,9 @@ class LoginSettingsMapperTest {
         assertThat(entity.getOtpIssuer()).isEqualTo("Issuer");
         assertThat(entity.getOtpAlgorithm()).isEqualTo("SHA512");
         assertThat(entity.getRecoveryCodeWarningThreshold()).isEqualTo(4);
+        assertThat(entity.getWebAuthnRpName()).isEqualTo("Spring Authorization Server");
+        assertThat(entity.getWebAuthnResidentKey()).isEqualTo("preferred");
+        assertThat(entity.getWebAuthnPasswordlessUserVerification()).isEqualTo("required");
     }
 
     private static LoginSettingsEntity entity() {

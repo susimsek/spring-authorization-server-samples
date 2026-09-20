@@ -69,4 +69,43 @@ describe("EmailSettings", () => {
       dictionary.admin.emailSettings.testConnectionSucceeded,
     );
   });
+
+  it("saves settings, reports API failures, and handles a load failure", async () => {
+    mockAdminRequest
+      .mockResolvedValueOnce({ status: 200, data: settings } as never)
+      .mockResolvedValueOnce({ status: 204, data: { ...settings, passwordConfigured: true } } as never)
+      .mockResolvedValueOnce({
+        status: 400,
+        data: { field: "port", detail: "Invalid port" },
+      } as never);
+
+    render(<EmailSettings />);
+    expect(await screen.findByRole("heading", { name: dictionary.admin.emailSettings.title })).toBeVisible();
+    fireEvent.click(
+      await screen.findByRole("button", { name: dictionary.admin.emailSettings.save }),
+    );
+    await waitFor(() =>
+      expect(mockAddAlert).toHaveBeenCalledWith(dictionary.admin.emailSettings.saved),
+    );
+    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.emailSettings.testConnection }));
+    await waitFor(() =>
+      expect(mockAddError).toHaveBeenCalledWith(dictionary.admin.emailSettings.testConnectionError),
+    );
+
+    mockAdminRequest.mockResolvedValueOnce({ status: 500, data: null } as never);
+    render(<EmailSettings embedded />);
+    expect(await screen.findByText(dictionary.admin.emailSettings.error)).toBeVisible();
+  });
+
+  it("reports a failed save and validates malformed SMTP values", async () => {
+    mockAdminRequest
+      .mockResolvedValueOnce({ status: 200, data: settings } as never)
+      .mockResolvedValueOnce({ status: 500, data: { field: "host", detail: "Host invalid" } } as never);
+    render(<EmailSettings embedded />);
+    await screen.findByRole("button", { name: dictionary.admin.emailSettings.save });
+    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.emailSettings.save }));
+    await waitFor(() =>
+      expect(mockAddError).toHaveBeenCalledWith(dictionary.admin.emailSettings.error),
+    );
+  });
 });

@@ -9,6 +9,7 @@ import { SocialAccountLinks } from "./SocialAccountLinks";
 const mockRequestAccount = jest.fn();
 let mockSearchParams = new URLSearchParams();
 const mockAddAlert = jest.fn();
+const mockAddError = jest.fn();
 
 jest.mock("@/routing/navigation", () => ({
   useSearchParams: () => mockSearchParams,
@@ -21,7 +22,7 @@ jest.mock("@/components/account/AccountAuthProvider", () => ({
 jest.mock("@/components/auth/ConsoleAlerts", () => ({
   useConsoleAlerts: () => ({
     addAlert: mockAddAlert,
-    addError: jest.fn(),
+    addError: mockAddError,
   }),
 }));
 
@@ -48,6 +49,7 @@ describe("social account links", () => {
     mockRequestAccount.mockReset();
     mockSearchParams = new URLSearchParams();
     mockAddAlert.mockReset();
+    mockAddError.mockReset();
   });
 
   it("routes the link callback success through the shared alert", async () => {
@@ -116,5 +118,34 @@ describe("social account links", () => {
     renderSettings();
 
     expect(await screen.findByRole("button", { name: /Remove/ })).toBeEnabled();
+  });
+
+  it("starts configured links and reports loading and removal failures", async () => {
+    const open = jest.spyOn(window, "open").mockImplementation(() => null);
+    mockRequestAccount.mockResolvedValue([
+      { provider: "github", displayName: "GitHub", linked: false, configured: true, enabled: true },
+    ]);
+    renderSettings();
+    fireEvent.click(await screen.findByRole("button", { name: /Connect/ }));
+    expect(open).toHaveBeenCalledWith("/account/social-links/github/start", "_self");
+    open.mockRestore();
+
+    mockRequestAccount.mockRejectedValueOnce(new Error("offline"));
+    renderSettings();
+    expect(await screen.findByText(dictionary.account.security.socialLinks.error)).toBeVisible();
+
+    mockRequestAccount
+      .mockResolvedValueOnce([
+        { provider: "google", displayName: "Google", linked: true, configured: true, enabled: true },
+      ])
+      .mockRejectedValueOnce(new Error("remove failed"));
+    renderSettings();
+    fireEvent.click(await screen.findByRole("button", { name: /Remove/ }));
+    fireEvent.click(screen.getAllByRole("button", { name: /^Remove$/ }).at(-1)!);
+    await waitFor(() =>
+      expect(mockAddError).toHaveBeenCalledWith(
+        dictionary.account.security.socialLinks.removeError,
+      ),
+    );
   });
 });

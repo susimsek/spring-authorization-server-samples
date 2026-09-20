@@ -116,7 +116,10 @@ public record AdminLoginSettingsDTO(
                         description = "Allow passkey sign-in on the public login page.",
                         example = "true",
                         requiredMode = Schema.RequiredMode.REQUIRED)
-                boolean passkeys) {
+                boolean passkeys,
+        @Schema(description = "Registration WebAuthn policy.") WebAuthnPolicyDTO webauthnPolicy,
+        @Schema(description = "Passwordless authentication WebAuthn policy.")
+                WebAuthnPolicyDTO webauthnPasswordlessPolicy) {
 
     public AdminLoginSettingsDTO(
             boolean userRegistration,
@@ -190,6 +193,28 @@ public record AdminLoginSettingsDTO(
                 otpCodeReusable,
                 otpAddRecoveryCodes,
                 recoveryCodeWarningThreshold,
-                true);
+                true,
+                new WebAuthnPolicyDTO(
+                        "Spring Authorization Server",
+                        "",
+                        "ES256,RS256,EdDSA",
+                        "none",
+                        "any",
+                        "preferred",
+                        "preferred",
+                        300,
+                        true,
+                        ""),
+                new WebAuthnPolicyDTO(
+                        "Spring Authorization Server",
+                        "",
+                        "ES256,RS256,EdDSA",
+                        "none",
+                        "any",
+                        "required",
+                        "required",
+                        300,
+                        true,
+                        ""));
     }
 }

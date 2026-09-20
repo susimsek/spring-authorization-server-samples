@@ -19,6 +19,7 @@ import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -143,6 +144,47 @@ class AdminConsentServiceTest {
         verify(adminUserService).assertCanManageUsername("user", "admin");
         verify(authorizationConsentRepository).existsById(id);
         verifyNoInteractions(authorizationRepository, adminAuditEventService);
+    }
+
+    @Test
+    void loadsSingleClientAndUserConsentViews() {
+        AuthorizationConsentEntity consent = consent("client", "alice", "openid");
+        RegisteredClientEntity client = new RegisteredClientEntity();
+        client.setId("client");
+        client.setClientName("Client");
+        UserEntity user = new UserEntity();
+        user.setId(7L);
+        user.setUsername("alice");
+        when(authorizationConsentRepository.findByIdRegisteredClientIdAndIdPrincipalName(
+                        "client", "alice"))
+                .thenReturn(Optional.of(consent));
+        when(clientRepository.findById("client")).thenReturn(Optional.of(client));
+        when(userRepository.findAllByUsernameIn(List.of("alice"))).thenReturn(List.of(user));
+        when(mapperSupport.readAuthorities("openid"))
+                .thenReturn(Set.of(new SimpleGrantedAuthority("openid")));
+
+        assertThat(service().consent("client", "alice").clientName()).isEqualTo("Client");
+
+        when(adminUserService.requireManageableUser(7L, "admin")).thenReturn(user);
+        when(authorizationConsentRepository.findByIdPrincipalName("alice", Pageable.unpaged()))
+                .thenReturn(new PageImpl<>(List.of(consent)));
+        when(clientRepository.findAllById(List.of("client"))).thenReturn(List.of(client));
+        assertThat(service().userConsents(7L, "admin", Pageable.unpaged()).getContent()).hasSize(1);
+    }
+
+    @Test
+    void validatesClientConsentLookups() {
+        when(clientRepository.existsById("missing")).thenReturn(false);
+        assertThatThrownBy(() -> service().clientConsents("missing", Pageable.unpaged()))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("Client not found");
+
+        when(authorizationConsentRepository.findByIdRegisteredClientIdAndIdPrincipalName(
+                        "client", "alice"))
+                .thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service().consent("client", "alice"))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("Consent not found");
     }
 
     private static AuthorizationConsentEntity consent(

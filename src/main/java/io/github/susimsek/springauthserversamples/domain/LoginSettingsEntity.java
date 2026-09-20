@@ -51,6 +51,66 @@ public class LoginSettingsEntity {
     @Column(name = "webauthn_mediation", nullable = false, length = 20)
     private String webAuthnMediation;
 
+    @Column(name = "webauthn_rp_name", nullable = false, length = 255)
+    private String webAuthnRpName;
+
+    @Column(name = "webauthn_rp_id", nullable = false, length = 253)
+    private String webAuthnRpId;
+
+    @Column(name = "webauthn_signature_algorithms", nullable = false, length = 255)
+    private String webAuthnSignatureAlgorithms;
+
+    @Column(name = "webauthn_attestation", nullable = false, length = 20)
+    private String webAuthnAttestation;
+
+    @Column(name = "webauthn_authenticator_attachment", nullable = false, length = 20)
+    private String webAuthnAuthenticatorAttachment;
+
+    @Column(name = "webauthn_resident_key", nullable = false, length = 20)
+    private String webAuthnResidentKey;
+
+    @Column(name = "webauthn_user_verification", nullable = false, length = 20)
+    private String webAuthnUserVerification;
+
+    @Column(name = "webauthn_timeout_seconds", nullable = false)
+    private int webAuthnTimeoutSeconds;
+
+    @Column(name = "webauthn_avoid_same_authenticator", nullable = false)
+    private boolean webAuthnAvoidSameAuthenticator;
+
+    @Column(name = "webauthn_acceptable_aaguids", nullable = false, length = 4000)
+    private String webAuthnAcceptableAaguids;
+
+    @Column(name = "webauthn_passwordless_rp_name", nullable = false, length = 255)
+    private String webAuthnPasswordlessRpName;
+
+    @Column(name = "webauthn_passwordless_rp_id", nullable = false, length = 253)
+    private String webAuthnPasswordlessRpId;
+
+    @Column(name = "webauthn_passwordless_signature_algorithms", nullable = false, length = 255)
+    private String webAuthnPasswordlessSignatureAlgorithms;
+
+    @Column(name = "webauthn_passwordless_attestation", nullable = false, length = 20)
+    private String webAuthnPasswordlessAttestation;
+
+    @Column(name = "webauthn_passwordless_authenticator_attachment", nullable = false, length = 20)
+    private String webAuthnPasswordlessAuthenticatorAttachment;
+
+    @Column(name = "webauthn_passwordless_resident_key", nullable = false, length = 20)
+    private String webAuthnPasswordlessResidentKey;
+
+    @Column(name = "webauthn_passwordless_user_verification", nullable = false, length = 20)
+    private String webAuthnPasswordlessUserVerification;
+
+    @Column(name = "webauthn_passwordless_timeout_seconds", nullable = false)
+    private int webAuthnPasswordlessTimeoutSeconds;
+
+    @Column(name = "webauthn_passwordless_avoid_same_authenticator", nullable = false)
+    private boolean webAuthnPasswordlessAvoidSameAuthenticator;
+
+    @Column(name = "webauthn_passwordless_acceptable_aaguids", nullable = false, length = 4000)
+    private String webAuthnPasswordlessAcceptableAaguids;
+
     @Column(name = "email_update_reauthentication_minutes", nullable = false)
     private int emailUpdateReauthenticationMinutes;
 

@@ -6,9 +6,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
+import io.github.susimsek.springauthserversamples.domain.ClientScopeEntity;
 import io.github.susimsek.springauthserversamples.domain.GroupEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
+import io.github.susimsek.springauthserversamples.repository.ClientScopeRepository;
+import io.github.susimsek.springauthserversamples.repository.SocialIdentityRepository;
 import io.github.susimsek.springauthserversamples.repository.UserAvatarRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.security.AuthorizationEndpointErrorResponseHandler;
@@ -35,6 +38,7 @@ import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
+import tools.jackson.databind.ObjectMapper;
 
 class AuthorizationServerConfigTest {
 
@@ -156,6 +160,76 @@ class AuthorizationServerConfigTest {
 
         assertThat(claims.build().getClaims())
                 .containsEntry(OidcParameterNames.NONCE, "nonce-value");
+    }
+
+    @Test
+    void addsEmailAndLocaleClaimsAndSkipsMissingAvatar() {
+        UserEntity user = new UserEntity();
+        user.setId(42L);
+        user.setEmail("ada@example.test");
+        user.setEmailVerified(true);
+        user.setPreferredLocale("tr");
+        UserRepository userRepository = mock(UserRepository.class);
+        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(user));
+        UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
+        when(avatarRepository.findVersionByUserId(42L)).thenReturn(Optional.empty());
+        AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
+        JwtClaimsSet.Builder claims = JwtClaimsSet.builder();
+
+        config.jwtTokenCustomizer(userRepository, avatarRepository, authorizationRepository)
+                .customize(
+                        jwtContext(
+                                claims,
+                                OAuth2TokenType.ACCESS_TOKEN,
+                                AuthorizationGrantType.AUTHORIZATION_CODE,
+                                "account-console",
+                                Set.of("email", "profile")));
+
+        assertThat(claims.build().getClaims())
+                .containsEntry("email", "ada@example.test")
+                .containsEntry("email_verified", true)
+                .containsEntry("locale", "tr")
+                .doesNotContainKey("picture");
+    }
+
+    @Test
+    void mapsConfiguredGroupScopeClaims() {
+        UserEntity user = new UserEntity();
+        GroupEntity group = new GroupEntity();
+        group.setName("engineering");
+        user.setGroups(Set.of(group));
+        UserRepository userRepository = mock(UserRepository.class);
+        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(user));
+        UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
+        AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
+        ClientScopeEntity mapper = new ClientScopeEntity();
+        mapper.setName("groups");
+        mapper.setGroupMapperEnabled(true);
+        mapper.setGroupClaimName("teams");
+        mapper.setGroupMapperFullPath(false);
+        ClientScopeRepository clientScopeRepository = mock(ClientScopeRepository.class);
+        when(clientScopeRepository.findByNameIn(Set.of("groups"))).thenReturn(List.of(mapper));
+        SocialIdentityRepository socialIdentityRepository = mock(SocialIdentityRepository.class);
+        when(socialIdentityRepository.findAllByUserUsername("admin")).thenReturn(List.of());
+        ObjectMapper objectMapper = mock(ObjectMapper.class);
+        JwtClaimsSet.Builder claims = JwtClaimsSet.builder();
+
+        config.jwtTokenCustomizer(
+                        userRepository,
+                        avatarRepository,
+                        authorizationRepository,
+                        clientScopeRepository,
+                        socialIdentityRepository,
+                        objectMapper)
+                .customize(
+                        jwtContext(
+                                claims,
+                                OAuth2TokenType.ACCESS_TOKEN,
+                                AuthorizationGrantType.AUTHORIZATION_CODE,
+                                "account-console",
+                                Set.of("groups")));
+
+        assertThat(claims.build().getClaims()).containsEntry("teams", List.of("engineering"));
     }
 
     private static JwtEncodingContext jwtContext(

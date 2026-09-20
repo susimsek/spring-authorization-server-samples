@@ -5,6 +5,7 @@ import io.github.susimsek.springauthserversamples.domain.LoginSettingsEntity;
 import io.github.susimsek.springauthserversamples.dto.account.LoginSettingsDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminLoginSettingsDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminLoginSettingsRequestDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.WebAuthnPolicyDTO;
 import io.github.susimsek.springauthserversamples.mapper.LoginSettingsMapper;
 import io.github.susimsek.springauthserversamples.repository.LoginSettingsRepository;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
@@ -211,6 +212,11 @@ public class LoginSettingsService {
     }
 
     @Transactional(readOnly = true)
+    public WebAuthnPolicyDTO webAuthnPolicy(boolean passwordless) {
+        return loginSettingsMapper.toWebAuthnPolicy(settings(), passwordless);
+    }
+
+    @Transactional(readOnly = true)
     public boolean isOtpAddRecoveryCodesEnabled() {
         return settings().isOtpAddRecoveryCodes();
     }
@@ -262,6 +268,8 @@ public class LoginSettingsService {
     }
 
     private static void validateOtpPolicy(AdminLoginSettingsRequestDTO request) {
+        validateWebAuthnPolicy(request.webauthnPolicy(), "WebAuthn");
+        validateWebAuthnPolicy(request.webauthnPasswordlessPolicy(), "WebAuthn passwordless");
         String resetMode = request.passwordResetOtpMode().toLowerCase(Locale.ROOT);
         if (!java.util.Set.of("none", "if-configured", "required").contains(resetMode)) {
             throw io.github.susimsek.springauthserversamples.service.error.ApiException.badRequest(
@@ -302,5 +310,80 @@ public class LoginSettingsService {
                             .INVALID_REQUEST,
                     "OTP digits must be 6 or 8");
         }
+    }
+
+    private static void validateWebAuthnPolicy(WebAuthnPolicyDTO policy, String label) {
+        if (policy == null) {
+            throw invalidWebAuthn(label + " policy is required");
+        }
+        if (policy.rpName() == null || policy.rpName().isBlank()) {
+            throw invalidWebAuthn(label + " relying-party name is required");
+        }
+        if (policy.rpId() != null && policy.rpId().chars().anyMatch(Character::isWhitespace)) {
+            throw invalidWebAuthn(label + " relying-party id cannot contain whitespace");
+        }
+        if (policy.attestation() == null
+                || policy.authenticatorAttachment() == null
+                || policy.residentKey() == null
+                || policy.userVerification() == null) {
+            throw invalidWebAuthn(label + " ceremony requirements are required");
+        }
+        if (policy.timeoutSeconds() < 1 || policy.timeoutSeconds() > 86400) {
+            throw invalidWebAuthn(label + " timeout must be between 1 and 86400 seconds");
+        }
+        java.util.Set<String> algorithms =
+                csv(policy.signatureAlgorithms()).stream()
+                        .map(value -> value.toUpperCase(Locale.ROOT))
+                        .collect(java.util.stream.Collectors.toSet());
+        if (algorithms.isEmpty()
+                || !algorithms.stream()
+                        .allMatch(
+                                value ->
+                                        java.util.Set.of(
+                                                        "EDDSA", "ES256", "ES384", "ES512", "RS1",
+                                                        "RS256", "RS384", "RS512")
+                                                .contains(value))) {
+            throw invalidWebAuthn(label + " signature algorithms are invalid");
+        }
+        if (!java.util.Set.of("none", "indirect", "direct", "enterprise")
+                .contains(policy.attestation().toLowerCase(Locale.ROOT))) {
+            throw invalidWebAuthn(label + " attestation is invalid");
+        }
+        if (!java.util.Set.of("any", "platform", "cross-platform")
+                .contains(policy.authenticatorAttachment().toLowerCase(Locale.ROOT))) {
+            throw invalidWebAuthn(label + " authenticator attachment is invalid");
+        }
+        if (!java.util.Set.of("discouraged", "preferred", "required")
+                .contains(policy.residentKey().toLowerCase(Locale.ROOT))) {
+            throw invalidWebAuthn(label + " resident key requirement is invalid");
+        }
+        if (!java.util.Set.of("discouraged", "preferred", "required")
+                .contains(policy.userVerification().toLowerCase(Locale.ROOT))) {
+            throw invalidWebAuthn(label + " user verification requirement is invalid");
+        }
+        for (String aaguid : csv(policy.acceptableAaguids())) {
+            try {
+                java.util.UUID.fromString(aaguid);
+            } catch (IllegalArgumentException ex) {
+                throw invalidWebAuthn(label + " acceptable AAGUID is invalid");
+            }
+        }
+    }
+
+    private static java.util.List<String> csv(String value) {
+        return value == null
+                ? java.util.List.of()
+                : java.util.Arrays.stream(value.split(","))
+                        .map(String::trim)
+                        .filter(item -> !item.isBlank())
+                        .toList();
+    }
+
+    private static io.github.susimsek.springauthserversamples.service.error.ApiException
+            invalidWebAuthn(String message) {
+        return io.github.susimsek.springauthserversamples.service.error.ApiException.badRequest(
+                io.github.susimsek.springauthserversamples.service.error.ApiErrorCode
+                        .INVALID_REQUEST,
+                message);
     }
 }

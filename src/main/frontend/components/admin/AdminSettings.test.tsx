@@ -7,10 +7,11 @@ import { adminRequest } from "@/lib/admin-api";
 import AdminSettings from "./AdminSettings";
 
 const mockAdminRequest = adminRequest as jest.MockedFunction<typeof adminRequest>;
+let mockAccess: { isAdmin: boolean } = { isAdmin: true };
 
 jest.mock("@/lib/admin-api", () => ({ adminRequest: jest.fn() }));
 jest.mock("./AdminAuthProvider", () => ({
-  useAdminAuth: () => ({ accessToken: "token", access: { isAdmin: true } }),
+  useAdminAuth: () => ({ accessToken: "token", access: mockAccess }),
 }));
 jest.mock("./AdminEventSettings", () => ({
   __esModule: true,
@@ -35,6 +36,7 @@ function Location() {
 describe("AdminSettings", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAccess = { isAdmin: true };
     mockAdminRequest.mockResolvedValue({
       status: 200,
       data: { issuer: "https://issuer.test" },
@@ -84,5 +86,29 @@ describe("AdminSettings", () => {
     expect(
       screen.getByRole("link", { name: dictionary.admin.settings.sections.bruteForce }),
     ).toHaveClass("active");
+  });
+
+  it("shows the general settings error and limits non-admin navigation", async () => {
+    mockAdminRequest.mockResolvedValue({ status: 500, data: null } as never);
+    const view = render(
+      <MemoryRouter initialEntries={["/admin/settings"]}>
+        <Routes>
+          <Route path="/admin/settings/:section?" element={<AdminSettings />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText(dictionary.admin.settings.generalError)).toBeVisible();
+    view.unmount();
+
+    mockAccess = { isAdmin: false };
+    render(
+      <MemoryRouter initialEntries={["/admin/settings/login"]}>
+        <Routes>
+          <Route path="/admin/settings/:section?" element={<AdminSettings />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId("event-settings")).toBeVisible();
+    expect(screen.getAllByRole("link")).toHaveLength(1);
   });
 });

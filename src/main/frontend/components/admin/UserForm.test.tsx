@@ -453,4 +453,241 @@ describe("UserForm", () => {
       }),
     );
   });
+
+  it("manages required actions, passkeys, lock state, and credential actions", async () => {
+    mockAdminRequest.mockImplementation(async (_token, config) => {
+      const url = config.url ?? "";
+      if (url === "/api/admin/roles?page=0&size=100") {
+        return { status: 200, data: rolePage({ name: "ROLE_USER" }) } as never;
+      }
+      if (url === "/api/admin/users/11") {
+        return {
+          status: 200,
+          data: {
+            id: 11,
+            username: "locked-user",
+            enabled: true,
+            email: "locked@example.test",
+            authorities: ["ROLE_USER"],
+            locked: true,
+            lockedUntil: "2026-09-20T12:00:00Z",
+            failedLoginCount: 3,
+            mustChangePassword: true,
+            temporaryPassword: false,
+            totpEnabled: true,
+          },
+        } as never;
+      }
+      if (url.endsWith("/required-actions/users/11")) {
+        return {
+          status: 200,
+          data: [
+            { key: "VERIFY_EMAIL", displayName: "Verify email", enabled: true, assigned: false, globalPolicy: false },
+            { key: "UPDATE_PASSWORD", displayName: "Update password", enabled: true, assigned: true, globalPolicy: false },
+          ],
+        } as never;
+      }
+      if (url.includes("/webauthn/credentials?page")) {
+        return {
+          status: 200,
+          data: {
+            content: [
+              {
+                credentialId: "admin-credential",
+                label: "Admin key",
+                credentialType: "public-key",
+                createdAt: "2026-01-01T00:00:00Z",
+                lastUsedAt: "2026-01-02T00:00:00Z",
+                signatureCount: 4,
+                uvInitialized: true,
+              },
+            ],
+          },
+        } as never;
+      }
+      return { status: 204, data: null } as never;
+    });
+
+    const view = render(<UserForm dictionary={dictionary} id="11" locale="en" tab="details" />);
+    expect(await screen.findByText(new RegExp(dictionary.admin.resources.locked))).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.resources.unlock }));
+    await waitFor(() =>
+      expect(mockAdminRequest).toHaveBeenCalledWith("token", {
+        url: "/api/admin/users/11/unlock",
+        method: "POST",
+      }),
+    );
+
+    view.rerender(<UserForm dictionary={dictionary} id="11" locale="en" tab="credentials" />);
+
+    await screen.findByText("Required actions");
+    fireEvent.click(screen.getAllByRole("checkbox")[1]);
+    await waitFor(() =>
+      expect(mockAdminRequest).toHaveBeenCalledWith("token", {
+        url: "/api/admin/required-actions/users/11/VERIFY_EMAIL",
+        method: "POST",
+      }),
+    );
+
+    const passkeyLabel = await screen.findByDisplayValue("Admin key");
+    fireEvent.change(passkeyLabel, { target: { value: "Renamed key" } });
+    fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.resources.save })[0]);
+    await waitFor(() =>
+      expect(mockAdminRequest).toHaveBeenCalledWith("token", {
+        url: "/api/admin/users/11/webauthn/credentials/admin-credential",
+        method: "PUT",
+        data: { label: "Renamed key" },
+      }),
+    );
+    fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.resources.delete })[1]);
+    fireEvent.click(
+      screen.getByRole("dialog").querySelector("button.btn-danger")!,
+    );
+    await waitFor(() =>
+      expect(mockAdminRequest).toHaveBeenCalledWith("token", {
+        url: "/api/admin/users/11/webauthn/credentials/admin-credential",
+        method: "DELETE",
+      }),
+    );
+
+    fireEvent.change(screen.getAllByRole("combobox")[0], {
+      target: { value: "VERIFY_EMAIL" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.resources.sendActionEmail }));
+    await waitFor(() =>
+      expect(mockAdminRequest).toHaveBeenCalledWith("token", {
+        url: "/api/admin/users/11/execute-actions-email?lifespan=43200",
+        method: "PUT",
+        data: ["VERIFY_EMAIL"],
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.resources.resetAuthenticator }));
+    fireEvent.click(screen.getByRole("dialog").querySelector("button.btn-danger")!);
+    await waitFor(() =>
+      expect(mockAdminRequest).toHaveBeenCalledWith("token", {
+        url: "/api/admin/users/11/totp",
+        method: "DELETE",
+      }),
+    );
+  });
+
+  it("validates custom profile types and persists valid multivalued attributes", async () => {
+    const definitions = [
+      {
+        id: 9,
+        name: "username",
+        displayName: "Username",
+        description: null,
+        type: "STRING",
+        required: true,
+        multivalued: false,
+        minLength: null,
+        maxLength: 100,
+        pattern: null,
+        enabled: true,
+        displayOrder: 10,
+        builtIn: true,
+      },
+      {
+        id: 10,
+        name: "tags",
+        displayName: "Tags",
+        description: "Uppercase tags",
+        type: "STRING",
+        required: true,
+        multivalued: true,
+        minLength: 2,
+        maxLength: 5,
+        pattern: "^[A-Z]+$",
+        enabled: true,
+        displayOrder: 50,
+        builtIn: false,
+      },
+      {
+        id: 11,
+        name: "enabledFlag",
+        displayName: "Enabled flag",
+        description: null,
+        type: "BOOLEAN",
+        required: true,
+        multivalued: false,
+        minLength: null,
+        maxLength: null,
+        pattern: null,
+        enabled: true,
+        displayOrder: 60,
+        builtIn: false,
+      },
+      {
+        id: 12,
+        name: "rank",
+        displayName: "Rank",
+        description: null,
+        type: "INTEGER",
+        required: true,
+        multivalued: false,
+        minLength: null,
+        maxLength: null,
+        pattern: null,
+        enabled: true,
+        displayOrder: 70,
+        builtIn: false,
+      },
+      {
+        id: 13,
+        name: "contact",
+        displayName: "Contact",
+        description: null,
+        type: "EMAIL",
+        required: true,
+        multivalued: false,
+        minLength: null,
+        maxLength: null,
+        pattern: null,
+        enabled: true,
+        displayOrder: 80,
+        builtIn: false,
+      },
+    ];
+    mockAdminRequest.mockImplementation(async (_token, config) => {
+      if (config.url === "/api/admin/roles?page=0&size=100") {
+        return { status: 200, data: rolePage({ name: "ROLE_USER" }) } as never;
+      }
+      if (config.url === "/api/admin/profile-attributes") {
+        return { status: 200, data: definitions } as never;
+      }
+      if (config.url === "/api/admin/users") {
+        return { status: 201, data: { id: 20, username: "ada" } } as never;
+      }
+      return { status: 200, data: { attributes: {} } } as never;
+    });
+
+    render(<UserForm dictionary={dictionary} locale="en" />);
+    await screen.findByLabelText("Tags *");
+    fireEvent.change(screen.getByLabelText("Tags *"), { target: { value: "A\nTOOLONG" } });
+    fireEvent.change(screen.getByLabelText("Enabled flag *"), { target: { value: "maybe" } });
+    fireEvent.change(screen.getByLabelText("Rank *"), { target: { value: "abc" } });
+    fireEvent.change(screen.getByLabelText("Contact *"), { target: { value: "invalid" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Username *" }), {
+      target: { value: "ada" },
+    });
+    fireEvent.change(document.querySelector('input[name="password"]')!, {
+      target: { value: "StrongPassword1!" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.save }));
+    expect(await screen.findAllByText(dictionary.admin.common.validation.invalid)).not.toHaveLength(0);
+
+    fireEvent.change(screen.getByLabelText("Tags *"), { target: { value: "AB\nCD" } });
+    fireEvent.change(screen.getByLabelText("Enabled flag *"), { target: { value: "true" } });
+    fireEvent.change(screen.getByLabelText("Rank *"), { target: { value: "7" } });
+    fireEvent.change(screen.getByLabelText("Contact *"), { target: { value: "ada@example.test" } });
+    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.save }));
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/admin/users"));
+    expect(mockAdminRequest).toHaveBeenCalledWith("token", expect.objectContaining({
+      url: "/api/admin/users/20/profile-attributes",
+      method: "PUT",
+      data: { attributes: { tags: ["AB", "CD"], enabledFlag: ["true"], rank: ["7"], contact: ["ada@example.test"] } },
+    }));
+  });
 });
