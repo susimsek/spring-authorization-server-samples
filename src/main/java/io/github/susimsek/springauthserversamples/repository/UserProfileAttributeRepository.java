@@ -15,5 +15,7 @@ public interface UserProfileAttributeRepository
 
     void deleteAllByUserId(Long userId);
 
+    void deleteAllByUserIdAndDefinitionId(Long userId, Long definitionId);
+
     void deleteAllByDefinitionId(Long definitionId);
 }

@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.mapstruct.factory.Mappers;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,10 +26,16 @@ public class LoginSettingsService {
     private final AdminAuditEventService auditEventService;
     private final JpaIndexedSessionRepository sessionRepository;
     private final LoginSettingsMapper loginSettingsMapper;
+    private final SocialProviderSettingsService socialProviderSettingsService;
 
     public LoginSettingsService(
             LoginSettingsRepository repository, AdminAuditEventService auditEventService) {
-        this(repository, auditEventService, null, Mappers.getMapper(LoginSettingsMapper.class));
+        this(
+                repository,
+                auditEventService,
+                null,
+                Mappers.getMapper(LoginSettingsMapper.class),
+                null);
     }
 
     public LoginSettingsService(
@@ -39,7 +46,21 @@ public class LoginSettingsService {
                 repository,
                 auditEventService,
                 sessionRepository,
-                Mappers.getMapper(LoginSettingsMapper.class));
+                Mappers.getMapper(LoginSettingsMapper.class),
+                null);
+    }
+
+    public LoginSettingsService(
+            LoginSettingsRepository repository,
+            AdminAuditEventService auditEventService,
+            JpaIndexedSessionRepository sessionRepository,
+            SocialProviderSettingsService socialProviderSettingsService) {
+        this(
+                repository,
+                auditEventService,
+                sessionRepository,
+                Mappers.getMapper(LoginSettingsMapper.class),
+                socialProviderSettingsService);
     }
 
     @Transactional(readOnly = true)
@@ -55,11 +76,15 @@ public class LoginSettingsService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = LoginSettingsRepository.LOGIN_SETTINGS_BY_ID_CACHE, allEntries = true)
     public AdminLoginSettingsDTO update(AdminLoginSettingsRequestDTO request) {
         validateOtpPolicy(request);
         LoginSettingsEntity settings = settings();
         loginSettingsMapper.update(request, settings);
         repository.save(settings);
+        if (socialProviderSettingsService != null) {
+            socialProviderSettingsService.refreshClientRegistrations();
+        }
         if (sessionRepository != null) {
             sessionRepository.setDefaultMaxInactiveInterval(
                     Duration.ofMinutes(settings.getSessionTimeoutMinutes()));

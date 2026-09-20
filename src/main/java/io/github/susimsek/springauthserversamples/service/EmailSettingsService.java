@@ -9,6 +9,7 @@ import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventS
 import lombok.RequiredArgsConstructor;
 import org.mapstruct.factory.Mappers;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -68,6 +69,7 @@ public class EmailSettingsService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = EmailSettingsRepository.EMAIL_SETTINGS_BY_ID_CACHE, allEntries = true)
     public AdminEmailSettingsDTO update(AdminEmailSettingsRequestDTO request) {
         EmailSettingsEntity e = entity();
         emailSettingsMapper.update(request, e);

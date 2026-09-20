@@ -42,6 +42,24 @@ public class SocialIdentityEntity {
     @Column(name = "subject", nullable = false, length = 255)
     private String subject;
 
+    @Column(name = "access_token_encrypted", length = 8000)
+    private String accessTokenEncrypted;
+
+    @Column(name = "refresh_token_encrypted", length = 8000)
+    private String refreshTokenEncrypted;
+
+    @Column(name = "access_token_expires_at")
+    private java.time.Instant accessTokenExpiresAt;
+
+    @Column(name = "token_type", length = 50)
+    private String tokenType;
+
+    @Column(name = "token_scopes", length = 2000)
+    private String tokenScopes;
+
+    @Column(name = "mapped_claims", length = 8000)
+    private String mappedClaims;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;

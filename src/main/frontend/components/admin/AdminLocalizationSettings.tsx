@@ -13,7 +13,6 @@ import type { PageResponse } from "@/lib/api-types";
 
 import { AdminActionIcon } from "./AdminActionIcon";
 import { useAdminAuth } from "./AdminAuthProvider";
-import { AdminBreadcrumb } from "./AdminBreadcrumb";
 import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import { DataTable } from "./DataTable";
 import { ErrorState, LoadingState } from "./AsyncState";
@@ -50,7 +49,7 @@ export default function AdminLocalizationSettings({
 }) {
   const copy = dictionary.admin.localization;
   const resources = dictionary.admin.resources;
-  const { accessToken } = useAdminAuth();
+  const { access, accessToken } = useAdminAuth();
   const alerts = useConsoleAlerts();
   const router = useRouter();
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -260,21 +259,6 @@ export default function AdminLocalizationSettings({
   return (
     <div className="d-grid gap-4">
       {error && <ErrorState message={copy.error} />}
-      {mode === "create" && (
-        <AdminBreadcrumb
-          items={[
-            {
-              label: dictionary.admin.settings.sections.localization,
-              href: "/admin/settings/localization",
-            },
-            {
-              label: copy.overridesTab,
-              href: "/admin/settings/localization/overrides",
-            },
-            { label: copy.create },
-          ]}
-        />
-      )}
       <DetailTabs
         tabs={[
           {
@@ -504,8 +488,21 @@ export default function AdminLocalizationSettings({
       {section === "overrides" && (
         <Card className="admin-panel-card">
           <Card.Body>
-            <h2 className="h5 mb-2">{copy.overridesTitle}</h2>
-            <p className="text-body-secondary mb-4">{copy.overridesSubtitle}</p>
+            <div className="admin-detail-heading mb-4">
+              <div>
+                <h2 className="h5 mb-1">{copy.overridesTitle}</h2>
+                <p className="text-body-secondary mb-0">{copy.overridesSubtitle}</p>
+              </div>
+              {access?.isAdmin && mode !== "create" && (
+                <Link
+                  className="btn btn-primary text-nowrap"
+                  href="/admin/settings/localization/overrides/new"
+                >
+                  <AdminActionIcon action="add" />
+                  {copy.create}
+                </Link>
+              )}
+            </div>
             {(mode === "create" || editing !== null) && (
               <div className="d-grid gap-3 mb-4">
                 <Form.Group controlId="localization-message-locale">
@@ -621,15 +618,7 @@ export default function AdminLocalizationSettings({
               onClearFilters={clearFilters}
               resultCount={totalElements}
               recordsLabel={resources.records}
-            >
-              <Link
-                className="btn btn-primary text-nowrap"
-                href="/admin/settings/localization/overrides/new"
-              >
-                <AdminActionIcon action="add" />
-                {copy.create}
-              </Link>
-            </ResourceFilters>
+            />
           )}
           {mode !== "create" && (
             <DataTable

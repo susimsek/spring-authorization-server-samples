@@ -65,6 +65,7 @@ This repository is a Spring Boot 4.1 + Java 25 sample application built around t
 - Optional account TOTP MFA with configurable issuer, algorithm, digits, period, clock-drift window, reusable-code policy, recovery codes, and required-action enrollment
 - Built-in Administration and Account consoles using public OIDC clients with Authorization Code + PKCE, refresh tokens, and OIDC logout
 - H2 in-memory database in PostgreSQL compatibility mode for `dev`
+- H2 web console at `/h2-console` for local `dev`-profile database inspection
 - PostgreSQL support for `prod`
 - XML-based Liquibase schema migrations
 - CSV seed data for authorities, users, user-authorities, and registered OAuth2 clients
@@ -125,6 +126,38 @@ Important defaults:
 - Default issuer: `https://spring-authorization-server-samples.local`
 - Hibernate second-level cache: enabled
 - Cache provider: JCache backed by Caffeine
+- Registration/login CAPTCHA: disabled by default; supports Google reCAPTCHA v2/v3 and reCAPTCHA Enterprise
+
+### Registration CAPTCHA
+
+The public `/register` and `/login` screens follow Keycloak's CAPTCHA model. Configure them from
+`Admin Console > Settings > Login > Registration and login CAPTCHA`. Registration and login have
+separate enable switches and actions; provider, public site key, Enterprise project ID, v2/v3
+mode, score thresholds, and the `recaptcha.net` option are managed there. Public settings are
+available from `GET /api/auth/registration-captcha` and `GET /api/auth/login-captcha`.
+
+For standard Google reCAPTCHA, choose `recaptcha`, enter the site key and secret key, then set
+`v3` for score-based verification or leave it disabled for the visible v2 checkbox. Choose a score
+threshold between `0.0` and `1.0` for score-based verification.
+
+For reCAPTCHA Enterprise, choose `enterprise`, enter the site key, Google Cloud project ID, and
+API key. Enterprise verification checks the token's validity, the expected action, and the minimum
+score. Enable `recaptcha.net` when the browser script should load from that domain instead of
+`google.com`.
+
+Secret/API key handling:
+
+The admin API accepts the secret/API key only on an authenticated update and stores them encrypted
+with AES-GCM in the `login_settings` table. The values are never returned to the browser; the
+panel only receives a configured/not-configured flag. A blank secret field preserves the current
+value. Configure a stable `SOCIAL_LOGIN_ENCRYPTION_KEY` before saving secrets, and keep it stable
+across restarts and deployments.
+
+The registration endpoint always verifies the token server-side and rejects missing, expired,
+invalid, or failed tokens before creating a user. The login filter verifies the login token before
+Spring Security processes the username and password, so failed CAPTCHA requests never reach the
+authentication provider. Tokens are generated at submit time for v3 so the backend can validate
+the expected action and score.
 
 ## Configuration and Profiles
 

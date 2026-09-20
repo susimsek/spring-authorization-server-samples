@@ -39,6 +39,17 @@ class AccountAvatarServiceTest {
     }
 
     @Test
+    void returnsSocialPictureWhenNoLocalAvatarIsConfigured() {
+        UserEntity user = user(7L);
+        user.setPictureUrl("https://images.example.test/ada.jpg");
+        when(userRepository.findByUsername("user")).thenReturn(Optional.of(user));
+        when(userAvatarRepository.findVersionByUserId(7L)).thenReturn(Optional.empty());
+
+        assertThat(service().avatar("user").avatarUrl())
+                .isEqualTo("https://images.example.test/ada.jpg");
+    }
+
+    @Test
     void updatesAndDeletesOnlyTheAuthenticatedUserAvatar() {
         UserEntity user = user(7L);
         MockMultipartFile file =

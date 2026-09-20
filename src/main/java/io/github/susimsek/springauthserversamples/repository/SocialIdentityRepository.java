@@ -11,5 +11,7 @@ public interface SocialIdentityRepository extends JpaRepository<SocialIdentityEn
 
     List<SocialIdentityEntity> findAllByUserUsername(String username);
 
+    List<SocialIdentityEntity> findAllByProvider(String provider);
+
     List<SocialIdentityEntity> findAllByUserUsernameAndProvider(String username, String provider);
 }

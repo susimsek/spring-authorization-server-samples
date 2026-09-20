@@ -15,15 +15,24 @@ import io.github.susimsek.springauthserversamples.domain.LoginSettingsEntity;
 import io.github.susimsek.springauthserversamples.domain.OAuth2KeyEntity;
 import io.github.susimsek.springauthserversamples.domain.RegisteredClientEntity;
 import io.github.susimsek.springauthserversamples.domain.RequiredActionDefinitionEntity;
+import io.github.susimsek.springauthserversamples.domain.SocialProviderEntity;
+import io.github.susimsek.springauthserversamples.domain.SocialProviderMapperEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.domain.UserProfileAttributeDefinitionEntity;
+import io.github.susimsek.springauthserversamples.repository.AdminEventSettingsRepository;
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientScopeRepository;
+import io.github.susimsek.springauthserversamples.repository.EmailSettingsRepository;
+import io.github.susimsek.springauthserversamples.repository.GroupRepository;
 import io.github.susimsek.springauthserversamples.repository.LocalizationMessageOverrideRepository;
 import io.github.susimsek.springauthserversamples.repository.LocalizationSettingsRepository;
+import io.github.susimsek.springauthserversamples.repository.LoginSettingsRepository;
 import io.github.susimsek.springauthserversamples.repository.OAuth2KeyRepository;
 import io.github.susimsek.springauthserversamples.repository.RequiredActionDefinitionRepository;
+import io.github.susimsek.springauthserversamples.repository.SocialProviderMapperRepository;
+import io.github.susimsek.springauthserversamples.repository.SocialProviderRepository;
+import io.github.susimsek.springauthserversamples.repository.UserProfileAttributeDefinitionRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import java.time.Duration;
 import java.util.HashMap;
@@ -98,6 +107,8 @@ class CacheConfigTest {
         assertThat(cacheManager.getCache(RegisteredClientEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(RequiredActionDefinitionEntity.class.getName()))
                 .isNotNull();
+        assertThat(cacheManager.getCache(SocialProviderEntity.class.getName())).isNotNull();
+        assertThat(cacheManager.getCache(SocialProviderMapperEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(UserEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(UserEntity.class.getName() + ".authorities")).isNotNull();
         assertThat(cacheManager.getCache(UserEntity.class.getName() + ".groups")).isNotNull();
@@ -114,6 +125,40 @@ class CacheConfigTest {
                                 RequiredActionDefinitionRepository.ENABLED_REQUIRED_ACTIONS_CACHE))
                 .isNotNull();
         assertThat(cacheManager.getCache(UserRepository.USER_BY_USERNAME_CACHE)).isNotNull();
+        assertThat(cacheManager.getCache(GroupRepository.DEFAULT_GROUPS_CACHE)).isNotNull();
+        assertThat(
+                        cacheManager.getCache(
+                                AdminEventSettingsRepository.ADMIN_EVENT_SETTINGS_BY_ID_CACHE))
+                .isNotNull();
+        assertThat(cacheManager.getCache(EmailSettingsRepository.EMAIL_SETTINGS_BY_ID_CACHE))
+                .isNotNull();
+        assertThat(cacheManager.getCache(LoginSettingsRepository.LOGIN_SETTINGS_BY_ID_CACHE))
+                .isNotNull();
+        assertThat(
+                        cacheManager.getCache(
+                                UserProfileAttributeDefinitionRepository
+                                        .ALL_PROFILE_ATTRIBUTE_DEFINITIONS_CACHE))
+                .isNotNull();
+        assertThat(
+                        cacheManager.getCache(
+                                UserProfileAttributeDefinitionRepository
+                                        .ENABLED_PROFILE_ATTRIBUTE_DEFINITIONS_CACHE))
+                .isNotNull();
+        assertThat(
+                        cacheManager.getCache(
+                                UserProfileAttributeDefinitionRepository
+                                        .PROFILE_ATTRIBUTE_DEFINITION_BY_NAME_CACHE))
+                .isNotNull();
+        assertThat(
+                        cacheManager.getCache(
+                                SocialProviderRepository.SOCIAL_PROVIDER_BY_REGISTRATION_ID_CACHE))
+                .isNotNull();
+        assertThat(cacheManager.getCache(SocialProviderRepository.SOCIAL_PROVIDER_BY_ALIAS_CACHE))
+                .isNotNull();
+        assertThat(
+                        cacheManager.getCache(
+                                SocialProviderMapperRepository.MAPPERS_BY_PROVIDER_ALIAS_CACHE))
+                .isNotNull();
     }
 
     @Test

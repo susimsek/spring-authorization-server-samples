@@ -19,4 +19,11 @@ class SecurityConfigTest {
     void createsPasswordEncoder() {
         assertThat(config.passwordEncoder()).isInstanceOf(DelegatingPasswordEncoder.class);
     }
+
+    @Test
+    void createsCompactUrlSafeStateValues() {
+        String state = SecurityConfig.shortState();
+
+        assertThat(state).hasSize(22).matches("[A-Za-z0-9_-]+");
+    }
 }

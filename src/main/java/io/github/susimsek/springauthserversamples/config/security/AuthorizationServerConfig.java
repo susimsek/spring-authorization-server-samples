@@ -7,6 +7,7 @@ import io.github.susimsek.springauthserversamples.domain.GroupEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
 import io.github.susimsek.springauthserversamples.repository.ClientScopeRepository;
+import io.github.susimsek.springauthserversamples.repository.SocialIdentityRepository;
 import io.github.susimsek.springauthserversamples.repository.UserAvatarRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.security.AuthorizationEndpointErrorResponseHandler;
@@ -14,6 +15,7 @@ import io.github.susimsek.springauthserversamples.security.LocalizedOAuth2ErrorR
 import io.github.susimsek.springauthserversamples.security.OAuth2KeyJwkSource;
 import io.github.susimsek.springauthserversamples.security.OidcSessionIdentifier;
 import io.github.susimsek.springauthserversamples.service.OAuth2KeyService;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -51,6 +53,8 @@ import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 @Configuration(proxyBeanMethods = false)
 @RequiredArgsConstructor
@@ -71,6 +75,7 @@ public class AuthorizationServerConfig {
             RegisteredClientRepository registeredClientRepository,
             RequiredActionAuthorizationFilter requiredActionAuthorizationFilter,
             MfaAuthorizationFilter mfaAuthorizationFilter,
+            SocialProviderLogoutSuccessHandler socialProviderLogoutSuccessHandler,
             @Qualifier("authorizationServerSecurityContextRepository")
                     SecurityContextRepository securityContextRepository) {
         OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
@@ -93,7 +98,13 @@ public class AuthorizationServerConfig {
                         authorizationServer ->
                                 authorizationServer
                                         .tokenGenerator(tokenGenerator)
-                                        .oidc(Customizer.withDefaults())
+                                        .oidc(
+                                                oidc ->
+                                                        oidc.logoutEndpoint(
+                                                                logout ->
+                                                                        logout
+                                                                                .logoutResponseHandler(
+                                                                                        socialProviderLogoutSuccessHandler)))
                                         .authorizationEndpoint(
                                                 authorizationEndpoint ->
                                                         authorizationEndpoint
@@ -196,13 +207,17 @@ public class AuthorizationServerConfig {
             UserRepository userRepository,
             UserAvatarRepository userAvatarRepository,
             AuthorizationRepository authorizationRepository,
-            ClientScopeRepository clientScopeRepository) {
+            ClientScopeRepository clientScopeRepository,
+            SocialIdentityRepository socialIdentityRepository,
+            ObjectMapper objectMapper) {
         return jwtTokenCustomizer(
                 userRepository,
                 userAvatarRepository,
                 authorizationRepository,
                 clientScopeRepository,
-                false);
+                false,
+                socialIdentityRepository,
+                objectMapper);
     }
 
     OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer(
@@ -210,7 +225,13 @@ public class AuthorizationServerConfig {
             UserAvatarRepository userAvatarRepository,
             AuthorizationRepository authorizationRepository) {
         return jwtTokenCustomizer(
-                userRepository, userAvatarRepository, authorizationRepository, null, true);
+                userRepository,
+                userAvatarRepository,
+                authorizationRepository,
+                null,
+                true,
+                null,
+                null);
     }
 
     private OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer(
@@ -218,7 +239,9 @@ public class AuthorizationServerConfig {
             UserAvatarRepository userAvatarRepository,
             AuthorizationRepository authorizationRepository,
             ClientScopeRepository clientScopeRepository,
-            boolean legacyAdminGroups) {
+            boolean legacyAdminGroups,
+            SocialIdentityRepository socialIdentityRepository,
+            ObjectMapper objectMapper) {
         return context -> {
             boolean adminAccessToken =
                     OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())
@@ -240,9 +263,12 @@ public class AuthorizationServerConfig {
                     || isUserEmailToken(context)
                     || isUserLocaleToken(context)
                     || adminAccessToken
-                    || !groupMappers.isEmpty()) {
+                    || !groupMappers.isEmpty()
+                    || isUserSocialClaimsToken(context)) {
                 tokenUser = userRepository.findByUsername(context.getPrincipal().getName());
             }
+
+            appendMappedClaims(context, tokenUser, socialIdentityRepository, objectMapper);
 
             if (isUserLocaleToken(context)) {
                 tokenUser
@@ -252,21 +278,26 @@ public class AuthorizationServerConfig {
             }
 
             if (isUserProfileToken(context)) {
-                tokenUser
-                        .flatMap(user -> userAvatarRepository.findVersionByUserId(user.getId()))
-                        .ifPresent(
-                                avatar ->
-                                        context.getClaims()
-                                                .claim(
-                                                        "picture",
-                                                        applicationProperties
-                                                                        .authorizationServer()
-                                                                        .issuer()
-                                                                + "/avatars/"
-                                                                + avatar.getPublicId()
-                                                                + "?v="
-                                                                + avatar.getUpdatedAt()
-                                                                        .toEpochMilli()));
+                tokenUser.ifPresent(
+                        user -> {
+                            String picture =
+                                    userAvatarRepository
+                                            .findVersionByUserId(user.getId())
+                                            .map(
+                                                    avatar ->
+                                                            applicationProperties
+                                                                            .authorizationServer()
+                                                                            .issuer()
+                                                                    + "/avatars/"
+                                                                    + avatar.getPublicId()
+                                                                    + "?v="
+                                                                    + avatar.getUpdatedAt()
+                                                                            .toEpochMilli())
+                                            .orElse(user.getPictureUrl());
+                            if (picture != null && !picture.isBlank()) {
+                                context.getClaims().claim("picture", picture);
+                            }
+                        });
             }
 
             if (isUserEmailToken(context)) {
@@ -351,6 +382,44 @@ public class AuthorizationServerConfig {
         };
     }
 
+    private static void appendMappedClaims(
+            JwtEncodingContext context,
+            Optional<UserEntity> tokenUser,
+            SocialIdentityRepository socialIdentityRepository,
+            ObjectMapper objectMapper) {
+        if (socialIdentityRepository == null
+                || objectMapper == null
+                || !isUserSocialClaimsToken(context)
+                || tokenUser.isEmpty()) {
+            return;
+        }
+        String tokenKey =
+                OidcParameterNames.ID_TOKEN.equals(context.getTokenType().getValue())
+                        ? "id_token"
+                        : "access_token";
+        socialIdentityRepository.findAllByUserUsername(tokenUser.get().getUsername()).stream()
+                .map(
+                        io.github.susimsek.springauthserversamples.domain.SocialIdentityEntity
+                                ::getMappedClaims)
+                .filter(value -> value != null && !value.isBlank())
+                .forEach(
+                        value -> {
+                            try {
+                                Map<String, Map<String, Object>> mapped =
+                                        objectMapper.readValue(value, new TypeReference<>() {});
+                                Map<String, Object> claims = mapped.get(tokenKey);
+                                if (claims != null) {
+                                    claims.forEach(
+                                            (name, claim) ->
+                                                    context.getClaims().claim(name, claim));
+                                }
+                            } catch (Exception ignored) {
+                                // A malformed optional mapper payload must not block token
+                                // issuance.
+                            }
+                        });
+    }
+
     private static boolean isUserProfileToken(JwtEncodingContext context) {
         return context.getAuthorizedScopes().contains("profile")
                 && (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())
@@ -372,6 +441,15 @@ public class AuthorizationServerConfig {
     }
 
     private static boolean isUserLocaleToken(JwtEncodingContext context) {
+        return (AuthorizationGrantType.AUTHORIZATION_CODE.equals(
+                                context.getAuthorizationGrantType())
+                        || AuthorizationGrantType.REFRESH_TOKEN.equals(
+                                context.getAuthorizationGrantType()))
+                && (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())
+                        || OidcParameterNames.ID_TOKEN.equals(context.getTokenType().getValue()));
+    }
+
+    private static boolean isUserSocialClaimsToken(JwtEncodingContext context) {
         return (AuthorizationGrantType.AUTHORIZATION_CODE.equals(
                                 context.getAuthorizationGrantType())
                         || AuthorizationGrantType.REFRESH_TOKEN.equals(

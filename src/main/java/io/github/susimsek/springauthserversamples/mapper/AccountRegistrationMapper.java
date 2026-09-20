@@ -15,6 +15,7 @@ public interface AccountRegistrationMapper {
     @Mapping(target = "enabled", constant = "true")
     @Mapping(target = "password", source = "encodedPassword")
     @Mapping(target = "pendingEmail", ignore = true)
+    @Mapping(target = "pictureUrl", ignore = true)
     @Mapping(target = "groups", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)

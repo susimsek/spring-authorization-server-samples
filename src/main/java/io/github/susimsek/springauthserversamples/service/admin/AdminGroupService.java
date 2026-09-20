@@ -124,6 +124,7 @@ public class AdminGroupService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = GroupRepository.DEFAULT_GROUPS_CACHE, allEntries = true)
     public AdminGroupDTO create(AdminGroupRequestDTO request) {
         String name = normalizeName(request.name());
         if (groupRepository.existsByName(name)) {
@@ -140,11 +141,13 @@ public class AdminGroupService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = GroupRepository.DEFAULT_GROUPS_CACHE, allEntries = true)
     public AdminGroupDTO update(Long id, AdminGroupRequestDTO request) {
         return update(id, request, null);
     }
 
     @Transactional
+    @CacheEvict(cacheNames = GroupRepository.DEFAULT_GROUPS_CACHE, allEntries = true)
     public AdminGroupDTO update(Long id, AdminGroupRequestDTO request, String currentUsername) {
         GroupEntity group = findGroup(id);
         assertPermission(group, currentUsername, GroupPermission.MANAGE_GROUP);
@@ -247,13 +250,23 @@ public class AdminGroupService {
     }
 
     @Transactional
-    @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
+    @CacheEvict(
+            cacheNames = {
+                UserRepository.USER_BY_USERNAME_CACHE,
+                GroupRepository.DEFAULT_GROUPS_CACHE
+            },
+            allEntries = true)
     public void delete(Long id) {
         delete(id, null);
     }
 
     @Transactional
-    @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
+    @CacheEvict(
+            cacheNames = {
+                UserRepository.USER_BY_USERNAME_CACHE,
+                GroupRepository.DEFAULT_GROUPS_CACHE
+            },
+            allEntries = true)
     public void delete(Long id, String currentUsername) {
         GroupEntity group = findGroup(id);
         assertPermission(group, currentUsername, GroupPermission.MANAGE_GROUP);

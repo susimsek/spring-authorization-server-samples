@@ -31,7 +31,7 @@ public class AccountAvatarService {
                                                 + avatar.getPublicId()
                                                 + "?v="
                                                 + avatar.getUpdatedAt().toEpochMilli()))
-                .orElseGet(() -> new AccountAvatarDTO(null));
+                .orElseGet(() -> new AccountAvatarDTO(user.getPictureUrl()));
     }
 
     @Transactional

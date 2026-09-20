@@ -29,6 +29,7 @@ export function AdminShell({ locale, dictionary, children }: Props) {
     ["", dictionary.admin.nav.dashboard, "gaugeHigh", access?.isAdmin],
     ["/clients", dictionary.admin.nav.clients, "addressCard", access?.viewClients],
     ["/client-scopes", dictionary.admin.nav.clientScopes, "layerGroup", access?.viewClients],
+    ["/identity-providers", dictionary.admin.nav.identityProviders, "globe", access?.isAdmin],
     ["/users", dictionary.admin.nav.users, "users", access?.viewUsers],
     ["/roles", dictionary.admin.nav.roles, "userShield", access?.viewRoles],
     ["/groups", dictionary.admin.nav.groups, "layerGroup", access?.viewUsers],

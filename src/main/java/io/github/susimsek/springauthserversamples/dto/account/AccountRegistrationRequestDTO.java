@@ -55,6 +55,13 @@ public record AccountRegistrationRequestDTO(
                         format = "password",
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 String confirmPassword,
+        @Size(max = 10000)
+                @Schema(
+                        description =
+                                "Single-use reCAPTCHA or reCAPTCHA Enterprise response token."
+                                        + " Required only when registration CAPTCHA is enabled.",
+                        requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+                String captchaToken,
         @Size(max = 10)
                 @Schema(
                         description = "Optional BCP 47 locale used for account emails.",

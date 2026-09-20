@@ -26,6 +26,7 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -77,6 +78,14 @@ public class UserProfileService {
     }
 
     @Transactional
+    @CacheEvict(
+            cacheNames = {
+                UserProfileAttributeDefinitionRepository.ALL_PROFILE_ATTRIBUTE_DEFINITIONS_CACHE,
+                UserProfileAttributeDefinitionRepository
+                        .ENABLED_PROFILE_ATTRIBUTE_DEFINITIONS_CACHE,
+                UserProfileAttributeDefinitionRepository.PROFILE_ATTRIBUTE_DEFINITION_BY_NAME_CACHE
+            },
+            allEntries = true)
     public UserProfileAttributeDefinitionDTO create(
             UserProfileAttributeDefinitionRequestDTO request) {
         validateDefinition(request, null);
@@ -92,6 +101,14 @@ public class UserProfileService {
     }
 
     @Transactional
+    @CacheEvict(
+            cacheNames = {
+                UserProfileAttributeDefinitionRepository.ALL_PROFILE_ATTRIBUTE_DEFINITIONS_CACHE,
+                UserProfileAttributeDefinitionRepository
+                        .ENABLED_PROFILE_ATTRIBUTE_DEFINITIONS_CACHE,
+                UserProfileAttributeDefinitionRepository.PROFILE_ATTRIBUTE_DEFINITION_BY_NAME_CACHE
+            },
+            allEntries = true)
     public UserProfileAttributeDefinitionDTO update(
             Long id, UserProfileAttributeDefinitionRequestDTO request) {
         UserProfileAttributeDefinitionEntity definition = findDefinition(id);
@@ -108,6 +125,14 @@ public class UserProfileService {
     }
 
     @Transactional
+    @CacheEvict(
+            cacheNames = {
+                UserProfileAttributeDefinitionRepository.ALL_PROFILE_ATTRIBUTE_DEFINITIONS_CACHE,
+                UserProfileAttributeDefinitionRepository
+                        .ENABLED_PROFILE_ATTRIBUTE_DEFINITIONS_CACHE,
+                UserProfileAttributeDefinitionRepository.PROFILE_ATTRIBUTE_DEFINITION_BY_NAME_CACHE
+            },
+            allEntries = true)
     public List<UserProfileAttributeDefinitionDTO> reorder(
             UserProfileAttributeOrderRequestDTO request) {
         List<Long> ids = request.ids();
@@ -145,6 +170,14 @@ public class UserProfileService {
     }
 
     @Transactional
+    @CacheEvict(
+            cacheNames = {
+                UserProfileAttributeDefinitionRepository.ALL_PROFILE_ATTRIBUTE_DEFINITIONS_CACHE,
+                UserProfileAttributeDefinitionRepository
+                        .ENABLED_PROFILE_ATTRIBUTE_DEFINITIONS_CACHE,
+                UserProfileAttributeDefinitionRepository.PROFILE_ATTRIBUTE_DEFINITION_BY_NAME_CACHE
+            },
+            allEntries = true)
     public void delete(Long id) {
         UserProfileAttributeDefinitionEntity definition = findDefinition(id);
         if (isBuiltIn(definition)) {
@@ -194,6 +227,64 @@ public class UserProfileService {
                                         .orElseThrow(() -> ApiException.notFound("User not found")))
                         .orElseThrow(() -> ApiException.notFound("User not found"));
         return saveUserAttributes(user, values, actor);
+    }
+
+    /** Persists mapper-owned built-in fields without replacing the stable username. */
+    @Transactional
+    public void saveMappedUser(UserEntity user, boolean firstLogin) {
+        userRepository.save(user);
+        if (!firstLogin) {
+            userAccessInvalidationService.invalidate(user.getUsername());
+            auditEventService.record("social.mapper.user.updated", "user", user.getId().toString());
+        }
+    }
+
+    /** Merges only the profile attributes supplied by an identity-provider mapper. */
+    @Transactional
+    public void mergeMappedAttributes(
+            UserEntity user, Map<String, List<String>> mappedValues, String actor) {
+        if (mappedValues == null || mappedValues.isEmpty()) {
+            return;
+        }
+        Map<String, UserProfileAttributeDefinitionEntity> definitions =
+                definitionRepository.findAllByEnabledTrueOrderByDisplayOrderAscNameAsc().stream()
+                        .filter(definition -> !isBuiltIn(definition))
+                        .collect(
+                                Collectors.toMap(
+                                        UserProfileAttributeDefinitionEntity::getName, d -> d));
+        List<UserProfileAttributeEntity> rows = new ArrayList<>();
+        boolean changed = false;
+        for (Map.Entry<String, List<String>> entry : mappedValues.entrySet()) {
+            UserProfileAttributeDefinitionEntity definition = definitions.get(entry.getKey());
+            if (definition == null) {
+                continue;
+            }
+            List<String> values =
+                    entry.getValue() == null
+                            ? List.of()
+                            : entry.getValue().stream()
+                                    .filter(Objects::nonNull)
+                                    .map(String::trim)
+                                    .filter(value -> !value.isEmpty())
+                                    .toList();
+            if (!definition.isMultivalued() && values.size() > 1) {
+                values = values.subList(0, 1);
+            }
+            values.forEach(value -> validateValue(definition, value));
+            attributeRepository.deleteAllByUserIdAndDefinitionId(user.getId(), definition.getId());
+            for (int index = 0; index < values.size(); index++) {
+                rows.add(
+                        new UserProfileAttributeEntity(user, definition, index, values.get(index)));
+            }
+            changed = true;
+        }
+        if (changed) {
+            entityManager.flush();
+            attributeRepository.saveAll(rows);
+            userAccessInvalidationService.invalidate(user.getUsername());
+            auditEventService.record(
+                    "social.mapper.profile.updated", "user", user.getId().toString());
+        }
     }
 
     private UserProfileAttributesDTO saveUserAttributes(

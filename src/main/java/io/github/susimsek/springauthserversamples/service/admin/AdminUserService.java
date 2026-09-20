@@ -602,7 +602,8 @@ public class AdminUserService {
     }
 
     private AdminUserDTO userView(UserEntity user, String avatarUrl) {
-        return adminUserMapper.toDTO(user, avatarUrl);
+        return adminUserMapper.toDTO(
+                user, avatarUrl == null || avatarUrl.isBlank() ? user.getPictureUrl() : avatarUrl);
     }
 
     private AdminGroupDTO groupView(GroupEntity group) {

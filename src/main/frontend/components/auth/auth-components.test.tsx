@@ -117,9 +117,9 @@ describe("authentication components", () => {
         json: async () =>
           url.includes("social-providers")
             ? [
-                { provider: "google", configured: true },
-                { provider: "github", configured: true },
-                { provider: "microsoft", configured: false },
+                { provider: "google", providerType: "google", configured: true },
+                { provider: "github", providerType: "github", configured: true },
+                { provider: "microsoft", providerType: "microsoft", configured: false },
               ]
             : {},
       } as Response;
@@ -146,6 +146,28 @@ describe("authentication components", () => {
     expect(google).toHaveAttribute("aria-disabled", "true");
     expect(github).toHaveAttribute("aria-disabled", "true");
     expect(google.querySelector(".spinner-border")).not.toBeNull();
+
+    delete (globalThis as { fetch?: typeof fetch }).fetch;
+  });
+
+  it("uses a configured alias for the redirect while retaining the provider type", async () => {
+    globalThis.fetch = jest.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      return {
+        ok: true,
+        json: async () =>
+          url.includes("social-providers")
+            ? [{ provider: "acme-google", providerType: "google", configured: true }]
+            : {},
+      } as Response;
+    }) as unknown as typeof fetch;
+
+    render(<LoginForm dictionary={dictionary} />);
+
+    const provider = await screen.findByRole("button", {
+      name: `${dictionary.login.socialLogin} Google`,
+    });
+    expect(provider).toHaveAttribute("href", "/oauth2/authorization/acme-google");
 
     delete (globalThis as { fetch?: typeof fetch }).fetch;
   });

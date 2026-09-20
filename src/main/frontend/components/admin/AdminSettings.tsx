@@ -8,6 +8,7 @@ import { useDictionary } from "@/i18n/client";
 import { adminRequest } from "@/lib/admin-api";
 
 import { AdminPageHeader } from "./AdminPageHeader";
+import { AdminBreadcrumb } from "./AdminBreadcrumb";
 import { useAdminAuth } from "./AdminAuthProvider";
 import AdminEventSettings from "./AdminEventSettings";
 import AdminUserProfileSettings from "./AdminUserProfileSettings";
@@ -19,6 +20,7 @@ import AdminLocalizationSettings, { type LocalizationSection } from "./AdminLoca
 const SETTINGS_SECTIONS = [
   "general",
   "login",
+  "social-login",
   "email",
   "brute-force",
   "sessions",
@@ -64,6 +66,11 @@ export default function AdminSettings({
       href: "/admin/settings/login",
     },
     {
+      key: "social-login",
+      label: dictionary.admin.settings.sections.socialLogin,
+      href: "/admin/settings/social-login",
+    },
+    {
       key: "email",
       label: dictionary.admin.settings.sections.email,
       href: "/admin/settings/email",
@@ -99,9 +106,23 @@ export default function AdminSettings({
     href: string;
   }>;
   const tabs = access?.isAdmin ? allTabs : allTabs.filter((tab) => tab.key === "events");
-
   return (
     <>
+      {localizationAction === "create" && (
+        <AdminBreadcrumb
+          items={[
+            {
+              label: dictionary.admin.settings.sections.localization,
+              href: "/admin/settings/localization",
+            },
+            {
+              label: dictionary.admin.localization.overridesTab,
+              href: "/admin/settings/localization/overrides",
+            },
+            { label: dictionary.admin.localization.create },
+          ]}
+        />
+      )}
       <AdminPageHeader
         title={dictionary.admin.settings.title}
         description={dictionary.admin.settings.subtitle}

@@ -3,6 +3,7 @@ package io.github.susimsek.springauthserversamples.repository;
 import io.github.susimsek.springauthserversamples.domain.GroupEntity;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -12,6 +13,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface GroupRepository extends JpaRepository<GroupEntity, Long> {
 
+    String DEFAULT_GROUPS_CACHE = "defaultGroups";
+
     @EntityGraph(attributePaths = {"authorities", "parent"})
     Page<GroupEntity> findByNameContainingIgnoreCase(String name, Pageable pageable);
 
@@ -19,6 +22,7 @@ public interface GroupRepository extends JpaRepository<GroupEntity, Long> {
 
     boolean existsByParentId(Long parentId);
 
+    @Cacheable(cacheNames = DEFAULT_GROUPS_CACHE)
     List<GroupEntity> findByDefaultGroupTrueOrderByNameAsc();
 
     @EntityGraph(attributePaths = "authorities")

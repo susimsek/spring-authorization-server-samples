@@ -13,6 +13,7 @@ import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 
 import { useAdminAuth } from "./AdminAuthProvider";
 import { AdminActionIcon } from "./AdminActionIcon";
+import { DetailTabs } from "./DetailTabs";
 import { ViewHeader } from "./ViewHeader";
 
 type Settings = {
@@ -69,6 +70,25 @@ type Settings = {
   recoveryCodeWarningThreshold: number;
 };
 
+type CaptchaSettings = {
+  enabled: boolean;
+  provider: "recaptcha" | "enterprise";
+  siteKey: string;
+  projectId: string;
+  action: string;
+  recaptchaV3: boolean;
+  scoreThreshold: number;
+  useRecaptchaNet: boolean;
+  secretConfigured: boolean;
+  apiKeyConfigured: boolean;
+  secretKey: string;
+  apiKey: string;
+  loginEnabled: boolean;
+  loginAction: string;
+  loginRecaptchaV3: boolean;
+  loginScoreThreshold: number;
+};
+
 const defaultSettings: Settings = {
   userRegistration: true,
   forgotPassword: true,
@@ -123,15 +143,54 @@ const defaultSettings: Settings = {
   microsoftLoginEnabled: false,
 };
 
+const defaultCaptchaSettings: CaptchaSettings = {
+  enabled: false,
+  provider: "recaptcha",
+  siteKey: "",
+  projectId: "",
+  action: "register",
+  recaptchaV3: false,
+  scoreThreshold: 0.7,
+  useRecaptchaNet: false,
+  secretConfigured: false,
+  apiKeyConfigured: false,
+  secretKey: "",
+  apiKey: "",
+  loginEnabled: false,
+  loginAction: "login",
+  loginRecaptchaV3: false,
+  loginScoreThreshold: 0.7,
+};
+
 type SocialProviderSetting = {
   provider: string;
+  alias: string;
+  hideOnLogin: boolean;
+  accountLinkingOnly: boolean;
+  trustEmail: boolean;
+  mfaRequired: boolean;
+  requiredClaims: string;
+  storeTokens: boolean;
+  storedTokensReadable: boolean;
+  guiOrder: number;
+  showInAccountConsole: "always" | "when-linked" | "never";
   clientId: string;
   clientSecretConfigured: boolean;
   clientSecret: string;
 };
 
+type SocialProviderFormValues = {
+  providers: SocialProviderSetting[];
+};
+
 export type LoginSettingsSection =
-  "login" | "webauthn" | "password-policy" | "otp-policy" | "brute-force" | "sessions";
+  | "login"
+  | "social-login"
+  | "webauthn"
+  | "password-policy"
+  | "otp-policy"
+  | "brute-force"
+  | "sessions";
 
 export default function LoginSettingsPage({
   embedded = false,
@@ -147,9 +206,11 @@ export default function LoginSettingsPage({
   const alerts = useConsoleAlerts();
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
-  const [socialProviders, setSocialProviders] = useState<SocialProviderSetting[]>([]);
   const [socialProvidersLoaded, setSocialProvidersLoaded] = useState(false);
-  const [socialProvidersSubmitting, setSocialProvidersSubmitting] = useState(false);
+  const [socialProviderTab, setSocialProviderTab] = useState("");
+  const [captcha, setCaptcha] = useState<CaptchaSettings>(defaultCaptchaSettings);
+  const [captchaLoaded, setCaptchaLoaded] = useState(false);
+  const [captchaSubmitting, setCaptchaSubmitting] = useState(false);
   const schema = z.object({
     userRegistration: z.boolean(),
     forgotPassword: z.boolean(),
@@ -228,6 +289,38 @@ export default function LoginSettingsPage({
     mode: "onChange",
     defaultValues: defaultSettings,
   });
+  const socialProviderSchema = z.object({
+    providers: z.array(
+      z.object({
+        provider: z.string().min(1),
+        alias: z.string().trim().min(1, validation.required).max(50),
+        hideOnLogin: z.boolean(),
+        accountLinkingOnly: z.boolean(),
+        trustEmail: z.boolean(),
+        mfaRequired: z.boolean(),
+        requiredClaims: z.string().trim().min(1, validation.required).max(500),
+        storeTokens: z.boolean(),
+        storedTokensReadable: z.boolean(),
+        guiOrder: z.number().int().min(0, validation.positiveNumber),
+        showInAccountConsole: z.enum(["always", "when-linked", "never"]),
+        clientId: z.string().trim().max(500),
+        clientSecretConfigured: z.boolean(),
+        clientSecret: z.string().max(2000),
+      }),
+    ),
+  });
+  const {
+    register: registerSocial,
+    reset: resetSocial,
+    handleSubmit: handleSocialSubmit,
+    watch: watchSocial,
+    formState: { errors: socialErrors, isSubmitting: socialProvidersSubmitting },
+  } = useForm<SocialProviderFormValues>({
+    resolver: zodResolver(socialProviderSchema),
+    mode: "onChange",
+    defaultValues: { providers: [] },
+  });
+  const socialProviders = watchSocial("providers");
 
   useEffect(() => {
     if (!accessToken) return;
@@ -242,16 +335,37 @@ export default function LoginSettingsPage({
 
   useEffect(() => {
     if (!accessToken) return;
+    adminRequest<Omit<CaptchaSettings, "secretKey" | "apiKey">>(accessToken, {
+      url: "/api/admin/settings/registration-captcha",
+    })
+      .then((response) => {
+        if (response.status >= 300) throw new Error();
+        setCaptcha({ ...defaultCaptchaSettings, ...response.data });
+        setCaptchaLoaded(true);
+      })
+      .catch(() => setError(true));
+  }, [accessToken]);
+
+  useEffect(() => {
+    if (!accessToken) return;
     adminRequest<Array<Omit<SocialProviderSetting, "clientSecret">>>(accessToken, {
       url: "/api/admin/settings/social-providers",
     })
       .then((response) => {
         if (response.status >= 300) throw new Error();
-        setSocialProviders(response.data.map((provider) => ({ ...provider, clientSecret: "" })));
+        resetSocial({
+          providers: response.data.map((provider) => ({
+            ...provider,
+            trustEmail: provider.trustEmail ?? false,
+            mfaRequired: provider.mfaRequired ?? false,
+            requiredClaims: provider.requiredClaims ?? "sub",
+            clientSecret: "",
+          })),
+        });
         setSocialProvidersLoaded(true);
       })
       .catch(() => setError(true));
-  }, [accessToken]);
+  }, [accessToken, resetSocial]);
 
   useEffect(() => {
     if (!loaded || !focusSection) return;
@@ -262,6 +376,10 @@ export default function LoginSettingsPage({
   }, [focusSection, loaded]);
 
   const activeSection = focusSection ?? "login";
+  const activeSocialProvider =
+    socialProviders.find((provider) => provider.provider === socialProviderTab)?.provider ??
+    socialProviders[0]?.provider ??
+    "";
 
   const submit = handleSubmit(async (values) => {
     if (!accessToken) return;
@@ -280,10 +398,9 @@ export default function LoginSettingsPage({
     }
   });
 
-  const saveSocialProviders = async () => {
+  const saveSocialProviders = handleSocialSubmit(async ({ providers }) => {
     if (!accessToken) return;
     setError(false);
-    setSocialProvidersSubmitting(true);
     try {
       const response = await adminRequest<Array<Omit<SocialProviderSetting, "clientSecret">>>(
         accessToken,
@@ -291,20 +408,92 @@ export default function LoginSettingsPage({
           method: "PUT",
           url: "/api/admin/settings/social-providers",
           data: {
-            providers: socialProviders.map(({ provider, clientId, clientSecret }) => ({
-              provider,
-              clientId,
-              clientSecret,
-            })),
+            providers: providers.map(
+              ({
+                provider,
+                alias,
+                hideOnLogin,
+                accountLinkingOnly,
+                trustEmail,
+                mfaRequired,
+                requiredClaims,
+                storeTokens,
+                storedTokensReadable,
+                guiOrder,
+                showInAccountConsole,
+                clientId,
+                clientSecret,
+              }) => ({
+                provider,
+                alias,
+                hideOnLogin,
+                accountLinkingOnly,
+                trustEmail,
+                mfaRequired,
+                requiredClaims,
+                storeTokens,
+                storedTokensReadable,
+                guiOrder,
+                showInAccountConsole,
+                clientId,
+                clientSecret,
+              }),
+            ),
           },
         },
       );
       if (response.status >= 300) throw new Error();
-      setSocialProviders(response.data.map((provider) => ({ ...provider, clientSecret: "" })));
+      resetSocial({
+        providers: response.data.map((provider) => ({
+          ...provider,
+          trustEmail: provider.trustEmail ?? false,
+          mfaRequired: provider.mfaRequired ?? false,
+          requiredClaims: provider.requiredClaims ?? "sub",
+          clientSecret: "",
+        })),
+      });
+      alerts.addAlert(copy.saved);
     } catch {
+      alerts.addError(copy.error);
       setError(true);
+    }
+  });
+
+  const saveCaptcha = async () => {
+    if (!accessToken) return;
+    setError(false);
+    setCaptchaSubmitting(true);
+    try {
+      const response = await adminRequest<Omit<CaptchaSettings, "secretKey" | "apiKey">>(
+        accessToken,
+        {
+          method: "PUT",
+          url: "/api/admin/settings/registration-captcha",
+          data: {
+            enabled: captcha.enabled,
+            provider: captcha.provider,
+            siteKey: captcha.siteKey,
+            secretKey: captcha.secretKey,
+            projectId: captcha.projectId,
+            apiKey: captcha.apiKey,
+            action: captcha.action,
+            recaptchaV3: captcha.recaptchaV3,
+            scoreThreshold: captcha.scoreThreshold,
+            useRecaptchaNet: captcha.useRecaptchaNet,
+            loginEnabled: captcha.loginEnabled,
+            loginAction: captcha.loginAction,
+            loginRecaptchaV3: captcha.loginRecaptchaV3,
+            loginScoreThreshold: captcha.loginScoreThreshold,
+          },
+        },
+      );
+      if (response.status >= 300) throw new Error();
+      setCaptcha({ ...defaultCaptchaSettings, ...response.data });
+      alerts.addAlert(copy.captchaSaved);
+    } catch {
+      alerts.addError(copy.captchaError);
     } finally {
-      setSocialProvidersSubmitting(false);
+      setCaptchaSubmitting(false);
     }
   };
 
@@ -330,6 +519,222 @@ export default function LoginSettingsPage({
                   label={copy.userRegistration}
                   {...register("userRegistration")}
                 />
+                {captchaLoaded && (
+                  <Card className="admin-panel-card mb-4">
+                    <Card.Body>
+                      <h3 className="h6">{copy.captchaTitle}</h3>
+                      <p className="text-body-secondary small">{copy.captchaHelp}</p>
+                      <Form.Check
+                        className="mb-3"
+                        type="switch"
+                        label={copy.captchaEnabled}
+                        checked={captcha.enabled}
+                        onChange={(event) =>
+                          setCaptcha((current) => ({
+                            ...current,
+                            enabled: event.target.checked,
+                          }))
+                        }
+                      />
+                      <Form.Check
+                        className="mb-3"
+                        type="switch"
+                        label={copy.captchaLoginEnabled}
+                        checked={captcha.loginEnabled}
+                        onChange={(event) =>
+                          setCaptcha((current) => ({
+                            ...current,
+                            loginEnabled: event.target.checked,
+                          }))
+                        }
+                      />
+                      <div className="d-grid gap-3">
+                        <Form.Group controlId="registration-captcha-provider">
+                          <Form.Label>{copy.captchaProvider}</Form.Label>
+                          <Form.Select
+                            value={captcha.provider}
+                            onChange={(event) =>
+                              setCaptcha((current) => ({
+                                ...current,
+                                provider: event.target.value as CaptchaSettings["provider"],
+                              }))
+                            }
+                          >
+                            <option value="recaptcha">{copy.captchaProviderRecaptcha}</option>
+                            <option value="enterprise">{copy.captchaProviderEnterprise}</option>
+                          </Form.Select>
+                        </Form.Group>
+                        <Form.Group controlId="registration-captcha-site-key">
+                          <Form.Label>{copy.captchaSiteKey}</Form.Label>
+                          <Form.Control
+                            value={captcha.siteKey}
+                            onChange={(event) =>
+                              setCaptcha((current) => ({
+                                ...current,
+                                siteKey: event.target.value,
+                              }))
+                            }
+                          />
+                        </Form.Group>
+                        {captcha.provider === "enterprise" && (
+                          <Form.Group controlId="registration-captcha-project-id">
+                            <Form.Label>{copy.captchaProjectId}</Form.Label>
+                            <Form.Control
+                              value={captcha.projectId}
+                              onChange={(event) =>
+                                setCaptcha((current) => ({
+                                  ...current,
+                                  projectId: event.target.value,
+                                }))
+                              }
+                            />
+                          </Form.Group>
+                        )}
+                        <Form.Group controlId="registration-captcha-secret">
+                          <Form.Label>
+                            {captcha.provider === "enterprise"
+                              ? copy.captchaApiKey
+                              : copy.captchaSecret}
+                          </Form.Label>
+                          <Form.Control
+                            type="password"
+                            autoComplete="new-password"
+                            placeholder={
+                              captcha.provider === "enterprise"
+                                ? copy.captchaKeyPlaceholder
+                                : copy.captchaSecretPlaceholder
+                            }
+                            value={
+                              captcha.provider === "enterprise" ? captcha.apiKey : captcha.secretKey
+                            }
+                            onChange={(event) =>
+                              setCaptcha((current) =>
+                                current.provider === "enterprise"
+                                  ? { ...current, apiKey: event.target.value }
+                                  : { ...current, secretKey: event.target.value },
+                              )
+                            }
+                          />
+                          {(captcha.provider === "enterprise"
+                            ? captcha.apiKeyConfigured
+                            : captcha.secretConfigured) && (
+                            <Form.Text className="text-success">
+                              {copy.captchaKeyConfigured}
+                            </Form.Text>
+                          )}
+                        </Form.Group>
+                        <Form.Group controlId="registration-captcha-action">
+                          <Form.Label>{copy.captchaAction}</Form.Label>
+                          <Form.Control
+                            value={captcha.action}
+                            onChange={(event) =>
+                              setCaptcha((current) => ({
+                                ...current,
+                                action: event.target.value,
+                              }))
+                            }
+                          />
+                        </Form.Group>
+                        <Form.Group controlId="login-captcha-action">
+                          <Form.Label>{copy.captchaLoginAction}</Form.Label>
+                          <Form.Control
+                            value={captcha.loginAction}
+                            onChange={(event) =>
+                              setCaptcha((current) => ({
+                                ...current,
+                                loginAction: event.target.value,
+                              }))
+                            }
+                          />
+                        </Form.Group>
+                        <Form.Check
+                          type="switch"
+                          label={copy.captchaV3}
+                          checked={captcha.recaptchaV3}
+                          onChange={(event) =>
+                            setCaptcha((current) => ({
+                              ...current,
+                              recaptchaV3: event.target.checked,
+                            }))
+                          }
+                        />
+                        {captcha.recaptchaV3 && (
+                          <Form.Group controlId="registration-captcha-score">
+                            <Form.Label>{copy.captchaScoreThreshold}</Form.Label>
+                            <Form.Control
+                              type="number"
+                              min="0"
+                              max="1"
+                              step="0.05"
+                              value={captcha.scoreThreshold}
+                              onChange={(event) =>
+                                setCaptcha((current) => ({
+                                  ...current,
+                                  scoreThreshold: Number(event.target.value),
+                                }))
+                              }
+                            />
+                          </Form.Group>
+                        )}
+                        <Form.Check
+                          type="switch"
+                          label={copy.captchaLoginV3}
+                          checked={captcha.loginRecaptchaV3}
+                          onChange={(event) =>
+                            setCaptcha((current) => ({
+                              ...current,
+                              loginRecaptchaV3: event.target.checked,
+                            }))
+                          }
+                        />
+                        {(captcha.loginRecaptchaV3 || captcha.provider === "enterprise") && (
+                          <Form.Group controlId="login-captcha-score">
+                            <Form.Label>{copy.captchaLoginScoreThreshold}</Form.Label>
+                            <Form.Control
+                              type="number"
+                              min="0"
+                              max="1"
+                              step="0.05"
+                              value={captcha.loginScoreThreshold}
+                              onChange={(event) =>
+                                setCaptcha((current) => ({
+                                  ...current,
+                                  loginScoreThreshold: Number(event.target.value),
+                                }))
+                              }
+                            />
+                          </Form.Group>
+                        )}
+                        <Form.Check
+                          type="switch"
+                          label={copy.captchaUseRecaptchaNet}
+                          checked={captcha.useRecaptchaNet}
+                          onChange={(event) =>
+                            setCaptcha((current) => ({
+                              ...current,
+                              useRecaptchaNet: event.target.checked,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="admin-form-actions mt-4">
+                        <Button type="button" disabled={captchaSubmitting} onClick={saveCaptcha}>
+                          {captchaSubmitting ? (
+                            <Spinner
+                              animation="border"
+                              aria-hidden="true"
+                              className="me-2"
+                              size="sm"
+                            />
+                          ) : (
+                            <AdminActionIcon action="save" />
+                          )}
+                          {copy.captchaSave}
+                        </Button>
+                      </div>
+                    </Card.Body>
+                  </Card>
+                )}
                 <Form.Check
                   className="mb-4"
                   type="switch"
@@ -395,7 +800,14 @@ export default function LoginSettingsPage({
                     valueAsNumber: true,
                   })}
                 />
-                <h3 className="h6 mt-4 mb-3">{copy.socialLogin}</h3>
+                <SaveButton copy={copy.save} isSubmitting={isSubmitting} />
+              </section>
+
+              <section hidden={activeSection !== "social-login"}>
+                <h2 className="h5 mb-2" id="login-settings-social-login">
+                  {copy.sectionSocialLogin}
+                </h2>
+                <p className="text-body-secondary mb-4">{copy.socialLoginHelp}</p>
                 <Form.Check
                   className="mb-4"
                   type="switch"
@@ -428,55 +840,159 @@ export default function LoginSettingsPage({
                   <>
                     <h3 className="h6 mt-4 mb-2">{copy.socialCredentials}</h3>
                     <p className="text-body-secondary small">{copy.socialCredentialsHelp}</p>
-                    <div className="d-grid gap-3">
-                      {socialProviders.map((provider) => (
-                        <Card key={provider.provider} className="admin-panel-card">
-                          <Card.Body>
-                            <h4 className="h6">{providerLabel(provider.provider)}</h4>
-                            <Form.Group controlId={`social-${provider.provider}-client-id`}>
-                              <Form.Label>{copy.clientId}</Form.Label>
-                              <Form.Control
-                                value={provider.clientId}
-                                onChange={(event) =>
-                                  setSocialProviders((current) =>
-                                    current.map((item) =>
-                                      item.provider === provider.provider
-                                        ? { ...item, clientId: event.target.value }
-                                        : item,
-                                    ),
-                                  )
-                                }
-                              />
-                            </Form.Group>
-                            <Form.Group
-                              className="mt-3"
-                              controlId={`social-${provider.provider}-client-secret`}
-                            >
-                              <Form.Label>{copy.clientSecret}</Form.Label>
-                              <Form.Control
-                                type="password"
-                                autoComplete="new-password"
-                                placeholder={copy.clientSecretPlaceholder}
-                                value={provider.clientSecret}
-                                onChange={(event) =>
-                                  setSocialProviders((current) =>
-                                    current.map((item) =>
-                                      item.provider === provider.provider
-                                        ? { ...item, clientSecret: event.target.value }
-                                        : item,
-                                    ),
-                                  )
-                                }
-                              />
-                              {provider.clientSecretConfigured && (
-                                <Form.Text className="text-success">
-                                  {copy.clientSecretConfigured}
-                                </Form.Text>
-                              )}
-                            </Form.Group>
-                          </Card.Body>
-                        </Card>
-                      ))}
+                    <DetailTabs
+                      tabs={socialProviders.map((provider) => ({
+                        key: provider.provider,
+                        label: providerLabel(provider.provider),
+                        onSelect: () => setSocialProviderTab(provider.provider),
+                      }))}
+                      active={activeSocialProvider}
+                    />
+                    <div className="d-grid gap-3 mt-3">
+                      {socialProviders
+                        .filter((provider) => provider.provider === activeSocialProvider)
+                        .map((provider) => {
+                          const providerIndex = socialProviders.findIndex(
+                            (item) => item.provider === provider.provider,
+                          );
+                          const providerErrors = socialErrors.providers?.[providerIndex];
+                          return (
+                            <Card key={provider.provider} className="admin-panel-card">
+                              <Card.Body>
+                                <h4 className="h6">{providerLabel(provider.provider)}</h4>
+                                <div className="d-grid gap-3">
+                                  <Form.Group controlId={`social-${provider.provider}-alias`}>
+                                    <Form.Label>{copy.providerAlias}</Form.Label>
+                                    <Form.Control
+                                      isInvalid={Boolean(providerErrors?.alias)}
+                                      {...registerSocial(`providers.${providerIndex}.alias`)}
+                                    />
+                                    <Form.Control.Feedback type="invalid">
+                                      {providerErrors?.alias?.message}
+                                    </Form.Control.Feedback>
+                                  </Form.Group>
+                                  <Form.Group controlId={`social-${provider.provider}-order`}>
+                                    <Form.Label>{copy.providerGuiOrder}</Form.Label>
+                                    <Form.Control
+                                      type="number"
+                                      min={0}
+                                      isInvalid={Boolean(providerErrors?.guiOrder)}
+                                      {...registerSocial(`providers.${providerIndex}.guiOrder`, {
+                                        valueAsNumber: true,
+                                      })}
+                                    />
+                                    <Form.Control.Feedback type="invalid">
+                                      {providerErrors?.guiOrder?.message}
+                                    </Form.Control.Feedback>
+                                  </Form.Group>
+                                  <Form.Group
+                                    controlId={`social-${provider.provider}-account-visibility`}
+                                  >
+                                    <Form.Label>{copy.providerAccountVisibility}</Form.Label>
+                                    <Form.Select
+                                      {...registerSocial(
+                                        `providers.${providerIndex}.showInAccountConsole`,
+                                      )}
+                                    >
+                                      <option value="always">{copy.providerAccountAlways}</option>
+                                      <option value="when-linked">
+                                        {copy.providerAccountWhenLinked}
+                                      </option>
+                                      <option value="never">{copy.providerAccountNever}</option>
+                                    </Form.Select>
+                                  </Form.Group>
+                                  <div>
+                                    <Form.Check
+                                      type="switch"
+                                      id={`social-${provider.provider}-hide-on-login`}
+                                      label={copy.providerHideOnLogin}
+                                      {...registerSocial(`providers.${providerIndex}.hideOnLogin`)}
+                                    />
+                                    <Form.Check
+                                      type="switch"
+                                      id={`social-${provider.provider}-account-linking-only`}
+                                      label={copy.providerAccountLinkingOnly}
+                                      {...registerSocial(
+                                        `providers.${providerIndex}.accountLinkingOnly`,
+                                      )}
+                                    />
+                                    <Form.Check
+                                      type="switch"
+                                      id={`social-${provider.provider}-trust-email`}
+                                      label={copy.providerTrustEmail}
+                                      {...registerSocial(`providers.${providerIndex}.trustEmail`)}
+                                    />
+                                    <Form.Check
+                                      type="switch"
+                                      id={`social-${provider.provider}-mfa-required`}
+                                      label={copy.providerMfaRequired}
+                                      {...registerSocial(`providers.${providerIndex}.mfaRequired`)}
+                                    />
+                                    <Form.Check
+                                      type="switch"
+                                      id={`social-${provider.provider}-store-tokens`}
+                                      label={copy.providerStoreTokens}
+                                      {...registerSocial(`providers.${providerIndex}.storeTokens`)}
+                                    />
+                                    <Form.Check
+                                      type="switch"
+                                      id={`social-${provider.provider}-stored-tokens-readable`}
+                                      label={copy.providerStoredTokensReadable}
+                                      {...registerSocial(
+                                        `providers.${providerIndex}.storedTokensReadable`,
+                                      )}
+                                    />
+                                  </div>
+                                </div>
+                                <Form.Group
+                                  className="mt-3"
+                                  controlId={`social-${provider.provider}-required-claims`}
+                                >
+                                  <Form.Label>{copy.providerRequiredClaims}</Form.Label>
+                                  <Form.Control
+                                    isInvalid={Boolean(providerErrors?.requiredClaims)}
+                                    {...registerSocial(`providers.${providerIndex}.requiredClaims`)}
+                                  />
+                                  <Form.Control.Feedback type="invalid">
+                                    {providerErrors?.requiredClaims?.message}
+                                  </Form.Control.Feedback>
+                                  <Form.Text>{copy.providerRequiredClaimsHelp}</Form.Text>
+                                </Form.Group>
+                                <Form.Group controlId={`social-${provider.provider}-client-id`}>
+                                  <Form.Label>{copy.clientId}</Form.Label>
+                                  <Form.Control
+                                    isInvalid={Boolean(providerErrors?.clientId)}
+                                    {...registerSocial(`providers.${providerIndex}.clientId`)}
+                                  />
+                                  <Form.Control.Feedback type="invalid">
+                                    {providerErrors?.clientId?.message}
+                                  </Form.Control.Feedback>
+                                </Form.Group>
+                                <Form.Group
+                                  className="mt-3"
+                                  controlId={`social-${provider.provider}-client-secret`}
+                                >
+                                  <Form.Label>{copy.clientSecret}</Form.Label>
+                                  <Form.Control
+                                    type="password"
+                                    autoComplete="new-password"
+                                    placeholder={copy.clientSecretPlaceholder}
+                                    isInvalid={Boolean(providerErrors?.clientSecret)}
+                                    {...registerSocial(`providers.${providerIndex}.clientSecret`)}
+                                  />
+                                  <Form.Control.Feedback type="invalid">
+                                    {providerErrors?.clientSecret?.message}
+                                  </Form.Control.Feedback>
+                                  {provider.clientSecretConfigured && (
+                                    <Form.Text className="text-success">
+                                      {copy.clientSecretConfigured}
+                                    </Form.Text>
+                                  )}
+                                </Form.Group>
+                              </Card.Body>
+                            </Card>
+                          );
+                        })}
                     </div>
                     <div className="admin-form-actions mt-4">
                       <Button

@@ -5,6 +5,7 @@ import io.github.susimsek.springauthserversamples.dto.admin.AdminEventSettingsDT
 import io.github.susimsek.springauthserversamples.dto.admin.AdminEventSettingsRequestDTO;
 import io.github.susimsek.springauthserversamples.repository.AdminEventSettingsRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,9 @@ public class AdminEventSettingsService {
     }
 
     @Transactional
+    @CacheEvict(
+            cacheNames = AdminEventSettingsRepository.ADMIN_EVENT_SETTINGS_BY_ID_CACHE,
+            allEntries = true)
     public AdminEventSettingsDTO update(AdminEventSettingsRequestDTO request) {
         AdminEventSettingsEntity settings = entity();
         settings.setEventsEnabled(request.eventsEnabled());

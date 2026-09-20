@@ -131,7 +131,18 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
 
   return (
     <>
-      <AdminPageHeader title={copy.title} description={copy.subtitle} />
+      <AdminPageHeader
+        title={copy.title}
+        description={copy.subtitle}
+        actions={
+          access?.manageClients ? (
+            <Link className="btn btn-primary" href="/admin/client-scopes/new">
+              <AdminActionIcon action="add" />
+              {copy.create}
+            </Link>
+          ) : undefined
+        }
+      />
       <ResourceFilters
         query={query}
         searchLabel={copy.search}
@@ -166,14 +177,7 @@ export function ClientScopesTable({ dictionary }: { dictionary: Dictionary }) {
           setLoading(true);
           setQuery(value);
         }}
-      >
-        {access?.manageClients && (
-          <Link className="btn btn-primary text-nowrap" href={`/admin/client-scopes/new`}>
-            <AdminActionIcon action="add" />
-            {copy.create}
-          </Link>
-        )}
-      </ResourceFilters>
+      ></ResourceFilters>
       <DataTable
         isEmpty={items.length === 0}
         emptyMessage={copy.empty}

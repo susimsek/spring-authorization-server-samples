@@ -17,6 +17,7 @@ import { PaginationControls } from "./PaginationControls";
 import { ResourceFilters } from "./ResourceFilters";
 import { RowActions } from "./RowActions";
 import { useAdminTableState } from "./useAdminTableState";
+import { AdminPageHeader } from "./AdminPageHeader";
 
 type Group = { id: number; name: string; path: string; roles: string[]; userCount: number };
 
@@ -74,6 +75,18 @@ export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
   return (
     <>
       {error && <ErrorState message={copy.operationError} />}
+      <AdminPageHeader
+        title={copy.title}
+        description={copy.subtitle}
+        actions={
+          access?.manageUsers ? (
+            <Link className="btn btn-primary" href="/admin/groups/new">
+              <AdminActionIcon action="add" />
+              {copy.create}
+            </Link>
+          ) : undefined
+        }
+      />
       <ResourceFilters
         onQueryChange={setQuery}
         query={query}
@@ -105,14 +118,7 @@ export function GroupsTable({ dictionary }: { dictionary: Dictionary }) {
         onClearFilters={clearFilters}
         resultCount={totalElements}
         recordsLabel={dictionary.admin.resources.records}
-      >
-        {access?.manageUsers && (
-          <Link className="btn btn-primary text-nowrap" href={`/admin/groups/new`}>
-            <AdminActionIcon action="add" />
-            {copy.create}
-          </Link>
-        )}
-      </ResourceFilters>
+      ></ResourceFilters>
       <DataTable
         emptyMessage={dictionary.admin.resources.empty}
         footer={

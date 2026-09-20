@@ -15,6 +15,7 @@ import { DataTable } from "./DataTable";
 import { ErrorState, LoadingState } from "./AsyncState";
 import { useAdminTableState } from "./useAdminTableState";
 import { RowActions } from "./RowActions";
+import { AdminPageHeader } from "./AdminPageHeader";
 
 export type AdminClient = {
   id: string;
@@ -55,6 +56,18 @@ export function ClientsTable({ dictionary }: { locale: Locale; dictionary: Dicti
   if (error) return <ErrorState message={dictionary.admin.clients.loadError} />;
   return (
     <>
+      <AdminPageHeader
+        title={dictionary.admin.clients.title}
+        description={dictionary.admin.clients.subtitle}
+        actions={
+          access?.manageClients ? (
+            <Link href="/admin/clients/new" className="btn btn-primary">
+              <AdminActionIcon action="add" />
+              {dictionary.admin.clients.create}
+            </Link>
+          ) : undefined
+        }
+      />
       <ResourceFilters
         query={query}
         searchLabel={dictionary.admin.clients.search}
@@ -100,14 +113,7 @@ export function ClientsTable({ dictionary }: { locale: Locale; dictionary: Dicti
           setLoading(true);
           setQuery(v);
         }}
-      >
-        {access?.manageClients && (
-          <Link href={`/admin/clients/new`} className="btn btn-primary text-nowrap">
-            <AdminActionIcon action="add" />
-            {dictionary.admin.clients.create}
-          </Link>
-        )}
-      </ResourceFilters>
+      ></ResourceFilters>
       <DataTable
         isEmpty={clients.length === 0}
         emptyMessage={dictionary.admin.clients.empty}

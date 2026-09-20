@@ -61,7 +61,15 @@ describe("AdminSettings", () => {
         "href",
         key === "general"
           ? "/admin/settings"
-          : `/admin/settings/${key === "bruteForce" ? "brute-force" : key === "userProfile" ? "user-profile" : key}`,
+          : `/admin/settings/${
+              key === "bruteForce"
+                ? "brute-force"
+                : key === "userProfile"
+                  ? "user-profile"
+                  : key === "socialLogin"
+                    ? "social-login"
+                    : key
+            }`,
       );
     }
 

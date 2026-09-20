@@ -163,6 +163,18 @@ export default function AdminUserProfileSettings({ dictionary }: { dictionary: D
   return (
     <>
       {error && <ErrorState message={copy.error} />}
+      <div className="admin-detail-heading mb-3">
+        <div>
+          <h2 className="h5 mb-1">{copy.title}</h2>
+          <p className="text-body-secondary mb-0">{copy.subtitle}</p>
+        </div>
+        {access?.isAdmin && (
+          <Link className="btn btn-primary text-nowrap" href="/admin/settings/user-profile/new">
+            <AdminActionIcon action="add" />
+            {copy.create}
+          </Link>
+        )}
+      </div>
       <ResourceFilters
         onQueryChange={setQuery}
         query={query}
@@ -194,14 +206,7 @@ export default function AdminUserProfileSettings({ dictionary }: { dictionary: D
         onClearFilters={clearFilters}
         resultCount={totalElements}
         recordsLabel={copy.records}
-      >
-        {access?.isAdmin && (
-          <Link className="btn btn-primary text-nowrap" href="/admin/settings/user-profile/new">
-            <AdminActionIcon action="add" />
-            {copy.create}
-          </Link>
-        )}
-      </ResourceFilters>
+      />
       <DataTable
         isEmpty={definitions.length === 0}
         emptyMessage={copy.empty}

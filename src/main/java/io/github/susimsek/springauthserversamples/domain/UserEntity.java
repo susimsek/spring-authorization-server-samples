@@ -73,6 +73,9 @@ public class UserEntity extends AuditableEntity {
     @Column(name = "preferred_locale", length = 10)
     private String preferredLocale;
 
+    @Column(name = "picture_url", length = 1000)
+    private String pictureUrl;
+
     @Column(name = "pending_email", length = 200)
     private String pendingEmail;
 

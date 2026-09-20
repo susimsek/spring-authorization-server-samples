@@ -8,11 +8,13 @@ import io.github.susimsek.springauthserversamples.service.LoginSettingsService;
 import io.github.susimsek.springauthserversamples.service.account.AccountRegistrationService;
 import io.github.susimsek.springauthserversamples.service.account.UserActionService;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
+import io.github.susimsek.springauthserversamples.service.security.RegistrationCaptchaService;
 import io.github.susimsek.springauthserversamples.web.ApiController;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,7 @@ public class AccountActionController {
     private final UserActionService userActionService;
     private final AccountRegistrationService accountRegistrationService;
     private final LoginSettingsService loginSettingsService;
+    private final RegistrationCaptchaService registrationCaptchaService;
 
     @PostMapping("/register")
     @Operation(
@@ -50,11 +53,13 @@ public class AccountActionController {
                     @Valid
                     @RequestBody
                     AccountRegistrationRequestDTO request,
+            HttpServletRequest httpRequest,
             @Parameter(description = "BCP 47 locale used for action emails.", example = "en")
                     Locale locale) {
         if (!loginSettingsService.isUserRegistrationEnabled()) {
             throw ApiException.notFound("Account registration is disabled");
         }
+        registrationCaptchaService.verifyOrThrow(request.captchaToken(), httpRequest);
         Locale emailLocale =
                 request.locale() == null ? locale : Locale.forLanguageTag(request.locale());
         accountRegistrationService.register(

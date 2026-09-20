@@ -10,6 +10,7 @@ import {
   faArrowsRotate,
   faBan,
   faBars,
+  faBuilding,
   faCheck,
   faCircle,
   faCircleCheck,
@@ -104,6 +105,7 @@ export type IconName =
   | "anglesLeft"
   | "anglesRight"
   | "bars"
+  | "building"
   | "circle"
   | "circleInfo"
   | "circleQuestion"
@@ -177,6 +179,7 @@ export const icons: Record<IconName, IconDefinition> = {
   anglesLeft: faAnglesLeft,
   anglesRight: faAnglesRight,
   bars: faBars,
+  building: faBuilding,
   circle: faCircle,
   circleInfo: faCircleInfo,
   circleQuestion: faCircleQuestion,
@@ -221,6 +224,7 @@ export const loadIcons = () => {
     faArrowsRotate,
     faBan,
     faBars,
+    faBuilding,
     faCheck,
     faCircle,
     faCircleCheck,

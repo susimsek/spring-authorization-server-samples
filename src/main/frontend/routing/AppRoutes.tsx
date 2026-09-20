@@ -3,6 +3,8 @@
 import { Navigate, Outlet, Route, Routes, useParams } from "react-router-dom";
 import { useEffect } from "react";
 import { useDictionary, useLocale } from "@/i18n/client";
+import type { Dictionary } from "@/i18n/get-dictionary";
+import type { Locale } from "@/i18n/config";
 import { useRouter, useSearchParams } from "@/routing/navigation";
 import { AdminAuthProvider } from "@/components/admin/AdminAuthProvider";
 import { AdminAuthGuard } from "@/components/admin/AdminAuthGuard";
@@ -11,6 +13,7 @@ import { AdminAuthorizationCallback } from "@/components/admin/AdminAuthorizatio
 import { AdminPostLoginRedirect } from "@/components/admin/AdminPostLoginRedirect";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AdminBreadcrumb } from "@/components/admin/AdminBreadcrumb";
 import { AdminResources } from "@/components/admin/AdminResources";
 import { ClientsTable } from "@/components/admin/ClientsTable";
 import { ClientForm } from "@/components/admin/ClientForm";
@@ -28,6 +31,9 @@ import { ConsentDetail } from "@/components/admin/ConsentDetail";
 import { ClientScopesTable } from "@/components/admin/ClientScopesTable";
 import { ClientScopeCreateForm } from "@/components/admin/ClientScopeCreateForm";
 import { ClientScopeDetail } from "@/components/admin/ClientScopeDetail";
+import { IdentityProvidersTable } from "@/components/admin/IdentityProvidersTable";
+import { IdentityProviderForm } from "@/components/admin/IdentityProviderForm";
+import { IdentityProviderDetail } from "@/components/admin/IdentityProviderDetail";
 import { AccountAuthProvider, useAccountAuth } from "@/components/account/AccountAuthProvider";
 import { AccountAuthGuard } from "@/components/account/AccountAuthGuard";
 import { AccountShell } from "@/components/account/AccountShell";
@@ -173,6 +179,20 @@ function AccountPage({
   );
 }
 
+function IdentityProviderRoute({ dictionary, locale }: { dictionary: Dictionary; locale: Locale }) {
+  const { id = "", section } = useParams<{ id: string; section: string }>();
+  const tab = section === "mappers" ? "mappers" : "details";
+  return (
+    <IdentityProviderDetail
+      key={`${id}-${tab}`}
+      dictionary={dictionary}
+      locale={locale}
+      id={id}
+      tab={tab}
+    />
+  );
+}
+
 export function AppRoutes() {
   const dictionary = useDictionary();
   const locale = useLocale();
@@ -214,22 +234,17 @@ export function AppRoutes() {
           }
         />
         <Route path="callback" element={<AdminAuthorizationCallback />} />
-        <Route
-          path="clients"
-          element={
-            <>
-              <AdminPageHeader
-                title={dictionary.admin.clients.title}
-                description={dictionary.admin.clients.subtitle}
-              />
-              <ClientsTable {...props} />
-            </>
-          }
-        />
+        <Route path="clients" element={<ClientsTable {...props} />} />
         <Route
           path="clients/new"
           element={
             <>
+              <AdminBreadcrumb
+                items={[
+                  { label: dictionary.admin.clients.title, href: "/admin/clients" },
+                  { label: dictionary.admin.clients.createTitle },
+                ]}
+              />
               <AdminPageHeader
                 title={dictionary.admin.clients.createTitle}
                 description={dictionary.admin.clients.createSubtitle}
@@ -249,6 +264,12 @@ export function AppRoutes() {
           path="users/new"
           element={
             <>
+              <AdminBreadcrumb
+                items={[
+                  { label: dictionary.admin.resources.users, href: "/admin/users" },
+                  { label: dictionary.admin.resources.createUserTitle },
+                ]}
+              />
               <AdminPageHeader
                 title={dictionary.admin.resources.createUserTitle}
                 description={dictionary.admin.resources.createUserSubtitle}
@@ -258,22 +279,17 @@ export function AppRoutes() {
           }
         />
         <Route path="users/:id/:section?" element={<UserEntityRoute {...props} />} />
-        <Route
-          path="groups"
-          element={
-            <>
-              <AdminPageHeader
-                title={dictionary.admin.groups.title}
-                description={dictionary.admin.groups.subtitle}
-              />
-              <GroupsTable dictionary={dictionary} />
-            </>
-          }
-        />
+        <Route path="groups" element={<GroupsTable dictionary={dictionary} />} />
         <Route
           path="groups/new"
           element={
             <>
+              <AdminBreadcrumb
+                items={[
+                  { label: dictionary.admin.groups.title, href: "/admin/groups" },
+                  { label: dictionary.admin.groups.create },
+                ]}
+              />
               <AdminPageHeader
                 title={dictionary.admin.groups.create}
                 description={dictionary.admin.groups.help}
@@ -283,22 +299,17 @@ export function AppRoutes() {
           }
         />
         <Route path="groups/:id/:section?" element={<GroupEntityRoute {...props} />} />
-        <Route
-          path="roles"
-          element={
-            <>
-              <AdminPageHeader
-                title={dictionary.admin.roles.title}
-                description={dictionary.admin.roles.subtitle}
-              />
-              <RolesTable dictionary={dictionary} />
-            </>
-          }
-        />
+        <Route path="roles" element={<RolesTable dictionary={dictionary} />} />
         <Route
           path="roles/new"
           element={
             <>
+              <AdminBreadcrumb
+                items={[
+                  { label: dictionary.admin.roles.title, href: "/admin/roles" },
+                  { label: dictionary.admin.roles.create },
+                ]}
+              />
               <AdminPageHeader
                 title={dictionary.admin.roles.create}
                 description={dictionary.admin.roles.help}
@@ -327,12 +338,47 @@ export function AppRoutes() {
             <AdminResources resource="keys" copy={dictionary.admin.resources} locale={locale} />
           }
         />
+        <Route
+          path="identity-providers"
+          element={<IdentityProvidersTable dictionary={dictionary} />}
+        />
+        <Route
+          path="identity-providers/new"
+          element={
+            <>
+              <AdminBreadcrumb
+                items={[
+                  {
+                    label: dictionary.admin.identityProviders.title,
+                    href: "/admin/identity-providers",
+                  },
+                  { label: dictionary.admin.identityProviders.createTitle },
+                ]}
+              />
+              <AdminPageHeader
+                title={dictionary.admin.identityProviders.createTitle}
+                description={dictionary.admin.identityProviders.createSubtitle}
+              />
+              <IdentityProviderForm {...props} />
+            </>
+          }
+        />
+        <Route
+          path="identity-providers/:id/:section?"
+          element={<IdentityProviderRoute {...props} />}
+        />
         <Route path="client-scopes" element={<ClientScopesTable dictionary={dictionary} />} />
         <Route path="client-scopes/:id" element={<EntityDetail entity="client-scope" />} />
         <Route
           path="client-scopes/new"
           element={
             <>
+              <AdminBreadcrumb
+                items={[
+                  { label: dictionary.admin.clientScopes.title, href: "/admin/client-scopes" },
+                  { label: dictionary.admin.clientScopes.create },
+                ]}
+              />
               <AdminPageHeader
                 title={dictionary.admin.clientScopes.create}
                 description={dictionary.admin.clientScopes.subtitle}
