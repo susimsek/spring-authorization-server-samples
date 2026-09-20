@@ -188,6 +188,7 @@ export function UserForm({
   const router = useRouter();
   const { access, accessToken } = useAdminAuth();
   const canManageUsers = Boolean(access?.manageUsers);
+  const canImpersonateUsers = Boolean(access?.impersonateUsers);
   const copy = dictionary.admin.resources;
   const editing = Boolean(id);
   const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
@@ -609,7 +610,7 @@ export function UserForm({
   };
 
   const impersonate = async () => {
-    if (!access?.isAdmin || !accessToken || !id || impersonationBusy) return;
+    if (!canImpersonateUsers || !accessToken || !id || impersonationBusy) return;
     setImpersonationBusy(true);
     try {
       const response = await adminRequest<{ url: string }>(accessToken, {
@@ -891,9 +892,9 @@ export function UserForm({
               <h1 className="h3 mb-1">{getValues("username")}</h1>
               <div className="text-body-secondary">{copy.user}</div>
             </div>
-            {access?.manageUsers && (
+            {(canManageUsers || canImpersonateUsers) && (
               <div className="d-flex flex-wrap gap-2">
-                {access.isAdmin && (
+                {canImpersonateUsers && (
                   <Button
                     type="button"
                     variant="info"

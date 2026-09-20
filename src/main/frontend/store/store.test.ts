@@ -47,6 +47,7 @@ describe("Redux application store", () => {
         manageClients: false,
         viewUsers: true,
         manageUsers: false,
+        impersonateUsers: false,
         viewRoles: true,
         manageRoles: false,
         viewSessions: true,

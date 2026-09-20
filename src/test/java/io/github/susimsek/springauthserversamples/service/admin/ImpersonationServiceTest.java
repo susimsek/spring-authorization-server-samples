@@ -20,6 +20,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
@@ -64,13 +67,18 @@ class ImpersonationServiceTest {
                                         invocation.getArgument(1),
                                         invocation.getArgument(2)));
 
-        var result = service().issue(7L, "admin");
+        var result = service().issue(7L, authentication("operator", "ROLE_USER_IMPERSONATOR"));
 
         assertThat(result.url()).isEqualTo("/impersonation/accept");
         assertThat(result.username()).isEqualTo("alice");
         assertThat(result.ticket()).isNotBlank();
         verify(ticketRepository).save(any(ImpersonationTicketEntity.class));
-        verify(auditEventService).record("user.impersonation.started", "user", "7");
+        verify(auditEventService)
+                .record(
+                        "user.impersonation.started",
+                        "user",
+                        "7",
+                        "actor=operator;targetUsername=alice;result=success");
     }
 
     @Test
@@ -84,9 +92,21 @@ class ImpersonationServiceTest {
                                 .authorities("ROLE_ADMIN")
                                 .build());
 
-        assertThatThrownBy(() -> service().issue(7L, "admin"))
+        assertThatThrownBy(() -> service().issue(7L, authentication("admin", "ROLE_ADMIN")))
                 .isInstanceOf(ApiException.class)
                 .hasMessageContaining("Administrators cannot be impersonated");
+    }
+
+    @Test
+    void rejectsActorWithoutImpersonationPermission() {
+        assertThatThrownBy(() -> service().issue(7L, authentication("viewer", "ROLE_USER_VIEWER")))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("impersonation permission");
+    }
+
+    private static Authentication authentication(String username, String authority) {
+        return UsernamePasswordAuthenticationToken.authenticated(
+                username, "ignored", java.util.List.of(new SimpleGrantedAuthority(authority)));
     }
 
     private ImpersonationService service() {

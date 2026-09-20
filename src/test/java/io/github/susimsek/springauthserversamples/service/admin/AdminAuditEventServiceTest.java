@@ -46,4 +46,18 @@ class AdminAuditEventServiceTest {
         assertThat(event.getValue().getActor()).isEqualTo("system");
         assertThat(event.getValue().getTargetId()).isEqualTo("7");
     }
+
+    @Test
+    void recordsOptionalAuditDetails() {
+        service.record(
+                "user.impersonation.started",
+                "user",
+                "7",
+                "actor=admin;targetUsername=alice;result=success");
+
+        ArgumentCaptor<AdminEventEntity> event = ArgumentCaptor.forClass(AdminEventEntity.class);
+        verify(eventRepository).save(event.capture());
+        assertThat(event.getValue().getDetails())
+                .isEqualTo("actor=admin;targetUsername=alice;result=success");
+    }
 }

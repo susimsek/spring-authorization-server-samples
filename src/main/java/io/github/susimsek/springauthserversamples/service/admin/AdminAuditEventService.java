@@ -35,6 +35,22 @@ public class AdminAuditEventService {
 
     @Transactional
     public void record(String action, String targetType, String targetId) {
+        record(action, targetType, targetId, null, currentActor());
+    }
+
+    @Transactional
+    public void record(String action, String targetType, String targetId, String details) {
+        record(action, targetType, targetId, details, currentActor());
+    }
+
+    @Transactional
+    public void recordAs(
+            String actor, String action, String targetType, String targetId, String details) {
+        record(action, targetType, targetId, details, actor);
+    }
+
+    private void record(
+            String action, String targetType, String targetId, String details, String actor) {
         if (settingsRepository != null) {
             var settings =
                     settingsRepository
@@ -50,13 +66,10 @@ public class AdminAuditEventService {
                 adminEventRepository.deleteByOccurredAtBefore(
                         Instant.now().minus(settings.getEventsExpirationDays(), ChronoUnit.DAYS));
             }
+            if (!settings.isAdminEventsDetailsEnabled()) {
+                details = null;
+            }
         }
-        String actor =
-                java.util.Optional.ofNullable(
-                                SecurityContextHolder.getContext().getAuthentication())
-                        .filter(authentication -> authentication.isAuthenticated())
-                        .map(authentication -> authentication.getName())
-                        .orElse("system");
         adminEventRepository.save(
                 adminEventMapper.toEntity(
                         UUID.randomUUID().toString(),
@@ -64,7 +77,15 @@ public class AdminAuditEventService {
                         action,
                         targetType,
                         targetId,
+                        details,
                         Instant.now()));
+    }
+
+    private static String currentActor() {
+        return java.util.Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
+                .filter(authentication -> authentication.isAuthenticated())
+                .map(authentication -> authentication.getName())
+                .orElse("system");
     }
 
     @Transactional

@@ -52,7 +52,10 @@ function profileDefinitions() {
 
 jest.mock("@/lib/admin-api", () => ({ adminRequest: jest.fn() }));
 jest.mock("./AdminAuthProvider", () => ({
-  useAdminAuth: () => ({ access: { manageUsers: true }, accessToken: "token" }),
+  useAdminAuth: () => ({
+    access: { manageUsers: true, impersonateUsers: true },
+    accessToken: "token",
+  }),
 }));
 jest.mock("@/routing/navigation", () => ({
   useParams: () => ({ lang: "en" }),
@@ -482,8 +485,20 @@ describe("UserForm", () => {
         return {
           status: 200,
           data: [
-            { key: "VERIFY_EMAIL", displayName: "Verify email", enabled: true, assigned: false, globalPolicy: false },
-            { key: "UPDATE_PASSWORD", displayName: "Update password", enabled: true, assigned: true, globalPolicy: false },
+            {
+              key: "VERIFY_EMAIL",
+              displayName: "Verify email",
+              enabled: true,
+              assigned: false,
+              globalPolicy: false,
+            },
+            {
+              key: "UPDATE_PASSWORD",
+              displayName: "Update password",
+              enabled: true,
+              assigned: true,
+              globalPolicy: false,
+            },
           ],
         } as never;
       }
@@ -540,9 +555,7 @@ describe("UserForm", () => {
       }),
     );
     fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.resources.delete })[1]);
-    fireEvent.click(
-      screen.getByRole("dialog").querySelector("button.btn-danger")!,
-    );
+    fireEvent.click(screen.getByRole("dialog").querySelector("button.btn-danger")!);
     await waitFor(() =>
       expect(mockAdminRequest).toHaveBeenCalledWith("token", {
         url: "/api/admin/users/11/webauthn/credentials/admin-credential",
@@ -553,7 +566,9 @@ describe("UserForm", () => {
     fireEvent.change(screen.getAllByRole("combobox")[0], {
       target: { value: "VERIFY_EMAIL" },
     });
-    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.resources.sendActionEmail }));
+    fireEvent.click(
+      screen.getByRole("button", { name: dictionary.admin.resources.sendActionEmail }),
+    );
     await waitFor(() =>
       expect(mockAdminRequest).toHaveBeenCalledWith("token", {
         url: "/api/admin/users/11/execute-actions-email?lifespan=43200",
@@ -562,7 +577,9 @@ describe("UserForm", () => {
       }),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.resources.resetAuthenticator }));
+    fireEvent.click(
+      screen.getByRole("button", { name: dictionary.admin.resources.resetAuthenticator }),
+    );
     fireEvent.click(screen.getByRole("dialog").querySelector("button.btn-danger")!);
     await waitFor(() =>
       expect(mockAdminRequest).toHaveBeenCalledWith("token", {
@@ -676,7 +693,9 @@ describe("UserForm", () => {
       target: { value: "StrongPassword1!" },
     });
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.save }));
-    expect(await screen.findAllByText(dictionary.admin.common.validation.invalid)).not.toHaveLength(0);
+    expect(await screen.findAllByText(dictionary.admin.common.validation.invalid)).not.toHaveLength(
+      0,
+    );
 
     fireEvent.change(screen.getByLabelText("Tags *"), { target: { value: "AB\nCD" } });
     fireEvent.change(screen.getByLabelText("Enabled flag *"), { target: { value: "true" } });
@@ -684,10 +703,20 @@ describe("UserForm", () => {
     fireEvent.change(screen.getByLabelText("Contact *"), { target: { value: "ada@example.test" } });
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.save }));
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/admin/users"));
-    expect(mockAdminRequest).toHaveBeenCalledWith("token", expect.objectContaining({
-      url: "/api/admin/users/20/profile-attributes",
-      method: "PUT",
-      data: { attributes: { tags: ["AB", "CD"], enabledFlag: ["true"], rank: ["7"], contact: ["ada@example.test"] } },
-    }));
+    expect(mockAdminRequest).toHaveBeenCalledWith(
+      "token",
+      expect.objectContaining({
+        url: "/api/admin/users/20/profile-attributes",
+        method: "PUT",
+        data: {
+          attributes: {
+            tags: ["AB", "CD"],
+            enabledFlag: ["true"],
+            rank: ["7"],
+            contact: ["ada@example.test"],
+          },
+        },
+      }),
+    );
   });
 });

@@ -78,7 +78,7 @@ public class LoginSettingsEntity {
     @Column(name = "webauthn_avoid_same_authenticator", nullable = false)
     private boolean webAuthnAvoidSameAuthenticator;
 
-    @Column(name = "webauthn_acceptable_aaguids", nullable = false, length = 4000)
+    @Column(name = "webauthn_acceptable_aaguids", length = 4000)
     private String webAuthnAcceptableAaguids;
 
     @Column(name = "webauthn_passwordless_rp_name", nullable = false, length = 255)
@@ -108,7 +108,7 @@ public class LoginSettingsEntity {
     @Column(name = "webauthn_passwordless_avoid_same_authenticator", nullable = false)
     private boolean webAuthnPasswordlessAvoidSameAuthenticator;
 
-    @Column(name = "webauthn_passwordless_acceptable_aaguids", nullable = false, length = 4000)
+    @Column(name = "webauthn_passwordless_acceptable_aaguids", length = 4000)
     private String webAuthnPasswordlessAcceptableAaguids;
 
     @Column(name = "email_update_reauthentication_minutes", nullable = false)

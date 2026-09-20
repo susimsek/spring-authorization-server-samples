@@ -20,6 +20,7 @@ import io.github.susimsek.springauthserversamples.service.SocialTokenService;
 import io.github.susimsek.springauthserversamples.service.account.AccountRegistrationService;
 import io.github.susimsek.springauthserversamples.service.account.UserActionService;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
+import io.github.susimsek.springauthserversamples.service.security.RegistrationCaptchaService;
 import jakarta.servlet.http.HttpSession;
 import java.util.List;
 import java.util.Locale;
@@ -39,8 +40,10 @@ class AccountPublicControllerTest {
         var userActionService = mock(UserActionService.class);
         var registrationService = mock(AccountRegistrationService.class);
         var settings = mock(LoginSettingsService.class);
+        var captchaService = mock(RegistrationCaptchaService.class);
         var controller =
-                new AccountActionController(userActionService, registrationService, settings);
+                new AccountActionController(
+                        userActionService, registrationService, settings, captchaService);
         var registration = mock(AccountRegistrationRequestDTO.class);
         when(registration.username()).thenReturn("alice");
         when(registration.firstName()).thenReturn("Alice");
@@ -50,7 +53,11 @@ class AccountPublicControllerTest {
         when(registration.confirmPassword()).thenReturn("password");
         when(registration.locale()).thenReturn("tr");
         when(settings.isUserRegistrationEnabled()).thenReturn(true);
-        assertThat(controller.register(registration, Locale.ENGLISH).getStatusCode())
+        assertThat(
+                        controller
+                                .register(
+                                        registration, new MockHttpServletRequest(), Locale.ENGLISH)
+                                .getStatusCode())
                 .isEqualTo(HttpStatus.CREATED);
         verify(registrationService)
                 .register(
@@ -84,7 +91,10 @@ class AccountPublicControllerTest {
         verify(userActionService).resetPassword("token", "new-password", "123456");
 
         when(settings.isUserRegistrationEnabled()).thenReturn(false);
-        assertThatThrownBy(() -> controller.register(registration, Locale.ENGLISH))
+        assertThatThrownBy(
+                        () ->
+                                controller.register(
+                                        registration, new MockHttpServletRequest(), Locale.ENGLISH))
                 .isInstanceOf(ApiException.class);
         when(settings.isForgotPasswordEnabled()).thenReturn(false);
         assertThatThrownBy(() -> controller.forgotPassword(forgot))
@@ -94,9 +104,11 @@ class AccountPublicControllerTest {
     @Test
     void delegatesPublicAndAccountSocialControllers() throws Exception {
         var loginSettings = mock(LoginSettingsService.class);
+        var captchaService = mock(RegistrationCaptchaService.class);
         var publicSettings = mock(LoginSettingsDTO.class);
         when(loginSettings.publicLoginSettings()).thenReturn(publicSettings);
-        assertThat(new LoginSettingsController(loginSettings).get()).isSameAs(publicSettings);
+        assertThat(new LoginSettingsController(loginSettings, captchaService).get())
+                .isSameAs(publicSettings);
 
         var socialLogin = mock(SocialLoginService.class);
         var providers = List.of(mock(SocialProviderDTO.class));

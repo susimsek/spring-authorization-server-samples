@@ -28,7 +28,7 @@
 			<column name="webauthn_user_verification" type="varchar(20)" defaultValue="preferred"><constraints nullable="false"/></column>
 			<column name="webauthn_timeout_seconds" type="int" defaultValueNumeric="300"><constraints nullable="false"/></column>
 			<column name="webauthn_avoid_same_authenticator" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
-			<column name="webauthn_acceptable_aaguids" type="varchar(4000)" defaultValue=""><constraints nullable="false"/></column>
+			<column name="webauthn_acceptable_aaguids" type="varchar(4000)"/>
 			<column name="webauthn_passwordless_rp_name" type="varchar(255)" defaultValue="Spring Authorization Server"><constraints nullable="false"/></column>
 			<column name="webauthn_passwordless_rp_id" type="varchar(253)" defaultValue=""><constraints nullable="false"/></column>
 			<column name="webauthn_passwordless_signature_algorithms" type="varchar(255)" defaultValue="ES256,RS256,EdDSA"><constraints nullable="false"/></column>
@@ -38,7 +38,7 @@
 			<column name="webauthn_passwordless_user_verification" type="varchar(20)" defaultValue="required"><constraints nullable="false"/></column>
 			<column name="webauthn_passwordless_timeout_seconds" type="int" defaultValueNumeric="300"><constraints nullable="false"/></column>
 			<column name="webauthn_passwordless_avoid_same_authenticator" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
-			<column name="webauthn_passwordless_acceptable_aaguids" type="varchar(4000)" defaultValue=""><constraints nullable="false"/></column>
+			<column name="webauthn_passwordless_acceptable_aaguids" type="varchar(4000)"/>
 			<column name="email_update_reauthentication_minutes" type="int" defaultValueNumeric="5"><constraints nullable="false"/></column>
 			<column name="google_login_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
 			<column name="github_login_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>

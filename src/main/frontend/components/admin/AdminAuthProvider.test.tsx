@@ -13,6 +13,7 @@ const completeAccess: AdminAccess = {
   manageClients: false,
   viewUsers: false,
   manageUsers: false,
+  impersonateUsers: false,
   viewRoles: false,
   manageRoles: false,
   viewSessions: false,

@@ -68,6 +68,12 @@ public class AdminWhoAmIController {
                                         AuthoritiesConstants.ADMIN,
                                         AuthoritiesConstants.USER_MANAGER)),
                         Map.entry(
+                                "impersonateUsers",
+                                hasAny(
+                                        authorities,
+                                        AuthoritiesConstants.ADMIN,
+                                        AuthoritiesConstants.USER_IMPERSONATOR)),
+                        Map.entry(
                                 "viewRoles",
                                 hasAny(
                                         authorities,

@@ -49,7 +49,8 @@ class ImpersonationControllerTest {
         UserEntity target = new UserEntity();
         target.setId(2L);
         target.setUsername("user");
-        when(impersonationService.consume(anyString(), anyString())).thenReturn(target);
+        when(impersonationService.consume(anyString(), any(Authentication.class)))
+                .thenReturn(target);
         when(userDetailsService.loadUserByUsername("user"))
                 .thenReturn(User.withUsername("user").password("password").roles("USER").build());
 
