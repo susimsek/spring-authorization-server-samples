@@ -292,7 +292,9 @@ export function IdentityProviderDetail({
               <Form.Label>{copy.syncMode}</Form.Label>
               <Form.Select name="syncMode" defaultValue={mapper?.syncMode ?? "inherit"}>
                 <option value="inherit">inherit</option>
+                <option value="legacy">legacy</option>
                 <option value="import">import</option>
+                <option value="read_only">read_only</option>
                 <option value="force">force</option>
               </Form.Select>
             </Form.Group>

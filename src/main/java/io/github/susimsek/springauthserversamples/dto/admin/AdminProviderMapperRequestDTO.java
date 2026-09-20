@@ -24,7 +24,11 @@ public record AdminProviderMapperRequestDTO(
                 String target,
         @Schema(example = "user-attribute") @NotBlank @Pattern(regexp = "user-attribute|claim")
                 String mapperType,
-        @Schema(example = "inherit") @NotBlank @Pattern(regexp = "inherit|import|force")
+        @Schema(
+                        example = "inherit",
+                        allowableValues = {"inherit", "legacy", "import", "read_only", "force"})
+                @NotBlank
+                @Pattern(regexp = "(?i)inherit|legacy|import|read[_-]only|force")
                 String syncMode,
         @Schema boolean addToIdToken,
         @Schema boolean addToAccessToken) {}

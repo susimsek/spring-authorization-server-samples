@@ -12,6 +12,7 @@ import io.github.susimsek.springauthserversamples.repository.SocialProviderMappe
 import io.github.susimsek.springauthserversamples.repository.SocialProviderRepository;
 import io.github.susimsek.springauthserversamples.service.SocialProviderIconKeys;
 import io.github.susimsek.springauthserversamples.service.SocialProviderSettingsService;
+import io.github.susimsek.springauthserversamples.service.SocialProviderSyncMode;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.util.Locale;
@@ -283,6 +284,7 @@ public class AdminIdentityProviderService {
         entity.setGuiOrder(request.guiOrder());
         entity.setShowInAccountConsole(
                 request.showInAccountConsole().trim().toLowerCase(Locale.ROOT));
+        entity.setSyncMode(SocialProviderSyncMode.from(request.syncMode()).value());
         entity.setClientId(request.clientId().trim());
         if (create || (request.clientSecret() != null && !request.clientSecret().isBlank())) {
             if (request.clientSecret() == null || request.clientSecret().isBlank()) {
@@ -306,7 +308,11 @@ public class AdminIdentityProviderService {
         entity.setSourceClaim(request.sourceClaim().trim());
         entity.setTarget(request.target().trim());
         entity.setMapperType(request.mapperType().trim());
-        entity.setSyncMode(request.syncMode().trim());
+        String syncMode = request.syncMode().trim().toLowerCase(Locale.ROOT);
+        entity.setSyncMode(
+                "inherit".equals(syncMode)
+                        ? syncMode
+                        : SocialProviderSyncMode.from(syncMode).value());
         entity.setAddToIdToken(request.addToIdToken());
         entity.setAddToAccessToken(request.addToAccessToken());
     }
@@ -340,6 +346,7 @@ public class AdminIdentityProviderService {
                 e.isStoredTokensReadable(),
                 e.getGuiOrder(),
                 e.getShowInAccountConsole(),
+                SocialProviderSyncMode.from(e.getSyncMode()).value(),
                 e.getClientId(),
                 secret != null && !secret.isBlank(),
                 e.getAuthorizationUri(),

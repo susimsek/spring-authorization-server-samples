@@ -76,6 +76,14 @@ public record AdminIdentityProviderRequestDTO(
                 @NotBlank
                 @Pattern(regexp = "(?i)always|when-linked|never")
                 String showInAccountConsole,
+        @Schema(
+                        description =
+                                "User synchronization mode: legacy, import, read_only, or force.",
+                        allowableValues = {"legacy", "import", "read_only", "force"},
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                @NotBlank
+                @Pattern(regexp = "(?i)legacy|import|read[_-]only|force")
+                String syncMode,
         @Schema(description = "Authorization endpoint.", nullable = true) @Size(max = 1000)
                 String authorizationUri,
         @Schema(description = "Token endpoint.", nullable = true) @Size(max = 1000) String tokenUri,

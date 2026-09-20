@@ -74,6 +74,9 @@ public class SocialProviderEntity extends AuditableEntity {
     @Column(name = "show_in_account_console", nullable = false, length = 20)
     private String showInAccountConsole = "always";
 
+    @Column(name = "sync_mode", nullable = false, length = 20)
+    private String syncMode = "import";
+
     @Column(name = "client_id", length = 500)
     private String clientId;
 

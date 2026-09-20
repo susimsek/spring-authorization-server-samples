@@ -71,6 +71,39 @@ class SocialIdentityMapperServiceTest {
     }
 
     @Test
+    void inheritedMapperUsesProviderForceModeForExistingUser() {
+        SocialProviderMapperEntity mapper = mapper("email", "email", "inherit");
+        when(mapperRepository.findAllByProviderAliasIgnoreCase("google"))
+                .thenReturn(List.of(mapper));
+        UserEntity user = new UserEntity();
+        user.setEmail("old@example.test");
+
+        service().apply("google", Map.of("email", "new@example.test"), user, false, false, "force");
+
+        assertThat(user.getEmail()).isEqualTo("new@example.test");
+    }
+
+    @Test
+    void inheritedMapperRespectsProviderReadOnlyModeForExistingUser() {
+        SocialProviderMapperEntity mapper = mapper("email", "email", "inherit");
+        when(mapperRepository.findAllByProviderAliasIgnoreCase("google"))
+                .thenReturn(List.of(mapper));
+        UserEntity user = new UserEntity();
+        user.setEmail("old@example.test");
+
+        service()
+                .apply(
+                        "google",
+                        Map.of("email", "new@example.test"),
+                        user,
+                        false,
+                        false,
+                        "read_only");
+
+        assertThat(user.getEmail()).isEqualTo("old@example.test");
+    }
+
+    @Test
     void collectsConfiguredTokenClaims() {
         SocialProviderMapperEntity mapper = mapper("department", "department", "force");
         mapper.setMapperType("claim");

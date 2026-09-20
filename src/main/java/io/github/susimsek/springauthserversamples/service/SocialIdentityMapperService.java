@@ -35,6 +35,21 @@ public class SocialIdentityMapperService {
             UserEntity user,
             boolean firstLogin,
             boolean caseSensitiveUsername) {
+        return apply(providerAlias, claims, user, firstLogin, caseSensitiveUsername, "import");
+    }
+
+    @Transactional
+    public Map<String, Map<String, Object>> apply(
+            String providerAlias,
+            Map<String, Object> claims,
+            UserEntity user,
+            boolean firstLogin,
+            boolean caseSensitiveUsername,
+            String providerSyncMode) {
+        String effectiveProviderSyncMode =
+                providerSyncMode == null || providerSyncMode.isBlank()
+                        ? SocialProviderSyncMode.IMPORT.value()
+                        : providerSyncMode;
         if (providerAlias == null || providerAlias.isBlank()) {
             return Map.of();
         }
@@ -47,7 +62,7 @@ public class SocialIdentityMapperService {
         Map<String, Map<String, Object>> mappedClaims = new LinkedHashMap<>();
         boolean userChanged = false;
         for (SocialProviderMapperEntity mapper : mappers) {
-            if (!isApplicable(mapper, firstLogin)) {
+            if (!isApplicable(mapper, firstLogin, effectiveProviderSyncMode)) {
                 continue;
             }
             List<String> values = values(claims, mapper.getSourceClaim());
@@ -90,14 +105,20 @@ public class SocialIdentityMapperService {
         return mappedClaims;
     }
 
-    private static boolean isApplicable(SocialProviderMapperEntity mapper, boolean firstLogin) {
+    private static boolean isApplicable(
+            SocialProviderMapperEntity mapper, boolean firstLogin, String providerSyncMode) {
         String mode = mapper.getSyncMode() == null ? "inherit" : mapper.getSyncMode().trim();
-        return switch (mode.toLowerCase(Locale.ROOT)) {
-            case "force" -> true;
-            // The sample has no realm-level provider override; inherit resolves to import.
-            case "import", "legacy", "inherit" -> firstLogin;
-            default -> firstLogin;
-        };
+        if ("inherit".equalsIgnoreCase(mode)) {
+            mode = providerSyncMode;
+        }
+        if ("read-only".equalsIgnoreCase(mode)) {
+            mode = "read_only";
+        }
+        try {
+            return SocialProviderSyncMode.from(mode).applies(firstLogin);
+        } catch (IllegalArgumentException ignored) {
+            return firstLogin;
+        }
     }
 
     private static boolean isBuiltInTarget(String target) {

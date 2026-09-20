@@ -54,6 +54,12 @@ public record AdminIdentityProviderDTO(
                         description = "Account Console visibility.",
                         allowableValues = {"always", "when-linked", "never"})
                 String showInAccountConsole,
+        @Schema(
+                        description =
+                                "User synchronization mode: legacy, import, read_only, or force.",
+                        allowableValues = {"legacy", "import", "read_only", "force"},
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                String syncMode,
         @Schema(description = "Client id.") String clientId,
         @Schema(description = "Whether a client secret is configured.")
                 boolean clientSecretConfigured,

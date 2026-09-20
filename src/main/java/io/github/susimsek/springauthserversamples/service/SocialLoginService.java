@@ -75,7 +75,13 @@ public class SocialLoginService {
         SocialIdentityEntity existing =
                 socialIdentityRepository.findByProviderAndSubject(provider, subject).orElse(null);
         if (existing != null) {
-            syncPicture(existing.getUser(), socialPicture(attributes));
+            String syncMode = socialProviderSettingsService.syncMode(provider);
+            if (shouldSyncExistingUser(syncMode)) {
+                syncProfile(existing.getUser(), attributes);
+            } else if (syncMode == null) {
+                // Keep compatibility for providers without a persisted catalog entry.
+                syncPicture(existing.getUser(), socialPicture(attributes));
+            }
             persistMappedClaims(
                     existing, applyMappers(provider, attributes, existing.getUser(), false));
             return existing.getUser().getUsername();
@@ -468,7 +474,35 @@ public class SocialLoginService {
                 attributes,
                 user,
                 firstLogin,
-                configured != null && configured.caseSensitiveUsername());
+                configured != null && configured.caseSensitiveUsername(),
+                socialProviderSettingsService.syncMode(provider));
+    }
+
+    private static boolean shouldSyncExistingUser(String mode) {
+        return mode != null && SocialProviderSyncMode.from(mode).updatesExistingUser();
+    }
+
+    private void syncProfile(UserEntity user, Map<String, Object> attributes) {
+        String firstName = firstName(attributes);
+        if (firstName != null) {
+            user.setFirstName(firstName);
+        }
+        String lastName = lastName(attributes);
+        if (lastName != null) {
+            user.setLastName(lastName);
+        }
+        String email = normalizeEmail(attribute(attributes, "email"));
+        if (email != null) {
+            user.setEmail(email);
+        }
+        if (attributes.containsKey("email_verified")) {
+            user.setEmailVerified(emailVerified(attributes));
+        }
+        String picture = socialPicture(attributes);
+        if (picture != null) {
+            user.setPictureUrl(picture);
+        }
+        userRepository.save(user);
     }
 
     private void persistMappedClaims(

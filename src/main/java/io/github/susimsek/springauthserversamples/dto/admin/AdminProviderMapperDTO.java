@@ -11,6 +11,10 @@ public record AdminProviderMapperDTO(
         @Schema(example = "email", requiredMode = Schema.RequiredMode.REQUIRED) String target,
         @Schema(example = "user-attribute", requiredMode = Schema.RequiredMode.REQUIRED)
                 String mapperType,
-        @Schema(example = "inherit", requiredMode = Schema.RequiredMode.REQUIRED) String syncMode,
+        @Schema(
+                        example = "inherit",
+                        allowableValues = {"inherit", "legacy", "import", "read_only", "force"},
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                String syncMode,
         @Schema boolean addToIdToken,
         @Schema boolean addToAccessToken) {}

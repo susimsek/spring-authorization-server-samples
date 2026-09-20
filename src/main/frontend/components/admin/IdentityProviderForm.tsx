@@ -13,6 +13,8 @@ import { useConsoleAlerts } from "@/components/auth/ConsoleAlerts";
 import { useAdminAuth } from "./AdminAuthProvider";
 import { AdminActionIcon } from "./AdminActionIcon";
 
+export type IdentityProviderSyncMode = "legacy" | "import" | "read_only" | "force";
+
 export type IdentityProviderFormData = {
   registrationId: string;
   providerType: string;
@@ -33,6 +35,7 @@ export type IdentityProviderFormData = {
   storedTokensReadable: boolean;
   guiOrder: number;
   showInAccountConsole: string;
+  syncMode: IdentityProviderSyncMode;
   authorizationUri: string;
   tokenUri: string;
   userInfoUri: string;
@@ -85,6 +88,7 @@ export function IdentityProviderForm({
         storedTokensReadable: z.boolean(),
         guiOrder: z.number().min(0),
         showInAccountConsole: z.string(),
+        syncMode: z.enum(["legacy", "import", "read_only", "force"]),
         authorizationUri: z.string(),
         tokenUri: z.string(),
         userInfoUri: z.string(),
@@ -116,6 +120,7 @@ export function IdentityProviderForm({
     storedTokensReadable: false,
     guiOrder: 0,
     showInAccountConsole: "always",
+    syncMode: "import",
     authorizationUri: "",
     tokenUri: "",
     userInfoUri: "",
@@ -196,6 +201,15 @@ export function IdentityProviderForm({
               {field("clientId", copy.clientId)}
               {field("clientSecret", copy.clientSecret, "password")}
               {field("guiOrder", copy.order, "number")}
+              <Form.Group className="mb-3" controlId="provider-sync-mode">
+                <Form.Label>{copy.syncMode}</Form.Label>
+                <Form.Select {...register("syncMode")}>
+                  <option value="legacy">{copy.syncModeLegacy}</option>
+                  <option value="import">{copy.syncModeImport}</option>
+                  <option value="read_only">{copy.syncModeReadOnly}</option>
+                  <option value="force">{copy.syncModeForce}</option>
+                </Form.Select>
+              </Form.Group>
             </Col>
             <Col md={6}>
               {field("authorizationUri", copy.authorizationUri)}

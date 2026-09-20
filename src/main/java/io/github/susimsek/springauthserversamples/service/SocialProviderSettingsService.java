@@ -66,6 +66,19 @@ public class SocialProviderSettingsService {
                 .orElse(null);
     }
 
+    /** Returns the provider-level user synchronization mode for an id or alias. */
+    @Transactional(readOnly = true)
+    public String syncMode(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return socialProviderRepository
+                .findByRegistrationId(value)
+                .or(() -> socialProviderRepository.findByAliasIgnoreCase(value))
+                .map(entity -> SocialProviderSyncMode.from(entity.getSyncMode()).value())
+                .orElse(null);
+    }
+
     public boolean isEnabled() {
         return properties.enabled();
     }

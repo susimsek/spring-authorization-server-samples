@@ -220,6 +220,26 @@ class SocialLoginServiceTest {
     }
 
     @Test
+    void forceSyncModeUpdatesExistingUserProfile() {
+        UserEntity user = new UserEntity();
+        user.setUsername("social_google_existing");
+        user.setFirstName("Old");
+        user.setLastName("Name");
+        user.setEmail("old@example.test");
+        when(socialProviderSettingsService.syncMode("google")).thenReturn("force");
+        when(socialIdentityRepository.findByProviderAndSubject("google", "google-subject"))
+                .thenReturn(
+                        Optional.of(new SocialIdentityEntity("google", "google-subject", user)));
+
+        assertThat(service().findOrCreate(authentication())).isEqualTo("social_google_existing");
+        assertThat(user.getFirstName()).isEqualTo("Ada");
+        assertThat(user.getLastName()).isEqualTo("Lovelace");
+        assertThat(user.getEmail()).isEqualTo("ada@example.test");
+        assertThat(user.getPictureUrl()).isEqualTo("https://images.example.test/ada.jpg");
+        verify(userRepository).save(user);
+    }
+
+    @Test
     void doesNotSilentlyLinkSocialIdentityToExistingEmailAccount() {
         UserEntity existing = new UserEntity();
         existing.setUsername("ada");

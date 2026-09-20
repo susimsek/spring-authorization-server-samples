@@ -228,7 +228,7 @@ The following matrix compares the behavior currently implemented in this reposit
 | Authentication flows | Fixed Spring Security flow with custom MFA filter and required actions | Configurable browser, registration, reset-credential, first-broker-login, and conditional flows[^8] | Partial | Introduce a flow graph only when administrators need reordering/conditions. |
 | WebAuthn/passkeys | Spring Security WebAuthn registration/authentication ceremonies, account/admin credential inventory, labels, deletion, and required-action enrollment | WebAuthn credential and passkey authenticators | Partial | Registration, persistence, primary-factor sign-in, OTP step-up, account/admin inventory with signature and verification metadata, label management, deletion, configurable mediation, conditional sign-in, automatic passkey autofill, and standard/passwordless required actions are implemented. The remaining gap is the broader Keycloak WebAuthn policy surface such as RP and authenticator policy editing. |
 | WebAuthn policy and mediation | Admin policy screen with `conditional`, `optional`, and `none` mediation, persisted API validation, and conditional passkey autofill | Configurable WebAuthn policy and browser mediation behavior for passkeys | Partial | The Authentication > Policies > WebAuthn policy screen persists the mediation choice and exposes it through the public login-settings API. `conditional` starts conditional WebAuthn autofill when the browser supports it, `optional` uses browser-optional mediation for the explicit passkey button, and `none` disables automatic mediation. RP, timeout, resident-key, user-verification, attestation, and authenticator-attachment policies remain application configuration rather than editable realm settings. |
-| Identity brokering | Google, GitHub, LinkedIn, and Microsoft OAuth2/OIDC providers; provider-subject identities; safe first-broker account linking; account-console link management; admin-managed credentials | OIDC/SAML/social providers, mappers, account linking | Partial | The four-provider OAuth2/OIDC subset is implemented and tested. SAML, LDAP/AD, provider mappers, additional provider types, and realm-scoped broker configuration remain roadmap work. |
+| Identity brokering | Google, GitHub, LinkedIn, Microsoft, and dynamic OIDC providers; provider-subject identities; safe first-broker account linking; account-console link management; admin-managed credentials; provider sync modes and mapper overrides | OIDC/SAML/social providers, mappers, account linking | Partial | The OAuth2/OIDC subset, provider CRUD, profile mappers, and `LEGACY`/`IMPORT`/`READ_ONLY`/`FORCE` synchronization policies are implemented. SAML, LDAP/AD, broader provider mapper types, additional provider families, and realm-scoped broker configuration remain roadmap work. |
 | LDAP/Active Directory federation | Not implemented | Federated user stores with sync and mapper policies[^9] | Missing | Requires provider lifecycle, sync jobs, and failure handling. |
 | Sessions | JPA browser sessions, admin/account views, revoke | Online and offline sessions, client sessions, revocation and not-before policies | Partial | Add offline session model and realm/client/user not-before policy if required. |
 | Consent | OAuth authorization and consent persistence/revoke | User consents and client-specific consent management | Implemented / Partial | Preserve current screens; add client-scope and realm boundaries later. |
@@ -493,7 +493,7 @@ The application now implements the OAuth2/OIDC identity-broker subset needed for
 - Administrators can independently enable encrypted provider-token storage and token readability for each provider. Successful broker logins persist the access token, optional refresh token, expiry, type, and scopes in `social_identities`; the authenticated Account API exposes them at `GET /api/account/social-links/{provider}/token` only when readability is enabled. Token fields are cleared when storage is disabled and are never included in provider-list responses.
 - Each provider has a server-enforced security policy for trusting the returned email, requiring named claims, and requiring an enrolled TOTP step-up after broker authentication. Provider enablement remains independently controlled and is checked again at callback time.
 - OIDC logout records the provider used by the browser session and resolves the upstream logout endpoint from the provider's OpenID configuration when an `end_session_endpoint` is published. Google, Microsoft, GitHub, and LinkedIn use their provider logout flows before returning to the registered post-logout URI; providers without a usable upstream endpoint still receive local OIDC logout. Token revocation and provider-specific API proxy calls remain explicit future work.
-- The implemented boundary is intentional: first/post-login flow selection, sync modes, SAML, LDAP/Active Directory federation, provider mapper configuration, realm-scoped broker settings, and Keycloak's broader provider catalog are not included in this sample.
+- The implemented boundary is intentional: first/post-login flow selection, SAML, LDAP/Active Directory federation, broader provider mapper types, realm-scoped broker settings, and Keycloak's broader provider catalog are not included in this sample. Provider-level `LEGACY`, `IMPORT`, `READ_ONLY`, and `FORCE` synchronization policies are supported; mapper-level overrides can inherit the provider policy or explicitly select a mode.
 
 ## Product requirements by priority
 
@@ -516,7 +516,7 @@ The application now implements the OAuth2/OIDC identity-broker subset needed for
 
 ### P2 — optional Keycloak platform parity
 
-- Extend the implemented identity-broker subset with SAML, LDAP/AD federation, provider mappers, additional provider types, and realm-scoped broker configuration.
+- Extend the implemented identity-broker subset with SAML, LDAP/AD federation, broader provider mapper types, additional provider types, and realm-scoped broker configuration.
 - SAML, token exchange, CIBA, DPoP, resource indicators.
 - Organizations and organization groups.
 - Authorization Services/UMA.
@@ -615,8 +615,8 @@ Liquibase changelogs, CSV seed data, and i18n bundles must remain available to n
 - [x] OIDC logout discovers generic OIDC `end_session_endpoint` metadata and starts upstream Google, Microsoft, GitHub, or LinkedIn logout when the linked browser session identifies one of those providers.
 - [x] Provider-level trust-email policy, required-claim validation, MFA step-up, and callback-time enablement checks are enforced and configurable.
 - [x] Provider-level short state parameters and case-sensitive username mapping are configurable and enforced.
-- [ ] Provider-level first/post-login flow selection and sync mode remain future parity work.
-- [ ] SAML, LDAP/AD, provider mappers, additional provider types, and realm-scoped broker configuration remain future parity work.
+- [ ] Provider-level first/post-login flow selection remains future parity work.
+- [ ] SAML, LDAP/AD, broader provider mapper types, additional provider types, and realm-scoped broker configuration remain future parity work.
 
 ### Quality and security
 
@@ -637,7 +637,7 @@ The following parity items remain product decisions rather than silent assumptio
 4. **Representation details**: The current boolean expresses the policy. Persisting request JSON requires a bounded representation column, redaction rules, and a storage-size limit before enabling it for sensitive data.
 5. **Realm isolation**: The current issuer is single-realm from the administrator's perspective. A future multi-tenant design must add a tenant/realm boundary to every resource, cache key, audit record, and authorization check.
 6. **Forgot-password reset flow and OTP behavior**: The application now exposes reset-token lifespan, resend cooldown, and none/if-configured/required OTP reset policy in Login settings, and consumes the policy during reset. A durable execution model for composing the complete reset-credential flow is still outside the sample's single-issuer scope.
-7. **Social identity brokering**: The Google/GitHub/LinkedIn/Microsoft OAuth2/OIDC subset is implemented with Keycloak-like provider-subject reuse, safe first-broker linking, admin-managed encrypted credentials, and account-console link/unlink behavior. Full Keycloak parity still requires SAML, LDAP/AD federation, provider mappers, a larger provider catalog, and realm-scoped broker configuration.
+7. **Social identity brokering**: The Google/GitHub/LinkedIn/Microsoft and dynamic OIDC subset is implemented with Keycloak-like provider-subject reuse, safe first-broker linking, admin-managed encrypted credentials, provider sync modes, mapper overrides, and account-console link/unlink behavior. Full Keycloak parity still requires SAML, LDAP/AD federation, broader provider mapper types, a larger provider catalog, and realm-scoped broker configuration.
 
 ## Delivery plan
 
