@@ -65,6 +65,7 @@ This repository is a Spring Boot 4.1 + Java 25 sample application built around t
 - Optional account TOTP MFA with configurable issuer, algorithm, digits, period, clock-drift window, reusable-code policy, recovery codes, and required-action enrollment
 - Built-in Administration and Account consoles using public OIDC clients with Authorization Code + PKCE, refresh tokens, and OIDC logout
 - H2 in-memory database in PostgreSQL compatibility mode for `dev`
+- H2 web console at `/h2-console` for local `dev`-profile database inspection
 - PostgreSQL support for `prod`
 - XML-based Liquibase schema migrations
 - CSV seed data for authorities, users, user-authorities, and registered OAuth2 clients
