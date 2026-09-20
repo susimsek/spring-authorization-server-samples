@@ -1,9 +1,11 @@
 package io.github.susimsek.springauthserversamples.dto.admin;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 
 @Schema(
@@ -154,7 +156,11 @@ public record AdminLoginSettingsRequestDTO(
                         description = "Allow passkey sign-in on the public login page.",
                         example = "true",
                         requiredMode = Schema.RequiredMode.REQUIRED)
-                boolean passkeys) {
+                boolean passkeys,
+        @Schema(description = "Registration WebAuthn policy.") @NotNull @Valid
+                WebAuthnPolicyDTO webauthnPolicy,
+        @Schema(description = "Passwordless authentication WebAuthn policy.") @NotNull @Valid
+                WebAuthnPolicyDTO webauthnPasswordlessPolicy) {
 
     public AdminLoginSettingsRequestDTO(
             boolean userRegistration,
@@ -228,6 +234,28 @@ public record AdminLoginSettingsRequestDTO(
                 otpCodeReusable,
                 otpAddRecoveryCodes,
                 recoveryCodeWarningThreshold,
-                true);
+                true,
+                new WebAuthnPolicyDTO(
+                        "Spring Authorization Server",
+                        "",
+                        "ES256,RS256,EdDSA",
+                        "none",
+                        "any",
+                        "preferred",
+                        "preferred",
+                        300,
+                        true,
+                        ""),
+                new WebAuthnPolicyDTO(
+                        "Spring Authorization Server",
+                        "",
+                        "ES256,RS256,EdDSA",
+                        "none",
+                        "any",
+                        "required",
+                        "required",
+                        300,
+                        true,
+                        ""));
     }
 }

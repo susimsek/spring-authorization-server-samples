@@ -104,4 +104,37 @@ describe("MFA account settings", () => {
     expect(await screen.findByText(dictionary.account.security.mfa.invalidCode)).toBeVisible();
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it("handles enabled MFA recovery codes, invalid disable codes, and successful disable", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        response(200, {
+          enabled: true,
+          available: true,
+          required: true,
+          issuer: "Authorization Server",
+          digits: 6,
+        }),
+      )
+      .mockResolvedValueOnce(response(200, { remaining: 1, warningThreshold: 3 }))
+      .mockResolvedValueOnce(response(200, { codes: ["ABCD-1234"], remaining: 0 }))
+      .mockResolvedValueOnce(response(400, { detail: "Invalid authenticator code" }))
+      .mockResolvedValueOnce(response(204));
+
+    render(<MfaSettings dictionary={dictionary} />);
+    expect(await screen.findByText(dictionary.account.security.mfa.enabled)).toBeVisible();
+    expect(screen.getByText(dictionary.account.security.mfa.recoveryWarning.replace("{{count}}", "1"))).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: dictionary.account.security.mfa.recoveryGenerate }));
+    expect(await screen.findByText("ABCD-1234")).toBeVisible();
+
+    const input = screen.getByPlaceholderText(dictionary.account.security.mfa.code);
+    fireEvent.click(screen.getByRole("button", { name: dictionary.account.security.mfa.disable }));
+    expect(await screen.findByText(dictionary.account.security.mfa.invalidCode)).toBeVisible();
+    fireEvent.change(input, { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: dictionary.account.security.mfa.disable }));
+    expect(await screen.findByText("Invalid authenticator code")).toBeVisible();
+    fireEvent.change(input, { target: { value: "654321" } });
+    fireEvent.click(screen.getByRole("button", { name: dictionary.account.security.mfa.disable }));
+    await waitFor(() => expect(clearLocalSession).toHaveBeenCalledTimes(1));
+  });
 });

@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm } from "@/lib/form";
-import type { UseFormRegisterReturn } from "react-hook-form";
+import type { FieldErrors, Path, UseFormRegister, UseFormRegisterReturn } from "react-hook-form";
 import { z } from "zod";
 import { Alert, Button, Card, Form, Spinner } from "react-bootstrap";
 
@@ -27,6 +27,8 @@ type Settings = {
   loginWithEmail: boolean;
   verifyEmail: boolean;
   webauthnMediation: "none" | "optional" | "conditional";
+  webauthnPolicy: WebAuthnPolicy;
+  webauthnPasswordlessPolicy: WebAuthnPolicy;
   emailUpdateReauthenticationMinutes: number;
   googleLoginEnabled: boolean;
   githubLoginEnabled: boolean;
@@ -89,6 +91,38 @@ type CaptchaSettings = {
   loginScoreThreshold: number;
 };
 
+type WebAuthnPolicy = {
+  rpName: string;
+  rpId: string;
+  signatureAlgorithms: string;
+  attestation: "none" | "indirect" | "direct" | "enterprise";
+  authenticatorAttachment: "any" | "platform" | "cross-platform";
+  residentKey: "discouraged" | "preferred" | "required";
+  userVerification: "discouraged" | "preferred" | "required";
+  timeoutSeconds: number;
+  avoidSameAuthenticator: boolean;
+  acceptableAaguids: string;
+};
+
+const defaultWebAuthnPolicy: WebAuthnPolicy = {
+  rpName: "Spring Authorization Server",
+  rpId: "",
+  signatureAlgorithms: "ES256,RS256,EdDSA",
+  attestation: "none",
+  authenticatorAttachment: "any",
+  residentKey: "preferred",
+  userVerification: "preferred",
+  timeoutSeconds: 300,
+  avoidSameAuthenticator: true,
+  acceptableAaguids: "",
+};
+
+const defaultPasswordlessWebAuthnPolicy: WebAuthnPolicy = {
+  ...defaultWebAuthnPolicy,
+  residentKey: "required",
+  userVerification: "required",
+};
+
 const defaultSettings: Settings = {
   userRegistration: true,
   forgotPassword: true,
@@ -100,6 +134,8 @@ const defaultSettings: Settings = {
   loginWithEmail: false,
   verifyEmail: false,
   webauthnMediation: "none",
+  webauthnPolicy: defaultWebAuthnPolicy,
+  webauthnPasswordlessPolicy: defaultPasswordlessWebAuthnPolicy,
   emailUpdateReauthenticationMinutes: 5,
   sessionTimeoutMinutes: 30,
   passwordMinimumLength: 12,
@@ -211,6 +247,19 @@ export default function LoginSettingsPage({
   const [captcha, setCaptcha] = useState<CaptchaSettings>(defaultCaptchaSettings);
   const [captchaLoaded, setCaptchaLoaded] = useState(false);
   const [captchaSubmitting, setCaptchaSubmitting] = useState(false);
+  const webAuthnPolicySchema = () =>
+    z.object({
+      rpName: z.string().trim().min(1, validation.required).max(255),
+      rpId: z.string().trim().max(253),
+      signatureAlgorithms: z.string().trim().min(1, validation.required).max(255),
+      attestation: z.enum(["none", "indirect", "direct", "enterprise"]),
+      authenticatorAttachment: z.enum(["any", "platform", "cross-platform"]),
+      residentKey: z.enum(["discouraged", "preferred", "required"]),
+      userVerification: z.enum(["discouraged", "preferred", "required"]),
+      timeoutSeconds: z.number().int().min(1, validation.positiveNumber).max(86400),
+      avoidSameAuthenticator: z.boolean(),
+      acceptableAaguids: z.string().max(4000),
+    });
   const schema = z.object({
     userRegistration: z.boolean(),
     forgotPassword: z.boolean(),
@@ -230,6 +279,8 @@ export default function LoginSettingsPage({
     loginWithEmail: z.boolean(),
     verifyEmail: z.boolean(),
     webauthnMediation: z.enum(["none", "optional", "conditional"]),
+    webauthnPolicy: webAuthnPolicySchema(),
+    webauthnPasswordlessPolicy: webAuthnPolicySchema(),
     emailUpdateReauthenticationMinutes: z
       .number()
       .int()
@@ -380,6 +431,34 @@ export default function LoginSettingsPage({
     socialProviders.find((provider) => provider.provider === socialProviderTab)?.provider ??
     socialProviders[0]?.provider ??
     "";
+  const webAuthnLabels = {
+    rpName: copy.webauthnRpName,
+    rpId: copy.webauthnRpId,
+    signatureAlgorithms: copy.webauthnSignatureAlgorithms,
+    attestation: copy.webauthnAttestation,
+    attestationNone: copy.webauthnAttestationNone,
+    attestationIndirect: copy.webauthnAttestationIndirect,
+    attestationDirect: copy.webauthnAttestationDirect,
+    attestationEnterprise: copy.webauthnAttestationEnterprise,
+    authenticatorAttachment: copy.webauthnAuthenticatorAttachment,
+    authenticatorAny: copy.webauthnAuthenticatorAny,
+    authenticatorPlatform: copy.webauthnAuthenticatorPlatform,
+    authenticatorCrossPlatform: copy.webauthnAuthenticatorCrossPlatform,
+    residentKey: copy.webauthnResidentKey,
+    residentDiscouraged: copy.webauthnResidentDiscouraged,
+    residentPreferred: copy.webauthnResidentPreferred,
+    residentRequired: copy.webauthnResidentRequired,
+    userVerification: copy.webauthnUserVerification,
+    userVerificationDiscouraged: copy.webauthnUserVerificationDiscouraged,
+    userVerificationPreferred: copy.webauthnUserVerificationPreferred,
+    userVerificationRequired: copy.webauthnUserVerificationRequired,
+    timeoutSeconds: copy.webauthnTimeoutSeconds,
+    avoidSameAuthenticator: copy.webauthnAvoidSameAuthenticator,
+    acceptableAaguids: copy.webauthnAcceptableAaguids,
+    rpIdHelp: copy.webauthnRpIdHelp,
+    signatureAlgorithmsHelp: copy.webauthnSignatureAlgorithmsHelp,
+    acceptableAaguidsHelp: copy.webauthnAcceptableAaguidsHelp,
+  };
 
   const submit = handleSubmit(async (values) => {
     if (!accessToken) return;
@@ -1032,6 +1111,22 @@ export default function LoginSettingsPage({
                   </Form.Select>
                   <Form.Text>{copy.webauthnMediationHelp}</Form.Text>
                 </Form.Group>
+                <WebAuthnPolicyFields
+                  title={copy.webauthnRegistrationPolicy}
+                  help={copy.webauthnRegistrationPolicyHelp}
+                  prefix="webauthnPolicy"
+                  register={register}
+                  errors={errors}
+                  labels={webAuthnLabels}
+                />
+                <WebAuthnPolicyFields
+                  title={copy.webauthnPasswordlessPolicy}
+                  help={copy.webauthnPasswordlessPolicyHelp}
+                  prefix="webauthnPasswordlessPolicy"
+                  register={register}
+                  errors={errors}
+                  labels={webAuthnLabels}
+                />
                 <SaveButton copy={copy.save} isSubmitting={isSubmitting} />
               </section>
 
@@ -1335,6 +1430,142 @@ function NumberField({
       <Form.Control type="number" isInvalid={Boolean(error)} {...registration} />
       <Form.Control.Feedback type="invalid">{error}</Form.Control.Feedback>
     </Form.Group>
+  );
+}
+
+function WebAuthnPolicyFields({
+  title,
+  help,
+  prefix,
+  register,
+  errors,
+  labels,
+}: {
+  title: string;
+  help: string;
+  prefix: "webauthnPolicy" | "webauthnPasswordlessPolicy";
+  register: UseFormRegister<Settings>;
+  errors: FieldErrors<Settings>;
+  labels: {
+    rpName: string;
+    rpId: string;
+    signatureAlgorithms: string;
+    attestation: string;
+    attestationNone: string;
+    attestationIndirect: string;
+    attestationDirect: string;
+    attestationEnterprise: string;
+    authenticatorAttachment: string;
+    authenticatorAny: string;
+    authenticatorPlatform: string;
+    authenticatorCrossPlatform: string;
+    residentKey: string;
+    residentDiscouraged: string;
+    residentPreferred: string;
+    residentRequired: string;
+    userVerification: string;
+    userVerificationDiscouraged: string;
+    userVerificationPreferred: string;
+    userVerificationRequired: string;
+    timeoutSeconds: string;
+    avoidSameAuthenticator: string;
+    acceptableAaguids: string;
+    rpIdHelp: string;
+    signatureAlgorithmsHelp: string;
+    acceptableAaguidsHelp: string;
+  };
+}) {
+  const policyErrors = errors[prefix] as FieldErrors<WebAuthnPolicy> | undefined;
+  const path = (field: keyof WebAuthnPolicy) => `${prefix}.${field}` as Path<Settings>;
+  const fieldError = (field: keyof WebAuthnPolicy) => policyErrors?.[field]?.message;
+  return (
+    <Card className="admin-panel-card mt-4">
+      <Card.Body>
+        <h3 className="h6 mb-2">{title}</h3>
+        <p className="text-body-secondary small">{help}</p>
+        <div className="d-grid gap-3">
+          <Form.Group controlId={`${prefix}-rp-name`}>
+            <Form.Label>{labels.rpName}</Form.Label>
+            <Form.Control isInvalid={Boolean(fieldError("rpName"))} {...register(path("rpName"))} />
+            <Form.Control.Feedback type="invalid">{fieldError("rpName")}</Form.Control.Feedback>
+          </Form.Group>
+          <Form.Group controlId={`${prefix}-rp-id`}>
+            <Form.Label>{labels.rpId}</Form.Label>
+            <Form.Control isInvalid={Boolean(fieldError("rpId"))} {...register(path("rpId"))} />
+            <Form.Control.Feedback type="invalid">{fieldError("rpId")}</Form.Control.Feedback>
+            <Form.Text>{labels.rpIdHelp}</Form.Text>
+          </Form.Group>
+          <Form.Group controlId={`${prefix}-signature-algorithms`}>
+            <Form.Label>{labels.signatureAlgorithms}</Form.Label>
+            <Form.Control
+              isInvalid={Boolean(fieldError("signatureAlgorithms"))}
+              {...register(path("signatureAlgorithms"))}
+            />
+            <Form.Control.Feedback type="invalid">
+              {fieldError("signatureAlgorithms")}
+            </Form.Control.Feedback>
+            <Form.Text>{labels.signatureAlgorithmsHelp}</Form.Text>
+          </Form.Group>
+          <Form.Group controlId={`${prefix}-attestation`}>
+            <Form.Label>{labels.attestation}</Form.Label>
+            <Form.Select {...register(path("attestation"))}>
+              <option value="none">{labels.attestationNone}</option>
+              <option value="indirect">{labels.attestationIndirect}</option>
+              <option value="direct">{labels.attestationDirect}</option>
+              <option value="enterprise">{labels.attestationEnterprise}</option>
+            </Form.Select>
+          </Form.Group>
+          <Form.Group controlId={`${prefix}-authenticator-attachment`}>
+            <Form.Label>{labels.authenticatorAttachment}</Form.Label>
+            <Form.Select {...register(path("authenticatorAttachment"))}>
+              <option value="any">{labels.authenticatorAny}</option>
+              <option value="platform">{labels.authenticatorPlatform}</option>
+              <option value="cross-platform">{labels.authenticatorCrossPlatform}</option>
+            </Form.Select>
+          </Form.Group>
+          <Form.Group controlId={`${prefix}-resident-key`}>
+            <Form.Label>{labels.residentKey}</Form.Label>
+            <Form.Select {...register(path("residentKey"))}>
+              <option value="discouraged">{labels.residentDiscouraged}</option>
+              <option value="preferred">{labels.residentPreferred}</option>
+              <option value="required">{labels.residentRequired}</option>
+            </Form.Select>
+          </Form.Group>
+          <Form.Group controlId={`${prefix}-user-verification`}>
+            <Form.Label>{labels.userVerification}</Form.Label>
+            <Form.Select {...register(path("userVerification"))}>
+              <option value="discouraged">{labels.userVerificationDiscouraged}</option>
+              <option value="preferred">{labels.userVerificationPreferred}</option>
+              <option value="required">{labels.userVerificationRequired}</option>
+            </Form.Select>
+          </Form.Group>
+          <NumberField
+            id={`${prefix}-timeout`}
+            label={labels.timeoutSeconds}
+            error={fieldError("timeoutSeconds")}
+            registration={register(path("timeoutSeconds"), { valueAsNumber: true })}
+          />
+          <Form.Check
+            type="switch"
+            label={labels.avoidSameAuthenticator}
+            {...register(path("avoidSameAuthenticator"))}
+          />
+          <Form.Group controlId={`${prefix}-acceptable-aaguids`}>
+            <Form.Label>{labels.acceptableAaguids}</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={2}
+              isInvalid={Boolean(fieldError("acceptableAaguids"))}
+              {...register(path("acceptableAaguids"))}
+            />
+            <Form.Control.Feedback type="invalid">
+              {fieldError("acceptableAaguids")}
+            </Form.Control.Feedback>
+            <Form.Text>{labels.acceptableAaguidsHelp}</Form.Text>
+          </Form.Group>
+        </div>
+      </Card.Body>
+    </Card>
   );
 }
 

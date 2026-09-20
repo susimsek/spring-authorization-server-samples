@@ -52,4 +52,67 @@ describe("AdminEvents", () => {
     );
     expect(screen.getByText(dictionary.admin.events.clearAllSuccess)).toBeVisible();
   });
+
+  it("filters event details and surfaces clear failures", async () => {
+    const event = {
+      id: "event-1",
+      actor: "admin",
+      action: "user.updated",
+      targetType: "user",
+      targetId: "42",
+      occurredAt: "2026-01-01T00:00:00Z",
+    };
+    mockAdminRequest.mockImplementation(async (_token, config) =>
+      config.method === "DELETE"
+        ? ({ status: 500, data: null } as never)
+        : ({ status: 200, data: { content: [event], totalElements: 1, totalPages: 1 } } as never),
+    );
+    render(<AdminEventsPage />);
+    expect(await screen.findByText("user.updated")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.events.filterEvents }));
+    fireEvent.change(screen.getByRole("combobox", { name: dictionary.admin.events.action }), {
+      target: { value: "user.updated" },
+    });
+    fireEvent.click(screen.getByText("admin").closest("tr")!);
+    expect(screen.getByText(dictionary.admin.events.details)).toBeVisible();
+    expect(screen.getAllByText("42").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.events.clearAll }));
+    fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.events.clearAll })[1]);
+    await waitFor(() => expect(screen.getByText(dictionary.admin.events.clearAllError)).toBeVisible());
+  });
+
+  it("exercises every event filter and closes the detail drawer", async () => {
+    const event = {
+      id: "event-2",
+      actor: "admin",
+      action: "client.updated",
+      targetType: "client",
+      targetId: "client-1",
+      occurredAt: "2026-01-01T00:00:00Z",
+    };
+    mockAdminRequest.mockResolvedValue({
+      status: 200,
+      data: { content: [event], totalElements: 1, totalPages: 1 },
+    } as never);
+    render(<AdminEventsPage />);
+    expect(await screen.findByText("client.updated")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.events.filterEvents }));
+    fireEvent.change(screen.getByRole("combobox", { name: dictionary.admin.events.targetType }), {
+      target: { value: "client" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: dictionary.admin.events.targetId }), {
+      target: { value: "client-1" },
+    });
+    fireEvent.change(screen.getByLabelText(dictionary.admin.events.from), {
+      target: { value: "2026-01-01" },
+    });
+    fireEvent.change(screen.getByLabelText(dictionary.admin.events.to), {
+      target: { value: "2026-01-02" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.events.hideFilters }));
+    fireEvent.click(screen.getByText("admin").closest("tr")!);
+    expect(await screen.findByText(dictionary.admin.events.details)).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByText(event.id)).not.toBeInTheDocument();
+  });
 });

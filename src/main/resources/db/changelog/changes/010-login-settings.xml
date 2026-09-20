@@ -19,6 +19,26 @@
 			<column name="login_with_email" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
 			<column name="verify_email" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
 			<column name="webauthn_mediation" type="varchar(20)" defaultValue="none"><constraints nullable="false"/></column>
+			<column name="webauthn_rp_name" type="varchar(255)" defaultValue="Spring Authorization Server"><constraints nullable="false"/></column>
+			<column name="webauthn_rp_id" type="varchar(253)" defaultValue=""><constraints nullable="false"/></column>
+			<column name="webauthn_signature_algorithms" type="varchar(255)" defaultValue="ES256,RS256,EdDSA"><constraints nullable="false"/></column>
+			<column name="webauthn_attestation" type="varchar(20)" defaultValue="none"><constraints nullable="false"/></column>
+			<column name="webauthn_authenticator_attachment" type="varchar(20)" defaultValue="any"><constraints nullable="false"/></column>
+			<column name="webauthn_resident_key" type="varchar(20)" defaultValue="preferred"><constraints nullable="false"/></column>
+			<column name="webauthn_user_verification" type="varchar(20)" defaultValue="preferred"><constraints nullable="false"/></column>
+			<column name="webauthn_timeout_seconds" type="int" defaultValueNumeric="300"><constraints nullable="false"/></column>
+			<column name="webauthn_avoid_same_authenticator" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+			<column name="webauthn_acceptable_aaguids" type="varchar(4000)" defaultValue=""><constraints nullable="false"/></column>
+			<column name="webauthn_passwordless_rp_name" type="varchar(255)" defaultValue="Spring Authorization Server"><constraints nullable="false"/></column>
+			<column name="webauthn_passwordless_rp_id" type="varchar(253)" defaultValue=""><constraints nullable="false"/></column>
+			<column name="webauthn_passwordless_signature_algorithms" type="varchar(255)" defaultValue="ES256,RS256,EdDSA"><constraints nullable="false"/></column>
+			<column name="webauthn_passwordless_attestation" type="varchar(20)" defaultValue="none"><constraints nullable="false"/></column>
+			<column name="webauthn_passwordless_authenticator_attachment" type="varchar(20)" defaultValue="any"><constraints nullable="false"/></column>
+			<column name="webauthn_passwordless_resident_key" type="varchar(20)" defaultValue="required"><constraints nullable="false"/></column>
+			<column name="webauthn_passwordless_user_verification" type="varchar(20)" defaultValue="required"><constraints nullable="false"/></column>
+			<column name="webauthn_passwordless_timeout_seconds" type="int" defaultValueNumeric="300"><constraints nullable="false"/></column>
+			<column name="webauthn_passwordless_avoid_same_authenticator" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+			<column name="webauthn_passwordless_acceptable_aaguids" type="varchar(4000)" defaultValue=""><constraints nullable="false"/></column>
 			<column name="email_update_reauthentication_minutes" type="int" defaultValueNumeric="5"><constraints nullable="false"/></column>
 			<column name="google_login_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
 			<column name="github_login_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
@@ -135,6 +155,26 @@
 			<column header="login_with_email" type="boolean"/>
 			<column header="verify_email" type="boolean"/>
 			<column header="webauthn_mediation" type="string"/>
+			<column header="webauthn_rp_name" type="string"/>
+			<column header="webauthn_rp_id" type="string"/>
+			<column header="webauthn_signature_algorithms" type="string"/>
+			<column header="webauthn_attestation" type="string"/>
+			<column header="webauthn_authenticator_attachment" type="string"/>
+			<column header="webauthn_resident_key" type="string"/>
+			<column header="webauthn_user_verification" type="string"/>
+			<column header="webauthn_timeout_seconds" type="numeric"/>
+			<column header="webauthn_avoid_same_authenticator" type="boolean"/>
+			<column header="webauthn_acceptable_aaguids" type="string"/>
+			<column header="webauthn_passwordless_rp_name" type="string"/>
+			<column header="webauthn_passwordless_rp_id" type="string"/>
+			<column header="webauthn_passwordless_signature_algorithms" type="string"/>
+			<column header="webauthn_passwordless_attestation" type="string"/>
+			<column header="webauthn_passwordless_authenticator_attachment" type="string"/>
+			<column header="webauthn_passwordless_resident_key" type="string"/>
+			<column header="webauthn_passwordless_user_verification" type="string"/>
+			<column header="webauthn_passwordless_timeout_seconds" type="numeric"/>
+			<column header="webauthn_passwordless_avoid_same_authenticator" type="boolean"/>
+			<column header="webauthn_passwordless_acceptable_aaguids" type="string"/>
 			<column header="email_update_reauthentication_minutes" type="numeric"/>
 			<column header="google_login_enabled" type="boolean"/>
 			<column header="github_login_enabled" type="boolean"/>

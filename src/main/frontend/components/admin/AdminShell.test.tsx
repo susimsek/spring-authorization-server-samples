@@ -139,5 +139,11 @@ describe("AdminShell", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.logout }));
     await waitFor(() => expect(mockLogout).toHaveBeenCalled());
+    const toggle = screen.getByRole("button", {
+      name: dictionary.admin.common.toggleNavigation,
+    });
+    fireEvent.click(toggle);
+    expect(screen.getByRole("button", { name: dictionary.admin.common.closeNavigation })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.closeNavigation }));
   });
 });

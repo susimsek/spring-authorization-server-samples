@@ -42,6 +42,13 @@ import { ThemeManager } from "./ThemeManager";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 
 const mockedAxios = axios as unknown as { get: jest.Mock; isCancel: jest.Mock };
+const mockAuthenticatePasskey = jest.fn();
+const mockSupportsConditionalMediation = jest.fn();
+
+jest.mock("@/lib/webauthn", () => ({
+  authenticatePasskey: (...args: unknown[]) => mockAuthenticatePasskey(...args),
+  supportsConditionalMediation: (...args: unknown[]) => mockSupportsConditionalMediation(...args),
+}));
 
 const consent = {
   clientId: "console-client",
@@ -86,6 +93,8 @@ describe("authentication components", () => {
     localStorage.clear();
     document.documentElement.removeAttribute("data-bs-theme");
     installMatchMedia();
+    mockAuthenticatePasskey.mockReset();
+    mockSupportsConditionalMediation.mockReset();
   });
 
   it("renders the layout, navbar, and login feedback", () => {
@@ -277,6 +286,138 @@ describe("authentication components", () => {
     fireEvent.click(screen.getByRole("button", { name: "English" }));
     expect(document.cookie).toContain("locale=en");
     expect(navigation.push).not.toHaveBeenCalled();
+  });
+
+  it("loads supported locales and persists the authenticated preference", async () => {
+    const fetchMock = jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/localization/me") && init?.method === "PUT") {
+        return { ok: true, json: async () => ({}) } as Response;
+      }
+      if (url.endsWith("/localization/me")) {
+        return { ok: true, json: async () => ({ locale: "tr" }) } as Response;
+      }
+      return {
+        ok: true,
+        json: async () => ({ internationalizationEnabled: false, defaultLocale: "tr", supportedLocales: ["tr"] }),
+      } as Response;
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<LanguageSwitcher locale="en" label={dictionary.navbar.language} accessToken="token" />);
+
+    fireEvent.click(screen.getByRole("button", { name: dictionary.navbar.language }));
+    expect(await screen.findByRole("button", { name: "Türkçe" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Türkçe" }));
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/auth/localization/me",
+        expect.objectContaining({ method: "PUT" }),
+      ),
+    );
+    delete (globalThis as { fetch?: typeof fetch }).fetch;
+  });
+
+  it("shows the passkey login error when the browser authentication fails", async () => {
+    mockSupportsConditionalMediation.mockResolvedValue(false);
+    mockAuthenticatePasskey.mockRejectedValue(new Error("not available"));
+    globalThis.fetch = jest.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      return {
+        ok: true,
+        json: async () =>
+          url.includes("login-settings")
+            ? { passkeys: true, webauthnMediation: "none" }
+            : [],
+      } as Response;
+    }) as unknown as typeof fetch;
+
+    render(<LoginForm dictionary={dictionary} />);
+    const passkey = await screen.findByRole("button", { name: dictionary.login.passkey });
+    fireEvent.click(passkey);
+    expect(await screen.findByText(dictionary.login.passkeyError)).toBeVisible();
+    delete (globalThis as { fetch?: typeof fetch }).fetch;
+  });
+
+  it("hides optional login features and normalizes mixed social-provider responses", async () => {
+    globalThis.fetch = jest.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("login-settings")) {
+        return {
+          ok: true,
+          json: async () => ({
+            userRegistration: false,
+            forgotPassword: false,
+            rememberMe: false,
+            passkeys: false,
+          }),
+        } as Response;
+      }
+      return {
+        ok: true,
+        json: async () => [
+          "github",
+          { provider: "acme", configured: true },
+          { provider: "", configured: true },
+          { invalid: true },
+        ],
+      } as Response;
+    }) as unknown as typeof fetch;
+
+    render(<LoginForm dictionary={dictionary} />);
+
+    expect(
+      await screen.findByRole("button", {
+        name: `${dictionary.login.socialLogin} GitHub`,
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: `${dictionary.login.socialLogin} acme` }),
+    ).toBeVisible();
+    expect(screen.queryByRole("link", { name: dictionary.login.register })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: dictionary.login.forgotPassword }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(dictionary.login.rememberMe)).not.toBeInTheDocument();
+    delete (globalThis as { fetch?: typeof fetch }).fetch;
+  });
+
+  it("ignores unavailable login settings and social-provider endpoints", async () => {
+    const fetchMock = jest.fn().mockResolvedValue({ ok: false, json: jest.fn() });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    render(<LoginForm dictionary={dictionary} />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole("button", { name: dictionary.login.submit })).toBeVisible();
+    expect(screen.queryByText(dictionary.login.socialDivider)).not.toBeInTheDocument();
+    delete (globalThis as { fetch?: typeof fetch }).fetch;
+
+    const rejectedFetch = jest.fn().mockRejectedValue(new Error("offline"));
+    globalThis.fetch = rejectedFetch as unknown as typeof fetch;
+    render(<LoginForm dictionary={dictionary} />);
+    await waitFor(() => expect(rejectedFetch).toHaveBeenCalledTimes(2));
+    delete (globalThis as { fetch?: typeof fetch }).fetch;
+  });
+
+  it("starts conditional passkey mediation without surfacing automatic failures", async () => {
+    mockSupportsConditionalMediation.mockResolvedValue(true);
+    mockAuthenticatePasskey.mockRejectedValue(new Error("conditional unavailable"));
+    globalThis.fetch = jest.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      return {
+        ok: true,
+        json: async () => (url.includes("login-settings")
+          ? { passkeys: true, webauthnMediation: "conditional" }
+          : []),
+      } as Response;
+    }) as unknown as typeof fetch;
+    render(<LoginForm dictionary={dictionary} />);
+    await waitFor(() => expect(mockSupportsConditionalMediation).toHaveBeenCalled());
+    await waitFor(() => expect(mockAuthenticatePasskey).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({ mediation: "conditional" }),
+    ));
+    expect(screen.queryByText(dictionary.login.passkeyError)).not.toBeInTheDocument();
+    delete (globalThis as { fetch?: typeof fetch }).fetch;
   });
 
   it("persists themes, applies system preferences, and cleans up media subscriptions", () => {

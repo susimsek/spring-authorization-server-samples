@@ -10,16 +10,19 @@ import { UserProfileAttributeForm } from "./UserProfileAttributeForm";
 
 const mockPush = jest.fn();
 const mockAdminRequest = adminRequest as jest.MockedFunction<typeof adminRequest>;
+const mockAddError = jest.fn();
+const mockAddAlert = jest.fn();
+const authState = {
+  accessToken: "token",
+  access: { isAdmin: true, manageClients: true, manageRoles: true, manageUsers: true },
+};
 
 jest.mock("@/lib/admin-api", () => ({ adminRequest: jest.fn() }));
 jest.mock("./AdminAuthProvider", () => ({
-  useAdminAuth: () => ({
-    accessToken: "token",
-    access: { isAdmin: true, manageClients: true, manageRoles: true, manageUsers: true },
-  }),
+  useAdminAuth: () => authState,
 }));
 jest.mock("@/components/auth/ConsoleAlerts", () => ({
-  useConsoleAlerts: () => ({ addError: jest.fn(), addAlert: jest.fn() }),
+  useConsoleAlerts: () => ({ addError: mockAddError, addAlert: mockAddAlert }),
 }));
 jest.mock("@/routing/navigation", () => ({
   useParams: () => ({ lang: "en" }),
@@ -30,6 +33,8 @@ describe("dedicated administration creation forms", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockAdminRequest.mockReset();
+    authState.accessToken = "token";
+    authState.access = { isAdmin: true, manageClients: true, manageRoles: true, manageUsers: true };
   });
 
   it("creates a group and opens its detail page", async () => {
@@ -159,5 +164,99 @@ describe("dedicated administration creation forms", () => {
       }),
     );
     expect(mockPush).toHaveBeenCalledWith("/admin/settings/user-profile");
+  });
+
+  it("shows field and operation errors from role and scope APIs", async () => {
+    mockAdminRequest.mockResolvedValueOnce({
+      status: 400,
+      data: { errorCode: "admin_role_duplicate_name", field: "name" },
+    } as never);
+    const roleView = render(<RoleCreateForm dictionary={dictionary} locale="en" />);
+    fireEvent.change(screen.getByRole("textbox", { name: dictionary.admin.roles.name }), {
+      target: { value: "ROLE_AUDITOR" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.roles.create }));
+    expect(await screen.findByText(dictionary.admin.common.validation.roleDuplicate)).toBeVisible();
+
+    roleView.unmount();
+    mockAdminRequest.mockResolvedValueOnce({ status: 500, data: {} } as never);
+    render(<ClientScopeCreateForm dictionary={dictionary} locale="en" />);
+    fireEvent.change(screen.getByRole("textbox", { name: dictionary.admin.clientScopes.name }), {
+      target: { value: "invoice.read" },
+    });
+    fireEvent.change(
+      screen.getByRole("textbox", { name: dictionary.admin.clientScopes.groupClaimName }),
+      { target: { value: "groups" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.clientScopes.create }));
+    await waitFor(() => expect(mockAddError).toHaveBeenCalledWith(dictionary.admin.clientScopes.operationError));
+  });
+
+  it("renders the profile edit branch, handles load errors, and respects permissions", async () => {
+    const existing = {
+      id: 4,
+      name: "department",
+      displayName: "Department",
+      description: "A department",
+      type: "STRING",
+      required: true,
+      multivalued: false,
+      minLength: 2,
+      maxLength: 40,
+      pattern: "[a-z]+",
+      enabled: true,
+      displayOrder: 1,
+      builtIn: false,
+    };
+    mockAdminRequest.mockResolvedValueOnce({ status: 200, data: [existing] } as never);
+    const editView = render(<UserProfileAttributeForm dictionary={dictionary} id="4" />);
+    expect(await screen.findByDisplayValue("Department")).toBeVisible();
+    expect(screen.getByRole("textbox", { name: dictionary.admin.userProfileSettings.name })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.userProfileSettings.update }));
+
+    editView.unmount();
+    mockAdminRequest.mockResolvedValueOnce({ status: 500, data: [] } as never);
+    render(<UserProfileAttributeForm dictionary={dictionary} id="4" />);
+    expect(await screen.findByText(dictionary.admin.userProfileSettings.error)).toBeVisible();
+
+    authState.access = { isAdmin: false, manageClients: false, manageRoles: false, manageUsers: false };
+    render(<RoleCreateForm dictionary={dictionary} locale="en" />);
+    expect(screen.getByRole("button", { name: dictionary.admin.roles.create })).toBeDisabled();
+  });
+
+  it("validates group attributes, maps duplicate names, and handles loading failures", async () => {
+    mockAdminRequest.mockResolvedValueOnce({
+      status: 200,
+      data: { content: [{ id: 3, name: "finance", path: "/finance" }] },
+    } as never);
+    render(<GroupCreateForm dictionary={dictionary} locale="en" />);
+
+    expect(await screen.findByRole("option", { name: "/finance" })).toBeVisible();
+    fireEvent.change(screen.getByRole("textbox", { name: dictionary.admin.groups.name }), {
+      target: { value: "finance-operators" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: dictionary.admin.groups.attributes }), {
+      target: { value: "not-json" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.groups.create }));
+    expect(await screen.findByText(dictionary.admin.groups.attributeFormat)).toBeVisible();
+
+    mockAdminRequest.mockResolvedValueOnce({
+      status: 400,
+      data: { errorCode: "group_duplicate_name", field: "name" },
+    } as never);
+    fireEvent.change(screen.getByRole("textbox", { name: dictionary.admin.groups.attributes }), {
+      target: { value: "{}" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.groups.create }));
+    expect(
+      await screen.findByText(dictionary.admin.common.validation.groupDuplicate),
+    ).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.cancel }));
+    expect(mockPush).toHaveBeenCalledWith("/admin/groups");
+
+    mockAdminRequest.mockResolvedValueOnce({ status: 500, data: null } as never);
+    render(<GroupCreateForm dictionary={dictionary} locale="en" />);
+    await waitFor(() => expect(mockAdminRequest).toHaveBeenCalled());
   });
 });

@@ -154,6 +154,98 @@ describe("Account console resources", () => {
     );
   });
 
+  it("signs out other sessions and logs out after signing out all sessions", async () => {
+    mockAccountRequest.mockImplementation(async (_token, config) => {
+      if (!config.method) {
+        return {
+          status: 200,
+          data: {
+            content: [
+              {
+                id: "sid-current",
+                createdAt: "2026-08-23T10:00:00Z",
+                lastAccessedAt: "2026-08-23T10:30:00Z",
+                expiresAt: "2026-08-23T11:00:00Z",
+                current: true,
+                clients: [],
+              },
+              {
+                id: "sid-other",
+                createdAt: "2026-08-22T10:00:00Z",
+                lastAccessedAt: "2026-08-22T10:30:00Z",
+                expiresAt: "2026-08-24T11:00:00Z",
+                current: false,
+                clients: [],
+              },
+            ],
+            totalPages: 1,
+            totalElements: 2,
+          },
+        } as never;
+      }
+      return { status: 204, data: null } as never;
+    });
+
+    renderWithStore(<AccountSessions dictionary={dictionary} />);
+    expect(await screen.findByRole("button", { name: dictionary.account.sessions.signOutOthers })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: dictionary.account.sessions.signOutOthers }));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: dictionary.account.sessions.signOutOthers,
+      }),
+    );
+    await waitFor(() =>
+      expect(mockAccountRequest).toHaveBeenCalledWith("token", {
+        method: "DELETE",
+        url: "/api/account/sessions/others",
+      }),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: dictionary.account.sessions.signOutAll }));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: /Sign out/,
+      }),
+    );
+    await waitFor(() => expect(mockLogout).toHaveBeenCalled());
+  });
+
+  it("moves back a page after removing its last session and handles failures", async () => {
+    mockAccountRequest.mockImplementation(async (_token, config) => {
+      if (!config.method) {
+        return {
+          status: 200,
+          data: {
+            content: [
+              {
+                id: "sid-other",
+                createdAt: "2026-08-22T10:00:00Z",
+                lastAccessedAt: "2026-08-22T10:30:00Z",
+                expiresAt: "2026-08-24T11:00:00Z",
+                current: false,
+                clients: [],
+              },
+            ],
+            totalPages: 2,
+            totalElements: 11,
+          },
+        } as never;
+      }
+      throw new Error("session operation failed");
+    });
+
+    renderWithStore(<AccountSessions dictionary={dictionary} />);
+    expect(await screen.findByText("sid-other")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: dictionary.account.sessions.signOut }));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: dictionary.account.sessions.signOut,
+      }),
+    );
+    await waitFor(() => expect(mockAccountRequest).toHaveBeenCalledWith("token", expect.objectContaining({ method: "DELETE" })));
+  });
+
   it("confirms application consent revocation and renders grant metadata", async () => {
     mockAccountRequest.mockImplementation(async (_token, config) => {
       if (!config.method) {
@@ -380,5 +472,229 @@ describe("Account console resources", () => {
     expect(fields.map((field) => inputOrder.indexOf(field as HTMLInputElement))).toEqual([
       0, 1, 2, 3, 4, 5,
     ]);
+  });
+
+  it("updates profile data after email reauthentication and sends verification", async () => {
+    const profile = {
+      username: "admin",
+      firstName: "Admin",
+      lastName: "User",
+      email: "admin@example.test",
+      emailVerified: false,
+      preferredLocale: "en",
+      createdAt: "2026-08-20T10:00:00Z",
+      updatedAt: "2026-08-20T10:00:00Z",
+    };
+    const definitions = [
+      {
+        name: "email",
+        displayName: dictionary.account.profile.email,
+        description: null,
+        type: "EMAIL",
+        required: false,
+        multivalued: false,
+        minLength: null,
+        maxLength: 200,
+        pattern: null,
+      },
+      {
+        name: "department",
+        displayName: "Department",
+        description: "Team",
+        type: "STRING",
+        required: true,
+        multivalued: false,
+        minLength: 2,
+        maxLength: 30,
+        pattern: null,
+      },
+      {
+        name: "active",
+        displayName: "Active",
+        description: null,
+        type: "BOOLEAN",
+        required: false,
+        multivalued: false,
+        minLength: null,
+        maxLength: null,
+        pattern: null,
+      },
+      {
+        name: "tags",
+        displayName: "Tags",
+        description: null,
+        type: "STRING",
+        required: false,
+        multivalued: true,
+        minLength: null,
+        maxLength: null,
+        pattern: null,
+      },
+    ];
+    let updateAttempt = 0;
+    mockAccountRequest.mockImplementation(async (_token, config) => {
+      if (!config.method && config.url === "/api/account/profile") {
+        return { status: 200, data: profile } as never;
+      }
+      if (!config.method && config.url === "/api/account/profile/attributes") {
+        return {
+          status: 200,
+          data: {
+            definitions,
+            attributes: { department: ["security"], active: ["true"], tags: ["oauth", "oidc"] },
+          },
+        } as never;
+      }
+      if (!config.method && config.url === "/api/account/profile/avatar") {
+        return { status: 200, data: { avatarUrl: null } } as never;
+      }
+      if (config.url === "/api/account/profile" && config.method === "PUT") {
+        updateAttempt += 1;
+        if (updateAttempt === 1) return Promise.reject({ data: { errorCode: "reauthentication_required" } });
+        return { status: 200, data: { ...profile, firstName: "Updated" } } as never;
+      }
+      if (config.url === "/api/account/profile/attributes" && config.method === "PUT") {
+        return { status: 200, data: { definitions, attributes: { department: ["security"] } } } as never;
+      }
+      if (config.url === "/api/auth/localization/me") return { status: 204, data: null } as never;
+      if (config.url === "/api/account/send-verify-email") return { status: 204, data: null } as never;
+      return { status: 204, data: null } as never;
+    });
+    Object.defineProperty(globalThis, "fetch", {
+      configurable: true,
+      value: jest.fn().mockResolvedValue({ ok: false }),
+    });
+    renderWithStore(<AccountProfileForm dictionary={dictionary} />);
+    expect(await screen.findByText("Department", { exact: false })).toBeVisible();
+    fireEvent.change(screen.getByRole("textbox", { name: /Department/ }), {
+      target: { value: "Changed" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: dictionary.account.common.save }));
+    expect(await screen.findByText(dictionary.account.profile.reauthenticationRequired)).toBeVisible();
+    fireEvent.change(screen.getByLabelText(dictionary.account.profile.currentPassword), {
+      target: { value: "password" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: dictionary.account.common.save }));
+    await waitFor(() =>
+      expect(mockAccountRequest).toHaveBeenCalledWith(
+        "token",
+        expect.objectContaining({ url: "/api/auth/localization/me", method: "PUT" }),
+      ),
+    );
+    fireEvent.click(screen.getByRole("button", { name: dictionary.account.profile.sendVerification }));
+    await waitFor(() =>
+      expect(mockAccountRequest).toHaveBeenCalledWith(
+        "token",
+        expect.objectContaining({ url: "/api/account/send-verify-email", method: "POST" }),
+      ),
+    );
+  });
+
+  it("validates required, typed, multivalued, and patterned profile attributes", async () => {
+    const definitions = [
+      {
+        name: "department",
+        displayName: "Department",
+        description: null,
+        type: "STRING",
+        required: true,
+        multivalued: false,
+        minLength: 2,
+        maxLength: 30,
+        pattern: null,
+      },
+      {
+        name: "active",
+        displayName: "Active",
+        description: null,
+        type: "BOOLEAN",
+        required: false,
+        multivalued: false,
+        minLength: null,
+        maxLength: null,
+        pattern: null,
+      },
+      {
+        name: "count",
+        displayName: "Count",
+        description: null,
+        type: "INTEGER",
+        required: false,
+        multivalued: false,
+        minLength: null,
+        maxLength: null,
+        pattern: null,
+      },
+      {
+        name: "contact",
+        displayName: "Contact",
+        description: null,
+        type: "EMAIL",
+        required: false,
+        multivalued: true,
+        minLength: null,
+        maxLength: null,
+        pattern: null,
+      },
+      {
+        name: "code",
+        displayName: "Code",
+        description: null,
+        type: "STRING",
+        required: false,
+        multivalued: false,
+        minLength: null,
+        maxLength: null,
+        pattern: "^[A-Z]+$",
+      },
+    ];
+    mockAccountRequest.mockImplementation(async (_token, config) => {
+      if (config.url === "/api/account/profile") {
+        return {
+          status: 200,
+          data: {
+            username: "admin",
+            firstName: "Admin",
+            lastName: "User",
+            email: "admin@example.test",
+            emailVerified: true,
+            preferredLocale: "en",
+            createdAt: "2026-08-20T10:00:00Z",
+            updatedAt: "2026-08-20T10:00:00Z",
+          },
+        } as never;
+      }
+      if (config.url === "/api/account/profile/attributes") {
+        return {
+          status: 200,
+          data: { definitions, attributes: { department: ["IT"], active: ["true"] } },
+        } as never;
+      }
+      return { status: 204, data: null } as never;
+    });
+    renderWithStore(<AccountProfileForm dictionary={dictionary} />);
+    expect(await screen.findByRole("textbox", { name: "Department *" })).toHaveValue("IT");
+
+    const department = screen.getByRole("textbox", { name: "Department *" });
+    fireEvent.change(department, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: dictionary.account.common.save }));
+    expect(await screen.findByText(dictionary.account.validation.required)).toBeVisible();
+
+    fireEvent.change(department, { target: { value: "Platform" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Active" }), {
+      target: { value: "false" },
+    });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Count" }), {
+      target: { value: "not-a-number" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Contact" }), {
+      target: { value: "bad-email\nsecond@example.test" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Code" }), {
+      target: { value: "lowercase" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: dictionary.account.common.save }));
+    expect(await screen.findAllByText(dictionary.account.validation.invalid)).not.toHaveLength(0);
+    expect(mockAccountRequest.mock.calls.some(([, config]) => config.method === "PUT")).toBe(false);
   });
 });

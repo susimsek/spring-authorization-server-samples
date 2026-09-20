@@ -2,6 +2,7 @@ package io.github.susimsek.springauthserversamples.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -18,6 +19,7 @@ import io.github.susimsek.springauthserversamples.service.admin.UserAccessInvali
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import jakarta.persistence.EntityManager;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -156,6 +158,205 @@ class UserProfileServiceTest {
                 .record("user-profile.attributes.reordered", "user-profile-attributes", "order");
     }
 
+    @Test
+    void coversDefinitionLifecycleAndValidationBranches() {
+        UserProfileAttributeDefinitionEntity definition = definition("department", false);
+        when(definitionRepository.findByNameIgnoreCase("department")).thenReturn(Optional.empty());
+        when(definitionRepository.save(any()))
+                .thenAnswer(
+                        invocation -> {
+                            UserProfileAttributeDefinitionEntity saved = invocation.getArgument(0);
+                            saved.setId(8L);
+                            return saved;
+                        });
+        var created = service().create(request(" department ", UserProfileAttributeType.STRING));
+        assertThat(created.name()).isEqualTo("department");
+        verify(auditEventService)
+                .record("user-profile.attribute.created", "user-profile-attribute", "8");
+
+        when(definitionRepository.findByNameIgnoreCase("department"))
+                .thenReturn(Optional.of(definition));
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .create(
+                                                request(
+                                                        "department",
+                                                        UserProfileAttributeType.STRING)))
+                .isInstanceOf(ApiException.class)
+                .extracting(exception -> ((ApiException) exception).getErrorCode())
+                .isEqualTo(ApiErrorCode.USER_PROFILE_DUPLICATE_NAME);
+        assertThatThrownBy(() -> service().create(requestWithPattern("new-field", "[")))
+                .isInstanceOf(ApiException.class)
+                .extracting(exception -> ((ApiException) exception).getErrorCode())
+                .isEqualTo(ApiErrorCode.USER_PROFILE_INVALID_DEFINITION);
+    }
+
+    @Test
+    void updatesAndDeletesCustomAndBuiltInDefinitions() {
+        UserProfileAttributeDefinitionEntity custom = definition("department", false);
+        custom.setId(9L);
+        when(definitionRepository.findById(9L)).thenReturn(Optional.of(custom));
+        when(definitionRepository.findByNameIgnoreCase("department"))
+                .thenReturn(Optional.of(custom));
+        service().update(9L, request("department", UserProfileAttributeType.STRING));
+        verify(auditEventService)
+                .record("user-profile.attribute.updated", "user-profile-attribute", "9");
+
+        UserProfileAttributeDefinitionEntity other = definition("other", false);
+        other.setId(11L);
+        when(definitionRepository.findByNameIgnoreCase("other"))
+                .thenReturn(Optional.of(other), Optional.empty());
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .update(
+                                                9L,
+                                                request("other", UserProfileAttributeType.STRING)))
+                .isInstanceOf(ApiException.class)
+                .extracting(exception -> ((ApiException) exception).getErrorCode())
+                .isEqualTo(ApiErrorCode.USER_PROFILE_DUPLICATE_NAME);
+
+        UserProfileAttributeDefinitionEntity builtIn = definition("email", false);
+        builtIn.setId(10L);
+        when(definitionRepository.findById(10L)).thenReturn(Optional.of(builtIn));
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .update(
+                                                10L,
+                                                request("other", UserProfileAttributeType.STRING)))
+                .isInstanceOf(ApiException.class)
+                .extracting(exception -> ((ApiException) exception).getErrorCode())
+                .isEqualTo(ApiErrorCode.USER_PROFILE_INVALID_NAME);
+
+        when(definitionRepository.findById(9L)).thenReturn(Optional.of(custom));
+        when(attributeRepository.existsByDefinitionId(9L)).thenReturn(true);
+        service().delete(9L);
+        verify(attributeRepository).deleteAllByDefinitionId(9L);
+        verify(definitionRepository).delete(custom);
+        when(definitionRepository.findById(10L)).thenReturn(Optional.of(builtIn));
+        assertThatThrownBy(() -> service().delete(10L))
+                .isInstanceOf(ApiException.class)
+                .extracting(exception -> ((ApiException) exception).getErrorCode())
+                .isEqualTo(ApiErrorCode.USER_PROFILE_INVALID_NAME);
+    }
+
+    @Test
+    void rejectsLongSearchDuplicateReorderAndUnknownDefinitions() {
+        assertThatThrownBy(() -> service().definitions("x".repeat(101), PageRequest.of(0, 10)))
+                .isInstanceOf(ApiException.class)
+                .extracting(exception -> ((ApiException) exception).getErrorCode())
+                .isEqualTo(ApiErrorCode.SEARCH_TOO_LONG);
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .reorder(
+                                                new UserProfileAttributeOrderRequestDTO(
+                                                        List.of(1L, 1L))))
+                .isInstanceOf(ApiException.class);
+        when(definitionRepository.findAllById(List.of(1L, 2L)))
+                .thenReturn(List.of(definition("one", false)));
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .reorder(
+                                                new UserProfileAttributeOrderRequestDTO(
+                                                        List.of(1L, 2L))))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("Profile attribute not found");
+
+        UserEntity user = user();
+        when(userRepository.findByUsername("missing")).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service().attributes("missing"))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("User not found");
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+        when(definitionRepository.findAllByEnabledTrueOrderByDisplayOrderAscNameAsc())
+                .thenReturn(List.of());
+        when(definitionRepository.findAllByOrderByDisplayOrderAscNameAsc()).thenReturn(List.of());
+        when(attributeRepository
+                        .findAllByUserIdOrderByDefinitionDisplayOrderAscDefinitionNameAscPositionAsc(
+                                7L))
+                .thenReturn(List.of());
+        assertThat(service().attributes(7L).attributes()).isEmpty();
+    }
+
+    @Test
+    void savesMappedUsersAndMergesMappedAttributes() {
+        UserEntity user = user();
+        service().saveMappedUser(user, true);
+        verify(userRepository).save(user);
+        service().saveMappedUser(user, false);
+        verify(userAccessInvalidationService).invalidate("alice");
+
+        service().mergeMappedAttributes(user, Map.of(), "provider");
+        UserProfileAttributeDefinitionEntity definition = definition("department", false);
+        definition.setId(12L);
+        definition.setMultivalued(false);
+        when(definitionRepository.findAllByEnabledTrueOrderByDisplayOrderAscNameAsc())
+                .thenReturn(List.of(definition));
+        service()
+                .mergeMappedAttributes(
+                        user,
+                        Map.of("department", Arrays.asList(" Finance ", null, "HR")),
+                        "provider");
+        verify(attributeRepository).deleteAllByUserIdAndDefinitionId(7L, 12L);
+        verify(attributeRepository).saveAll(any());
+        verify(auditEventService).record("social.mapper.profile.updated", "user", "7");
+    }
+
+    @Test
+    void validatesEmailBooleanLengthPatternAndMultiplicity() {
+        UserEntity user = user();
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+        UserProfileAttributeDefinitionEntity email = definition("emailAddress", false);
+        email.setType(UserProfileAttributeType.EMAIL);
+        when(definitionRepository.findAllByEnabledTrueOrderByDisplayOrderAscNameAsc())
+                .thenReturn(List.of(email));
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .saveAttributes(
+                                                7L,
+                                                Map.of("emailAddress", List.of("invalid")),
+                                                "admin"))
+                .isInstanceOf(ApiException.class);
+
+        UserProfileAttributeDefinitionEntity booleanValue = definition("enabledFlag", false);
+        booleanValue.setType(UserProfileAttributeType.BOOLEAN);
+        booleanValue.setMinLength(2);
+        booleanValue.setMaxLength(3);
+        booleanValue.setPattern("yes");
+        when(definitionRepository.findAllByEnabledTrueOrderByDisplayOrderAscNameAsc())
+                .thenReturn(List.of(booleanValue));
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .saveAttributes(
+                                                7L, Map.of("enabledFlag", List.of("x")), "admin"))
+                .isInstanceOf(ApiException.class);
+
+        UserProfileAttributeDefinitionEntity single = definition("single", false);
+        single.setMultivalued(false);
+        when(definitionRepository.findAllByEnabledTrueOrderByDisplayOrderAscNameAsc())
+                .thenReturn(List.of(single));
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .saveAttributes(
+                                                7L,
+                                                Map.of("single", List.of("one", "two")),
+                                                "admin"))
+                .isInstanceOf(ApiException.class);
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .saveAttributes(
+                                                7L, Map.of("unknown", List.of("value")), "admin"))
+                .isInstanceOf(ApiException.class);
+    }
+
     private UserProfileService service() {
         return new UserProfileService(
                 definitionRepository,
@@ -170,6 +371,22 @@ class UserProfileServiceTest {
             String name, UserProfileAttributeType type) {
         return new UserProfileAttributeDefinitionRequestDTO(
                 name, "Display", null, type, false, false, null, null, null, true, 0);
+    }
+
+    private static UserProfileAttributeDefinitionRequestDTO requestWithPattern(
+            String name, String pattern) {
+        return new UserProfileAttributeDefinitionRequestDTO(
+                name,
+                "Display",
+                null,
+                UserProfileAttributeType.STRING,
+                false,
+                false,
+                null,
+                null,
+                pattern,
+                true,
+                0);
     }
 
     private static UserProfileAttributeDefinitionEntity definition(String name, boolean required) {

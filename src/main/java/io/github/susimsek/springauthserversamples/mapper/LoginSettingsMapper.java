@@ -4,7 +4,9 @@ import io.github.susimsek.springauthserversamples.domain.LoginSettingsEntity;
 import io.github.susimsek.springauthserversamples.dto.account.LoginSettingsDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminLoginSettingsDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminLoginSettingsRequestDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.WebAuthnPolicyDTO;
 import java.util.Locale;
+import org.mapstruct.AfterMapping;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -90,6 +92,10 @@ public interface LoginSettingsMapper {
     @Mapping(target = "otpCodeReusable", source = "otpCodeReusable")
     @Mapping(target = "otpAddRecoveryCodes", source = "otpAddRecoveryCodes")
     @Mapping(target = "recoveryCodeWarningThreshold", source = "recoveryCodeWarningThreshold")
+    @Mapping(target = "webauthnPolicy", expression = "java(toWebAuthnPolicy(source, false))")
+    @Mapping(
+            target = "webauthnPasswordlessPolicy",
+            expression = "java(toWebAuthnPolicy(source, true))")
     AdminLoginSettingsDTO toAdminDTO(LoginSettingsEntity source);
 
     @BeanMapping(ignoreByDefault = true)
@@ -170,6 +176,68 @@ public interface LoginSettingsMapper {
     @Mapping(target = "recoveryCodeWarningThreshold", source = "recoveryCodeWarningThreshold")
     @Mapping(target = "passkeysEnabled", source = "passkeys")
     void update(AdminLoginSettingsRequestDTO source, @MappingTarget LoginSettingsEntity target);
+
+    @AfterMapping
+    default void updateWebAuthnPolicies(
+            AdminLoginSettingsRequestDTO source, @MappingTarget LoginSettingsEntity target) {
+        WebAuthnPolicyDTO policy = source.webauthnPolicy();
+        target.setWebAuthnRpName(policy.rpName().trim());
+        target.setWebAuthnRpId(trim(policy.rpId()));
+        target.setWebAuthnSignatureAlgorithms(policy.signatureAlgorithms().trim());
+        target.setWebAuthnAttestation(policy.attestation().trim().toLowerCase(Locale.ROOT));
+        target.setWebAuthnAuthenticatorAttachment(
+                policy.authenticatorAttachment().trim().toLowerCase(Locale.ROOT));
+        target.setWebAuthnResidentKey(policy.residentKey().trim().toLowerCase(Locale.ROOT));
+        target.setWebAuthnUserVerification(
+                policy.userVerification().trim().toLowerCase(Locale.ROOT));
+        target.setWebAuthnTimeoutSeconds(policy.timeoutSeconds());
+        target.setWebAuthnAvoidSameAuthenticator(policy.avoidSameAuthenticator());
+        target.setWebAuthnAcceptableAaguids(trim(policy.acceptableAaguids()));
+
+        WebAuthnPolicyDTO passwordless = source.webauthnPasswordlessPolicy();
+        target.setWebAuthnPasswordlessRpName(passwordless.rpName().trim());
+        target.setWebAuthnPasswordlessRpId(trim(passwordless.rpId()));
+        target.setWebAuthnPasswordlessSignatureAlgorithms(
+                passwordless.signatureAlgorithms().trim());
+        target.setWebAuthnPasswordlessAttestation(
+                passwordless.attestation().trim().toLowerCase(Locale.ROOT));
+        target.setWebAuthnPasswordlessAuthenticatorAttachment(
+                passwordless.authenticatorAttachment().trim().toLowerCase(Locale.ROOT));
+        target.setWebAuthnPasswordlessResidentKey(
+                passwordless.residentKey().trim().toLowerCase(Locale.ROOT));
+        target.setWebAuthnPasswordlessUserVerification(
+                passwordless.userVerification().trim().toLowerCase(Locale.ROOT));
+        target.setWebAuthnPasswordlessTimeoutSeconds(passwordless.timeoutSeconds());
+        target.setWebAuthnPasswordlessAvoidSameAuthenticator(passwordless.avoidSameAuthenticator());
+        target.setWebAuthnPasswordlessAcceptableAaguids(trim(passwordless.acceptableAaguids()));
+    }
+
+    default WebAuthnPolicyDTO toWebAuthnPolicy(LoginSettingsEntity source, boolean passwordless) {
+        if (passwordless) {
+            return new WebAuthnPolicyDTO(
+                    source.getWebAuthnPasswordlessRpName(),
+                    source.getWebAuthnPasswordlessRpId(),
+                    source.getWebAuthnPasswordlessSignatureAlgorithms(),
+                    source.getWebAuthnPasswordlessAttestation(),
+                    source.getWebAuthnPasswordlessAuthenticatorAttachment(),
+                    source.getWebAuthnPasswordlessResidentKey(),
+                    source.getWebAuthnPasswordlessUserVerification(),
+                    source.getWebAuthnPasswordlessTimeoutSeconds(),
+                    source.isWebAuthnPasswordlessAvoidSameAuthenticator(),
+                    source.getWebAuthnPasswordlessAcceptableAaguids());
+        }
+        return new WebAuthnPolicyDTO(
+                source.getWebAuthnRpName(),
+                source.getWebAuthnRpId(),
+                source.getWebAuthnSignatureAlgorithms(),
+                source.getWebAuthnAttestation(),
+                source.getWebAuthnAuthenticatorAttachment(),
+                source.getWebAuthnResidentKey(),
+                source.getWebAuthnUserVerification(),
+                source.getWebAuthnTimeoutSeconds(),
+                source.isWebAuthnAvoidSameAuthenticator(),
+                source.getWebAuthnAcceptableAaguids());
+    }
 
     @Named("trim")
     default String trim(String value) {
