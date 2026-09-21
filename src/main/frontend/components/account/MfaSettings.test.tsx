@@ -123,8 +123,12 @@ describe("MFA account settings", () => {
 
     render(<MfaSettings dictionary={dictionary} />);
     expect(await screen.findByText(dictionary.account.security.mfa.enabled)).toBeVisible();
-    expect(screen.getByText(dictionary.account.security.mfa.recoveryWarning.replace("{{count}}", "1"))).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: dictionary.account.security.mfa.recoveryGenerate }));
+    expect(
+      screen.getByText(dictionary.account.security.mfa.recoveryWarning.replace("{{count}}", "1")),
+    ).toBeVisible();
+    fireEvent.click(
+      screen.getByRole("button", { name: dictionary.account.security.mfa.recoveryGenerate }),
+    );
     expect(await screen.findByText("ABCD-1234")).toBeVisible();
 
     const input = screen.getByPlaceholderText(dictionary.account.security.mfa.code);

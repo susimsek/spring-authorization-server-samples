@@ -189,7 +189,9 @@ describe("dedicated administration creation forms", () => {
       { target: { value: "groups" } },
     );
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.clientScopes.create }));
-    await waitFor(() => expect(mockAddError).toHaveBeenCalledWith(dictionary.admin.clientScopes.operationError));
+    await waitFor(() =>
+      expect(mockAddError).toHaveBeenCalledWith(dictionary.admin.clientScopes.operationError),
+    );
   });
 
   it("renders the profile edit branch, handles load errors, and respects permissions", async () => {
@@ -211,15 +213,24 @@ describe("dedicated administration creation forms", () => {
     mockAdminRequest.mockResolvedValueOnce({ status: 200, data: [existing] } as never);
     const editView = render(<UserProfileAttributeForm dictionary={dictionary} id="4" />);
     expect(await screen.findByDisplayValue("Department")).toBeVisible();
-    expect(screen.getByRole("textbox", { name: dictionary.admin.userProfileSettings.name })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: dictionary.admin.userProfileSettings.update }));
+    expect(
+      screen.getByRole("textbox", { name: dictionary.admin.userProfileSettings.name }),
+    ).toBeDisabled();
+    fireEvent.click(
+      screen.getByRole("button", { name: dictionary.admin.userProfileSettings.update }),
+    );
 
     editView.unmount();
     mockAdminRequest.mockResolvedValueOnce({ status: 500, data: [] } as never);
     render(<UserProfileAttributeForm dictionary={dictionary} id="4" />);
     expect(await screen.findByText(dictionary.admin.userProfileSettings.error)).toBeVisible();
 
-    authState.access = { isAdmin: false, manageClients: false, manageRoles: false, manageUsers: false };
+    authState.access = {
+      isAdmin: false,
+      manageClients: false,
+      manageRoles: false,
+      manageUsers: false,
+    };
     render(<RoleCreateForm dictionary={dictionary} locale="en" />);
     expect(screen.getByRole("button", { name: dictionary.admin.roles.create })).toBeDisabled();
   });

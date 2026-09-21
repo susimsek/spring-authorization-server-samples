@@ -126,8 +126,15 @@ describe("AdminUserProfileSettings", () => {
     expect((await screen.findAllByText("department"))[0]).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: /department/ }));
     fireEvent.click(screen.getByText(dictionary.admin.userProfileSettings.delete));
-    fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.userProfileSettings.delete }).at(-1)!);
-    await waitFor(() => expect(mockAdminRequest).toHaveBeenCalledWith("token", expect.objectContaining({ method: "DELETE" })));
+    fireEvent.click(
+      screen.getAllByRole("button", { name: dictionary.admin.userProfileSettings.delete }).at(-1)!,
+    );
+    await waitFor(() =>
+      expect(mockAdminRequest).toHaveBeenCalledWith(
+        "token",
+        expect.objectContaining({ method: "DELETE" }),
+      ),
+    );
 
     view.unmount();
     mockAdminRequest
@@ -140,7 +147,11 @@ describe("AdminUserProfileSettings", () => {
     await screen.findAllByText("department");
     fireEvent.click(screen.getByRole("button", { name: /department/ }));
     fireEvent.click(screen.getByText(dictionary.admin.userProfileSettings.delete));
-    fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.userProfileSettings.delete }).at(-1)!);
-    await waitFor(() => expect(screen.getByText(dictionary.admin.userProfileSettings.error)).toBeVisible());
+    fireEvent.click(
+      screen.getAllByRole("button", { name: dictionary.admin.userProfileSettings.delete }).at(-1)!,
+    );
+    await waitFor(() =>
+      expect(screen.getByText(dictionary.admin.userProfileSettings.error)).toBeVisible(),
+    );
   });
 });

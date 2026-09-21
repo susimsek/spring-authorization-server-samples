@@ -263,7 +263,9 @@ describe("AdminLocalizationSettings", () => {
     });
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.localization.save }));
-    await waitFor(() => expect(mockAddError).toHaveBeenCalledWith(dictionary.admin.localization.error));
+    await waitFor(() =>
+      expect(mockAddError).toHaveBeenCalledWith(dictionary.admin.localization.error),
+    );
 
     const view = render(
       <AdminLocalizationSettings dictionary={dictionary} section="overrides" mode="create" />,
@@ -277,10 +279,15 @@ describe("AdminLocalizationSettings", () => {
     });
     mockAdminRequest.mockImplementation((_token, request) => {
       if (request.method === "POST") return Promise.resolve({ status: 500, data: null }) as never;
-      return Promise.resolve({ status: 200, data: { content: [override], totalPages: 1, totalElements: 1 } }) as never;
+      return Promise.resolve({
+        status: 200,
+        data: { content: [override], totalPages: 1, totalElements: 1 },
+      }) as never;
     });
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.localization.create }));
-    await waitFor(() => expect(screen.getByText(dictionary.admin.localization.error)).toBeVisible());
+    await waitFor(() =>
+      expect(screen.getByText(dictionary.admin.localization.error)).toBeVisible(),
+    );
     view.unmount();
   });
 

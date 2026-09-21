@@ -514,25 +514,30 @@ describe("AdminResources", () => {
     });
     render(<AdminResources copy={dictionary.admin.resources} locale="en" resource="users" />);
     await screen.findByText("ada");
-    fireEvent.click(screen.getByRole("checkbox", { name: dictionary.admin.resources.selectAllUsers }));
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: dictionary.admin.resources.selectAllUsers }),
+    );
     for (const action of [
       dictionary.admin.resources.bulkEnable,
       dictionary.admin.resources.bulkDisable,
       dictionary.admin.resources.bulkDelete,
     ]) {
       fireEvent.click(
-        within(screen.getByRole("group", { name: dictionary.admin.resources.bulkActions })).getByRole(
-          "button",
-          { name: action },
-        ),
+        within(
+          screen.getByRole("group", { name: dictionary.admin.resources.bulkActions }),
+        ).getByRole("button", { name: action }),
       );
       fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: action }));
-      await waitFor(() => expect(mockAdminRequest).toHaveBeenCalledWith(
-        "token",
-        expect.objectContaining({ url: "/api/admin/users/bulk", method: "POST" }),
-      ));
+      await waitFor(() =>
+        expect(mockAdminRequest).toHaveBeenCalledWith(
+          "token",
+          expect.objectContaining({ url: "/api/admin/users/bulk", method: "POST" }),
+        ),
+      );
       if (action !== dictionary.admin.resources.bulkDelete) {
-        fireEvent.click(screen.getByRole("checkbox", { name: dictionary.admin.resources.selectAllUsers }));
+        fireEvent.click(
+          screen.getByRole("checkbox", { name: dictionary.admin.resources.selectAllUsers }),
+        );
       }
     }
   });
@@ -544,24 +549,37 @@ describe("AdminResources", () => {
     const keyView = render(<AdminResources copy={dictionary.admin.resources} resource="keys" />);
     await screen.findByText(dictionary.admin.resources.empty);
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.resources.rotateKey }));
-    await waitFor(() => expect(screen.getByText(dictionary.admin.resources.operationError)).toBeVisible());
+    await waitFor(() =>
+      expect(screen.getByText(dictionary.admin.resources.operationError)).toBeVisible(),
+    );
     keyView.unmount();
 
     mockAdminRequest.mockResolvedValue({ status: 200, data: page([]) } as never);
-    const consentView = render(<AdminResources copy={dictionary.admin.resources} resource="consents" />);
+    const consentView = render(
+      <AdminResources copy={dictionary.admin.resources} resource="consents" />,
+    );
     const consentQueries = within(consentView.container);
     await consentQueries.findByRole("textbox", { name: dictionary.admin.resources.clientId });
-    fireEvent.change(consentQueries.getByRole("textbox", { name: dictionary.admin.resources.clientId }), {
-      target: { value: "client" },
-    });
+    fireEvent.change(
+      consentQueries.getByRole("textbox", { name: dictionary.admin.resources.clientId }),
+      {
+        target: { value: "client" },
+      },
+    );
     await consentQueries.findByRole("textbox", { name: dictionary.admin.resources.user });
-    fireEvent.change(consentQueries.getByRole("textbox", { name: dictionary.admin.resources.user }), {
-      target: { value: "ada" },
-    });
+    fireEvent.change(
+      consentQueries.getByRole("textbox", { name: dictionary.admin.resources.user }),
+      {
+        target: { value: "ada" },
+      },
+    );
     await consentQueries.findByRole("textbox", { name: dictionary.admin.resources.grantedScopes });
-    fireEvent.change(consentQueries.getByRole("textbox", { name: dictionary.admin.resources.grantedScopes }), {
-      target: { value: "openid" },
-    });
+    fireEvent.change(
+      consentQueries.getByRole("textbox", { name: dictionary.admin.resources.grantedScopes }),
+      {
+        target: { value: "openid" },
+      },
+    );
     consentView.unmount();
   });
 });

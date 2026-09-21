@@ -299,7 +299,11 @@ describe("authentication components", () => {
       }
       return {
         ok: true,
-        json: async () => ({ internationalizationEnabled: false, defaultLocale: "tr", supportedLocales: ["tr"] }),
+        json: async () => ({
+          internationalizationEnabled: false,
+          defaultLocale: "tr",
+          supportedLocales: ["tr"],
+        }),
       } as Response;
     });
     globalThis.fetch = fetchMock as unknown as typeof fetch;
@@ -326,9 +330,7 @@ describe("authentication components", () => {
       return {
         ok: true,
         json: async () =>
-          url.includes("login-settings")
-            ? { passkeys: true, webauthnMediation: "none" }
-            : [],
+          url.includes("login-settings") ? { passkeys: true, webauthnMediation: "none" } : [],
       } as Response;
     }) as unknown as typeof fetch;
 
@@ -405,17 +407,20 @@ describe("authentication components", () => {
       const url = String(input);
       return {
         ok: true,
-        json: async () => (url.includes("login-settings")
-          ? { passkeys: true, webauthnMediation: "conditional" }
-          : []),
+        json: async () =>
+          url.includes("login-settings")
+            ? { passkeys: true, webauthnMediation: "conditional" }
+            : [],
       } as Response;
     }) as unknown as typeof fetch;
     render(<LoginForm dictionary={dictionary} />);
     await waitFor(() => expect(mockSupportsConditionalMediation).toHaveBeenCalled());
-    await waitFor(() => expect(mockAuthenticatePasskey).toHaveBeenCalledWith(
-      expect.any(Function),
-      expect.objectContaining({ mediation: "conditional" }),
-    ));
+    await waitFor(() =>
+      expect(mockAuthenticatePasskey).toHaveBeenCalledWith(
+        expect.any(Function),
+        expect.objectContaining({ mediation: "conditional" }),
+      ),
+    );
     expect(screen.queryByText(dictionary.login.passkeyError)).not.toBeInTheDocument();
     delete (globalThis as { fetch?: typeof fetch }).fetch;
   });

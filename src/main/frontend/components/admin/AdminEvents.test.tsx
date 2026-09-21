@@ -78,7 +78,9 @@ describe("AdminEvents", () => {
     expect(screen.getAllByText("42").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.events.clearAll }));
     fireEvent.click(screen.getAllByRole("button", { name: dictionary.admin.events.clearAll })[1]);
-    await waitFor(() => expect(screen.getByText(dictionary.admin.events.clearAllError)).toBeVisible());
+    await waitFor(() =>
+      expect(screen.getByText(dictionary.admin.events.clearAllError)).toBeVisible(),
+    );
   });
 
   it("exercises every event filter and closes the detail drawer", async () => {

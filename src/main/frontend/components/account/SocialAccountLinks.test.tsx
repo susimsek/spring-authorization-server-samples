@@ -136,7 +136,13 @@ describe("social account links", () => {
 
     mockRequestAccount
       .mockResolvedValueOnce([
-        { provider: "google", displayName: "Google", linked: true, configured: true, enabled: true },
+        {
+          provider: "google",
+          displayName: "Google",
+          linked: true,
+          configured: true,
+          enabled: true,
+        },
       ])
       .mockRejectedValueOnce(new Error("remove failed"));
     renderSettings();

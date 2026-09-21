@@ -143,7 +143,9 @@ describe("AdminShell", () => {
       name: dictionary.admin.common.toggleNavigation,
     });
     fireEvent.click(toggle);
-    expect(screen.getByRole("button", { name: dictionary.admin.common.closeNavigation })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: dictionary.admin.common.closeNavigation }),
+    ).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: dictionary.admin.common.closeNavigation }));
   });
 });

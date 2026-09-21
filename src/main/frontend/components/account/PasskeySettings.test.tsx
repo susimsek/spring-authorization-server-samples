@@ -112,14 +112,20 @@ describe("passkey account settings", () => {
     mockRegisterPasskey.mockResolvedValue(undefined);
     renderSettings();
 
-    const addLabel = (await screen.findAllByLabelText(dictionary.account.security.passkeys.label))[0];
+    const addLabel = (
+      await screen.findAllByLabelText(dictionary.account.security.passkeys.label)
+    )[0];
     fireEvent.change(addLabel, { target: { value: "New passkey" } });
     fireEvent.click(screen.getByRole("button", { name: dictionary.account.security.passkeys.add }));
-    await waitFor(() => expect(mockRegisterPasskey).toHaveBeenCalledWith(expect.any(Function), "New passkey"));
+    await waitFor(() =>
+      expect(mockRegisterPasskey).toHaveBeenCalledWith(expect.any(Function), "New passkey"),
+    );
 
     const rowLabel = screen.getAllByLabelText(dictionary.account.security.passkeys.label).at(-1)!;
     fireEvent.change(rowLabel, { target: { value: "Renamed" } });
-    fireEvent.click(screen.getAllByRole("button", { name: dictionary.account.security.passkeys.rename }).at(-1)!);
+    fireEvent.click(
+      screen.getAllByRole("button", { name: dictionary.account.security.passkeys.rename }).at(-1)!,
+    );
     await waitFor(() =>
       expect(mockRequestAccount).toHaveBeenCalledWith("access-token", {
         method: "PUT",
