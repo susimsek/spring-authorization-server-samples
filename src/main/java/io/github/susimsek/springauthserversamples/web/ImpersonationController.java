@@ -141,7 +141,9 @@ public class ImpersonationController {
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
-        request.changeSessionId();
+        if (request.getSession(false) != null) {
+            request.changeSessionId();
+        }
         securityContextRepository.saveContext(context, request, response);
     }
 
