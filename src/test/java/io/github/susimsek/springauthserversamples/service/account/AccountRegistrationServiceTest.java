@@ -1,6 +1,7 @@
 package io.github.susimsek.springauthserversamples.service.account;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -13,6 +14,7 @@ import io.github.susimsek.springauthserversamples.repository.AuthorityRepository
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import io.github.susimsek.springauthserversamples.service.security.PasswordService;
 import java.util.Locale;
 import java.util.Optional;
@@ -80,6 +82,65 @@ class AccountRegistrationServiceTest {
         assertThat(saved.getAuthorities()).containsExactly(userRole);
         verify(auditEventService).record("user.registered", "user", "7");
         verify(userActionService, never()).sendForCurrentUser(any(), any(), any());
+    }
+
+    @Test
+    void rejectsInvalidRegistrationInputsAndDuplicates() {
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .register(
+                                                " ",
+                                                "Ada",
+                                                "Lovelace",
+                                                "ada@example.test",
+                                                "pw",
+                                                "pw",
+                                                Locale.ENGLISH))
+                .isInstanceOf(ApiException.class);
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .register(
+                                                "alice",
+                                                "Ada",
+                                                "Lovelace",
+                                                "ada@example.test",
+                                                "pw",
+                                                "different",
+                                                Locale.ENGLISH))
+                .isInstanceOf(ApiException.class);
+
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(new UserEntity()));
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .register(
+                                                "alice",
+                                                "Ada",
+                                                "Lovelace",
+                                                "ada@example.test",
+                                                "pw",
+                                                "pw",
+                                                Locale.ENGLISH))
+                .isInstanceOf(ApiException.class);
+
+        when(userRepository.findByUsername("bob")).thenReturn(Optional.empty());
+        when(userRepository.existsByEmailIgnoreCase("bob@example.test")).thenReturn(false);
+        when(authorityRepository.findByName(AuthoritiesConstants.USER))
+                .thenReturn(Optional.empty());
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .register(
+                                                "bob",
+                                                "Bob",
+                                                "Builder",
+                                                "bob@example.test",
+                                                "password",
+                                                "password",
+                                                Locale.ENGLISH))
+                .isInstanceOf(IllegalStateException.class);
     }
 
     private AccountRegistrationService service() {

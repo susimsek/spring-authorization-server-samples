@@ -1,7 +1,9 @@
 package io.github.susimsek.springauthserversamples.web.account;
 
 import io.github.susimsek.springauthserversamples.dto.account.LoginSettingsDTO;
+import io.github.susimsek.springauthserversamples.dto.account.RegistrationCaptchaDTO;
 import io.github.susimsek.springauthserversamples.service.LoginSettingsService;
+import io.github.susimsek.springauthserversamples.service.security.RegistrationCaptchaService;
 import io.github.susimsek.springauthserversamples.web.ApiController;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -19,11 +21,26 @@ import org.springframework.web.bind.annotation.RestController;
 public class LoginSettingsController {
 
     private final LoginSettingsService loginSettingsService;
+    private final RegistrationCaptchaService registrationCaptchaService;
 
     @GetMapping("/login-settings")
     @Operation(summary = "Get public login settings")
     @ApiResponse(responseCode = "200", description = "Public login settings returned.")
     LoginSettingsDTO get() {
         return loginSettingsService.publicLoginSettings();
+    }
+
+    @GetMapping("/registration-captcha")
+    @Operation(summary = "Get public registration CAPTCHA settings")
+    @ApiResponse(responseCode = "200", description = "Registration CAPTCHA settings returned.")
+    RegistrationCaptchaDTO registrationCaptcha() {
+        return registrationCaptchaService.publicSettings();
+    }
+
+    @GetMapping("/login-captcha")
+    @Operation(summary = "Get public login CAPTCHA settings")
+    @ApiResponse(responseCode = "200", description = "Login CAPTCHA settings returned.")
+    RegistrationCaptchaDTO loginCaptcha() {
+        return registrationCaptchaService.publicLoginSettings();
     }
 }

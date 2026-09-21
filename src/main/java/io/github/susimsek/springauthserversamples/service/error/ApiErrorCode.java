@@ -22,6 +22,7 @@ public enum ApiErrorCode {
                     + " and a symbol."),
     PASSWORD_UNCHANGED("password_unchanged", "New password must be different."),
     PASSWORD_MISMATCH("password_mismatch", "Passwords do not match."),
+    CAPTCHA_FAILED("captcha_failed", "CAPTCHA verification failed."),
     SESSION_FORBIDDEN("session_forbidden", "You cannot manage another user's session."),
     AVATAR_EMPTY("avatar_empty", "An avatar file is required."),
     AVATAR_TOO_LARGE("avatar_too_large", "Avatar must not exceed 2 MiB."),

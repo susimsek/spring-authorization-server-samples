@@ -99,6 +99,7 @@ public class SecurityConfig {
             @Qualifier("browserSecurityContextRepository")
                     SecurityContextRepository securityContextRepository,
             LoginRateLimitFilter loginRateLimitFilter,
+            LoginCaptchaFilter loginCaptchaFilter,
             ApplicationProperties applicationProperties,
             AuthenticationManager webAuthnAuthenticationManager,
             PublicKeyCredentialRequestOptionsRepository webAuthnRequestOptionsRepository,
@@ -232,7 +233,8 @@ public class SecurityConfig {
         http.addFilterBefore(requestOptionsFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-        http.addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(loginCaptchaFilter, UsernamePasswordAuthenticationFilter.class);
 
         if (clientRegistrationRepository.getIfAvailable() != null) {
             http.oauth2Login(

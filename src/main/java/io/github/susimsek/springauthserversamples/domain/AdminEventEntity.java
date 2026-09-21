@@ -32,6 +32,9 @@ public class AdminEventEntity {
     @Column(name = "target_id", nullable = false, length = 100)
     private String targetId;
 
+    @Column(name = "details", length = 2000)
+    private String details;
+
     @Column(name = "occurred_at", nullable = false)
     private Instant occurredAt;
 }

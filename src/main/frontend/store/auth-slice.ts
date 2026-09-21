@@ -8,6 +8,7 @@ export type AdminAccess = {
   manageClients: boolean;
   viewUsers: boolean;
   manageUsers: boolean;
+  impersonateUsers: boolean;
   viewRoles: boolean;
   manageRoles: boolean;
   viewSessions: boolean;

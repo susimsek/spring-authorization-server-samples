@@ -15,6 +15,7 @@ import { Icon } from "@/components/shared/Icon";
 import { providerIcon } from "@/lib/provider-icons";
 
 import { PasswordField } from "./PasswordField";
+import { RegistrationCaptcha, type RegistrationCaptchaSettings } from "./RegistrationCaptcha";
 import { authenticatePasskey, supportsConditionalMediation } from "@/lib/webauthn";
 
 type LoginFormProps = {
@@ -22,8 +23,22 @@ type LoginFormProps = {
   locale?: Locale;
 };
 
+const captchaDisabled: RegistrationCaptchaSettings = {
+  enabled: false,
+  provider: "",
+  siteKey: "",
+  action: "login",
+  recaptchaV3: false,
+  useRecaptchaNet: false,
+};
+
 export function LoginForm({ dictionary }: LoginFormProps) {
   const [submitting, setSubmitting] = useState(false);
+  const [captcha, setCaptcha] = useState<RegistrationCaptchaSettings>(captchaDisabled);
+  const [getCaptchaToken, setGetCaptchaToken] = useState<(() => Promise<string | null>) | null>(
+    null,
+  );
+  const [captchaError, setCaptchaError] = useState<string | null>(null);
   const [settings, setSettings] = useState({
     userRegistration: true,
     forgotPassword: true,
@@ -78,24 +93,76 @@ export function LoginForm({ dictionary }: LoginFormProps) {
         }
       })
       .catch(() => {});
+    fetch("/api/auth/login-captcha")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((value: unknown) => {
+        if (!value || typeof value !== "object") return;
+        const settings = value as Partial<RegistrationCaptchaSettings>;
+        if (
+          typeof settings.enabled === "boolean" &&
+          (settings.provider === "recaptcha" || settings.provider === "enterprise") &&
+          typeof settings.siteKey === "string" &&
+          typeof settings.action === "string" &&
+          typeof settings.recaptchaV3 === "boolean" &&
+          typeof settings.useRecaptchaNet === "boolean"
+        ) {
+          setCaptcha(settings as RegistrationCaptchaSettings);
+        }
+      })
+      .catch(() => {});
   }, []);
   const schema = z.object({
     username: z.string().trim().min(1, dictionary.admin.common.validation.required),
     password: z.string().min(1, dictionary.admin.common.validation.required),
+    captchaToken: z.string(),
   });
   const {
     register,
     handleSubmit,
+    clearErrors,
+    setError,
     formState: { errors },
-  } = useForm<{ username: string; password: string }>({
+  } = useForm<{ username: string; password: string; captchaToken: string }>({
     resolver: zodResolver(schema),
     mode: "onBlur",
+    defaultValues: { captchaToken: "" },
   });
+
+  const handleCaptchaTokenChange = useCallback(
+    (token: string | null) => {
+      if (token) {
+        setCaptchaError(null);
+        clearErrors("captchaToken");
+      }
+    },
+    [clearErrors],
+  );
+  const handleCaptchaError = useCallback(
+    () => setCaptchaError(dictionary.login.captchaUnavailable),
+    [dictionary.login.captchaUnavailable],
+  );
+  const handleCaptchaReady = useCallback(
+    (getToken: (() => Promise<string | null>) | null) => setGetCaptchaToken(() => getToken),
+    [],
+  );
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
-    void handleSubmit(() => {
+    void handleSubmit(async () => {
+      if (captcha.enabled) {
+        const token = (await getCaptchaToken?.()) || "";
+        if (!token) {
+          setCaptchaError(dictionary.login.captchaRequired);
+          setError("captchaToken", {
+            type: "manual",
+            message: dictionary.login.captchaRequired,
+          });
+          return;
+        }
+        const input = form.elements.namedItem("captchaToken");
+        if (input instanceof HTMLInputElement) input.value = token;
+      }
       setSubmitting(true);
       form.submit();
     })(event);
@@ -145,6 +212,26 @@ export function LoginForm({ dictionary }: LoginFormProps) {
             error={errors.password?.message}
             inputProps={{ isInvalid: Boolean(errors.password), ...register("password") }}
           />
+
+          {captcha.enabled && (
+            <Form.Group className="mb-3" controlId="login-captcha">
+              <RegistrationCaptcha
+                settings={captcha}
+                locale={
+                  typeof document === "undefined" ? "en" : document.documentElement.lang || "en"
+                }
+                label={dictionary.login.captchaLabel}
+                onTokenChange={handleCaptchaTokenChange}
+                onReady={handleCaptchaReady}
+                onError={handleCaptchaError}
+              />
+              <Form.Control type="hidden" {...register("captchaToken")} />
+              {captchaError && <Alert variant="danger">{captchaError}</Alert>}
+              <Form.Control.Feedback type="invalid" className="d-block">
+                {errors.captchaToken?.message}
+              </Form.Control.Feedback>
+            </Form.Group>
+          )}
 
           {settings.rememberMe && (
             <Form.Check
@@ -372,6 +459,7 @@ function LoginStatusAlerts({ dictionary }: LoginFormProps) {
   const searchParams = useSearchParams();
   const accountLinkRequired = searchParams.has("account_link_required");
   const loginError = searchParams.has("error") && !accountLinkRequired;
+  const captchaError = searchParams.get("captcha") === "failed";
   const loggedOut = searchParams.has("logout");
 
   return (
@@ -379,6 +467,7 @@ function LoginStatusAlerts({ dictionary }: LoginFormProps) {
       {accountLinkRequired && (
         <Alert variant="warning">{dictionary.login.accountLinkRequired}</Alert>
       )}
+      {captchaError && <Alert variant="danger">{dictionary.login.captchaFailed}</Alert>}
       {loginError && <Alert variant="danger">{dictionary.login.invalidCredentials}</Alert>}
       {loggedOut && <Alert variant="success">{dictionary.login.loggedOut}</Alert>}
       {searchParams.has("deleted") && (

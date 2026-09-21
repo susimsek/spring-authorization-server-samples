@@ -15,6 +15,9 @@ public final class AuthoritiesConstants {
 
     public static final String USER_MANAGER = "ROLE_USER_MANAGER";
 
+    /** Keycloak realm-management {@code impersonation} equivalent. */
+    public static final String USER_IMPERSONATOR = "ROLE_USER_IMPERSONATOR";
+
     public static final String GROUP_VIEWER = "ROLE_GROUP_VIEWER";
 
     public static final String GROUP_MANAGER = "ROLE_GROUP_MANAGER";

@@ -152,6 +152,23 @@ class AdminClientScopeServiceTest {
     }
 
     @Test
+    void updatesScopeWithoutRenamingWhenTheNameIsUnchanged() {
+        ClientScopeEntity entity = scope("scope-1", "billing");
+        when(clientScopeRepository.findById("scope-1")).thenReturn(Optional.of(entity));
+        when(clientScopeRepository.findByName("billing")).thenReturn(Optional.of(entity));
+        when(clientScopeRepository.save(entity)).thenReturn(entity);
+
+        assertThat(
+                        service()
+                                .update(
+                                        "scope-1",
+                                        new io.github.susimsek.springauthserversamples.dto.admin
+                                                .AdminClientScopeRequestDTO("billing", null, null)))
+                .isNotNull();
+        verify(clientRepository, org.mockito.Mockito.never()).findAll();
+    }
+
+    @Test
     void deletesUnassignedScopesAndRejectsAssignedOnes() {
         ClientScopeEntity entity = scope("scope-1", "billing");
         when(clientScopeRepository.findById("scope-1")).thenReturn(Optional.of(entity));
@@ -192,6 +209,49 @@ class AdminClientScopeServiceTest {
         assertThatThrownBy(() -> service().updateAssignments("client", unknown))
                 .isInstanceOf(ApiException.class)
                 .hasMessage("One or more client scopes do not exist");
+    }
+
+    @Test
+    void updatesClientScopeAssignmentsAndRejectsUnknownClient() {
+        RegisteredClient client = registeredClient("openid");
+        when(clientRepository.findById("client"))
+                .thenReturn(
+                        Optional.of(
+                                new io.github.susimsek.springauthserversamples.domain
+                                        .RegisteredClientEntity()));
+        when(registeredClientMapper.toObject(
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.same(mapperSupport)))
+                .thenReturn(client);
+        when(clientScopeRepository.countByNameIn(Set.of("openid", "profile"))).thenReturn(2L);
+        when(clientScopeRepository.findAll(org.springframework.data.domain.Sort.by("name")))
+                .thenReturn(List.of(scope("openid", "openid"), scope("profile", "profile")));
+        when(registeredClientMapper.toEntity(
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.same(mapperSupport)))
+                .thenReturn(
+                        new io.github.susimsek.springauthserversamples.domain
+                                .RegisteredClientEntity());
+
+        var result =
+                service()
+                        .updateAssignments(
+                                "client",
+                                new io.github.susimsek.springauthserversamples.dto.admin
+                                        .AdminClientScopeAssignmentRequestDTO(
+                                        Set.of("openid"), Set.of("profile")));
+
+        assertThat(result.defaultScopes()).containsExactly("openid");
+        assertThat(result.optionalScopes()).containsExactly("profile");
+        verify(clientRepository).save(org.mockito.ArgumentMatchers.any());
+        verify(adminAuditEventService).record("client.scopes.updated", "client", "client");
+
+        service().assignments("client");
+
+        when(clientRepository.findById("missing")).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service().assignments("missing"))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("Client not found");
     }
 
     private static RegisteredClient registeredClient(String scope) {

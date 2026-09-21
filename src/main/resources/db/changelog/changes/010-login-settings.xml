@@ -28,7 +28,7 @@
 			<column name="webauthn_user_verification" type="varchar(20)" defaultValue="preferred"><constraints nullable="false"/></column>
 			<column name="webauthn_timeout_seconds" type="int" defaultValueNumeric="300"><constraints nullable="false"/></column>
 			<column name="webauthn_avoid_same_authenticator" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
-			<column name="webauthn_acceptable_aaguids" type="varchar(4000)" defaultValue=""><constraints nullable="false"/></column>
+			<column name="webauthn_acceptable_aaguids" type="varchar(4000)"/>
 			<column name="webauthn_passwordless_rp_name" type="varchar(255)" defaultValue="Spring Authorization Server"><constraints nullable="false"/></column>
 			<column name="webauthn_passwordless_rp_id" type="varchar(253)" defaultValue=""><constraints nullable="false"/></column>
 			<column name="webauthn_passwordless_signature_algorithms" type="varchar(255)" defaultValue="ES256,RS256,EdDSA"><constraints nullable="false"/></column>
@@ -38,7 +38,7 @@
 			<column name="webauthn_passwordless_user_verification" type="varchar(20)" defaultValue="required"><constraints nullable="false"/></column>
 			<column name="webauthn_passwordless_timeout_seconds" type="int" defaultValueNumeric="300"><constraints nullable="false"/></column>
 			<column name="webauthn_passwordless_avoid_same_authenticator" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
-			<column name="webauthn_passwordless_acceptable_aaguids" type="varchar(4000)" defaultValue=""><constraints nullable="false"/></column>
+			<column name="webauthn_passwordless_acceptable_aaguids" type="varchar(4000)"/>
 			<column name="email_update_reauthentication_minutes" type="int" defaultValueNumeric="5"><constraints nullable="false"/></column>
 			<column name="google_login_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
 			<column name="github_login_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
@@ -92,6 +92,20 @@
 			<column name="linkedin_client_secret_encrypted" type="varchar(2000)"/>
 			<column name="microsoft_client_id" type="varchar(500)"/>
 			<column name="microsoft_client_secret_encrypted" type="varchar(2000)"/>
+			<column name="registration_captcha_enabled" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="registration_captcha_provider" type="varchar(20)" defaultValue="recaptcha"><constraints nullable="false"/></column>
+			<column name="registration_captcha_site_key" type="varchar(500)"/>
+			<column name="registration_captcha_secret_encrypted" type="varchar(2000)"/>
+			<column name="registration_captcha_project_id" type="varchar(200)"/>
+			<column name="registration_captcha_api_key_encrypted" type="varchar(2000)"/>
+			<column name="registration_captcha_action" type="varchar(100)" defaultValue="register"><constraints nullable="false"/></column>
+			<column name="registration_captcha_v3" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="registration_captcha_score_threshold" type="double" defaultValueNumeric="0.7"><constraints nullable="false"/></column>
+			<column name="registration_captcha_use_recaptcha_net" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="login_captcha_enabled" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="login_captcha_action" type="varchar(100)" defaultValue="login"><constraints nullable="false"/></column>
+			<column name="login_captcha_v3" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+			<column name="login_captcha_score_threshold" type="double" defaultValueNumeric="0.7"><constraints nullable="false"/></column>
 			<column name="session_timeout_minutes" type="int" defaultValueNumeric="30"><constraints nullable="false"/></column>
 			<column name="password_minimum_length" type="int" defaultValueNumeric="12"><constraints nullable="false"/></column>
 			<column name="brute_force_enabled" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
@@ -214,6 +228,20 @@
 			<column header="linkedin_client_secret_encrypted" type="string"/>
 			<column header="microsoft_client_id" type="string"/>
 			<column header="microsoft_client_secret_encrypted" type="string"/>
+			<column header="registration_captcha_enabled" type="boolean"/>
+			<column header="registration_captcha_provider" type="string"/>
+			<column header="registration_captcha_site_key" type="string"/>
+			<column header="registration_captcha_secret_encrypted" type="string"/>
+			<column header="registration_captcha_project_id" type="string"/>
+			<column header="registration_captcha_api_key_encrypted" type="string"/>
+			<column header="registration_captcha_action" type="string"/>
+			<column header="registration_captcha_v3" type="boolean"/>
+			<column header="registration_captcha_score_threshold" type="numeric"/>
+			<column header="registration_captcha_use_recaptcha_net" type="boolean"/>
+			<column header="login_captcha_enabled" type="boolean"/>
+			<column header="login_captcha_action" type="string"/>
+			<column header="login_captcha_v3" type="boolean"/>
+			<column header="login_captcha_score_threshold" type="numeric"/>
 			<column header="session_timeout_minutes" type="numeric"/>
 			<column header="password_minimum_length" type="numeric"/>
 			<column header="brute_force_enabled" type="boolean"/>

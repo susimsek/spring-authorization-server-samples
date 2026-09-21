@@ -78,7 +78,7 @@ public class LoginSettingsEntity {
     @Column(name = "webauthn_avoid_same_authenticator", nullable = false)
     private boolean webAuthnAvoidSameAuthenticator;
 
-    @Column(name = "webauthn_acceptable_aaguids", nullable = false, length = 4000)
+    @Column(name = "webauthn_acceptable_aaguids", length = 4000)
     private String webAuthnAcceptableAaguids;
 
     @Column(name = "webauthn_passwordless_rp_name", nullable = false, length = 255)
@@ -108,7 +108,7 @@ public class LoginSettingsEntity {
     @Column(name = "webauthn_passwordless_avoid_same_authenticator", nullable = false)
     private boolean webAuthnPasswordlessAvoidSameAuthenticator;
 
-    @Column(name = "webauthn_passwordless_acceptable_aaguids", nullable = false, length = 4000)
+    @Column(name = "webauthn_passwordless_acceptable_aaguids", length = 4000)
     private String webAuthnPasswordlessAcceptableAaguids;
 
     @Column(name = "email_update_reauthentication_minutes", nullable = false)
@@ -269,6 +269,48 @@ public class LoginSettingsEntity {
 
     @Column(name = "microsoft_client_secret_encrypted", length = 2000)
     private String microsoftClientSecretEncrypted;
+
+    @Column(name = "registration_captcha_enabled", nullable = false)
+    private boolean registrationCaptchaEnabled;
+
+    @Column(name = "registration_captcha_provider", nullable = false, length = 20)
+    private String registrationCaptchaProvider;
+
+    @Column(name = "registration_captcha_site_key", length = 500)
+    private String registrationCaptchaSiteKey;
+
+    @Column(name = "registration_captcha_secret_encrypted", length = 2000)
+    private String registrationCaptchaSecretEncrypted;
+
+    @Column(name = "registration_captcha_project_id", length = 200)
+    private String registrationCaptchaProjectId;
+
+    @Column(name = "registration_captcha_api_key_encrypted", length = 2000)
+    private String registrationCaptchaApiKeyEncrypted;
+
+    @Column(name = "registration_captcha_action", nullable = false, length = 100)
+    private String registrationCaptchaAction;
+
+    @Column(name = "registration_captcha_v3", nullable = false)
+    private boolean registrationCaptchaV3;
+
+    @Column(name = "registration_captcha_score_threshold", nullable = false)
+    private double registrationCaptchaScoreThreshold;
+
+    @Column(name = "registration_captcha_use_recaptcha_net", nullable = false)
+    private boolean registrationCaptchaUseRecaptchaNet;
+
+    @Column(name = "login_captcha_enabled", nullable = false)
+    private boolean loginCaptchaEnabled;
+
+    @Column(name = "login_captcha_action", nullable = false, length = 100)
+    private String loginCaptchaAction;
+
+    @Column(name = "login_captcha_v3", nullable = false)
+    private boolean loginCaptchaV3;
+
+    @Column(name = "login_captcha_score_threshold", nullable = false)
+    private double loginCaptchaScoreThreshold;
 
     @Column(name = "session_timeout_minutes", nullable = false)
     private int sessionTimeoutMinutes;

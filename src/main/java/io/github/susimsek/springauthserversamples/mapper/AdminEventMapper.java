@@ -16,5 +16,6 @@ public interface AdminEventMapper {
             String action,
             String targetType,
             String targetId,
+            String details,
             java.time.Instant occurredAt);
 }

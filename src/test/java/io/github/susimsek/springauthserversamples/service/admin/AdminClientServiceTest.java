@@ -3,6 +3,7 @@ package io.github.susimsek.springauthserversamples.service.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -253,6 +254,282 @@ class AdminClientServiceTest {
                 .hasMessage("authorization code TTL must be greater than zero");
     }
 
+    @Test
+    void createsPublicClientWithoutSecret() {
+        AtomicReference<RegisteredClient> savedClient = wireSaveMapper();
+
+        AdminClientCreatedDTO created = service().create(publicClientRequest(true));
+
+        assertThat(created.clientSecret()).isNull();
+        assertThat(savedClient.get().getClientSecret()).isNull();
+        assertThat(savedClient.get().getClientSettings().isRequireProofKey()).isTrue();
+        verify(passwordEncoder, never()).encode(any());
+    }
+
+    @Test
+    void updatesClientAndPreservesExistingSecretAndSettings() {
+        AtomicReference<RegisteredClient> savedClient = wireSaveMapper();
+        RegisteredClientEntity entity = new RegisteredClientEntity();
+        RegisteredClient existing =
+                RegisteredClient.withId("client-id")
+                        .clientId("service-client")
+                        .clientName("Old name")
+                        .clientSecret("encoded-secret")
+                        .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                        .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                        .scope("openid")
+                        .clientSettings(
+                                io.github.susimsek.springauthserversamples.service.admin
+                                        .ClientScopeSettings.withAssignments(
+                                        org.springframework.security.oauth2.server.authorization
+                                                .settings.ClientSettings.builder()
+                                                .build(),
+                                        Set.of("openid"),
+                                        Set.of()))
+                        .tokenSettings(
+                                org.springframework.security.oauth2.server.authorization.settings
+                                        .TokenSettings.builder()
+                                        .accessTokenTimeToLive(Duration.ofMinutes(9))
+                                        .build())
+                        .build();
+        when(clientRepository.findById("client-id")).thenReturn(Optional.of(entity));
+        when(registeredClientMapper.toObject(entity, mapperSupport)).thenReturn(existing);
+        when(clientRepository.existsByClientId("renamed-client")).thenReturn(false);
+
+        AdminClientDTO updated =
+                service()
+                        .update(
+                                "client-id",
+                                new AdminClientRequestDTO(
+                                        "renamed-client",
+                                        "Renamed client",
+                                        Set.of("client_secret_basic"),
+                                        Set.of("client_credentials"),
+                                        Set.of(),
+                                        Set.of(),
+                                        Set.of("openid"),
+                                        true,
+                                        false,
+                                        null,
+                                        null,
+                                        null));
+
+        assertThat(updated.clientId()).isEqualTo("renamed-client");
+        assertThat(savedClient.get().getClientSecret()).isEqualTo("encoded-secret");
+        assertThat(savedClient.get().getTokenSettings().getAccessTokenTimeToLive())
+                .isEqualTo(Duration.ofMinutes(9));
+        verify(adminAuditEventService).record("client.updated", "client", "client-id");
+    }
+
+    @Test
+    void disablesSecretAuthenticationAndClearsSecretOnUpdate() {
+        AtomicReference<RegisteredClient> savedClient = wireSaveMapper();
+        RegisteredClientEntity entity = new RegisteredClientEntity();
+        RegisteredClient existing = registeredClient("client-id", "service-client");
+        existing =
+                RegisteredClient.from(existing)
+                        .clientSecret("encoded-secret")
+                        .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                        .build();
+        when(clientRepository.findById("client-id")).thenReturn(Optional.of(entity));
+        when(registeredClientMapper.toObject(entity, mapperSupport)).thenReturn(existing);
+
+        service()
+                .update(
+                        "client-id",
+                        new AdminClientRequestDTO(
+                                "service-client",
+                                "Service Client",
+                                Set.of("none"),
+                                Set.of("authorization_code"),
+                                Set.of("https://example.test/callback"),
+                                Set.of(),
+                                Set.of("openid"),
+                                false,
+                                true,
+                                null,
+                                null,
+                                null));
+
+        assertThat(savedClient.get().getClientSecret()).isNull();
+        assertThat(savedClient.get().getClientSecretExpiresAt()).isNull();
+    }
+
+    @Test
+    void rejectsMissingClientAndInvalidConfigurationValues() {
+        assertThatThrownBy(() -> service().create(null))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("Request body is required");
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .create(
+                                                request(
+                                                        null,
+                                                        "name",
+                                                        Set.of("none"),
+                                                        Set.of("authorization_code"),
+                                                        Set.of("https://example.test/callback"),
+                                                        Set.of("openid"),
+                                                        false,
+                                                        true)))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("Client ID is required");
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .create(
+                                                request(
+                                                        "id",
+                                                        " ",
+                                                        Set.of("none"),
+                                                        Set.of("authorization_code"),
+                                                        Set.of("https://example.test/callback"),
+                                                        Set.of("openid"),
+                                                        false,
+                                                        true)))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("Client name is required");
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .create(
+                                                request(
+                                                        "id",
+                                                        "name",
+                                                        Set.of(),
+                                                        Set.of("authorization_code"),
+                                                        Set.of("https://example.test/callback"),
+                                                        Set.of("openid"),
+                                                        false,
+                                                        true)))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("At least one client authentication method is required");
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .create(
+                                                request(
+                                                        "id",
+                                                        "name",
+                                                        Set.of("none"),
+                                                        Set.of(),
+                                                        Set.of(),
+                                                        Set.of("openid"),
+                                                        false,
+                                                        true)))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("At least one authorization grant type is required");
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .create(
+                                                request(
+                                                        "id",
+                                                        "name",
+                                                        Set.of("none"),
+                                                        Set.of("authorization_code"),
+                                                        Set.of(),
+                                                        Set.of(),
+                                                        false,
+                                                        true)))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("At least one scope is required");
+    }
+
+    @Test
+    void rejectsInvalidGrantUriPkceAndPostLogoutValues() {
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .create(
+                                                request(
+                                                        "id",
+                                                        "name",
+                                                        Set.of("none"),
+                                                        Set.of("client_credentials"),
+                                                        Set.of(),
+                                                        Set.of("openid"),
+                                                        false,
+                                                        true)))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("A public client cannot use the client_credentials grant");
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .create(
+                                                request(
+                                                        "id",
+                                                        "name",
+                                                        Set.of("client_secret_basic"),
+                                                        Set.of("authorization_code"),
+                                                        Set.of(),
+                                                        Set.of("openid"),
+                                                        false,
+                                                        false)))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("At least one redirect URI is required for authorization_code");
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .create(
+                                                request(
+                                                        "id",
+                                                        "name",
+                                                        Set.of("client_secret_basic"),
+                                                        Set.of("client_credentials"),
+                                                        Set.of(),
+                                                        Set.of("openid"),
+                                                        false,
+                                                        true)))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("PKCE requires the authorization_code grant");
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .create(
+                                                request(
+                                                        "id",
+                                                        "name",
+                                                        Set.of("client_secret_basic"),
+                                                        Set.of("client_credentials"),
+                                                        Set.of(
+                                                                "https://example.test/callback#fragment"),
+                                                        Set.of("openid"),
+                                                        false,
+                                                        false)))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("Invalid redirect URI: https://example.test/callback#fragment");
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .create(
+                                                requestWithPostLogout(
+                                                        "https://example.test/logout#fragment")))
+                .isInstanceOf(ApiException.class)
+                .hasMessage(
+                        "Invalid post logout redirect URI: https://example.test/logout#fragment");
+    }
+
+    @Test
+    void rejectsMissingClientsAndProtectedRegeneration() {
+        when(clientRepository.findById("missing")).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service().update("missing", confidentialRequest()))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("Client not found");
+        assertThatThrownBy(() -> service().delete("missing"))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("Client not found");
+
+        RegisteredClientEntity entity = new RegisteredClientEntity();
+        RegisteredClient adminConsole = registeredClient("client-id", "admin-console");
+        when(clientRepository.findById("client-id")).thenReturn(Optional.of(entity));
+        when(registeredClientMapper.toObject(entity, mapperSupport)).thenReturn(adminConsole);
+        assertThatThrownBy(() -> service().regenerateSecret("client-id"))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("The administration console client cannot be changed");
+    }
+
     private AdminClientService service() {
         return new AdminClientService(
                 clientRepository,
@@ -324,6 +601,46 @@ class AdminClientServiceTest {
                 Set.of("openid"),
                 false,
                 requireProofKey,
+                null,
+                null,
+                null);
+    }
+
+    private static AdminClientRequestDTO request(
+            String clientId,
+            String clientName,
+            Set<String> methods,
+            Set<String> grants,
+            Set<String> redirectUris,
+            Set<String> scopes,
+            boolean requireConsent,
+            boolean requireProofKey) {
+        return new AdminClientRequestDTO(
+                clientId,
+                clientName,
+                methods,
+                grants,
+                redirectUris,
+                Set.of(),
+                scopes,
+                requireConsent,
+                requireProofKey,
+                null,
+                null,
+                null);
+    }
+
+    private static AdminClientRequestDTO requestWithPostLogout(String postLogoutUri) {
+        return new AdminClientRequestDTO(
+                "id",
+                "name",
+                Set.of("client_secret_basic"),
+                Set.of("client_credentials"),
+                Set.of(),
+                Set.of(postLogoutUri),
+                Set.of("openid"),
+                false,
+                false,
                 null,
                 null,
                 null);

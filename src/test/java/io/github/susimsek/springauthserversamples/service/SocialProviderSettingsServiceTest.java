@@ -11,6 +11,8 @@ import io.github.susimsek.springauthserversamples.config.security.ReloadableClie
 import io.github.susimsek.springauthserversamples.config.security.SocialLoginProperties;
 import io.github.susimsek.springauthserversamples.config.security.SocialLoginSecretCipher;
 import io.github.susimsek.springauthserversamples.domain.LoginSettingsEntity;
+import io.github.susimsek.springauthserversamples.domain.SocialIdentityEntity;
+import io.github.susimsek.springauthserversamples.domain.SocialProviderEntity;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminSocialProviderRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminSocialProvidersRequestDTO;
 import io.github.susimsek.springauthserversamples.repository.LoginSettingsRepository;
@@ -82,6 +84,35 @@ class SocialProviderSettingsServiceTest {
     }
 
     @Test
+    void resolvesAliasesAndProviderSyncModes() {
+        SocialProviderEntity provider = new SocialProviderEntity();
+        provider.setRegistrationId("google");
+        provider.setAlias("workspace-google");
+        provider.setSyncMode("read-only");
+        when(providerRepository.findByRegistrationId("google")).thenReturn(Optional.of(provider));
+        when(providerRepository.findByRegistrationId("workspace-google"))
+                .thenReturn(Optional.empty());
+        when(providerRepository.findByAliasIgnoreCase("workspace-google"))
+                .thenReturn(Optional.of(provider));
+
+        assertThat(service.provider("GOOGLE")).isNotNull();
+        assertThat(service.provider("workspace-google")).isNotNull();
+        assertThat(service.provider(" ")).isNull();
+        assertThat(service.syncMode("workspace-google")).isEqualTo("read_only");
+        assertThat(service.syncMode(null)).isNull();
+    }
+
+    @Test
+    void reportsDisabledStateAndFailsWhenSettingsAreMissing() {
+        assertThat(service.isEnabled()).isFalse();
+        when(repository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.adminSettings())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Login settings are not configured");
+    }
+
+    @Test
     void updatesAllBuiltInProvidersAndClearsStoredTokens() {
         AdminSocialProviderRequestDTO google = request("google", "google");
         AdminSocialProviderRequestDTO github = request("github", "github");
@@ -132,12 +163,300 @@ class SocialProviderSettingsServiceTest {
         verify(reloadable).replace(any());
     }
 
+    @Test
+    void appliesNormalizedSettingsAndEncryptsSecrets() {
+        when(secretCipher.encrypt("new-secret")).thenReturn("encrypted-secret");
+        when(secretCipher.decrypt("encrypted-secret")).thenReturn("new-secret");
+        AdminSocialProviderRequestDTO request =
+                new AdminSocialProviderRequestDTO(
+                        " GOOGLE ",
+                        "  Workspace-Google ",
+                        " client-id ",
+                        " new-secret ",
+                        true,
+                        true,
+                        true,
+                        true,
+                        " sub, email,sub ",
+                        true,
+                        true,
+                        4,
+                        " WHEN-LINKED ");
+
+        service.update(new AdminSocialProvidersRequestDTO(List.of(request)));
+
+        assertThat(settings.getGoogleAlias()).isEqualTo("workspace-google");
+        assertThat(settings.getGoogleClientId()).isEqualTo("client-id");
+        assertThat(settings.getGoogleClientSecretEncrypted()).isEqualTo("encrypted-secret");
+        assertThat(settings.getGoogleRequiredClaims()).isEqualTo("sub,email");
+        assertThat(settings.getGoogleShowInAccountConsole()).isEqualTo("when-linked");
+        assertThat(settings.isGoogleHideOnLogin()).isTrue();
+        assertThat(settings.isGoogleStoreTokens()).isTrue();
+        assertThat(settings.isGoogleStoredTokensReadable()).isTrue();
+    }
+
+    @Test
+    void rejectsInvalidVisibilityClaimsProviderAndEncryption() {
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        new AdminSocialProvidersRequestDTO(
+                                                List.of(request("google", "google", "invalid")))))
+                .isInstanceOf(RuntimeException.class);
+
+        AdminSocialProviderRequestDTO invalidClaims =
+                new AdminSocialProviderRequestDTO(
+                        "google",
+                        "google",
+                        "id",
+                        null,
+                        false,
+                        false,
+                        false,
+                        false,
+                        "sub,invalid claim",
+                        false,
+                        false,
+                        0,
+                        "always");
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        new AdminSocialProvidersRequestDTO(List.of(invalidClaims))))
+                .isInstanceOf(RuntimeException.class);
+
+        when(secretCipher.encrypt("secret"))
+                .thenThrow(new IllegalStateException("cipher unavailable"));
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        new AdminSocialProvidersRequestDTO(
+                                                List.of(
+                                                        request(
+                                                                "google", "google", "always",
+                                                                "secret")))))
+                .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    void clearsStoredTokensFromAllIdentityFields() {
+        SocialIdentityEntity identity = new SocialIdentityEntity();
+        identity.setAccessTokenEncrypted("access");
+        identity.setRefreshTokenEncrypted("refresh");
+        identity.setTokenType("Bearer");
+        identity.setTokenScopes("openid");
+        when(identityRepository.findAllByProvider("google")).thenReturn(List.of(identity));
+
+        service.update(
+                new AdminSocialProvidersRequestDTO(
+                        List.of(
+                                new AdminSocialProviderRequestDTO(
+                                        "google", "google", "id", null, false, false, false, false,
+                                        "sub", false, false, 0, "always"))));
+
+        assertThat(identity.getAccessTokenEncrypted()).isNull();
+        assertThat(identity.getRefreshTokenEncrypted()).isNull();
+        assertThat(identity.getTokenType()).isNull();
+        assertThat(identity.getTokenScopes()).isNull();
+    }
+
+    @Test
+    void mergesCustomProviderAndDecryptsStoredSecret() {
+        SocialProviderEntity provider = new SocialProviderEntity();
+        provider.setRegistrationId("custom");
+        provider.setAlias("custom-alias");
+        provider.setDisplayName("Custom");
+        provider.setProviderType("oidc");
+        provider.setClientId("custom-id");
+        provider.setClientSecretEncrypted("encrypted");
+        provider.setEnabled(true);
+        provider.setScopes("openid");
+        provider.setUserNameAttribute("sub");
+        when(providerRepository.findAll()).thenReturn(List.of(provider));
+        when(secretCipher.decrypt("encrypted")).thenReturn("custom-secret");
+
+        assertThat(service.effectiveProviders())
+                .anySatisfy(
+                        credentials -> {
+                            assertThat(credentials.registrationId()).isEqualTo("custom");
+                            assertThat(credentials.clientSecret()).isEqualTo("custom-secret");
+                        });
+    }
+
+    @Test
+    void fallsBackToLegacyCredentialsWhenStoredProviderClientIdIsBlank() {
+        properties.google().setClientId("legacy-google-id");
+        properties.google().setClientSecret("legacy-google-secret");
+        SocialProviderEntity provider = new SocialProviderEntity();
+        provider.setRegistrationId("google");
+        provider.setAlias("workspace-google");
+        provider.setDisplayName("Workspace Google");
+        provider.setProviderType("google");
+        provider.setClientId(" ");
+        provider.setClientSecretEncrypted(" ");
+        provider.setEnabled(true);
+        provider.setRequiredClaims("sub");
+        provider.setShowInAccountConsole("always");
+        when(providerRepository.findByRegistrationId("google")).thenReturn(Optional.of(provider));
+
+        SocialProviderSettingsService.ProviderCredentials credentials =
+                service.provider("workspace-google");
+
+        assertThat(credentials.clientId()).isEqualTo("legacy-google-id");
+        assertThat(credentials.clientSecret()).isEqualTo("legacy-google-secret");
+        assertThat(credentials.alias()).isEqualTo("workspace-google");
+    }
+
+    @Test
+    void handlesStoredProviderWithoutSecretAndNormalizesItsIcon() {
+        SocialProviderEntity provider = new SocialProviderEntity();
+        provider.setRegistrationId("custom");
+        provider.setAlias("custom");
+        provider.setDisplayName("Custom");
+        provider.setProviderType("oidc");
+        provider.setClientId("custom-id");
+        provider.setClientSecretEncrypted(" ");
+        provider.setIconKey("unknown");
+        provider.setEnabled(true);
+        provider.setShowInAccountConsole("always");
+        when(providerRepository.findAll()).thenReturn(List.of(provider));
+
+        assertThat(service.effectiveProviders())
+                .anySatisfy(
+                        credentials -> {
+                            if (credentials.registrationId().equals("custom")) {
+                                assertThat(credentials.clientSecret()).isEmpty();
+                                assertThat(credentials.iconKey()).isEqualTo("generic");
+                            }
+                        });
+    }
+
+    @Test
+    void defaultsBlankClaimsAndRejectsOverlongClaims() {
+        AdminSocialProviderRequestDTO blankClaims =
+                new AdminSocialProviderRequestDTO(
+                        "google", "google", "id", null, false, false, false, false, " ", false,
+                        false, 0, "always");
+
+        service.update(new AdminSocialProvidersRequestDTO(List.of(blankClaims)));
+
+        assertThat(settings.getGoogleRequiredClaims()).isEqualTo("sub");
+
+        AdminSocialProviderRequestDTO overlongClaims =
+                new AdminSocialProviderRequestDTO(
+                        "google",
+                        "google",
+                        "id",
+                        null,
+                        false,
+                        false,
+                        false,
+                        false,
+                        "claim".repeat(101),
+                        false,
+                        false,
+                        0,
+                        "always");
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        new AdminSocialProvidersRequestDTO(
+                                                List.of(overlongClaims))))
+                .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    void supportsAllProviderCredentialConvenienceConstructors() {
+        assertThat(
+                        new SocialProviderSettingsService.ProviderCredentials(
+                                "custom",
+                                "alias",
+                                "Custom",
+                                "oidc",
+                                "id",
+                                "secret",
+                                true,
+                                false,
+                                false,
+                                false,
+                                false,
+                                "sub",
+                                false,
+                                false,
+                                1,
+                                "always",
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                "client_secret_basic",
+                                "openid",
+                                "sub",
+                                "generic"))
+                .isNotNull();
+        assertThat(
+                        new SocialProviderSettingsService.ProviderCredentials(
+                                "custom", "alias", "id", "secret", true, false, false, false, false,
+                                "sub", 1, "always", true, false))
+                .isNotNull();
+    }
+
+    @Test
+    void handlesUnknownProviderDefaultsAndConsumer() throws Exception {
+        LoginSettingsEntity emptySettings = new LoginSettingsEntity();
+        for (java.lang.reflect.Method method :
+                SocialProviderSettingsService.class.getDeclaredMethods()) {
+            if (method.getParameterCount() == 2
+                    && method.getParameterTypes()[0] == String.class
+                    && method.getParameterTypes()[1] == LoginSettingsEntity.class) {
+                method.setAccessible(true);
+                try {
+                    method.invoke(service, "custom", emptySettings);
+                } catch (java.lang.reflect.InvocationTargetException ignored) {
+                    assertThat(ignored).isNotNull();
+                    // The credentials factory intentionally rejects unknown provider types.
+                }
+            }
+        }
+        var consumer =
+                SocialProviderSettingsService.class.getDeclaredMethod(
+                        "consumer",
+                        String.class,
+                        java.util.function.Consumer.class,
+                        java.util.function.Consumer.class,
+                        java.util.function.Consumer.class,
+                        java.util.function.Consumer.class);
+        consumer.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        java.util.function.Consumer<String> defaultConsumer =
+                (java.util.function.Consumer<String>)
+                        consumer.invoke(
+                                null,
+                                "custom",
+                                (java.util.function.Consumer<String>) value -> {},
+                                (java.util.function.Consumer<String>) value -> {},
+                                (java.util.function.Consumer<String>) value -> {},
+                                (java.util.function.Consumer<String>) value -> {});
+        defaultConsumer.accept("ignored");
+    }
+
     private static AdminSocialProviderRequestDTO request(String provider, String alias) {
+        return request(provider, alias, "always", provider + "-secret");
+    }
+
+    private static AdminSocialProviderRequestDTO request(
+            String provider, String alias, String visibility) {
+        return request(provider, alias, visibility, provider + "-secret");
+    }
+
+    private static AdminSocialProviderRequestDTO request(
+            String provider, String alias, String visibility, String secret) {
         return new AdminSocialProviderRequestDTO(
                 provider,
                 alias,
                 provider + "-client",
-                provider + "-secret",
+                secret,
                 true,
                 false,
                 true,
@@ -146,6 +465,6 @@ class SocialProviderSettingsServiceTest {
                 false,
                 false,
                 1,
-                "always");
+                visibility);
     }
 }

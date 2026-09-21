@@ -20,6 +20,7 @@ export type Event = {
   action: string;
   targetType: string;
   targetId: string;
+  details?: string | null;
   occurredAt: string;
 };
 
@@ -298,6 +299,12 @@ export default function AdminEventsPage() {
               <dd>{selected.targetType}</dd>
               <dt>{copy.target}</dt>
               <dd className="text-break">{selected.targetId}</dd>
+              {selected.details && (
+                <>
+                  <dt>{copy.details}</dt>
+                  <dd className="text-break">{selected.details}</dd>
+                </>
+              )}
             </dl>
           )}
         </Offcanvas.Body>

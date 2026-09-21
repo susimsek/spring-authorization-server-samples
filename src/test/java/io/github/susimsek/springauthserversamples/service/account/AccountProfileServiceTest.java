@@ -60,6 +60,21 @@ class AccountProfileServiceTest {
     }
 
     @Test
+    void readsProfileAndDelegatesVerificationEmail() {
+        UserEntity user = user();
+        AccountProfileDTO profile =
+                new AccountProfileDTO("alice", "Alice", "User", "alice@example.test", null, null);
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(accountProfileMapper.toDTO(user)).thenReturn(profile);
+
+        assertThat(service().profile("alice")).isEqualTo(profile);
+        service().sendVerificationEmail("alice", java.util.Locale.of("tr"));
+
+        verify(userActionService)
+                .sendForCurrentUser("alice", UserAction.VERIFY_EMAIL, java.util.Locale.of("tr"));
+    }
+
+    @Test
     void changesPasswordAfterVerifyingCurrentPassword() {
         UserEntity user = user();
         user.setPassword("encoded-old");

@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.github.susimsek.springauthserversamples.dto.account.MfaStatusDTO;
+import io.github.susimsek.springauthserversamples.service.LoginSettingsService;
 import io.github.susimsek.springauthserversamples.service.account.MfaService;
 import io.github.susimsek.springauthserversamples.service.requiredaction.RequiredActionService;
 import java.time.Duration;
@@ -112,6 +113,62 @@ class MfaAuthorizationFilterTest {
 
         verify(filterChain).doFilter(firstRequest, firstResponse);
         verify(filterChain).doFilter(secondRequest, secondResponse);
+    }
+
+    @Test
+    void marksAndClearsCredentialAndPendingVerificationState() {
+        MfaAuthorizationFilter.markVerified(null);
+        MfaAuthorizationFilter.markCredentialVerified(null);
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        jakarta.servlet.http.HttpSession session = request.getSession();
+        session.setAttribute(
+                MfaAuthorizationFilter.MFA_PENDING_REQUEST, "/oauth2/authorize?state=1");
+
+        MfaAuthorizationFilter.markVerified(session);
+
+        assertThat(session.getAttribute(MfaAuthorizationFilter.MFA_VERIFIED)).isEqualTo(true);
+        assertThat(session.getAttribute(MfaAuthorizationFilter.MFA_VERIFIED_REQUEST))
+                .isEqualTo("/oauth2/authorize?state=1");
+        assertThat(session.getAttribute(MfaAuthorizationFilter.MFA_PENDING_REQUEST)).isNull();
+
+        MfaAuthorizationFilter.markCredentialVerified(session);
+        assertThat(session.getAttribute(MfaAuthorizationFilter.MFA_CREDENTIAL_VERIFIED))
+                .isEqualTo(true);
+    }
+
+    @Test
+    void marksVerificationWithoutStringPendingRequestAndUsesCredentialFactor() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/oauth2/authorize");
+        request.getSession().setAttribute(MfaAuthorizationFilter.MFA_PENDING_REQUEST, 42);
+        MfaAuthorizationFilter.markVerified(request.getSession());
+        assertThat(request.getSession().getAttribute(MfaAuthorizationFilter.MFA_VERIFIED_REQUEST))
+                .isNull();
+
+        authenticate("alice");
+        when(requiredActionService.pending("alice")).thenReturn(List.of());
+        when(mfaService.status("alice")).thenReturn(status(true, true));
+        request.setQueryString("state=credential");
+        MfaAuthorizationFilter.markCredentialVerified(request.getSession());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        assertThat(
+                        request.getSession()
+                                .getAttribute(MfaAuthorizationFilter.MFA_CREDENTIAL_VERIFIED))
+                .isNull();
+    }
+
+    @Test
+    void supportsTheSettingsAwareConstructor() {
+        assertThat(
+                        new MfaAuthorizationFilter(
+                                mfaService,
+                                requiredActionService,
+                                mock(LoginSettingsService.class)))
+                .isNotNull();
     }
 
     private static MfaStatusDTO status(boolean available, boolean enabled) {

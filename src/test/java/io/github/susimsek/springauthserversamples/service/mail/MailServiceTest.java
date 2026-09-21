@@ -24,6 +24,8 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.context.MessageSource;
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
@@ -78,6 +80,37 @@ class MailServiceTest {
         assertThat(mimeMessage.getSubject()).isEqualTo("E-posta adresinizi doğrulayın");
         assertThat(mimeMessage.getContent()).isEqualTo("<p>Doğrula</p>");
         assertThat(mimeMessage.getContentType()).contains("text/html").contains("charset=UTF-8");
+        verify(mailSender).send(mimeMessage);
+    }
+
+    @Test
+    void sendsPasswordResetAndDirectHtmlEmail() throws Exception {
+        MimeMessage mimeMessage = new MimeMessage(Session.getInstance(new Properties()));
+        when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
+        when(templateEngine.process(eq("mail/passwordReset"), any(Context.class)))
+                .thenReturn("<p>Reset</p>");
+        when(messageSource.getMessage("mail.password-reset.subject", null, Locale.ENGLISH))
+                .thenReturn("Reset password");
+        MailService service =
+                new MailService(properties(true), mailSender, messageSource, templateEngine);
+
+        service.sendPasswordReset(
+                "user@example.com", "user", Locale.ENGLISH, "https://example/reset");
+        service.sendEmail("user@example.com", "Subject", "<b>Body</b>", true);
+
+        verify(templateEngine).process(eq("mail/passwordReset"), any(Context.class));
+        verify(mailSender, org.mockito.Mockito.times(2)).send(mimeMessage);
+    }
+
+    @Test
+    void swallowsDirectEmailDeliveryFailures() throws Exception {
+        MimeMessage mimeMessage = new MimeMessage(Session.getInstance(new Properties()));
+        when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
+        doThrow(new MailSendException("SMTP unavailable")).when(mailSender).send(mimeMessage);
+
+        new MailService(properties(true), mailSender, messageSource, templateEngine)
+                .sendEmail("user@example.com", "Subject", "Body", false);
+
         verify(mailSender).send(mimeMessage);
     }
 
@@ -152,6 +185,38 @@ class MailServiceTest {
                 .isInstanceOf(ApiException.class)
                 .extracting(exception -> ((ApiException) exception).getErrorCode())
                 .isEqualTo(ApiErrorCode.EMAIL_TEST_FAILED);
+    }
+
+    @Test
+    void buildsAnOverrideSmtpSenderFromEmailSettings() {
+        EmailSettingsService emailSettingsService = mock(EmailSettingsService.class);
+        EmailSettingsService.EmailConfiguration configuration =
+                new EmailSettingsService.EmailConfiguration(
+                        true,
+                        "no-reply@example.com",
+                        "https://example.com",
+                        "smtp.example.com",
+                        2525,
+                        "smtp-user",
+                        "smtp-password",
+                        true,
+                        true,
+                        false);
+        MailService service =
+                new MailService(
+                        properties(true),
+                        mailSender,
+                        messageSource,
+                        templateEngine,
+                        emailSettingsService);
+
+        JavaMailSender sender =
+                ReflectionTestUtils.invokeMethod(service, "configuredSender", configuration);
+
+        assertThat(sender).isInstanceOf(JavaMailSenderImpl.class);
+        assertThat(((JavaMailSenderImpl) sender).getHost()).isEqualTo("smtp.example.com");
+        assertThat(((JavaMailSenderImpl) sender).getPort()).isEqualTo(2525);
+        assertThat(((JavaMailSenderImpl) sender).getUsername()).isEqualTo("smtp-user");
     }
 
     private static ApplicationProperties properties(boolean enabled) {

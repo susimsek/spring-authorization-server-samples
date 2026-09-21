@@ -34,8 +34,8 @@ public class AdminImpersonationController {
     @Operation(
             summary = "Create an impersonation handoff",
             description =
-                    "Creates a short-lived browser handoff that allows an administrator to view"
-                            + " the selected user's account console.")
+                    "Creates a short-lived browser handoff that allows an authorized operator to"
+                            + " view the selected user's account console.")
     @ApiResponse(responseCode = "200", description = "Impersonation handoff created.")
     AdminImpersonationDTO impersonate(
             @Parameter(
@@ -47,7 +47,7 @@ public class AdminImpersonationController {
             Authentication authentication,
             HttpServletResponse response) {
         adminUserService.requireManageableUser(id, authentication.getName());
-        AdminImpersonationDTO result = impersonationService.issue(id, authentication.getName());
+        AdminImpersonationDTO result = impersonationService.issue(id, authentication);
         response.addHeader(
                 "Set-Cookie",
                 ResponseCookie.from("IMPERSONATION_TICKET", result.ticket())

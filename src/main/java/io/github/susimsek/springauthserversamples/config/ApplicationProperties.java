@@ -12,7 +12,8 @@ public record ApplicationProperties(
         @DefaultValue AuthorizationServer authorizationServer,
         @DefaultValue Mail mail,
         @DefaultValue Security security,
-        @DefaultValue WebAuthn webAuthn) {
+        @DefaultValue WebAuthn webAuthn,
+        @DefaultValue RegistrationCaptcha registrationCaptcha) {
 
     @ConstructorBinding
     public ApplicationProperties(
@@ -21,13 +22,16 @@ public record ApplicationProperties(
             AuthorizationServer authorizationServer,
             Mail mail,
             Security security,
-            WebAuthn webAuthn) {
+            WebAuthn webAuthn,
+            RegistrationCaptcha registrationCaptcha) {
         this.cache = cache;
         this.session = session;
         this.authorizationServer = authorizationServer;
         this.mail = mail;
         this.security = security;
         this.webAuthn = webAuthn == null ? new WebAuthn() : webAuthn;
+        this.registrationCaptcha =
+                registrationCaptcha == null ? new RegistrationCaptcha() : registrationCaptcha;
     }
 
     public ApplicationProperties() {
@@ -40,12 +44,20 @@ public record ApplicationProperties(
                         "Spring Authorization Server <no-reply@localhost>",
                         "http://127.0.0.1:9090"),
                 new Security(),
-                new WebAuthn());
+                new WebAuthn(),
+                new RegistrationCaptcha());
     }
 
     public ApplicationProperties(
             Cache cache, Session session, AuthorizationServer authorizationServer, Mail mail) {
-        this(cache, session, authorizationServer, mail, new Security(), new WebAuthn());
+        this(
+                cache,
+                session,
+                authorizationServer,
+                mail,
+                new Security(),
+                new WebAuthn(),
+                new RegistrationCaptcha());
     }
 
     public ApplicationProperties(
@@ -54,7 +66,14 @@ public record ApplicationProperties(
             AuthorizationServer authorizationServer,
             Mail mail,
             Security security) {
-        this(cache, session, authorizationServer, mail, security, new WebAuthn());
+        this(
+                cache,
+                session,
+                authorizationServer,
+                mail,
+                security,
+                new WebAuthn(),
+                new RegistrationCaptcha());
     }
 
     public record Cache(@DefaultValue Caffeine caffeine) {}
@@ -86,6 +105,22 @@ public record ApplicationProperties(
                     "REQUIRED",
                     "REQUIRED",
                     "NONE");
+        }
+    }
+
+    public record RegistrationCaptcha(
+            @DefaultValue("disabled") String provider,
+            @DefaultValue("") String siteKey,
+            @DefaultValue("") String secretKey,
+            @DefaultValue("") String projectId,
+            @DefaultValue("") String apiKey,
+            @DefaultValue("register") String action,
+            @DefaultValue("false") boolean recaptchaV3,
+            @DefaultValue("0.7") double scoreThreshold,
+            @DefaultValue("false") boolean useRecaptchaNet) {
+
+        public RegistrationCaptcha() {
+            this("disabled", "", "", "", "", "register", false, 0.7, false);
         }
     }
 

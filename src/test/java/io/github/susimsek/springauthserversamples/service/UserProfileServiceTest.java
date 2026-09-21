@@ -357,6 +357,167 @@ class UserProfileServiceTest {
                 .isInstanceOf(ApiException.class);
     }
 
+    @Test
+    void rejectsMissingDefinitionsAndUsers() {
+        when(definitionRepository.findById(99L)).thenReturn(Optional.empty());
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .update(
+                                                99L,
+                                                request(
+                                                        "department",
+                                                        UserProfileAttributeType.STRING)))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("Profile attribute not found");
+        assertThatThrownBy(() -> service().delete(99L))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("Profile attribute not found");
+
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service().attributes(99L))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("User not found");
+    }
+
+    @Test
+    void listsEnabledAndAllDefinitionsAndRejectsOversizedSearch() {
+        UserProfileAttributeDefinitionEntity enabled = definition("enabled", false);
+        UserProfileAttributeDefinitionEntity disabled = definition("disabled", false);
+        disabled.setEnabled(false);
+        when(definitionRepository.findAllByEnabledTrueOrderByDisplayOrderAscNameAsc())
+                .thenReturn(List.of(enabled));
+        when(definitionRepository.findAllByOrderByDisplayOrderAscNameAsc())
+                .thenReturn(List.of(disabled, enabled));
+
+        assertThat(service().definitions(true)).extracting("name").containsExactly("enabled");
+        assertThat(service().definitions(false))
+                .extracting("name")
+                .containsExactly("disabled", "enabled");
+        assertThatThrownBy(() -> service().definitions("x".repeat(101), PageRequest.of(0, 10)))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("Search query must not exceed 100 characters");
+    }
+
+    @Test
+    void savesAttributesByUsernameAndHandlesMissingActionUser() {
+        UserEntity user = user();
+        when(userRepository.findIdByUsername("alice")).thenReturn(Optional.of(7L));
+        when(userRepository.findForActionById(7L)).thenReturn(Optional.of(user));
+        when(definitionRepository.findAllByEnabledTrueOrderByDisplayOrderAscNameAsc())
+                .thenReturn(List.of());
+        when(definitionRepository.findAllByOrderByDisplayOrderAscNameAsc()).thenReturn(List.of());
+        when(attributeRepository
+                        .findAllByUserIdOrderByDefinitionDisplayOrderAscDefinitionNameAscPositionAsc(
+                                7L))
+                .thenReturn(List.of());
+
+        assertThat(service().saveAttributes("alice", null, "admin").attributes()).isEmpty();
+        verify(userAccessInvalidationService).invalidate("alice");
+
+        when(userRepository.findIdByUsername("missing")).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service().saveAttributes("missing", Map.of(), "admin"))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("User not found");
+        when(userRepository.findIdByUsername("gone")).thenReturn(Optional.of(8L));
+        when(userRepository.findForActionById(8L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service().saveAttributes("gone", Map.of(), "admin"))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("User not found");
+    }
+
+    @Test
+    void mergesNullUnknownAndMultivaluedMappedAttributes() {
+        UserEntity user = user();
+        service().mergeMappedAttributes(user, null, "provider");
+        service().mergeMappedAttributes(user, Map.of("unknown", List.of("value")), "provider");
+
+        UserProfileAttributeDefinitionEntity definition = definition("department", false);
+        definition.setId(12L);
+        definition.setMultivalued(true);
+        when(definitionRepository.findAllByEnabledTrueOrderByDisplayOrderAscNameAsc())
+                .thenReturn(List.of(definition));
+        service()
+                .mergeMappedAttributes(
+                        user, Map.of("department", List.of(" Finance ", "HR ")), "provider");
+        verify(attributeRepository).deleteAllByUserIdAndDefinitionId(7L, 12L);
+        ArgumentCaptor<List> savedValues = ArgumentCaptor.forClass(List.class);
+        verify(attributeRepository).saveAll(savedValues.capture());
+        assertThat(savedValues.getValue()).hasSize(2);
+    }
+
+    @Test
+    void permitsBuiltInProfileFieldsAndSkipsBuiltInDefinitionsWhenSaving() {
+        UserEntity user = user();
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+        UserProfileAttributeDefinitionEntity builtIn = definition("email", false);
+        UserProfileAttributeDefinitionEntity custom = definition("department", false);
+        custom.setId(4L);
+        when(definitionRepository.findAllByEnabledTrueOrderByDisplayOrderAscNameAsc())
+                .thenReturn(List.of(builtIn, custom));
+        when(definitionRepository.findAllByOrderByDisplayOrderAscNameAsc())
+                .thenReturn(List.of(builtIn, custom));
+        when(attributeRepository
+                        .findAllByUserIdOrderByDefinitionDisplayOrderAscDefinitionNameAscPositionAsc(
+                                7L))
+                .thenReturn(List.of());
+
+        service().saveAttributes(7L, Map.of("email", List.of("ignored")), "admin");
+
+        ArgumentCaptor<List> savedValues = ArgumentCaptor.forClass(List.class);
+        verify(attributeRepository).saveAll(savedValues.capture());
+        assertThat(savedValues.getValue()).isEmpty();
+    }
+
+    @Test
+    void acceptsValidStringEmailIntegerAndBooleanValuesAndSkipsUnknownRows() {
+        UserEntity user = user();
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        UserProfileAttributeDefinitionEntity text = definition("text", false);
+        text.setId(1L);
+        text.setMinLength(2);
+        text.setMaxLength(10);
+        text.setPattern("[a-z]+");
+        UserProfileAttributeDefinitionEntity email = definition("emailValue", false);
+        email.setId(2L);
+        email.setType(UserProfileAttributeType.EMAIL);
+        UserProfileAttributeDefinitionEntity integer = definition("integerValue", false);
+        integer.setId(3L);
+        integer.setType(UserProfileAttributeType.INTEGER);
+        UserProfileAttributeDefinitionEntity bool = definition("booleanValue", false);
+        bool.setId(4L);
+        bool.setType(UserProfileAttributeType.BOOLEAN);
+        List<UserProfileAttributeDefinitionEntity> definitions =
+                List.of(text, email, integer, bool);
+        when(definitionRepository.findAllByEnabledTrueOrderByDisplayOrderAscNameAsc())
+                .thenReturn(definitions);
+        when(definitionRepository.findAllByOrderByDisplayOrderAscNameAsc()).thenReturn(definitions);
+        when(attributeRepository
+                        .findAllByUserIdOrderByDefinitionDisplayOrderAscDefinitionNameAscPositionAsc(
+                                7L))
+                .thenReturn(
+                        List.of(
+                                new io.github.susimsek.springauthserversamples.domain
+                                        .UserProfileAttributeEntity(user, text, 0, "valid"),
+                                new io.github.susimsek.springauthserversamples.domain
+                                        .UserProfileAttributeEntity(
+                                        user, unknownDefinition(), 0, "ignored")));
+
+        service()
+                .saveAttributes(
+                        7L,
+                        Map.of(
+                                "text", List.of("valid"),
+                                "emailValue", List.of("user@example.com"),
+                                "integerValue", List.of("42"),
+                                "booleanValue", List.of("true")),
+                        "admin");
+        assertThat(service().attributes("alice").attributes())
+                .containsEntry("text", List.of("valid"))
+                .doesNotContainKey("ignored");
+    }
+
     private UserProfileService service() {
         return new UserProfileService(
                 definitionRepository,
@@ -398,6 +559,12 @@ class UserProfileServiceTest {
         definition.setType(UserProfileAttributeType.STRING);
         definition.setRequired(required);
         definition.setEnabled(true);
+        return definition;
+    }
+
+    private static UserProfileAttributeDefinitionEntity unknownDefinition() {
+        UserProfileAttributeDefinitionEntity definition = definition("unknown", false);
+        definition.setId(99L);
         return definition;
     }
 

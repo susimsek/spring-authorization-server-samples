@@ -65,6 +65,28 @@ class AuthorizationServerEndpointsIT {
                 .andExpect(jsonPath("$.webauthnMediation").value("none"));
     }
 
+    @Test
+    void registrationCaptchaIsDisabledByDefaultAndDoesNotExposeSecrets() throws Exception {
+        mockMvc.perform(get("/api/auth/registration-captcha"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.enabled").value(false))
+                .andExpect(jsonPath("$.siteKey").value(""))
+                .andExpect(jsonPath("$.provider").value(""))
+                .andExpect(jsonPath("$.secretKey").doesNotExist())
+                .andExpect(jsonPath("$.apiKey").doesNotExist());
+    }
+
+    @Test
+    void loginCaptchaIsDisabledByDefaultAndDoesNotExposeSecrets() throws Exception {
+        mockMvc.perform(get("/api/auth/login-captcha"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.enabled").value(false))
+                .andExpect(jsonPath("$.siteKey").value(""))
+                .andExpect(jsonPath("$.provider").value(""))
+                .andExpect(jsonPath("$.secretKey").doesNotExist())
+                .andExpect(jsonPath("$.apiKey").doesNotExist());
+    }
+
     @ParameterizedTest
     @CsvSource({"account, tr, en", "account, en, tr", "admin, tr, en", "admin, en, tr"})
     void resumedAuthorizationPreservesLocaleSelectedOnLogin(

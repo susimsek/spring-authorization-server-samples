@@ -70,8 +70,7 @@ public class ImpersonationController {
     void accept(
             Authentication authentication, HttpServletRequest request, HttpServletResponse response)
             throws java.io.IOException {
-        requireAdmin(authentication);
-        UserEntity target = impersonationService.consume(ticket(request), authentication.getName());
+        UserEntity target = impersonationService.consume(ticket(request), authentication);
         var targetDetails = userDetailsService.loadUserByUsername(target.getUsername());
         var authorities = new java.util.ArrayList<GrantedAuthority>(targetDetails.getAuthorities());
         authentication.getAuthorities().stream()
@@ -82,7 +81,15 @@ public class ImpersonationController {
                         AuthoritiesConstants.PREVIOUS_ADMINISTRATOR, authentication));
         Authentication switched =
                 UsernamePasswordAuthenticationToken.authenticated(targetDetails, null, authorities);
-        auditEventService.record("user.impersonation.accepted", "user", target.getId().toString());
+        auditEventService.record(
+                "user.impersonation.accepted",
+                "user",
+                target.getId().toString(),
+                "actor="
+                        + authentication.getName()
+                        + ";targetUsername="
+                        + target.getUsername()
+                        + ";result=success");
         saveContext(switched, request, response);
         clearTicket(response);
         response.sendRedirect("/account/?impersonated=1");
@@ -91,7 +98,8 @@ public class ImpersonationController {
     @GetMapping("/exit")
     @Operation(
             summary = "Exit impersonation",
-            description = "Restores the administrator session and redirects to the admin console.")
+            description =
+                    "Restores the original operator session and redirects to the admin console.")
     @ApiResponse(responseCode = "302", description = "Browser redirected to the admin console.")
     void exit(
             Authentication authentication, HttpServletRequest request, HttpServletResponse response)
@@ -113,7 +121,16 @@ public class ImpersonationController {
         }
         Authentication restored = previous.getSource();
         saveContext(restored, request, response);
-        auditEventService.record("user.impersonation.ended", "user", authentication.getName());
+        auditEventService.recordAs(
+                restored.getName(),
+                "user.impersonation.ended",
+                "user",
+                authentication.getName(),
+                "actor="
+                        + restored.getName()
+                        + ";targetUsername="
+                        + authentication.getName()
+                        + ";result=success");
         response.sendRedirect("/admin/?impersonation_ended=1");
     }
 
@@ -124,7 +141,9 @@ public class ImpersonationController {
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
-        request.changeSessionId();
+        if (request.getSession(false) != null) {
+            request.changeSessionId();
+        }
         securityContextRepository.saveContext(context, request, response);
     }
 
@@ -139,18 +158,6 @@ public class ImpersonationController {
                                 ApiException.badRequest(
                                         ApiErrorCode.INVALID_REQUEST,
                                         "Impersonation ticket is required"));
-    }
-
-    private static void requireAdmin(Authentication authentication) {
-        if (authentication == null
-                || authentication.getAuthorities().stream()
-                        .noneMatch(
-                                authority ->
-                                        AuthoritiesConstants.ADMIN.equals(
-                                                authority.getAuthority()))) {
-            throw ApiException.forbidden(
-                    ApiErrorCode.FORBIDDEN, "Only administrators can impersonate users");
-        }
     }
 
     private static void clearTicket(HttpServletResponse response) {

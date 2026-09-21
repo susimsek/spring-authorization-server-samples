@@ -89,6 +89,49 @@ class AdminSessionServiceTest {
     }
 
     @Test
+    void filtersSessionsByClientAndNormalizesUnknownStatus() {
+        RegisteredClientEntity client = client("registered-1", "console", "Console");
+        UserSessionEntity session = session("session-1", "alice", 1_000L);
+        Pageable pageable = Pageable.ofSize(20);
+        when(clientRepository.findByClientId("console")).thenReturn(Optional.of(client));
+        when(authorizationRepository.findDistinctSessionIdsByRegisteredClientId("registered-1"))
+                .thenReturn(List.of("session-1"));
+        when(userSessionRepository.findSessionsBySessionIdIn(
+                        anyLong(),
+                        eq("alice"),
+                        eq("active"),
+                        eq(List.of("session-1")),
+                        eq(pageable)))
+                .thenReturn(new PageImpl<>(List.of(session), pageable, 1));
+        when(authorizationRepository.countBySessionIdIn(List.of("session-1")))
+                .thenReturn(List.of());
+
+        assertThat(service().sessions(" alice ", " console ", "unknown", pageable).getContent())
+                .hasSize(1);
+        verify(userSessionRepository)
+                .findSessionsBySessionIdIn(
+                        anyLong(),
+                        eq("alice"),
+                        eq("active"),
+                        eq(List.of("session-1")),
+                        eq(pageable));
+    }
+
+    @Test
+    void returnsEmptyPageForClientWithoutSessionsAndRejectsUnknownClient() {
+        Pageable pageable = Pageable.ofSize(20);
+        RegisteredClientEntity client = client("registered-1", "console", "Console");
+        when(clientRepository.findByClientId("console")).thenReturn(Optional.of(client));
+        when(authorizationRepository.findDistinctSessionIdsByRegisteredClientId("registered-1"))
+                .thenReturn(List.of());
+
+        assertThat(service().sessions(null, "console", "expired", pageable).getContent()).isEmpty();
+        assertThatThrownBy(() -> service().sessions(null, "missing", null, pageable))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("Client not found");
+    }
+
+    @Test
     void deletesSessionAndItsAuthorizations() {
         UserSessionEntity session = new UserSessionEntity();
         session.setSessionId("session-id");
@@ -145,6 +188,34 @@ class AdminSessionServiceTest {
         verify(adminAuditEventService).record("user.sessions.deleted", "user", "user");
     }
 
+    @Test
+    void loadsUserAndClientSessionsAndHandlesMissingClient() {
+        UserSessionEntity session = session("session-1", "alice", 1_000L);
+        Pageable pageable = Pageable.ofSize(20);
+        when(adminUserService.requireManageableUser(7L, "admin"))
+                .thenReturn(userWithUsername("alice"));
+        when(userSessionRepository.findActiveSessionsByPrincipalName(
+                        anyLong(), eq("alice"), eq(pageable)))
+                .thenReturn(new PageImpl<>(List.of(session), pageable, 1));
+        when(authorizationRepository.countBySessionIdIn(List.of("session-1")))
+                .thenReturn(List.of());
+
+        assertThat(service().userSessions(7L, "admin", pageable).getContent()).hasSize(1);
+
+        when(clientRepository.existsById("console")).thenReturn(true);
+        when(authorizationRepository.findDistinctSessionIdsByRegisteredClientId("console"))
+                .thenReturn(List.of("session-1"));
+        when(userSessionRepository.findActiveSessionsBySessionIdIn(
+                        anyLong(), eq(List.of("session-1")), eq(pageable)))
+                .thenReturn(new PageImpl<>(List.of(session), pageable, 1));
+        assertThat(service().clientSessions("console", pageable).getContent()).hasSize(1);
+
+        when(clientRepository.existsById("missing")).thenReturn(false);
+        assertThatThrownBy(() -> service().clientSessions("missing", pageable))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("Client not found");
+    }
+
     private static UserSessionEntity session(
             String sessionId, String principalName, long creationTime) {
         UserSessionEntity session = new UserSessionEntity();
@@ -154,6 +225,13 @@ class AdminSessionServiceTest {
         session.setLastAccessTime(creationTime + 100L);
         session.setExpiryTime(creationTime + 200L);
         return session;
+    }
+
+    private static io.github.susimsek.springauthserversamples.domain.UserEntity userWithUsername(
+            String username) {
+        var user = new io.github.susimsek.springauthserversamples.domain.UserEntity();
+        user.setUsername(username);
+        return user;
     }
 
     private static AuthorizationRepository.SessionAuthorizationCount authorizationCount(

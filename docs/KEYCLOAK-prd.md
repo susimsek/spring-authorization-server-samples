@@ -206,7 +206,7 @@ The following matrix compares the behavior currently implemented in this reposit
 | Dynamic user profile | Application-wide configurable attributes with validation, requiredness, type checks, pattern/length rules, and optional multi-value support; managed under Settings and rendered in admin/account profile forms | Configurable user-profile attributes with validation and requiredness | Implemented for the single-issuer application | Keep the schema application-wide while realms are intentionally out of scope; add localized labels, token mappers, and per-realm ownership only if realm support is introduced. |
 | Password and account recovery | Password policy, history, expiry, email verification, single-use reset tokens, configurable re-authentication age for email changes, administrator-managed reset-token lifetime/resend cooldown, and none/if-configured/required OTP reset policy | Password credentials and required actions are configured per realm; the reset-credentials authentication flow can be composed from executions such as reset-password and OTP, with realm-level required-action and token behavior[^8] | Partial | Add a durable admin-managed reset-credential execution flow and broader integration coverage before claiming full Keycloak parity. |
 | TOTP and recovery codes | TOTP enrollment/verification, required TOTP, hashed recovery codes, WebAuthn/passkey enrollment and credential verification, and required passkeys | OTP/WebAuthn credentials and configurable required actions | Partial | TOTP and primary passkey sign-in are implemented, including OTP fallback, account/admin credential inventory, device metadata, label management, deletion, and both standard and passwordless required actions, plus configurable WebAuthn mediation and ceremony policy. Broader Keycloak authentication-flow composition remains outside this sample. |
-| User impersonation | Admin-only, single-use ticket flow | Admin impersonation permission and console action | Partial | Keep the flow and add resource-scoped permission plus audit detail. |
+| User impersonation | Admin-only or dedicated impersonation authority, single-use ticket flow, console action, and actor/target audit details | Admin impersonation permission and console action | Implemented / Partial | The Keycloak-equivalent dedicated impersonation authority and audit context are implemented. Resource-specific user scopes remain part of the future fine-grained permission model. |
 | Groups | CRUD, membership, hierarchy, parent role inheritance, multi-valued attributes, default groups, configurable group claims, and group-scoped permissions | Hierarchical groups, attributes, role mappings, default groups, membership permissions[^6] | Implemented / Partial | Preserve the single-issuer boundary; add broader Keycloak protocol mapper types and realm boundaries later. |
 | Group claims | Configurable group membership mapper on client scopes with claim name and full-path options | Group membership mapper is configurable per client/client scope | Implemented / Partial | Add the remaining protocol mapper types and token-preview tooling. |
 | Realm roles | Global application authorities | Realm-level roles with direct, group, and composite assignment | Partial | Add realm ownership and composite-role relationships. |
@@ -251,6 +251,7 @@ The application's role constants are intentionally application-facing. They shou
 | `ROLE_ADMIN` | Full application administration | `admin` or `realm-admin` | Current role is global and single-issuer. |
 | `ROLE_USER_VIEWER` | Read user resources | `view-users` | Does not distinguish query from detail view. |
 | `ROLE_USER_MANAGER` | Mutate users and related membership | `manage-users` | Lacks fine-grained group/member and role-mapping scopes. |
+| `ROLE_USER_IMPERSONATOR` | Impersonate eligible non-administrator users | `impersonation` | Current scope is single-issuer and global; resource-specific user scopes remain future work. |
 | `ROLE_CLIENT_VIEWER` | Read client resources | `view-clients` | Does not expose client-scope/resource boundaries. |
 | `ROLE_CLIENT_MANAGER` | Mutate clients | `manage-clients` | Does not include service-account, mapper, or client-role policy. |
 | `ROLE_EVENT_VIEWER` | Read event settings/history | `view-events` | Current stream is administrative only. |
@@ -400,6 +401,48 @@ Each tab uses the same card and form grammar:
 - inline spinner without changing the button label;
 - localized success/error alert outside or above the card;
 - viewer access renders disabled controls and no Save action.
+
+### Login and registration CAPTCHA
+
+The Login Settings screen includes a Keycloak-style CAPTCHA policy card for the public
+registration and login flows. The two flows have independent enable switches, while the
+provider and public/verification credentials are shared so administrators do not have to
+configure the same site key twice:
+
+```text
+Login settings / CAPTCHA
+├── Require CAPTCHA during registration       [switch]
+├── Require CAPTCHA during login              [switch]
+├── Provider                                  [Google reCAPTCHA | reCAPTCHA Enterprise]
+├── Site key                                  [                    ]
+├── Secret/API key                            [                    ]
+├── Registration action                       [register]
+├── Login action                              [login]
+├── Registration v3 and score threshold       [switch] [0.70]
+├── Login v3 and score threshold              [switch] [0.70]
+└── Use recaptcha.net                         [switch]
+```
+
+The administrator API is `GET/PUT /api/admin/settings/registration-captcha`. Public
+configuration is exposed through `GET /api/auth/registration-captcha` and
+`GET /api/auth/login-captcha`; these responses contain only the enabled flag, provider,
+site key, action, version, and host selection. Secret/API key values are encrypted at rest
+and are never returned to the browser. The default policy keeps both flows disabled.
+
+For registration, the browser obtains a v2 checkbox token or a v3 action token before
+submitting the account form. For login, the same client-side token flow is followed by a
+server-side `POST /login` filter that verifies the token before Spring Security evaluates
+the username and password. Missing, expired, invalid, or low-score tokens stop the flow
+and return the localized CAPTCHA error. A successful v2 checkbox hides the widget while
+retaining the token for the form submission; an expired token makes the widget available
+again. The Enterprise path validates the project ID/API key and uses the Enterprise score
+and action policy.
+
+This is an application-level parity extension around Keycloak's registration protection:
+the login switch is explicit because login CAPTCHA is not assumed to be enabled for every
+realm. The setting remains backend-authoritative; hiding or disabling the UI never bypasses
+server verification. Focused service/filter tests and HTTP tests cover disabled defaults,
+secret redaction, token verification, redirect behavior, and successful filter continuation.
 
 ### User Profile Settings
 
@@ -620,6 +663,7 @@ Liquibase changelogs, CSV seed data, and i18n bundles must remain available to n
 
 ### Quality and security
 
+- [x] Registration and login CAPTCHA settings have separate enablement, encrypted provider credentials, v2/v3 action and score policies, public configuration endpoints, server-side token verification, localized failure handling, and focused unit/HTTP coverage.
 - [ ] Controller, service, authorization, persistence, and UI tests cover viewer and manager decisions.
 - [ ] OpenAPI documentation reflects the actual request and response contracts.
 - [ ] Liquibase migrations, cache regions, native hints, localized strings, and audit behavior are verified.

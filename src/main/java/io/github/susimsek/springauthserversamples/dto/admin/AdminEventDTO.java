@@ -31,6 +31,11 @@ public record AdminEventDTO(
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 String targetId,
         @Schema(
+                        description = "Optional structured context for the audit event.",
+                        example = "actor=admin;targetUsername=user;result=success",
+                        requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+                String details,
+        @Schema(
                         description = "Time at which the event occurred.",
                         example = "2026-09-04T08:30:00Z",
                         format = "date-time",

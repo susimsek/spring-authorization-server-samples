@@ -110,4 +110,28 @@ class SocialProviderLogoutSuccessHandlerTest {
                 .sendRedirect(
                         "https://www.linkedin.com/m/logout?redirect_uri=http%3A%2F%2Flocalhost%3A9090%2Faccount%2F");
     }
+
+    @Test
+    void startsGoogleLogoutWithContinueParameterWhenNoIssuerIsConfigured() throws Exception {
+        SocialProviderSettingsService settings = mock(SocialProviderSettingsService.class);
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        HttpSession session = mock(HttpSession.class);
+        Authentication principal =
+                UsernamePasswordAuthenticationToken.authenticated("ada", null, java.util.List.of());
+        OidcLogoutAuthenticationToken logout =
+                new OidcLogoutAuthenticationToken(
+                        "hint", principal, "account-console", null, "/account", null);
+        when(request.getSession(false)).thenReturn(session);
+        when(session.getAttribute(SocialLoginService.SOCIAL_LOGIN_PROVIDER)).thenReturn("google");
+        when(settings.provider("google"))
+                .thenReturn(
+                        new SocialProviderSettingsService.ProviderCredentials(
+                                "google", "id", "secret"));
+
+        new SocialProviderLogoutSuccessHandler(settings)
+                .onAuthenticationSuccess(request, response, logout);
+
+        verify(response).sendRedirect("https://accounts.google.com/Logout?continue=%2Faccount");
+    }
 }

@@ -26,6 +26,7 @@ class AdminWhoAmIControllerTest {
                 .containsEntry("manageClients", true)
                 .containsEntry("viewUsers", true)
                 .containsEntry("manageUsers", true)
+                .containsEntry("impersonateUsers", true)
                 .containsEntry("viewSessions", true)
                 .containsEntry("manageSessions", true)
                 .containsEntry("viewConsents", true)
@@ -51,6 +52,7 @@ class AdminWhoAmIControllerTest {
                 .containsEntry("manageClients", false)
                 .containsEntry("viewUsers", false)
                 .containsEntry("manageUsers", false)
+                .containsEntry("impersonateUsers", false)
                 .containsEntry("viewSessions", false)
                 .containsEntry("manageSessions", false)
                 .containsEntry("viewConsents", false)
@@ -86,5 +88,20 @@ class AdminWhoAmIControllerTest {
         assertThat(response.access())
                 .containsEntry("viewEvents", true)
                 .containsEntry("manageEvents", true);
+    }
+
+    @Test
+    void exposesImpersonationAccessSeparatelyFromUserManagement() {
+        var authentication =
+                UsernamePasswordAuthenticationToken.authenticated(
+                        "operator",
+                        "ignored",
+                        List.of(new SimpleGrantedAuthority("ROLE_USER_IMPERSONATOR")));
+
+        var response = controller.whoAmI(authentication);
+
+        assertThat(response.access())
+                .containsEntry("impersonateUsers", true)
+                .containsEntry("manageUsers", false);
     }
 }

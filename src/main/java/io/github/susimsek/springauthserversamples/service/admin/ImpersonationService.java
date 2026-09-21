@@ -18,6 +18,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,7 +38,9 @@ public class ImpersonationService {
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Transactional
-    public AdminImpersonationDTO issue(Long targetId, String actorUsername) {
+    public AdminImpersonationDTO issue(Long targetId, Authentication actor) {
+        requireCanImpersonate(actor);
+        String actorUsername = actor.getName();
         UserEntity target =
                 userRepository
                         .findById(targetId)
@@ -66,13 +70,23 @@ public class ImpersonationService {
                         issuedAt,
                         issuedAt.plus(TICKET_LIFESPAN));
         ticketRepository.save(ticket);
-        auditEventService.record("user.impersonation.started", "user", targetId.toString());
+        auditEventService.record(
+                "user.impersonation.started",
+                "user",
+                targetId.toString(),
+                "actor="
+                        + actorUsername
+                        + ";targetUsername="
+                        + target.getUsername()
+                        + ";result=success");
         return adminImpersonationMapper.toDTO(
                 "/impersonation/accept", target.getUsername(), rawTicket);
     }
 
     @Transactional
-    public UserEntity consume(String rawTicket, String actorUsername) {
+    public UserEntity consume(String rawTicket, Authentication actor) {
+        requireCanImpersonate(actor);
+        String actorUsername = actor.getName();
         if (rawTicket == null || rawTicket.isBlank()) {
             throw ApiException.badRequest(
                     ApiErrorCode.INVALID_REQUEST, "Impersonation ticket is required");
@@ -96,6 +110,21 @@ public class ImpersonationService {
         target.getId();
         target.getUsername();
         return target;
+    }
+
+    private static void requireCanImpersonate(Authentication actor) {
+        if (actor == null
+                || actor.getAuthorities().stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .noneMatch(
+                                authority ->
+                                        AuthoritiesConstants.ADMIN.equals(authority)
+                                                || AuthoritiesConstants.USER_IMPERSONATOR.equals(
+                                                        authority))) {
+            throw ApiException.forbidden(
+                    ApiErrorCode.FORBIDDEN,
+                    "The impersonation permission is required to impersonate users");
+        }
     }
 
     private static String hash(String value) {

@@ -72,6 +72,25 @@ type Settings = {
   recoveryCodeWarningThreshold: number;
 };
 
+type CaptchaSettings = {
+  enabled: boolean;
+  provider: "recaptcha" | "enterprise";
+  siteKey: string;
+  projectId: string;
+  action: string;
+  recaptchaV3: boolean;
+  scoreThreshold: number;
+  useRecaptchaNet: boolean;
+  secretConfigured: boolean;
+  apiKeyConfigured: boolean;
+  secretKey: string;
+  apiKey: string;
+  loginEnabled: boolean;
+  loginAction: string;
+  loginRecaptchaV3: boolean;
+  loginScoreThreshold: number;
+};
+
 type WebAuthnPolicy = {
   rpName: string;
   rpId: string;
@@ -160,6 +179,25 @@ const defaultSettings: Settings = {
   microsoftLoginEnabled: false,
 };
 
+const defaultCaptchaSettings: CaptchaSettings = {
+  enabled: false,
+  provider: "recaptcha",
+  siteKey: "",
+  projectId: "",
+  action: "register",
+  recaptchaV3: false,
+  scoreThreshold: 0.7,
+  useRecaptchaNet: false,
+  secretConfigured: false,
+  apiKeyConfigured: false,
+  secretKey: "",
+  apiKey: "",
+  loginEnabled: false,
+  loginAction: "login",
+  loginRecaptchaV3: false,
+  loginScoreThreshold: 0.7,
+};
+
 type SocialProviderSetting = {
   provider: string;
   alias: string;
@@ -206,6 +244,9 @@ export default function LoginSettingsPage({
   const [error, setError] = useState(false);
   const [socialProvidersLoaded, setSocialProvidersLoaded] = useState(false);
   const [socialProviderTab, setSocialProviderTab] = useState("");
+  const [captcha, setCaptcha] = useState<CaptchaSettings>(defaultCaptchaSettings);
+  const [captchaLoaded, setCaptchaLoaded] = useState(false);
+  const [captchaSubmitting, setCaptchaSubmitting] = useState(false);
   const webAuthnPolicySchema = () =>
     z.object({
       rpName: z.string().trim().min(1, validation.required).max(255),
@@ -342,6 +383,19 @@ export default function LoginSettingsPage({
       })
       .catch(() => setError(true));
   }, [accessToken, reset]);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    adminRequest<Omit<CaptchaSettings, "secretKey" | "apiKey">>(accessToken, {
+      url: "/api/admin/settings/registration-captcha",
+    })
+      .then((response) => {
+        if (response.status >= 300) throw new Error();
+        setCaptcha({ ...defaultCaptchaSettings, ...response.data });
+        setCaptchaLoaded(true);
+      })
+      .catch(() => setError(true));
+  }, [accessToken]);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -484,6 +538,44 @@ export default function LoginSettingsPage({
     }
   });
 
+  const saveCaptcha = async () => {
+    if (!accessToken) return;
+    setError(false);
+    setCaptchaSubmitting(true);
+    try {
+      const response = await adminRequest<Omit<CaptchaSettings, "secretKey" | "apiKey">>(
+        accessToken,
+        {
+          method: "PUT",
+          url: "/api/admin/settings/registration-captcha",
+          data: {
+            enabled: captcha.enabled,
+            provider: captcha.provider,
+            siteKey: captcha.siteKey,
+            secretKey: captcha.secretKey,
+            projectId: captcha.projectId,
+            apiKey: captcha.apiKey,
+            action: captcha.action,
+            recaptchaV3: captcha.recaptchaV3,
+            scoreThreshold: captcha.scoreThreshold,
+            useRecaptchaNet: captcha.useRecaptchaNet,
+            loginEnabled: captcha.loginEnabled,
+            loginAction: captcha.loginAction,
+            loginRecaptchaV3: captcha.loginRecaptchaV3,
+            loginScoreThreshold: captcha.loginScoreThreshold,
+          },
+        },
+      );
+      if (response.status >= 300) throw new Error();
+      setCaptcha({ ...defaultCaptchaSettings, ...response.data });
+      alerts.addAlert(copy.captchaSaved);
+    } catch {
+      alerts.addError(copy.captchaError);
+    } finally {
+      setCaptchaSubmitting(false);
+    }
+  };
+
   const providerLabel = (provider: string) => provider.charAt(0).toUpperCase() + provider.slice(1);
 
   return (
@@ -506,6 +598,222 @@ export default function LoginSettingsPage({
                   label={copy.userRegistration}
                   {...register("userRegistration")}
                 />
+                {captchaLoaded && (
+                  <Card className="admin-panel-card mb-4">
+                    <Card.Body>
+                      <h3 className="h6">{copy.captchaTitle}</h3>
+                      <p className="text-body-secondary small">{copy.captchaHelp}</p>
+                      <Form.Check
+                        className="mb-3"
+                        type="switch"
+                        label={copy.captchaEnabled}
+                        checked={captcha.enabled}
+                        onChange={(event) =>
+                          setCaptcha((current) => ({
+                            ...current,
+                            enabled: event.target.checked,
+                          }))
+                        }
+                      />
+                      <Form.Check
+                        className="mb-3"
+                        type="switch"
+                        label={copy.captchaLoginEnabled}
+                        checked={captcha.loginEnabled}
+                        onChange={(event) =>
+                          setCaptcha((current) => ({
+                            ...current,
+                            loginEnabled: event.target.checked,
+                          }))
+                        }
+                      />
+                      <div className="d-grid gap-3">
+                        <Form.Group controlId="registration-captcha-provider">
+                          <Form.Label>{copy.captchaProvider}</Form.Label>
+                          <Form.Select
+                            value={captcha.provider}
+                            onChange={(event) =>
+                              setCaptcha((current) => ({
+                                ...current,
+                                provider: event.target.value as CaptchaSettings["provider"],
+                              }))
+                            }
+                          >
+                            <option value="recaptcha">{copy.captchaProviderRecaptcha}</option>
+                            <option value="enterprise">{copy.captchaProviderEnterprise}</option>
+                          </Form.Select>
+                        </Form.Group>
+                        <Form.Group controlId="registration-captcha-site-key">
+                          <Form.Label>{copy.captchaSiteKey}</Form.Label>
+                          <Form.Control
+                            value={captcha.siteKey}
+                            onChange={(event) =>
+                              setCaptcha((current) => ({
+                                ...current,
+                                siteKey: event.target.value,
+                              }))
+                            }
+                          />
+                        </Form.Group>
+                        {captcha.provider === "enterprise" && (
+                          <Form.Group controlId="registration-captcha-project-id">
+                            <Form.Label>{copy.captchaProjectId}</Form.Label>
+                            <Form.Control
+                              value={captcha.projectId}
+                              onChange={(event) =>
+                                setCaptcha((current) => ({
+                                  ...current,
+                                  projectId: event.target.value,
+                                }))
+                              }
+                            />
+                          </Form.Group>
+                        )}
+                        <Form.Group controlId="registration-captcha-secret">
+                          <Form.Label>
+                            {captcha.provider === "enterprise"
+                              ? copy.captchaApiKey
+                              : copy.captchaSecret}
+                          </Form.Label>
+                          <Form.Control
+                            type="password"
+                            autoComplete="new-password"
+                            placeholder={
+                              captcha.provider === "enterprise"
+                                ? copy.captchaKeyPlaceholder
+                                : copy.captchaSecretPlaceholder
+                            }
+                            value={
+                              captcha.provider === "enterprise" ? captcha.apiKey : captcha.secretKey
+                            }
+                            onChange={(event) =>
+                              setCaptcha((current) =>
+                                current.provider === "enterprise"
+                                  ? { ...current, apiKey: event.target.value }
+                                  : { ...current, secretKey: event.target.value },
+                              )
+                            }
+                          />
+                          {(captcha.provider === "enterprise"
+                            ? captcha.apiKeyConfigured
+                            : captcha.secretConfigured) && (
+                            <Form.Text className="text-success">
+                              {copy.captchaKeyConfigured}
+                            </Form.Text>
+                          )}
+                        </Form.Group>
+                        <Form.Group controlId="registration-captcha-action">
+                          <Form.Label>{copy.captchaAction}</Form.Label>
+                          <Form.Control
+                            value={captcha.action}
+                            onChange={(event) =>
+                              setCaptcha((current) => ({
+                                ...current,
+                                action: event.target.value,
+                              }))
+                            }
+                          />
+                        </Form.Group>
+                        <Form.Group controlId="login-captcha-action">
+                          <Form.Label>{copy.captchaLoginAction}</Form.Label>
+                          <Form.Control
+                            value={captcha.loginAction}
+                            onChange={(event) =>
+                              setCaptcha((current) => ({
+                                ...current,
+                                loginAction: event.target.value,
+                              }))
+                            }
+                          />
+                        </Form.Group>
+                        <Form.Check
+                          type="switch"
+                          label={copy.captchaV3}
+                          checked={captcha.recaptchaV3}
+                          onChange={(event) =>
+                            setCaptcha((current) => ({
+                              ...current,
+                              recaptchaV3: event.target.checked,
+                            }))
+                          }
+                        />
+                        {captcha.recaptchaV3 && (
+                          <Form.Group controlId="registration-captcha-score">
+                            <Form.Label>{copy.captchaScoreThreshold}</Form.Label>
+                            <Form.Control
+                              type="number"
+                              min="0"
+                              max="1"
+                              step="0.05"
+                              value={captcha.scoreThreshold}
+                              onChange={(event) =>
+                                setCaptcha((current) => ({
+                                  ...current,
+                                  scoreThreshold: Number(event.target.value),
+                                }))
+                              }
+                            />
+                          </Form.Group>
+                        )}
+                        <Form.Check
+                          type="switch"
+                          label={copy.captchaLoginV3}
+                          checked={captcha.loginRecaptchaV3}
+                          onChange={(event) =>
+                            setCaptcha((current) => ({
+                              ...current,
+                              loginRecaptchaV3: event.target.checked,
+                            }))
+                          }
+                        />
+                        {(captcha.loginRecaptchaV3 || captcha.provider === "enterprise") && (
+                          <Form.Group controlId="login-captcha-score">
+                            <Form.Label>{copy.captchaLoginScoreThreshold}</Form.Label>
+                            <Form.Control
+                              type="number"
+                              min="0"
+                              max="1"
+                              step="0.05"
+                              value={captcha.loginScoreThreshold}
+                              onChange={(event) =>
+                                setCaptcha((current) => ({
+                                  ...current,
+                                  loginScoreThreshold: Number(event.target.value),
+                                }))
+                              }
+                            />
+                          </Form.Group>
+                        )}
+                        <Form.Check
+                          type="switch"
+                          label={copy.captchaUseRecaptchaNet}
+                          checked={captcha.useRecaptchaNet}
+                          onChange={(event) =>
+                            setCaptcha((current) => ({
+                              ...current,
+                              useRecaptchaNet: event.target.checked,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="admin-form-actions mt-4">
+                        <Button type="button" disabled={captchaSubmitting} onClick={saveCaptcha}>
+                          {captchaSubmitting ? (
+                            <Spinner
+                              animation="border"
+                              aria-hidden="true"
+                              className="me-2"
+                              size="sm"
+                            />
+                          ) : (
+                            <AdminActionIcon action="save" />
+                          )}
+                          {copy.captchaSave}
+                        </Button>
+                      </div>
+                    </Card.Body>
+                  </Card>
+                )}
                 <Form.Check
                   className="mb-4"
                   type="switch"

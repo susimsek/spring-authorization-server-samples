@@ -142,7 +142,9 @@ public class AdminApiSecurityConfig {
                                         .hasAuthority(AuthoritiesConstants.ADMIN)
                                         .requestMatchers(
                                                 HttpMethod.POST, "/api/admin/users/*/impersonation")
-                                        .hasAuthority(AuthoritiesConstants.ADMIN)
+                                        .hasAnyAuthority(
+                                                AuthoritiesConstants.ADMIN,
+                                                AuthoritiesConstants.USER_IMPERSONATOR)
                                         .requestMatchers(HttpMethod.PUT, "/api/admin/users/**")
                                         .hasAnyAuthority(
                                                 AuthoritiesConstants.ADMIN,

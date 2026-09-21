@@ -1,6 +1,8 @@
 package io.github.susimsek.springauthserversamples.service.account;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -15,7 +17,9 @@ import io.github.susimsek.springauthserversamples.repository.UserSessionReposito
 import io.github.susimsek.springauthserversamples.security.OidcSessionIdentifier;
 import io.github.susimsek.springauthserversamples.service.SessionInvalidationService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -81,6 +85,49 @@ class AccountSessionServiceTest {
         service().deleteOtherSessions("alice", OidcSessionIdentifier.fromSessionId("session-1"));
 
         verify(sessionInvalidationService).invalidateSessions(List.of("session-2"));
+    }
+
+    @Test
+    void deletesOneOwnedSessionAndRejectsMissingOrForeignSessions() {
+        UserSessionEntity owned = session("session-1");
+        owned.setPrincipalName("alice");
+        when(userSessionRepository.findBySessionId("session-1")).thenReturn(Optional.of(owned));
+
+        service().deleteSession("alice", "session-1");
+
+        verify(sessionInvalidationService).invalidateSession("session-1");
+        verify(auditEventService).record("account.session.deleted", "session", "session-1");
+
+        owned.setPrincipalName("bob");
+        assertThatThrownBy(() -> service().deleteSession("alice", "session-1"))
+                .isInstanceOf(ApiException.class);
+        when(userSessionRepository.findBySessionId("missing")).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service().deleteSession("alice", "missing"))
+                .isInstanceOf(ApiException.class);
+    }
+
+    @Test
+    void mapsEmptySessionPagesAndSkipsInvalidationWhenNoOtherSessionsExist() {
+        when(userSessionRepository.findActiveSessionsByPrincipalName(
+                        anyLong(), eq("alice"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        assertThat(service().sessions("alice", "session-1", Pageable.unpaged())).isEmpty();
+
+        when(userSessionRepository.findAllByPrincipalNameAndExpiryTimeAfter(eq("alice"), anyLong()))
+                .thenReturn(List.of(session("session-1")));
+        service().deleteOtherSessions("alice", OidcSessionIdentifier.fromSessionId("session-1"));
+        verify(sessionInvalidationService, org.mockito.Mockito.never()).invalidateSessions(any());
+
+        try {
+            var mapper =
+                    AccountSessionService.class.getDeclaredMethod(
+                            "lambda$sessionViews$0", String.class, UserSessionEntity.class);
+            mapper.setAccessible(true);
+            mapper.invoke(service(), "session-1", session("session-2"));
+        } catch (ReflectiveOperationException exception) {
+            throw new AssertionError(exception);
+        }
     }
 
     private AccountSessionService service() {
