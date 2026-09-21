@@ -13,8 +13,11 @@ import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminUserBulkAction;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminUserDTO;
+import io.github.susimsek.springauthserversamples.mapper.AdminGroupMapper;
+import io.github.susimsek.springauthserversamples.mapper.AdminUserMapper;
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
 import io.github.susimsek.springauthserversamples.repository.GroupRepository;
+import io.github.susimsek.springauthserversamples.repository.RecoveryCodeRepository;
 import io.github.susimsek.springauthserversamples.repository.UserAvatarRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
@@ -24,11 +27,13 @@ import io.github.susimsek.springauthserversamples.service.security.AccountLockSe
 import io.github.susimsek.springauthserversamples.service.security.PasswordService;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mapstruct.factory.Mappers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
@@ -132,6 +137,78 @@ class AdminUserServiceTest {
         assertThat(created.avatarUrl()).isNull();
         assertThat(created.authorities()).containsExactly(AuthoritiesConstants.USER);
         verify(adminAuditEventService).record("user.created", "user", created.id().toString());
+    }
+
+    @Test
+    void createsTemporaryUserWithNormalizedProfileAndDefaultGroups() {
+        UserEntity administrator = user(1L, "administrator", AuthoritiesConstants.ADMIN);
+        GroupEntity defaultGroup = new GroupEntity();
+        defaultGroup.setId(20L);
+        defaultGroup.setName("default");
+        when(userRepository.findByUsername("administrator")).thenReturn(Optional.of(administrator));
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.empty());
+        when(userRepository.findByEmailIgnoreCase("alice@example.com"))
+                .thenReturn(Optional.empty());
+        when(authorityRepository.findByNameIn(Set.of(AuthoritiesConstants.USER)))
+                .thenReturn(List.of(authority(1L, AuthoritiesConstants.USER)));
+        when(groupRepository.findByDefaultGroupTrueOrderByNameAsc())
+                .thenReturn(List.of(defaultGroup));
+        org.mockito.Mockito.doAnswer(
+                        invocation -> {
+                            invocation.<UserEntity>getArgument(0).setPassword("temporary-password");
+                            return null;
+                        })
+                .when(passwordService)
+                .setTemporaryPassword(
+                        any(UserEntity.class), org.mockito.Mockito.eq("password-123"));
+        when(userRepository.save(any(UserEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            UserEntity saved = invocation.getArgument(0);
+                            saved.setId(99L);
+                            return saved;
+                        });
+
+        AdminUserDTO created =
+                service()
+                        .createUser(
+                                "alice",
+                                " Alice ",
+                                " Smith ",
+                                " ALICE@EXAMPLE.COM ",
+                                false,
+                                "password-123",
+                                true,
+                                true,
+                                Set.of(AuthoritiesConstants.USER),
+                                "administrator");
+
+        assertThat(created.username()).isEqualTo("alice");
+        assertThat(created.firstName()).isEqualTo("Alice");
+        assertThat(created.lastName()).isEqualTo("Smith");
+        assertThat(created.email()).isEqualTo("alice@example.com");
+        verify(passwordService)
+                .setTemporaryPassword(
+                        any(UserEntity.class), org.mockito.Mockito.eq("password-123"));
+        verify(userRepository).save(any(UserEntity.class));
+    }
+
+    @Test
+    void entersTheShortProfileCreateOverload() {
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .createUser(
+                                                " ",
+                                                "First",
+                                                "Last",
+                                                "alice@example.com",
+                                                true,
+                                                "password-123",
+                                                true,
+                                                Set.of(),
+                                                "administrator"))
+                .isInstanceOf(ApiException.class);
     }
 
     @Test
@@ -316,6 +393,28 @@ class AdminUserServiceTest {
     }
 
     @Test
+    void updateUserRejectsDuplicateEmail() {
+        UserEntity target = user(5L, "alice", AuthoritiesConstants.USER);
+        when(userRepository.findById(5L)).thenReturn(Optional.of(target));
+        when(userRepository.existsByEmailIgnoreCaseAndIdNot("taken@example.com", 5L))
+                .thenReturn(true);
+
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .updateUser(
+                                                5L,
+                                                "alice",
+                                                "taken@example.com",
+                                                false,
+                                                true,
+                                                Set.of(AuthoritiesConstants.USER),
+                                                "administrator"))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("Email is already registered");
+    }
+
+    @Test
     void userManagerCannotResetAnAdministratorsPassword() {
         UserEntity administrator = user(5L, "administrator", AuthoritiesConstants.ADMIN);
         UserEntity manager = user(6L, "manager", "ROLE_USER_MANAGER");
@@ -424,6 +523,33 @@ class AdminUserServiceTest {
         verify(userActionService).invalidateActions(5L);
         verify(userAccessInvalidationService).invalidate("alice");
         verify(adminAuditEventService).record("user.totp.reset", "user", "5");
+    }
+
+    @Test
+    void resetTotpDeletesRecoveryCodesWhenRepositoryIsAvailable() {
+        RecoveryCodeRepository recoveryCodeRepository =
+                org.mockito.Mockito.mock(RecoveryCodeRepository.class);
+        UserEntity target = user(5L, "alice", AuthoritiesConstants.USER);
+        UserEntity administrator = user(6L, "administrator", AuthoritiesConstants.ADMIN);
+        when(userRepository.findById(5L)).thenReturn(Optional.of(target));
+        when(userRepository.findByUsername("administrator")).thenReturn(Optional.of(administrator));
+
+        service(recoveryCodeRepository).resetTotp(5L, "administrator");
+
+        verify(recoveryCodeRepository).deleteByUserId(5L);
+    }
+
+    @Test
+    void unlockUserDelegatesToAccountLockServiceAndAudits() {
+        UserEntity target = user(5L, "alice", AuthoritiesConstants.USER);
+        UserEntity administrator = user(6L, "administrator", AuthoritiesConstants.ADMIN);
+        when(userRepository.findById(5L)).thenReturn(Optional.of(target));
+        when(userRepository.findByUsername("administrator")).thenReturn(Optional.of(administrator));
+
+        service().unlockUser(5L, "administrator");
+
+        verify(accountLockService).unlock(5L);
+        verify(adminAuditEventService).record("user.account.unlocked", "user", "5");
     }
 
     @Test
@@ -622,7 +748,142 @@ class AdminUserServiceTest {
                                 1));
     }
 
+    @Test
+    void groupsReturnsEmptyPageWithoutLoadingCounts() {
+        UserEntity target = user(5L, "alice", AuthoritiesConstants.USER);
+        UserEntity administrator = user(6L, "administrator", AuthoritiesConstants.ADMIN);
+        when(userRepository.findById(5L)).thenReturn(Optional.of(target));
+        when(userRepository.findByUsername("administrator")).thenReturn(Optional.of(administrator));
+        when(groupRepository.findByUserIdAndNameContainingIgnoreCase(5L, "", Pageable.ofSize(20)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        assertThat(service().groups(5L, null, Pageable.ofSize(20), "administrator").getContent())
+                .isEmpty();
+        verify(userRepository, never()).countUsersByGroupIdIn(any());
+    }
+
+    @Test
+    void assignsAndRemovesRolesWithAccessInvalidation() {
+        UserEntity target = user(5L, "alice", AuthoritiesConstants.USER);
+        UserEntity administrator = user(6L, "administrator", AuthoritiesConstants.ADMIN);
+        AuthorityEntity managerRole = authority(3L, "ROLE_USER_MANAGER");
+        target.getAuthorities().add(managerRole);
+        when(userRepository.findById(5L)).thenReturn(Optional.of(target));
+        when(userRepository.findByUsername("administrator")).thenReturn(Optional.of(administrator));
+        when(authorityRepository.findByName("ROLE_AUDITOR"))
+                .thenReturn(Optional.of(authority(4L, "ROLE_AUDITOR")));
+        when(userAvatarRepository.findVersionByUserId(5L)).thenReturn(Optional.empty());
+
+        service().assignRole(5L, "ROLE_AUDITOR", "administrator");
+        service().removeRole(5L, "ROLE_USER_MANAGER", "administrator");
+
+        verify(userAccessInvalidationService, org.mockito.Mockito.times(2)).invalidate("alice");
+        verify(adminAuditEventService).record("user.role.assigned", "user", "5");
+        verify(adminAuditEventService).record("user.role.removed", "user", "5");
+    }
+
+    @Test
+    void removingTheLastRoleRestoresTheDefaultUserRole() {
+        UserEntity target = user(5L, "alice", AuthoritiesConstants.USER);
+        UserEntity administrator = user(6L, "administrator", AuthoritiesConstants.ADMIN);
+        when(userRepository.findById(5L)).thenReturn(Optional.of(target));
+        when(userRepository.findByUsername("administrator")).thenReturn(Optional.of(administrator));
+        when(authorityRepository.findByNameIn(Set.of(AuthoritiesConstants.USER)))
+                .thenReturn(List.of(authority(1L, AuthoritiesConstants.USER)));
+        when(userAvatarRepository.findVersionByUserId(5L)).thenReturn(Optional.empty());
+
+        service().removeRole(5L, AuthoritiesConstants.USER, "administrator");
+
+        verify(userAccessInvalidationService).invalidate("alice");
+        verify(adminAuditEventService).record("user.role.removed", "user", "5");
+    }
+
+    @Test
+    void executesBulkEnableDisableAndDeleteOperations() {
+        UserEntity first = user(1L, "alice", AuthoritiesConstants.USER);
+        UserEntity second = user(2L, "bob", AuthoritiesConstants.USER);
+        UserEntity administrator = user(3L, "administrator", AuthoritiesConstants.ADMIN);
+        when(userRepository.findAllByIdIn(List.of(1L, 2L))).thenReturn(List.of(first, second));
+        when(userRepository.findByUsername("administrator")).thenReturn(Optional.of(administrator));
+
+        assertThat(
+                        service()
+                                .bulkOperate(
+                                        List.of(1L, 2L, 1L),
+                                        AdminUserBulkAction.ENABLE,
+                                        "administrator")
+                                .userCount())
+                .isEqualTo(2);
+        service().bulkOperate(List.of(1L, 2L), AdminUserBulkAction.DISABLE, "administrator");
+        service().bulkOperate(List.of(1L, 2L), AdminUserBulkAction.DELETE, "administrator");
+
+        verify(userRepository, org.mockito.Mockito.times(2)).delete(any(UserEntity.class));
+        verify(userAccessInvalidationService, org.mockito.Mockito.atLeast(4))
+                .invalidate(any(String.class));
+    }
+
+    @Test
+    void usesSearchUsersResultAndExecutesActionEmail() {
+        UserEntity target = user(5L, "alice", AuthoritiesConstants.USER);
+        UserEntity administrator = user(6L, "administrator", AuthoritiesConstants.ADMIN);
+        when(userRepository.searchUsers("", null, Pageable.unpaged()))
+                .thenReturn(new PageImpl<>(List.of(target)));
+        when(userAvatarRepository.findVersionsByUserIdIn(List.of(5L))).thenReturn(List.of());
+        when(userRepository.findById(5L)).thenReturn(Optional.of(target));
+        when(userRepository.findByUsername("administrator")).thenReturn(Optional.of(administrator));
+
+        assertThat(service().users(null, null, Pageable.unpaged()).getContent())
+                .singleElement()
+                .extracting(AdminUserDTO::username)
+                .isEqualTo("alice");
+        service()
+                .executeActionsEmail(
+                        5L,
+                        io.github.susimsek.springauthserversamples.domain.UserAction.VERIFY_EMAIL,
+                        600L,
+                        Locale.ENGLISH,
+                        "administrator");
+        verify(userActionService)
+                .executeActionsEmail(
+                        5L,
+                        io.github.susimsek.springauthserversamples.domain.UserAction.VERIFY_EMAIL,
+                        600L,
+                        Locale.ENGLISH);
+    }
+
+    @Test
+    void bulkOperationRejectsMissingAndCurrentUsers() {
+        UserEntity administrator = user(3L, "administrator", AuthoritiesConstants.ADMIN);
+        when(userRepository.findAllByIdIn(List.of(1L))).thenReturn(List.of());
+
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .bulkOperate(
+                                                List.of(1L),
+                                                AdminUserBulkAction.ENABLE,
+                                                "administrator"))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("One or more users were not found");
+
+        when(userRepository.findAllByIdIn(List.of(3L))).thenReturn(List.of(administrator));
+        when(userRepository.findByUsername("administrator")).thenReturn(Optional.of(administrator));
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .bulkOperate(
+                                                List.of(3L),
+                                                AdminUserBulkAction.DELETE,
+                                                "administrator"))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("You cannot disable or delete your own account");
+    }
+
     private AdminUserService service() {
+        return service(null);
+    }
+
+    private AdminUserService service(RecoveryCodeRepository recoveryCodeRepository) {
         return new AdminUserService(
                 userRepository,
                 groupRepository,
@@ -632,7 +893,10 @@ class AdminUserServiceTest {
                 accountLockService,
                 passwordService,
                 adminAuditEventService,
-                userActionService);
+                userActionService,
+                Mappers.getMapper(AdminUserMapper.class),
+                Mappers.getMapper(AdminGroupMapper.class),
+                recoveryCodeRepository);
     }
 
     private static AuthorityEntity authority(Long id, String role) {

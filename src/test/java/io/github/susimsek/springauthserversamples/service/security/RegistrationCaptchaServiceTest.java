@@ -4,10 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.http.HttpMethod;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
@@ -122,6 +124,214 @@ class RegistrationCaptchaServiceTest {
                                         "token",
                                         org.mockito.Mockito.mock(HttpServletRequest.class)))
                 .hasFieldOrPropertyWithValue("errorCodeValue", "captcha_failed");
+    }
+
+    @Test
+    void verifiesSuccessfulStandardV3ResponseWithoutRemoteAddress() {
+        RestClient.Builder restClientBuilder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restClientBuilder).build();
+        RestClient restClient = restClientBuilder.build();
+        server.expect(requestTo("https://www.recaptcha.net/recaptcha/api/siteverify"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(
+                        withSuccess(
+                                "{\"success\":true,\"score\":0.9,\"action\":\"register\"}",
+                                org.springframework.http.MediaType.APPLICATION_JSON));
+        RegistrationCaptchaService service =
+                new RegistrationCaptchaService(
+                        configuration(
+                                true,
+                                "recaptcha",
+                                "site-key",
+                                "secret",
+                                "",
+                                "",
+                                "register",
+                                true,
+                                0.7,
+                                true),
+                        restClient);
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getRemoteAddr()).thenReturn(" ");
+
+        service.verifyOrThrow("token", request);
+
+        assertThat(service.publicSettings().enabled()).isTrue();
+        assertThat(service.publicSettings().useRecaptchaNet()).isTrue();
+        server.verify();
+    }
+
+    @Test
+    void rejectsFailedStandardResponseAndCatchesRemoteErrors() {
+        RestClient.Builder restClientBuilder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restClientBuilder).build();
+        RestClient restClient = restClientBuilder.build();
+        server.expect(requestTo("https://www.google.com/recaptcha/api/siteverify"))
+                .andRespond(
+                        withSuccess(
+                                "{\"success\":true,\"score\":0.2,\"action\":\"other\"}",
+                                org.springframework.http.MediaType.APPLICATION_JSON));
+        RegistrationCaptchaService service =
+                new RegistrationCaptchaService(
+                        configuration(
+                                true,
+                                "recaptcha",
+                                "site-key",
+                                "secret",
+                                "",
+                                "",
+                                "register",
+                                true,
+                                0.7,
+                                false),
+                        restClient);
+
+        assertThatThrownBy(
+                        () ->
+                                service.verifyOrThrow(
+                                        "token", Mockito.mock(HttpServletRequest.class)))
+                .hasFieldOrPropertyWithValue("errorCodeValue", "captcha_failed");
+        server.verify();
+
+        RestClient.Builder errorBuilder = RestClient.builder();
+        MockRestServiceServer errorServer = MockRestServiceServer.bindTo(errorBuilder).build();
+        errorServer
+                .expect(requestTo("https://www.google.com/recaptcha/api/siteverify"))
+                .andRespond(withServerError());
+        RegistrationCaptchaService errorService =
+                new RegistrationCaptchaService(
+                        configuration(
+                                true,
+                                "recaptcha",
+                                "site-key",
+                                "secret",
+                                "",
+                                "",
+                                "register",
+                                false,
+                                0.7,
+                                false),
+                        errorBuilder.build());
+
+        assertThatThrownBy(
+                        () ->
+                                errorService.verifyOrThrow(
+                                        "token", Mockito.mock(HttpServletRequest.class)))
+                .hasFieldOrPropertyWithValue("errorCodeValue", "captcha_failed");
+        errorServer.verify();
+    }
+
+    @Test
+    void verifiesSuccessfulEnterpriseResponse() {
+        RestClient.Builder restClientBuilder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restClientBuilder).build();
+        RestClient restClient = restClientBuilder.build();
+        server.expect(
+                        requestTo(
+                                org.hamcrest.Matchers.containsString(
+                                        "recaptchaenterprise.googleapis.com")))
+                .andRespond(
+                        withSuccess(
+                                "{\"tokenProperties\":{\"valid\":true,\"action\":\"register\"},"
+                                        + "\"riskAnalysis\":{\"score\":0.95},"
+                                        + "\"event\":{\"expectedAction\":\"register\"}}",
+                                org.springframework.http.MediaType.APPLICATION_JSON));
+        RegistrationCaptchaService service =
+                new RegistrationCaptchaService(
+                        configuration(
+                                true,
+                                "enterprise",
+                                "site-key",
+                                "",
+                                "project",
+                                "api-key",
+                                "register",
+                                true,
+                                0.7,
+                                false),
+                        restClient);
+
+        service.verifyOrThrow("token", Mockito.mock(HttpServletRequest.class));
+
+        server.verify();
+    }
+
+    @Test
+    void rejectsInvalidCaptchaConfigurationBeforeCallingRemoteService() {
+        RegistrationCaptchaService invalidRecaptcha =
+                service(
+                        configuration(
+                                true,
+                                "recaptcha",
+                                "site-key",
+                                "secret",
+                                "",
+                                "",
+                                "bad action",
+                                true,
+                                1.2,
+                                false));
+        RegistrationCaptchaService invalidEnterprise =
+                service(
+                        configuration(
+                                true,
+                                "enterprise",
+                                "site-key",
+                                "",
+                                "project",
+                                "api-key",
+                                "bad action",
+                                false,
+                                -0.1,
+                                false));
+
+        assertThat(invalidRecaptcha.publicSettings().enabled()).isFalse();
+        assertThat(invalidEnterprise.publicSettings().enabled()).isFalse();
+        assertThatThrownBy(
+                        () ->
+                                invalidRecaptcha.verifyOrThrow(
+                                        "token", Mockito.mock(HttpServletRequest.class)))
+                .hasFieldOrPropertyWithValue("errorCodeValue", "captcha_failed");
+        assertThatThrownBy(
+                        () ->
+                                invalidEnterprise.verifyOrThrow(
+                                        "token", Mockito.mock(HttpServletRequest.class)))
+                .hasFieldOrPropertyWithValue("errorCodeValue", "captcha_failed");
+    }
+
+    @Test
+    void usesDynamicSettingsForRegistrationAndLoginEndpoints() {
+        RegistrationCaptchaSettingsService settingsService =
+                Mockito.mock(RegistrationCaptchaSettingsService.class);
+        RegistrationCaptchaConfiguration publicConfiguration =
+                configuration(
+                        true,
+                        "recaptcha",
+                        "site-key",
+                        "configured",
+                        "",
+                        "",
+                        "register",
+                        false,
+                        0.7,
+                        false);
+        RegistrationCaptchaConfiguration loginConfiguration =
+                configuration(false, "disabled", "", "", "", "", "login", false, 0.7, false);
+        Mockito.when(settingsService.publicConfiguration()).thenReturn(publicConfiguration);
+        Mockito.when(settingsService.loginPublicConfiguration()).thenReturn(loginConfiguration);
+        Mockito.when(settingsService.verificationConfiguration()).thenReturn(loginConfiguration);
+        Mockito.when(settingsService.loginVerificationConfiguration())
+                .thenReturn(loginConfiguration);
+        RegistrationCaptchaService service = new RegistrationCaptchaService(settingsService);
+
+        assertThat(service.publicSettings().enabled()).isTrue();
+        assertThat(service.publicLoginSettings().enabled()).isFalse();
+        service.verifyOrThrow(null, Mockito.mock(HttpServletRequest.class));
+        service.verifyLoginOrThrow(null, Mockito.mock(HttpServletRequest.class));
+        Mockito.verify(settingsService).publicConfiguration();
+        Mockito.verify(settingsService).loginPublicConfiguration();
+        Mockito.verify(settingsService).verificationConfiguration();
+        Mockito.verify(settingsService).loginVerificationConfiguration();
     }
 
     private static RegistrationCaptchaService service(

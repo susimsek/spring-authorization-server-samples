@@ -12,9 +12,13 @@ import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.dto.account.RecoveryCodesStatusDTO;
 import io.github.susimsek.springauthserversamples.service.LoginSettingsService;
 import io.github.susimsek.springauthserversamples.service.account.RecoveryCodeService;
+import io.github.susimsek.springauthserversamples.service.account.WebAuthnService;
 import io.github.susimsek.springauthserversamples.service.admin.UserAccessInvalidationService;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
+import io.github.susimsek.springauthserversamples.service.security.MfaBruteForceService;
+import io.github.susimsek.springauthserversamples.service.security.PasswordPolicyService;
+import io.github.susimsek.springauthserversamples.service.security.PasswordService;
 import io.github.susimsek.springauthserversamples.service.security.TotpService;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -171,5 +175,194 @@ class StandardRequiredActionHandlerTest {
 
         handler.completeStandard(user, "RECOVERY_CODES", Map.of("accepted", true));
         verify(recoveryCodes).status("alice");
+    }
+
+    @Test
+    void completesProfileAndConfirmationActions() {
+        StandardRequiredActionHandler handler = new StandardRequiredActionHandler(validator);
+        UserEntity user = new UserEntity();
+
+        handler.completeStandard(
+                user,
+                "UPDATE_PROFILE",
+                Map.of(
+                        "firstName",
+                        " Ada ",
+                        "lastName",
+                        " Lovelace ",
+                        "email",
+                        "ADA@EXAMPLE.TEST"));
+        handler.completeStandard(user, "TERMS_AND_CONDITIONS", Map.of("accepted", true));
+        handler.completeStandard(user, "DELETE_ACCOUNT", Map.of("confirmed", true));
+
+        assertThat(user.getFirstName()).isEqualTo("Ada");
+        assertThat(user.getLastName()).isEqualTo("Lovelace");
+        assertThat(user.getEmail()).isEqualTo("ada@example.test");
+        assertThat(user.isEmailVerified()).isFalse();
+    }
+
+    @Test
+    void reportsPendingStatesForStandardActions() {
+        LoginSettingsService settings = mock(LoginSettingsService.class);
+        PasswordPolicyService policy = mock(PasswordPolicyService.class);
+        WebAuthnService webAuthn = mock(WebAuthnService.class);
+        when(settings.isOtpRequired()).thenReturn(true);
+        when(policy.isExpired(org.mockito.ArgumentMatchers.any())).thenReturn(true);
+        when(webAuthn.hasCredential("alice")).thenReturn(false);
+        StandardRequiredActionHandler handler =
+                new StandardRequiredActionHandler(
+                        validator, policy, null, null, settings, null, null, null, webAuthn);
+        UserEntity user = new UserEntity();
+        user.setUsername("alice");
+        user.setPendingEmail("new@example.test");
+        RequiredActionDefinitionEntity definition = new RequiredActionDefinitionEntity();
+
+        definition.setActionKey("UPDATE_PROFILE");
+        assertThat(handler.isPending(user, definition, false)).isTrue();
+        user.setFirstName("Ada");
+        user.setLastName("Lovelace");
+        user.setEmail("ada@example.test");
+        assertThat(handler.isPending(user, definition, false)).isFalse();
+        definition.setActionKey("UPDATE_EMAIL");
+        assertThat(handler.isPending(user, definition, false)).isTrue();
+        definition.setActionKey("UPDATE_PASSWORD");
+        assertThat(handler.isPending(user, definition, false)).isTrue();
+        definition.setActionKey("CONFIGURE_TOTP");
+        assertThat(handler.isPending(user, definition, false)).isTrue();
+        definition.setActionKey("RECOVERY_CODES");
+        assertThat(handler.isPending(user, definition, false)).isTrue();
+        assertThat(handler.isPending(user, definition, true)).isFalse();
+        definition.setActionKey("CONFIGURE_PASSKEY");
+        assertThat(handler.isPending(user, definition, false)).isTrue();
+        definition.setActionKey("UNKNOWN");
+        assertThat(handler.isPending(user, definition, true)).isFalse();
+    }
+
+    @Test
+    void completesPasswordEmailAndPasskeyActions() {
+        PasswordService password = mock(PasswordService.class);
+        UserAccessInvalidationService invalidation = mock(UserAccessInvalidationService.class);
+        WebAuthnService webAuthn = mock(WebAuthnService.class);
+        when(webAuthn.hasCredential("alice")).thenReturn(true);
+        StandardRequiredActionHandler handler =
+                new StandardRequiredActionHandler(
+                        validator, null, password, invalidation, null, null, null, null, webAuthn);
+        UserEntity user = new UserEntity();
+        user.setUsername("alice");
+        user.setPendingEmail("new@example.test");
+
+        handler.completeStandard(user, "UPDATE_EMAIL", Map.of());
+        handler.completeStandard(user, "UPDATE_PASSWORD", Map.of("newPassword", "new-password"));
+        handler.completeStandard(user, "CONFIGURE_PASSKEY", Map.of(), "session-1");
+
+        verify(password).changePassword(user, "new-password");
+        verify(invalidation).invalidate("alice");
+        verify(invalidation).invalidateOtherSessions("alice", "session-1");
+    }
+
+    @Test
+    void rejectsUnsupportedAndUnconfirmedActions() {
+        StandardRequiredActionHandler handler = new StandardRequiredActionHandler(validator);
+        UserEntity user = new UserEntity();
+
+        assertThatThrownBy(() -> handler.complete(user, Map.of()))
+                .isInstanceOf(ApiException.class)
+                .satisfies(
+                        error ->
+                                assertThat(((ApiException) error).getErrorCode())
+                                        .isEqualTo(ApiErrorCode.ACTION_UNSUPPORTED));
+        assertThatThrownBy(() -> handler.completeStandard(user, "CUSTOM", Map.of()))
+                .isInstanceOf(ApiException.class);
+        assertThatThrownBy(() -> handler.completeStandard(user, "UPDATE_EMAIL", Map.of()))
+                .isInstanceOf(ApiException.class);
+        assertThatThrownBy(() -> handler.completeStandard(user, "UNKNOWN", Map.of()))
+                .isInstanceOf(ApiException.class);
+    }
+
+    @Test
+    void handlesTotpLockoutReuseAndRepeatedCounter() {
+        LoginSettingsService settings = mock(LoginSettingsService.class);
+        TotpService totp = mock(TotpService.class);
+        MfaBruteForceService bruteForce = mock(MfaBruteForceService.class);
+        when(settings.otpAlgorithm()).thenReturn("SHA1");
+        when(settings.otpDigits()).thenReturn(6);
+        when(settings.otpPeriodSeconds()).thenReturn(30);
+        when(settings.otpLookAheadWindow()).thenReturn(1);
+        when(settings.isOtpCodeReusable()).thenReturn(false);
+        when(bruteForce.isLocked("alice")).thenReturn(true, false);
+        when(totp.matchingCounter("SECRET", "123456", "SHA1", 6, 30, 1))
+                .thenReturn(OptionalLong.of(100L));
+        StandardRequiredActionHandler handler =
+                new StandardRequiredActionHandler(
+                        validator, null, null, null, settings, totp, null, bruteForce, null);
+        UserEntity user = new UserEntity();
+        user.setUsername("alice");
+        user.setTotpSecret("SECRET");
+        user.setTotpLastUsedCounter(100L);
+
+        assertThatThrownBy(
+                        () ->
+                                handler.completeStandard(
+                                        user, "CONFIGURE_TOTP", Map.of("code", "123456")))
+                .isInstanceOf(ApiException.class);
+        user.setTotpLastUsedCounter(99L);
+        handler.completeStandard(user, "CONFIGURE_TOTP", Map.of("code", "123456"));
+        verify(bruteForce).recordSuccess("alice");
+    }
+
+    @Test
+    void recordsTotpFailureWhenSecretOrCodeIsInvalid() {
+        LoginSettingsService settings = mock(LoginSettingsService.class);
+        TotpService totp = mock(TotpService.class);
+        MfaBruteForceService bruteForce = mock(MfaBruteForceService.class);
+        when(settings.otpAlgorithm()).thenReturn("SHA1");
+        when(settings.otpDigits()).thenReturn(6);
+        when(settings.otpPeriodSeconds()).thenReturn(30);
+        when(settings.otpLookAheadWindow()).thenReturn(1);
+        when(bruteForce.isLocked("alice")).thenReturn(false);
+        when(totp.matchingCounter("SECRET", "bad", "SHA1", 6, 30, 1))
+                .thenReturn(OptionalLong.empty());
+        StandardRequiredActionHandler handler =
+                new StandardRequiredActionHandler(
+                        validator, null, null, null, settings, totp, null, bruteForce, null);
+        UserEntity user = new UserEntity();
+        user.setUsername("alice");
+
+        assertThatThrownBy(
+                        () ->
+                                handler.completeStandard(
+                                        user, "CONFIGURE_TOTP", Map.of("code", "bad")))
+                .isInstanceOf(ApiException.class);
+        verify(bruteForce).recordFailure("alice");
+
+        user.setTotpSecret(null);
+        assertThatThrownBy(
+                        () ->
+                                handler.completeStandard(
+                                        user, "CONFIGURE_TOTP", Map.of("code", "bad")))
+                .isInstanceOf(ApiException.class);
+    }
+
+    @Test
+    void validatesRecoveryAndPasskeyCompletionRequirements() {
+        RecoveryCodeService recovery = mock(RecoveryCodeService.class);
+        WebAuthnService webAuthn = mock(WebAuthnService.class);
+        UserAccessInvalidationService invalidation = mock(UserAccessInvalidationService.class);
+        when(recovery.status("alice")).thenReturn(new RecoveryCodesStatusDTO(0));
+        when(webAuthn.hasCredential("alice")).thenReturn(false);
+        StandardRequiredActionHandler handler =
+                new StandardRequiredActionHandler(
+                        validator, null, null, invalidation, null, null, recovery, null, webAuthn);
+        UserEntity user = new UserEntity();
+        user.setUsername("alice");
+
+        assertThatThrownBy(
+                        () ->
+                                handler.completeStandard(
+                                        user, "RECOVERY_CODES", Map.of("accepted", true)))
+                .isInstanceOf(ApiException.class);
+        assertThatThrownBy(() -> handler.completeStandard(user, "CONFIGURE_PASSKEY", Map.of()))
+                .isInstanceOf(ApiException.class);
+        verify(invalidation, never()).invalidateOtherSessions("alice", null);
     }
 }

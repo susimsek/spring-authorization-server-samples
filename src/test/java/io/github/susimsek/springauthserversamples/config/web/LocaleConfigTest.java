@@ -26,6 +26,7 @@ class LocaleConfigTest {
 
     @Test
     void supportsAndNormalizesConfiguredLanguages() {
+        assertThat(new LocaleConfig(mock(LocalizationSettingsService.class))).isNotNull();
         assertThat(LocaleConfig.isSupported(Locale.forLanguageTag("TR"))).isTrue();
         assertThat(LocaleConfig.isSupported(Locale.GERMAN)).isFalse();
         assertThat(LocaleConfig.normalize(Locale.forLanguageTag("TR"))).isEqualTo(Locale.of("tr"));

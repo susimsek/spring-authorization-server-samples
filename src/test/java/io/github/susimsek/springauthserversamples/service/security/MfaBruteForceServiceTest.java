@@ -2,6 +2,7 @@ package io.github.susimsek.springauthserversamples.service.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -60,6 +61,39 @@ class MfaBruteForceServiceTest {
 
         assertThat(user.getMfaFailedAttemptCount()).isZero();
         assertThat(user.isMfaPermanentlyLocked()).isFalse();
+    }
+
+    @Test
+    void ignoresBlankDisabledMissingAndAlreadyLockedFailures() {
+        when(loginSettingsService.isBruteForceEnabled()).thenReturn(false);
+        service.recordFailure(" ");
+        service.recordFailure("alice");
+        verify(userRepository, never()).findForMfaUpdate("alice");
+
+        UserEntity locked = user();
+        locked.setMfaPermanentlyLocked(true);
+        when(loginSettingsService.isBruteForceEnabled()).thenReturn(true);
+        when(loginSettingsService.bruteForceMaxSecondaryFailures()).thenReturn(2);
+        when(userRepository.findForMfaUpdate("alice")).thenReturn(Optional.of(locked));
+        service.recordFailure("alice");
+        assertThat(locked.getMfaFailedAttemptCount()).isZero();
+    }
+
+    @Test
+    void resetsOnlyExistingUnlockedMfaState() {
+        UserEntity locked = user();
+        locked.setMfaPermanentlyLocked(true);
+        locked.setMfaFailedAttemptCount(4);
+        when(userRepository.findForMfaUpdate("alice")).thenReturn(Optional.of(locked));
+
+        service.recordSuccess("alice");
+        service.reset("alice");
+
+        assertThat(locked.getMfaFailedAttemptCount()).isZero();
+        assertThat(locked.isMfaPermanentlyLocked()).isFalse();
+        assertThat(service.isLocked(null)).isFalse();
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(locked));
+        assertThat(service.isLocked(" alice ")).isFalse();
     }
 
     private static UserEntity user() {

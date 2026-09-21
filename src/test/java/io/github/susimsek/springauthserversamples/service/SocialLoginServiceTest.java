@@ -13,12 +13,14 @@ import io.github.susimsek.springauthserversamples.config.security.SocialLoginPro
 import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
 import io.github.susimsek.springauthserversamples.domain.SocialIdentityEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
+import io.github.susimsek.springauthserversamples.dto.account.SocialLinkDTO;
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
 import io.github.susimsek.springauthserversamples.repository.SocialIdentityRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.security.AuthoritiesConstants;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
 import io.github.susimsek.springauthserversamples.service.admin.UserAccessInvalidationService;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -87,6 +89,19 @@ class SocialLoginServiceTest {
         assertThat(identityCaptor.getValue().getProvider()).isEqualTo("google");
         assertThat(identityCaptor.getValue().getSubject()).isEqualTo("google-subject");
         assertThat(identityCaptor.getValue().getUser()).isSameAs(created);
+    }
+
+    @Test
+    void rejectsNewSocialUserWhenTheDefaultAuthorityIsMissing() {
+        when(socialIdentityRepository.findByProviderAndSubject("google", "google-subject"))
+                .thenReturn(Optional.empty());
+        when(userRepository.findByEmailIgnoreCase("ada@example.test")).thenReturn(Optional.empty());
+        when(authorityRepository.findByName(AuthoritiesConstants.USER))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service().findOrCreate(authentication()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("The default user authority is not configured");
     }
 
     @Test
@@ -237,6 +252,114 @@ class SocialLoginServiceTest {
         assertThat(user.getEmail()).isEqualTo("ada@example.test");
         assertThat(user.getPictureUrl()).isEqualTo("https://images.example.test/ada.jpg");
         verify(userRepository).save(user);
+    }
+
+    @Test
+    void fallsBackToIdAndNormalizesEmailAndAvatarClaims() {
+        AuthorityEntity userRole = new AuthorityEntity(2L, AuthoritiesConstants.USER);
+        when(socialProviderSettingsService.provider("google"))
+                .thenReturn(
+                        new SocialProviderSettingsService.ProviderCredentials(
+                                "google",
+                                "google",
+                                "google-id",
+                                "google-secret",
+                                true,
+                                false,
+                                false,
+                                false,
+                                false,
+                                "id",
+                                false,
+                                false,
+                                0,
+                                "always"));
+        when(socialIdentityRepository.findByProviderAndSubject("google", "fallback-subject"))
+                .thenReturn(Optional.empty());
+        when(userRepository.findByEmailIgnoreCase("ada@example.test")).thenReturn(Optional.empty());
+        when(authorityRepository.findByName(AuthoritiesConstants.USER))
+                .thenReturn(Optional.of(userRole));
+        when(passwordEncoder.encode(anyString())).thenReturn("encoded-random-password");
+        when(userRepository.save(any(UserEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            UserEntity user = invocation.getArgument(0);
+                            user.setId(43L);
+                            return user;
+                        });
+
+        OAuth2AuthenticationToken token =
+                authentication(
+                        "google",
+                        Map.of(
+                                "sub",
+                                " ",
+                                "id",
+                                "fallback-subject",
+                                "email",
+                                "ADA@EXAMPLE.TEST",
+                                "email_verified",
+                                "false",
+                                "avatar_url",
+                                "https://images.example.test/avatar.png"));
+
+        service().findOrCreate(token);
+
+        ArgumentCaptor<UserEntity> userCaptor = ArgumentCaptor.forClass(UserEntity.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().getEmail()).isEqualTo("ada@example.test");
+        assertThat(userCaptor.getValue().isEmailVerified()).isFalse();
+        assertThat(userCaptor.getValue().getPictureUrl())
+                .isEqualTo("https://images.example.test/avatar.png");
+    }
+
+    @Test
+    void storesMappedClaimsAndWrapsMapperSerializationFailures() {
+        UserEntity user = new UserEntity();
+        user.setUsername("social_google_existing");
+        SocialIdentityEntity identity = new SocialIdentityEntity("google", "google-subject", user);
+        when(socialIdentityRepository.findByProviderAndSubject("google", "google-subject"))
+                .thenReturn(Optional.of(identity));
+        when(socialIdentityMapperService.apply(
+                        anyString(),
+                        any(),
+                        any(UserEntity.class),
+                        org.mockito.ArgumentMatchers.eq(false),
+                        org.mockito.ArgumentMatchers.eq(false),
+                        org.mockito.ArgumentMatchers.isNull()))
+                .thenReturn(Map.of("department", Map.of("value", "security")));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"department\":{}}");
+
+        assertThat(service().findOrCreate(authentication())).isEqualTo("social_google_existing");
+        assertThat(identity.getMappedClaims()).isEqualTo("{\"department\":{}}");
+
+        when(objectMapper.writeValueAsString(any()))
+                .thenThrow(org.mockito.Mockito.mock(tools.jackson.core.JacksonException.class));
+        assertThatThrownBy(() -> service().findOrCreate(authentication()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("claims could not be stored");
+    }
+
+    @Test
+    void ignoresUnsafeSocialPictures() {
+        UserEntity user = new UserEntity();
+        user.setUsername("social_google_existing");
+        when(socialIdentityRepository.findByProviderAndSubject("google", "google-subject"))
+                .thenReturn(
+                        Optional.of(new SocialIdentityEntity("google", "google-subject", user)));
+
+        assertThat(
+                        service()
+                                .findOrCreate(
+                                        authentication(
+                                                "google",
+                                                Map.of(
+                                                        "sub",
+                                                        "google-subject",
+                                                        "picture",
+                                                        "http://images.example.test/avatar.png"))))
+                .isEqualTo("social_google_existing");
+        verify(userRepository, never()).save(any(UserEntity.class));
     }
 
     @Test
@@ -517,6 +640,222 @@ class SocialLoginServiceTest {
                 .record("account.social_link.deleted", "social_identity", "ada:github");
     }
 
+    @Test
+    void exposesProviderPolicyFlagsAndCanonicalProviderChecks() {
+        when(socialProviderSettingsService.provider("google"))
+                .thenReturn(
+                        new SocialProviderSettingsService.ProviderCredentials(
+                                "google",
+                                "google",
+                                "google-id",
+                                "google-secret",
+                                true,
+                                true,
+                                false,
+                                true,
+                                true,
+                                "sub",
+                                false,
+                                false,
+                                10,
+                                "always"));
+
+        assertThat(service().requiresShortStateParameter("google")).isFalse();
+        assertThat(service().providerRequiresMfa("google")).isTrue();
+        assertThat(service().isLinkedInProvider("linkedin")).isTrue();
+        assertThat(service().isLinkedInProvider("unknown")).isFalse();
+        assertThat(service().requiresShortStateParameter("unknown")).isFalse();
+        assertThat(service().providerRequiresMfa("unknown")).isFalse();
+    }
+
+    @Test
+    void linksExistingAccountAfterProviderValidation() {
+        UserEntity existing = new UserEntity();
+        existing.setId(42L);
+        existing.setUsername("ada");
+        SocialIdentityEntity identity = new SocialIdentityEntity("github", "123", existing);
+        when(userRepository.findForLoginUpdate("ada")).thenReturn(Optional.of(existing));
+        when(socialIdentityRepository.findByProviderAndSubject("github", "123"))
+                .thenReturn(Optional.empty(), Optional.of(identity));
+        when(socialIdentityRepository.findAllByUserUsernameAndProvider("ada", "github"))
+                .thenReturn(java.util.List.of());
+
+        assertThat(service().linkExisting("ada", "github", authentication("github", "123")))
+                .isEqualTo("ada");
+        verify(socialIdentityRepository, org.mockito.Mockito.times(2))
+                .save(any(SocialIdentityEntity.class));
+    }
+
+    @Test
+    void rejectsLinkWhenTheLocalAccountOrPersistedIdentityCannotBeFound() {
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .linkPending(
+                                                "missing",
+                                                Map.of("provider", "github", "subject", "123")))
+                .isInstanceOf(OAuth2AuthenticationException.class)
+                .hasMessageContaining("local account could not be found");
+
+        UserEntity existing = new UserEntity();
+        existing.setId(42L);
+        existing.setUsername("ada");
+        when(userRepository.findForLoginUpdate("ada")).thenReturn(Optional.of(existing));
+        when(socialIdentityRepository.findByProviderAndSubject("github", "123"))
+                .thenReturn(Optional.empty());
+        when(socialIdentityRepository.findAllByUserUsernameAndProvider("ada", "github"))
+                .thenReturn(java.util.List.of());
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .linkExisting(
+                                                "ada", "github", authentication("github", "123")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("The social identity link was not persisted");
+
+        when(userRepository.findForLoginUpdate("ada")).thenReturn(Optional.of(existing));
+        when(socialIdentityRepository.findByProviderAndSubject("github", "456"))
+                .thenReturn(Optional.empty());
+        when(socialIdentityRepository.findAllByUserUsernameAndProvider("ada", "github"))
+                .thenReturn(java.util.List.of());
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .linkPending(
+                                                "ada",
+                                                Map.of(
+                                                        "provider",
+                                                        "github",
+                                                        "subject",
+                                                        "456",
+                                                        "attributes",
+                                                        Map.of("sub", "456"))))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("The social identity link was not persisted");
+    }
+
+    @Test
+    void rejectsMismatchedOrMissingPendingProviderLinks() {
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .linkExisting(
+                                                "ada", "github", authentication("google", "123")))
+                .isInstanceOf(OAuth2AuthenticationException.class)
+                .hasMessageContaining("did not match");
+        assertThatThrownBy(() -> service().linkPending("ada", Map.of("provider", "github")))
+                .isInstanceOf(OAuth2AuthenticationException.class)
+                .hasMessageContaining("invalid");
+    }
+
+    @Test
+    void appliesAttributesWhenCompletingPendingLink() {
+        UserEntity existing = new UserEntity();
+        existing.setId(42L);
+        existing.setUsername("ada");
+        SocialIdentityEntity identity = new SocialIdentityEntity("github", "123", existing);
+        when(userRepository.findForLoginUpdate("ada")).thenReturn(Optional.of(existing));
+        when(socialIdentityRepository.findByProviderAndSubject("github", "123"))
+                .thenReturn(Optional.empty(), Optional.of(identity));
+        when(socialIdentityRepository.findAllByUserUsernameAndProvider("ada", "github"))
+                .thenReturn(java.util.List.of());
+
+        service()
+                .linkPending(
+                        "ada",
+                        Map.of(
+                                "provider",
+                                "github",
+                                "subject",
+                                "123",
+                                "attributes",
+                                Map.of("sub", "123", "picture", "https://example.test/a")));
+
+        verify(socialIdentityRepository, org.mockito.Mockito.times(2))
+                .save(any(SocialIdentityEntity.class));
+    }
+
+    @Test
+    void rejectsLinksForDisabledUnknownOrAlreadyLinkedAccounts() {
+        when(socialProviderSettingsService.isEnabled()).thenReturn(false);
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .linkPending(
+                                                "ada",
+                                                Map.of("provider", "github", "subject", "123")))
+                .isInstanceOf(OAuth2AuthenticationException.class)
+                .hasMessageContaining("disabled");
+
+        when(socialProviderSettingsService.isEnabled()).thenReturn(true);
+        assertThatThrownBy(() -> service().unlink("ada", "unsupported"))
+                .isInstanceOf(ApiException.class);
+
+        UserEntity another = new UserEntity();
+        another.setId(99L);
+        UserEntity existing = new UserEntity();
+        existing.setId(42L);
+        existing.setUsername("ada");
+        when(userRepository.findForLoginUpdate("ada")).thenReturn(Optional.of(existing));
+        when(socialIdentityRepository.findByProviderAndSubject("github", "123"))
+                .thenReturn(Optional.of(new SocialIdentityEntity("github", "123", another)));
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .linkPending(
+                                                "ada",
+                                                Map.of("provider", "github", "subject", "123")))
+                .isInstanceOf(OAuth2AuthenticationException.class)
+                .hasMessageContaining("another local account");
+    }
+
+    @Test
+    void handlesUnlinkWhenNoIdentityExists() {
+        when(socialIdentityRepository.findAllByUserUsernameAndProvider("ada", "github"))
+                .thenReturn(java.util.List.of());
+
+        assertThatThrownBy(() -> service().unlink("ada", "github"))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("not found");
+    }
+
+    @Test
+    void filtersAccountConsoleVisibilityPolicies() {
+        when(socialProviderSettingsService.effectiveProviders())
+                .thenReturn(
+                        java.util.List.of(
+                                new SocialProviderSettingsService.ProviderCredentials(
+                                        "google",
+                                        "google",
+                                        "google-id",
+                                        "google-secret",
+                                        true,
+                                        false,
+                                        false,
+                                        0,
+                                        "never"),
+                                new SocialProviderSettingsService.ProviderCredentials(
+                                        "github",
+                                        "github",
+                                        "github-id",
+                                        "github-secret",
+                                        true,
+                                        false,
+                                        false,
+                                        0,
+                                        "when-linked"),
+                                new SocialProviderSettingsService.ProviderCredentials(
+                                        "linkedin", "linkedin-id", "linkedin-secret")));
+        UserEntity user = new UserEntity();
+        user.setUsername("ada");
+        when(socialIdentityRepository.findAllByUserUsername("ada"))
+                .thenReturn(java.util.List.of(new SocialIdentityEntity("github", "123", user)));
+
+        assertThat(service().socialLinks("ada"))
+                .extracting(SocialLinkDTO::provider)
+                .containsExactly("github", "linkedin");
+    }
+
     private SocialLoginService service() {
         return new SocialLoginService(
                 userRepository,
@@ -532,17 +871,34 @@ class SocialLoginServiceTest {
     }
 
     private static OAuth2AuthenticationToken authentication() {
+        return authentication(
+                "google",
+                Map.of(
+                        "sub",
+                        "google-subject",
+                        "email",
+                        "ada@example.test",
+                        "email_verified",
+                        true,
+                        "given_name",
+                        "Ada",
+                        "family_name",
+                        "Lovelace",
+                        "picture",
+                        "https://images.example.test/ada.jpg"));
+    }
+
+    private static OAuth2AuthenticationToken authentication(String registrationId, String subject) {
+        return authentication(registrationId, Map.of("sub", subject));
+    }
+
+    private static OAuth2AuthenticationToken authentication(
+            String registrationId, Map<String, Object> attributes) {
         OAuth2User user =
                 new DefaultOAuth2User(
                         java.util.Set.of(new SimpleGrantedAuthority("ROLE_OAUTH2_USER")),
-                        Map.of(
-                                "sub", "google-subject",
-                                "email", "ada@example.test",
-                                "email_verified", true,
-                                "given_name", "Ada",
-                                "family_name", "Lovelace",
-                                "picture", "https://images.example.test/ada.jpg"),
+                        attributes,
                         "sub");
-        return new OAuth2AuthenticationToken(user, user.getAuthorities(), "google");
+        return new OAuth2AuthenticationToken(user, user.getAuthorities(), registrationId);
     }
 }

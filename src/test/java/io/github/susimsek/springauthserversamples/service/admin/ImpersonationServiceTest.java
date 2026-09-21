@@ -98,6 +98,152 @@ class ImpersonationServiceTest {
     }
 
     @Test
+    void rejectsSelfImpersonation() {
+        UserEntity target = user(7L, "admin");
+        when(userRepository.findById(7L)).thenReturn(Optional.of(target));
+
+        assertThatThrownBy(() -> service().issue(7L, authentication("admin", "ROLE_ADMIN")))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("cannot impersonate yourself");
+    }
+
+    @Test
+    void rejectsDisabledTarget() {
+        UserEntity target = user(7L, "alice");
+        target.setEnabled(false);
+        when(userRepository.findById(7L)).thenReturn(Optional.of(target));
+
+        assertThatThrownBy(() -> service().issue(7L, authentication("admin", "ROLE_ADMIN")))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("Disabled users cannot be impersonated");
+    }
+
+    @Test
+    void rejectsMissingTarget() {
+        when(userRepository.findById(7L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service().issue(7L, authentication("admin", "ROLE_ADMIN")))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("User not found");
+    }
+
+    @Test
+    void allowsDedicatedImpersonatorAuthority() {
+        UserEntity target = user(7L, "alice");
+        when(userRepository.findById(7L)).thenReturn(Optional.of(target));
+        when(userDetailsService.loadUserByUsername("alice"))
+                .thenReturn(User.withUsername("alice").password("password").roles("USER").build());
+        when(ticketMapper.toEntity(
+                        anyString(),
+                        anyString(),
+                        any(UserEntity.class),
+                        any(Instant.class),
+                        any(Instant.class)))
+                .thenReturn(new ImpersonationTicketEntity());
+        when(impersonationMapper.toDTO(anyString(), anyString(), anyString()))
+                .thenReturn(
+                        new io.github.susimsek.springauthserversamples.dto.admin
+                                .AdminImpersonationDTO("/impersonation/accept", "alice", "ticket"));
+
+        assertThat(service().issue(7L, authentication("operator", "ROLE_USER_IMPERSONATOR")))
+                .isNotNull();
+    }
+
+    @Test
+    void rejectsNullActor() {
+        assertThatThrownBy(() -> service().issue(7L, null))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("impersonation permission");
+    }
+
+    @Test
+    void consumesValidTicketAndMarksItUsed() {
+        ImpersonationTicketEntity ticket = ticket("operator", Instant.now().plusSeconds(30));
+        when(ticketRepository.findByTicketHash(anyString())).thenReturn(Optional.of(ticket));
+
+        UserEntity result =
+                service().consume("raw-ticket", authentication("operator", "ROLE_ADMIN"));
+
+        assertThat(result).isSameAs(ticket.getTargetUser());
+        assertThat(ticket.getConsumedAt()).isNotNull();
+    }
+
+    @Test
+    void rejectsMissingTicketValue() {
+        assertThatThrownBy(() -> service().consume("  ", authentication("operator", "ROLE_ADMIN")))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("ticket is required");
+    }
+
+    @Test
+    void rejectsUnknownTicket() {
+        when(ticketRepository.findByTicketHash(anyString())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .consume(
+                                                "raw-ticket",
+                                                authentication("operator", "ROLE_ADMIN")))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("ticket is invalid");
+    }
+
+    @Test
+    void rejectsTicketOwnedByAnotherActor() {
+        ImpersonationTicketEntity ticket =
+                ticket("another-operator", Instant.now().plusSeconds(30));
+        when(ticketRepository.findByTicketHash(anyString())).thenReturn(Optional.of(ticket));
+
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .consume(
+                                                "raw-ticket",
+                                                authentication("operator", "ROLE_ADMIN")))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("ticket is invalid");
+    }
+
+    @Test
+    void rejectsAlreadyConsumedTicket() {
+        ImpersonationTicketEntity ticket = ticket("operator", Instant.now().plusSeconds(30));
+        ticket.setConsumedAt(Instant.now().minusSeconds(1));
+        when(ticketRepository.findByTicketHash(anyString())).thenReturn(Optional.of(ticket));
+
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .consume(
+                                                "raw-ticket",
+                                                authentication("operator", "ROLE_ADMIN")))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("ticket is invalid");
+    }
+
+    @Test
+    void rejectsExpiredTicket() {
+        ImpersonationTicketEntity ticket = ticket("operator", Instant.now().minusSeconds(1));
+        when(ticketRepository.findByTicketHash(anyString())).thenReturn(Optional.of(ticket));
+
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .consume(
+                                                "raw-ticket",
+                                                authentication("operator", "ROLE_ADMIN")))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("ticket is invalid");
+    }
+
+    @Test
+    void rejectsNullActorWhenConsuming() {
+        assertThatThrownBy(() -> service().consume("raw-ticket", null))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("impersonation permission");
+    }
+
+    @Test
     void rejectsActorWithoutImpersonationPermission() {
         assertThatThrownBy(() -> service().issue(7L, authentication("viewer", "ROLE_USER_VIEWER")))
                 .isInstanceOf(ApiException.class)
@@ -126,5 +272,14 @@ class ImpersonationServiceTest {
         user.setPassword("password");
         user.setEnabled(true);
         return user;
+    }
+
+    private static ImpersonationTicketEntity ticket(String actor, Instant expiresAt) {
+        ImpersonationTicketEntity ticket = new ImpersonationTicketEntity();
+        ticket.setActorUsername(actor);
+        ticket.setTargetUser(user(7L, "alice"));
+        ticket.setIssuedAt(Instant.now().minusSeconds(10));
+        ticket.setExpiresAt(expiresAt);
+        return ticket;
     }
 }

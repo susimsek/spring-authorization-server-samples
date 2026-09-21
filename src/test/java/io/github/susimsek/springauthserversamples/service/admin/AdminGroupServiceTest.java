@@ -10,6 +10,7 @@ import io.github.susimsek.springauthserversamples.domain.AuthorityEntity;
 import io.github.susimsek.springauthserversamples.domain.GroupEntity;
 import io.github.susimsek.springauthserversamples.domain.GroupPermissionEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
+import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupPermissionDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupPermissionRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupPermissionsRequestDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminGroupRequestDTO;
@@ -51,6 +52,34 @@ class AdminGroupServiceTest {
 
         assertThat(result.getContent()).extracting("userCount").containsExactly(3L, 1L);
         verify(userRepository, never()).countByGroupsId(org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    @Test
+    void administrativeUsersSeeAllGroupsThroughScopedFindAll() {
+        GroupEntity finance = group(7L, "finance");
+        UserEntity administrator = user(3L, "administrator");
+        administrator.getAuthorities().add(authority("ROLE_ADMIN"));
+        when(userRepository.findByUsername("administrator")).thenReturn(Optional.of(administrator));
+        when(groupRepository.findByNameContainingIgnoreCase("", Pageable.ofSize(20)))
+                .thenReturn(new PageImpl<>(List.of(finance)));
+        when(userRepository.countUsersByGroupIdIn(List.of(7L)))
+                .thenReturn(List.of(groupUserCount(7L, 0L)));
+
+        assertThat(
+                        serviceWithPermissions()
+                                .findAll("", Pageable.ofSize(20), "administrator")
+                                .getContent())
+                .extracting("name")
+                .containsExactly("finance");
+    }
+
+    @Test
+    void findsGroupByIdAndMapsItsMemberCount() {
+        GroupEntity finance = group(7L, "finance");
+        when(groupRepository.findById(7L)).thenReturn(Optional.of(finance));
+        when(userRepository.countByGroupsId(7L)).thenReturn(3L);
+
+        assertThat(service().findById(7L).name()).isEqualTo("finance");
     }
 
     @Test
@@ -102,6 +131,38 @@ class AdminGroupServiceTest {
 
         assertThatThrownBy(() -> service().update(7L, new AdminGroupRequestDTO("finance", 8L)))
                 .hasMessageContaining("descendant");
+    }
+
+    @Test
+    void updatesGroupAndInvalidatesMembersInItsTree() {
+        GroupEntity group = group(7L, "finance");
+        UserEntity alice = user(3L, "alice");
+        when(groupRepository.findById(7L)).thenReturn(Optional.of(group));
+        when(groupRepository.existsByName("operations")).thenReturn(false);
+        when(userRepository.findAllByGroupsId(7L)).thenReturn(List.of(alice));
+        when(groupRepository.findByParentId(7L)).thenReturn(List.of());
+        when(userRepository.countByGroupsId(7L)).thenReturn(1L);
+
+        var result =
+                service()
+                        .update(
+                                7L,
+                                new AdminGroupRequestDTO(
+                                        "operations", null, java.util.Map.of(), false));
+
+        assertThat(result.name()).isEqualTo("operations");
+        verify(userAccessInvalidationService).invalidate("alice");
+        verify(adminAuditEventService).record("group.updated", "group", "7");
+    }
+
+    @Test
+    void rejectsDeletingGroupWithChildren() {
+        GroupEntity group = group(7L, "finance");
+        when(groupRepository.findById(7L)).thenReturn(Optional.of(group));
+        when(groupRepository.existsByParentId(7L)).thenReturn(true);
+
+        assertThatThrownBy(() -> service().delete(7L)).hasMessageContaining("child groups");
+        verify(groupRepository, never()).delete(group);
     }
 
     @Test
@@ -234,6 +295,124 @@ class AdminGroupServiceTest {
         verify(userAccessInvalidationService).invalidate("alice");
         verify(userAccessInvalidationService).invalidate("bob");
         verify(groupPermissionRepository).deleteByGroupId(7L);
+    }
+
+    @Test
+    void delegatesUserQueriesAndPermissionListing() {
+        GroupEntity group = group(7L, "finance");
+        UserEntity alice = user(3L, "alice");
+        when(groupRepository.findById(7L)).thenReturn(Optional.of(group));
+        when(userRepository.findByGroupsIdAndUsernameContainingIgnoreCase(
+                        7L, "ali", Pageable.ofSize(20)))
+                .thenReturn(new PageImpl<>(List.of(alice)));
+        when(userRepository.findAvailableGroupUsers(7L, "ali", Pageable.ofSize(20)))
+                .thenReturn(new PageImpl<>(List.of(alice)));
+        GroupPermissionEntity permission =
+                new GroupPermissionEntity(group, alice, GroupPermission.VIEW);
+        when(groupRepository.existsById(7L)).thenReturn(true);
+        when(groupPermissionRepository.findByGroupIdOrderByUserUsernameAscPermissionAsc(7L))
+                .thenReturn(List.of(permission));
+
+        assertThat(serviceWithPermissions().users(7L, " ali ", Pageable.ofSize(20)).getContent())
+                .hasSize(1);
+        assertThat(
+                        serviceWithPermissions()
+                                .availableUsers(7L, " ali ", Pageable.ofSize(20))
+                                .getContent())
+                .hasSize(1);
+        assertThat(serviceWithPermissions().permissions(7L))
+                .extracting(AdminGroupPermissionDTO::username)
+                .containsExactly("alice");
+    }
+
+    @Test
+    void validatesGroupNamesAttributesParentsAndRoles() {
+        when(groupRepository.existsByName("finance")).thenReturn(true);
+        assertThatThrownBy(() -> service().create(new AdminGroupRequestDTO(" finance ", null)))
+                .isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(() -> service().create(new AdminGroupRequestDTO(" ", null)))
+                .isInstanceOf(RuntimeException.class);
+
+        GroupEntity group = group(7L, "finance");
+        when(groupRepository.findById(7L)).thenReturn(Optional.of(group));
+        assertThatThrownBy(() -> service().update(7L, new AdminGroupRequestDTO("finance", 7L)))
+                .isInstanceOf(RuntimeException.class);
+
+        when(authorityRepository.findByNameIn(Set.of("ROLE_UNKNOWN"))).thenReturn(List.of());
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .updateRoles(
+                                                7L,
+                                                new AdminGroupRolesRequestDTO(
+                                                        Set.of("ROLE_UNKNOWN"))))
+                .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    void rejectsInvalidPermissionsAndMissingEntities() {
+        when(groupRepository.findById(7L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service().findById(7L)).isInstanceOf(RuntimeException.class);
+
+        GroupEntity existing = group(7L, "finance");
+        when(groupRepository.findById(7L)).thenReturn(Optional.of(existing));
+        when(userRepository.findById(3L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service().addUser(7L, 3L)).isInstanceOf(RuntimeException.class);
+
+        when(userRepository.findByUsername("missing")).thenReturn(Optional.empty());
+        assertThatThrownBy(
+                        () -> serviceWithPermissions().findAll("", Pageable.ofSize(20), "missing"))
+                .isInstanceOf(RuntimeException.class);
+
+        GroupEntity group = group(7L, "finance");
+        when(groupRepository.findById(7L)).thenReturn(Optional.of(group));
+        when(groupPermissionRepository.findByGroupIdOrderByUserUsernameAscPermissionAsc(7L))
+                .thenReturn(List.of());
+        assertThatThrownBy(
+                        () ->
+                                serviceWithPermissions()
+                                        .updatePermissions(
+                                                7L,
+                                                new AdminGroupPermissionsRequestDTO(
+                                                        List.of(
+                                                                new AdminGroupPermissionRequestDTO(
+                                                                        3L, "invalid")))))
+                .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    void returnsEmptyPermissionListsWhenPermissionRepositoryIsUnavailable() {
+        when(groupRepository.existsById(7L)).thenReturn(true);
+        GroupEntity group = group(7L, "finance");
+        when(groupRepository.findById(7L)).thenReturn(Optional.of(group));
+
+        assertThat(service().permissions(7L)).isEmpty();
+        assertThat(service().updatePermissions(7L, new AdminGroupPermissionsRequestDTO(List.of())))
+                .isEmpty();
+    }
+
+    @Test
+    void permitsAdministrativeRoleAndDeniesUnassignedScopedUser() {
+        GroupEntity parent = group(7L, "finance");
+        GroupEntity child = group(8L, "operations");
+        child.setParent(parent);
+        UserEntity manager = user(3L, "manager");
+        AuthorityEntity admin = authority("ROLE_ADMIN");
+        when(groupRepository.findById(8L)).thenReturn(Optional.of(child));
+        when(userRepository.findByUsername("manager")).thenReturn(Optional.of(manager));
+        when(groupPermissionRepository.existsForUserAndGroups(
+                        3L, Set.of(8L, 7L), GroupPermission.VIEW))
+                .thenReturn(false);
+        assertThatThrownBy(() -> serviceWithPermissions().findById(8L, "manager"))
+                .isInstanceOf(RuntimeException.class);
+
+        org.mockito.Mockito.clearInvocations(groupPermissionRepository);
+        manager.getAuthorities().clear();
+        manager.getAuthorities().add(admin);
+        when(userRepository.countByGroupsId(8L)).thenReturn(0L);
+        assertThat(serviceWithPermissions().findById(8L, "manager").id()).isEqualTo(8L);
+        verify(groupPermissionRepository, never())
+                .existsForUserAndGroups(3L, Set.of(8L, 7L), GroupPermission.VIEW);
     }
 
     private AdminGroupService service() {

@@ -2,22 +2,39 @@ package io.github.susimsek.springauthserversamples.config.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Answers.RETURNS_SELF;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
+import io.github.susimsek.springauthserversamples.dto.admin.WebAuthnPolicyDTO;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.service.LoginSettingsService;
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedConstruction;
+import org.mockito.Mockito;
 import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.webauthn.api.Bytes;
+import org.springframework.security.web.webauthn.api.CredentialRecord;
 import org.springframework.security.web.webauthn.api.PublicKeyCredentialParameters;
 import org.springframework.security.web.webauthn.authentication.PublicKeyCredentialRequestOptionsRepository;
+import org.springframework.security.web.webauthn.management.PublicKeyCredentialCreationOptionsRequest;
+import org.springframework.security.web.webauthn.management.PublicKeyCredentialRequestOptionsRequest;
 import org.springframework.security.web.webauthn.management.PublicKeyCredentialUserEntityRepository;
+import org.springframework.security.web.webauthn.management.RelyingPartyAuthenticationRequest;
+import org.springframework.security.web.webauthn.management.RelyingPartyRegistrationRequest;
 import org.springframework.security.web.webauthn.management.UserCredentialRepository;
 import org.springframework.security.web.webauthn.management.WebAuthnRelyingPartyOperations;
+import org.springframework.security.web.webauthn.management.Webauthn4JRelyingPartyOperations;
 
 class WebAuthnConfigTest {
 
@@ -78,6 +95,175 @@ class WebAuthnConfigTest {
                 .isEqualToIgnoringCase("direct");
         assertThatThrownBy(() -> invoke("algorithm", String.class, "unsupported"))
                 .hasCauseInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void delegatesCeremonyOperationsUsingConfiguredPolicies() {
+        PublicKeyCredentialUserEntityRepository users =
+                mock(PublicKeyCredentialUserEntityRepository.class);
+        UserCredentialRepository credentials = mock(UserCredentialRepository.class);
+        LoginSettingsService settings = mock(LoginSettingsService.class);
+        WebAuthnPolicyDTO registrationPolicy =
+                new WebAuthnPolicyDTO(
+                        "Configured RP",
+                        "rp.example",
+                        "ES256,RS256",
+                        "DIRECT",
+                        "PLATFORM",
+                        "PREFERRED",
+                        "DISCOURAGED",
+                        42,
+                        false,
+                        "");
+        WebAuthnPolicyDTO authenticationPolicy =
+                new WebAuthnPolicyDTO(
+                        "Configured RP",
+                        "rp.example",
+                        "ES256",
+                        "NONE",
+                        "ANY",
+                        "REQUIRED",
+                        "PREFERRED",
+                        21,
+                        true,
+                        "");
+        when(settings.webAuthnPolicy(false)).thenReturn(registrationPolicy);
+        when(settings.webAuthnPolicy(true)).thenReturn(authenticationPolicy);
+        ApplicationProperties properties =
+                new ApplicationProperties(
+                        new ApplicationProperties.Cache(
+                                new ApplicationProperties.Caffeine(Duration.ofHours(1), 1, 10)),
+                        new ApplicationProperties.Session("*"),
+                        new ApplicationProperties.AuthorizationServer(
+                                "https://issuer.example:9443"),
+                        new ApplicationProperties.Mail(
+                                false, "no-reply@example.test", "https://issuer.example"),
+                        new ApplicationProperties.Security(),
+                        new ApplicationProperties.WebAuthn(
+                                "Default RP", "", "", 300, "REQUIRED", "REQUIRED", "NONE"),
+                        new ApplicationProperties.RegistrationCaptcha());
+
+        AtomicReference<
+                        java.util.function.Consumer<
+                                org.springframework.security.web.webauthn.api
+                                        .PublicKeyCredentialCreationOptions
+                                        .PublicKeyCredentialCreationOptionsBuilder>>
+                creationCustomizer = new AtomicReference<>();
+        AtomicReference<
+                        java.util.function.Consumer<
+                                org.springframework.security.web.webauthn.api
+                                        .PublicKeyCredentialRequestOptions
+                                        .PublicKeyCredentialRequestOptionsBuilder>>
+                requestCustomizer = new AtomicReference<>();
+        try (MockedConstruction<Webauthn4JRelyingPartyOperations> ignored =
+                Mockito.mockConstruction(
+                        Webauthn4JRelyingPartyOperations.class,
+                        (delegate, context) -> {
+                            doAnswer(
+                                            invocation -> {
+                                                creationCustomizer.set(invocation.getArgument(0));
+                                                return null;
+                                            })
+                                    .when(delegate)
+                                    .setCustomizeCreationOptions(any());
+                            doAnswer(
+                                            invocation -> {
+                                                requestCustomizer.set(invocation.getArgument(0));
+                                                return null;
+                                            })
+                                    .when(delegate)
+                                    .setCustomizeRequestOptions(any());
+                        })) {
+            WebAuthnRelyingPartyOperations operations =
+                    config.webAuthnRelyingPartyOperations(users, credentials, properties, settings);
+
+            operations.createPublicKeyCredentialCreationOptions(
+                    mock(PublicKeyCredentialCreationOptionsRequest.class));
+            operations.createCredentialRequestOptions(
+                    mock(PublicKeyCredentialRequestOptionsRequest.class));
+            operations.registerCredential(mock(RelyingPartyRegistrationRequest.class));
+            operations.authenticate(mock(RelyingPartyAuthenticationRequest.class));
+
+            assertThat(creationCustomizer.get()).isNotNull();
+            var creationBuilder =
+                    mock(
+                            org.springframework.security.web.webauthn.api
+                                    .PublicKeyCredentialCreationOptions
+                                    .PublicKeyCredentialCreationOptionsBuilder.class,
+                            RETURNS_SELF);
+            creationCustomizer.get().accept(creationBuilder);
+            verify(creationBuilder).timeout(Duration.ofSeconds(42));
+            verify(creationBuilder).excludeCredentials(List.of());
+            assertThat(requestCustomizer.get()).isNotNull();
+            var requestBuilder =
+                    mock(
+                            org.springframework.security.web.webauthn.api
+                                    .PublicKeyCredentialRequestOptions
+                                    .PublicKeyCredentialRequestOptionsBuilder.class,
+                            RETURNS_SELF);
+            requestCustomizer.get().accept(requestBuilder);
+            verify(requestBuilder).timeout(Duration.ofSeconds(21));
+        }
+    }
+
+    @Test
+    void usesFallbackRelyingPartySettingsAndRejectsMissingAllowedAaguid() {
+        PublicKeyCredentialUserEntityRepository users =
+                mock(PublicKeyCredentialUserEntityRepository.class);
+        UserCredentialRepository credentials = mock(UserCredentialRepository.class);
+        LoginSettingsService settings = mock(LoginSettingsService.class);
+        WebAuthnPolicyDTO policy =
+                new WebAuthnPolicyDTO(
+                        " ",
+                        " ",
+                        "ES256",
+                        "NONE",
+                        "ANY",
+                        "REQUIRED",
+                        "REQUIRED",
+                        30,
+                        true,
+                        "00000000-0000-0000-0000-000000000001");
+        when(settings.webAuthnPolicy(false)).thenReturn(policy);
+        ApplicationProperties properties =
+                new ApplicationProperties(
+                        new ApplicationProperties.Cache(
+                                new ApplicationProperties.Caffeine(Duration.ofHours(1), 1, 10)),
+                        new ApplicationProperties.Session("*"),
+                        new ApplicationProperties.AuthorizationServer("https://issuer.example"),
+                        new ApplicationProperties.Mail(
+                                false, "no-reply@example.test", "https://issuer.example"),
+                        new ApplicationProperties.Security(),
+                        new ApplicationProperties.WebAuthn(
+                                "Fallback RP",
+                                " ",
+                                " https://one.example, , https://two.example ",
+                                300,
+                                "REQUIRED",
+                                "REQUIRED",
+                                "NONE"),
+                        new ApplicationProperties.RegistrationCaptcha());
+        CredentialRecord record = mock(CredentialRecord.class);
+        when(record.getAttestationObject()).thenReturn(null);
+        Bytes credentialId = new Bytes(new byte[] {1, 2, 3});
+        when(record.getCredentialId()).thenReturn(credentialId);
+        when(credentials.findByCredentialId(record.getCredentialId())).thenReturn(record);
+
+        try (MockedConstruction<Webauthn4JRelyingPartyOperations> ignored =
+                Mockito.mockConstruction(
+                        Webauthn4JRelyingPartyOperations.class,
+                        (delegate, context) ->
+                                when(delegate.registerCredential(any())).thenReturn(record))) {
+            WebAuthnRelyingPartyOperations operations =
+                    config.webAuthnRelyingPartyOperations(users, credentials, properties, settings);
+            assertThatThrownBy(
+                            () ->
+                                    operations.registerCredential(
+                                            mock(RelyingPartyRegistrationRequest.class)))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("AAGUID");
+            verify(credentials).delete(record.getCredentialId());
+        }
     }
 
     private static Object invoke(String name, Class<?> parameterType, Object value)

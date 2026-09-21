@@ -3,6 +3,8 @@ package io.github.susimsek.springauthserversamples.service.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -18,11 +20,18 @@ import io.github.susimsek.springauthserversamples.repository.AuthorizationReposi
 import io.github.susimsek.springauthserversamples.repository.ClientRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Path;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -185,6 +194,65 @@ class AdminConsentServiceTest {
         assertThatThrownBy(() -> service().consent("client", "alice"))
                 .isInstanceOf(ApiException.class)
                 .hasMessage("Consent not found");
+    }
+
+    @Test
+    void appliesAllConsentSearchFilters() {
+        Pageable pageable = Pageable.unpaged();
+        when(authorizationConsentRepository.findAll(
+                        any(org.springframework.data.jpa.domain.Specification.class),
+                        org.mockito.ArgumentMatchers.eq(pageable)))
+                .thenReturn(Page.empty(pageable));
+
+        service().consents("alice", "client", "alice", "openid", pageable);
+
+        ArgumentCaptor<
+                        org.springframework.data.jpa.domain.Specification<
+                                AuthorizationConsentEntity>>
+                specification =
+                        ArgumentCaptor.forClass(
+                                org.springframework.data.jpa.domain.Specification.class);
+        verify(authorizationConsentRepository)
+                .findAll(specification.capture(), org.mockito.ArgumentMatchers.eq(pageable));
+
+        CriteriaBuilder criteriaBuilder = org.mockito.Mockito.mock(CriteriaBuilder.class);
+        CriteriaQuery<?> criteriaQuery = org.mockito.Mockito.mock(CriteriaQuery.class);
+        Root<AuthorizationConsentEntity> root = org.mockito.Mockito.mock(Root.class);
+        Path<Object> idPath = org.mockito.Mockito.mock(Path.class);
+        Path<String> valuePath = org.mockito.Mockito.mock(Path.class);
+        Predicate predicate = org.mockito.Mockito.mock(Predicate.class);
+        when(criteriaBuilder.conjunction()).thenReturn(predicate);
+        when(criteriaBuilder.and(any(Predicate.class), any(Predicate.class))).thenReturn(predicate);
+        when(criteriaBuilder.or(any(Predicate.class), any(Predicate.class))).thenReturn(predicate);
+        when(criteriaBuilder.like(any(Expression.class), anyString())).thenReturn(predicate);
+        when(criteriaBuilder.lower(any(Expression.class))).thenReturn(valuePath);
+        when(root.get("id")).thenReturn(idPath);
+        doReturn(valuePath).when(idPath).get(anyString());
+        doReturn(valuePath).when(root).get("authorities");
+
+        assertThat(specification.getValue().toPredicate(root, criteriaQuery, criteriaBuilder))
+                .isSameAs(predicate);
+        verify(criteriaBuilder, org.mockito.Mockito.atLeast(4))
+                .like(any(Expression.class), anyString());
+    }
+
+    @Test
+    void returnsClientConsentsAndFallsBackForMissingClientName() {
+        AuthorizationConsentEntity consent = consent("client", "alice", "openid");
+        when(clientRepository.existsById("client")).thenReturn(true);
+        when(clientRepository.findById("client")).thenReturn(Optional.empty());
+        when(authorizationConsentRepository.findByIdRegisteredClientId(
+                        "client", Pageable.unpaged()))
+                .thenReturn(new PageImpl<>(List.of(consent)));
+        when(userRepository.findAllByUsernameIn(List.of("alice"))).thenReturn(List.of());
+        when(mapperSupport.readAuthorities("openid"))
+                .thenReturn(Set.of(new SimpleGrantedAuthority("openid")));
+
+        AdminConsentDTO result =
+                service().clientConsents("client", Pageable.unpaged()).getContent().getFirst();
+
+        assertThat(result.clientName()).isEqualTo("client");
+        assertThat(result.userId()).isNull();
     }
 
     private static AuthorizationConsentEntity consent(

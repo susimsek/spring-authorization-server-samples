@@ -8,8 +8,11 @@ import static org.mockito.Mockito.when;
 
 import io.github.susimsek.springauthserversamples.domain.LoginSettingsEntity;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminLoginSettingsRequestDTO;
+import io.github.susimsek.springauthserversamples.dto.admin.WebAuthnPolicyDTO;
 import io.github.susimsek.springauthserversamples.repository.LoginSettingsRepository;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
+import io.github.susimsek.springauthserversamples.session.JpaIndexedSessionRepository;
 import java.time.Duration;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +34,12 @@ class LoginSettingsServiceTest {
 
     @Test
     void exposesPublicAdminAndPolicyValues() {
+        assertThat(
+                        new LoginSettingsService(
+                                repository,
+                                auditEventService,
+                                mock(JpaIndexedSessionRepository.class)))
+                .isNotNull();
         assertThat(service.publicLoginSettings().userRegistration()).isTrue();
         assertThat(service.adminLoginSettings().passwordMinimumLength()).isEqualTo(12);
         assertThat(service.isRememberMeEnabled()).isTrue();
@@ -104,6 +113,516 @@ class LoginSettingsServiceTest {
         assertThatThrownBy(service::publicLoginSettings)
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("not initialized");
+    }
+
+    @Test
+    void updatesSettingsAndRefreshesSessionsAndSocialProviders() {
+        JpaIndexedSessionRepository sessionRepository = mock(JpaIndexedSessionRepository.class);
+        SocialProviderSettingsService socialProviderSettingsService =
+                mock(SocialProviderSettingsService.class);
+        LoginSettingsService configuredService =
+                new LoginSettingsService(
+                        repository,
+                        auditEventService,
+                        sessionRepository,
+                        socialProviderSettingsService);
+
+        configuredService.update(validRequest());
+
+        verify(sessionRepository).setDefaultMaxInactiveInterval(Duration.ofMinutes(45));
+        verify(socialProviderSettingsService).refreshClientRegistrations();
+    }
+
+    @Test
+    void rejectsInvalidOtpPolicies() {
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        request(
+                                                "invalid",
+                                                true,
+                                                true,
+                                                "Issuer",
+                                                "SHA1",
+                                                6,
+                                                validPolicy(),
+                                                validPolicy())))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("Password-reset OTP mode is invalid");
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        request(
+                                                "required",
+                                                false,
+                                                false,
+                                                "Issuer",
+                                                "SHA1",
+                                                6,
+                                                validPolicy(),
+                                                validPolicy())))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("Password-reset OTP cannot be required when OTP is disabled");
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        request(
+                                                "none",
+                                                false,
+                                                true,
+                                                "Issuer",
+                                                "SHA1",
+                                                6,
+                                                validPolicy(),
+                                                validPolicy())))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("OTP cannot be required when it is disabled");
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        request(
+                                                "none",
+                                                true,
+                                                false,
+                                                "",
+                                                "SHA1",
+                                                6,
+                                                validPolicy(),
+                                                validPolicy())))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("OTP issuer is required");
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        request(
+                                                "none",
+                                                true,
+                                                false,
+                                                "Issuer",
+                                                "MD5",
+                                                6,
+                                                validPolicy(),
+                                                validPolicy())))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("OTP algorithm is invalid");
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        request(
+                                                "none",
+                                                true,
+                                                false,
+                                                "Issuer",
+                                                "SHA1",
+                                                7,
+                                                validPolicy(),
+                                                validPolicy())))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("OTP digits must be 6 or 8");
+    }
+
+    @Test
+    void rejectsInvalidWebAuthnPolicies() {
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        request(
+                                                "none",
+                                                true,
+                                                false,
+                                                "Issuer",
+                                                "SHA1",
+                                                6,
+                                                null,
+                                                validPolicy())))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("WebAuthn policy is required");
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        request(
+                                                "none",
+                                                true,
+                                                false,
+                                                "Issuer",
+                                                "SHA1",
+                                                6,
+                                                policy(
+                                                        " ",
+                                                        "example.test",
+                                                        "ES256",
+                                                        "none",
+                                                        "any",
+                                                        "preferred",
+                                                        "preferred",
+                                                        300,
+                                                        ""),
+                                                validPolicy())))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("WebAuthn relying-party name is required");
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        request(
+                                                "none",
+                                                true,
+                                                false,
+                                                "Issuer",
+                                                "SHA1",
+                                                6,
+                                                policy(
+                                                        "Example",
+                                                        "bad id",
+                                                        "ES256",
+                                                        "none",
+                                                        "any",
+                                                        "preferred",
+                                                        "preferred",
+                                                        300,
+                                                        ""),
+                                                validPolicy())))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("WebAuthn relying-party id cannot contain whitespace");
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        request(
+                                                "none",
+                                                true,
+                                                false,
+                                                "Issuer",
+                                                "SHA1",
+                                                6,
+                                                policy(
+                                                        "Example",
+                                                        "example.test",
+                                                        "",
+                                                        "none",
+                                                        "any",
+                                                        "preferred",
+                                                        "preferred",
+                                                        300,
+                                                        ""),
+                                                validPolicy())))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("WebAuthn signature algorithms are invalid");
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        request(
+                                                "none",
+                                                true,
+                                                false,
+                                                "Issuer",
+                                                "SHA1",
+                                                6,
+                                                policy(
+                                                        "Example",
+                                                        "example.test",
+                                                        "ES256",
+                                                        "bad",
+                                                        "any",
+                                                        "preferred",
+                                                        "preferred",
+                                                        300,
+                                                        ""),
+                                                validPolicy())))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("WebAuthn attestation is invalid");
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        request(
+                                                "none",
+                                                true,
+                                                false,
+                                                "Issuer",
+                                                "SHA1",
+                                                6,
+                                                policy(
+                                                        "Example",
+                                                        "example.test",
+                                                        "ES256",
+                                                        "none",
+                                                        "bad",
+                                                        "preferred",
+                                                        "preferred",
+                                                        300,
+                                                        ""),
+                                                validPolicy())))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("WebAuthn authenticator attachment is invalid");
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        request(
+                                                "none",
+                                                true,
+                                                false,
+                                                "Issuer",
+                                                "SHA1",
+                                                6,
+                                                policy(
+                                                        "Example",
+                                                        "example.test",
+                                                        "ES256",
+                                                        "none",
+                                                        "any",
+                                                        "bad",
+                                                        "preferred",
+                                                        300,
+                                                        ""),
+                                                validPolicy())))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("WebAuthn resident key requirement is invalid");
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        request(
+                                                "none",
+                                                true,
+                                                false,
+                                                "Issuer",
+                                                "SHA1",
+                                                6,
+                                                policy(
+                                                        "Example",
+                                                        "example.test",
+                                                        "ES256",
+                                                        "none",
+                                                        "any",
+                                                        "preferred",
+                                                        "bad",
+                                                        300,
+                                                        ""),
+                                                validPolicy())))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("WebAuthn user verification requirement is invalid");
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        request(
+                                                "none",
+                                                true,
+                                                false,
+                                                "Issuer",
+                                                "SHA1",
+                                                6,
+                                                policy(
+                                                        "Example",
+                                                        "example.test",
+                                                        "ES256",
+                                                        "none",
+                                                        "any",
+                                                        "preferred",
+                                                        "preferred",
+                                                        300,
+                                                        "not-a-guid"),
+                                                validPolicy())))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("WebAuthn acceptable AAGUID is invalid");
+    }
+
+    @Test
+    void rejectsWebAuthnTimeoutAndMissingCeremonyRequirements() {
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        request(
+                                                "none",
+                                                true,
+                                                false,
+                                                "Issuer",
+                                                "SHA1",
+                                                6,
+                                                policy(
+                                                        "Example",
+                                                        "example.test",
+                                                        "ES256",
+                                                        "none",
+                                                        "any",
+                                                        "preferred",
+                                                        "preferred",
+                                                        0,
+                                                        ""),
+                                                validPolicy())))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("WebAuthn timeout must be between 1 and 86400 seconds");
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        request(
+                                                "none",
+                                                true,
+                                                false,
+                                                "Issuer",
+                                                "SHA1",
+                                                6,
+                                                policy(
+                                                        "Example",
+                                                        "example.test",
+                                                        "ES256",
+                                                        "none",
+                                                        "any",
+                                                        "preferred",
+                                                        "preferred",
+                                                        86401,
+                                                        ""),
+                                                validPolicy())))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("WebAuthn timeout must be between 1 and 86400 seconds");
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        request(
+                                                "none",
+                                                true,
+                                                false,
+                                                "Issuer",
+                                                "SHA1",
+                                                6,
+                                                new WebAuthnPolicyDTO(
+                                                        "Example",
+                                                        "example.test",
+                                                        "ES256",
+                                                        null,
+                                                        "any",
+                                                        "preferred",
+                                                        "preferred",
+                                                        300,
+                                                        true,
+                                                        ""),
+                                                validPolicy())))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("WebAuthn ceremony requirements are required");
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        request(
+                                                "none",
+                                                true,
+                                                false,
+                                                "Issuer",
+                                                "SHA1",
+                                                6,
+                                                validPolicy(),
+                                                policy(
+                                                        "Passwordless",
+                                                        "example.test",
+                                                        "ES256",
+                                                        "none",
+                                                        "any",
+                                                        "preferred",
+                                                        "preferred",
+                                                        300,
+                                                        "not-a-guid"))))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("WebAuthn passwordless acceptable AAGUID is invalid");
+    }
+
+    private static AdminLoginSettingsRequestDTO validRequest() {
+        return request("none", true, false, "Issuer", "SHA1", 6, validPolicy(), validPolicy());
+    }
+
+    private static AdminLoginSettingsRequestDTO request(
+            String resetMode,
+            boolean otpEnabled,
+            boolean otpRequired,
+            String issuer,
+            String algorithm,
+            int digits,
+            WebAuthnPolicyDTO webAuthnPolicy,
+            WebAuthnPolicyDTO passwordlessPolicy) {
+        return new AdminLoginSettingsRequestDTO(
+                true,
+                true,
+                resetMode,
+                600,
+                30,
+                true,
+                true,
+                true,
+                "none",
+                5,
+                true,
+                false,
+                true,
+                false,
+                45,
+                12,
+                true,
+                5,
+                2,
+                300,
+                128,
+                1,
+                1,
+                1,
+                1,
+                true,
+                true,
+                true,
+                5,
+                90,
+                "password",
+                1000,
+                60,
+                60,
+                900,
+                43200,
+                3,
+                false,
+                30,
+                5,
+                otpEnabled,
+                otpRequired,
+                issuer,
+                algorithm,
+                digits,
+                30,
+                1,
+                true,
+                true,
+                2,
+                true,
+                webAuthnPolicy,
+                passwordlessPolicy);
+    }
+
+    private static WebAuthnPolicyDTO validPolicy() {
+        return policy(
+                "Example",
+                "example.test",
+                "ES256,RS256",
+                "none",
+                "any",
+                "preferred",
+                "preferred",
+                300,
+                "");
+    }
+
+    private static WebAuthnPolicyDTO policy(
+            String rpName,
+            String rpId,
+            String algorithms,
+            String attestation,
+            String attachment,
+            String residentKey,
+            String userVerification,
+            int timeout,
+            String aaguids) {
+        return new WebAuthnPolicyDTO(
+                rpName,
+                rpId,
+                algorithms,
+                attestation,
+                attachment,
+                residentKey,
+                userVerification,
+                timeout,
+                true,
+                aaguids);
     }
 
     private static LoginSettingsEntity settings() {

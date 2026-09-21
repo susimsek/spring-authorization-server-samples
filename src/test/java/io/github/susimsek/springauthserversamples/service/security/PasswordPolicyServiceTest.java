@@ -52,6 +52,47 @@ class PasswordPolicyServiceTest {
     }
 
     @Test
+    void rejectsUsernameEmailCommonAndCurrentPasswords() {
+        ApplicationProperties.PasswordPolicy policy =
+                new ApplicationProperties.PasswordPolicy(
+                        1, 128, 0, 0, 0, 0, true, true, true, 0, 0, "password");
+        when(applicationProperties.security())
+                .thenReturn(
+                        new ApplicationProperties.Security(
+                                policy, new ApplicationProperties.BruteForce()));
+        UserEntity user = user();
+
+        assertThatThrownBy(() -> service().validateForNewPassword(user, "alice"))
+                .isInstanceOf(ApiException.class);
+        assertThatThrownBy(() -> service().validateForNewPassword(user, "alice@example.test"))
+                .isInstanceOf(ApiException.class);
+        assertThatThrownBy(() -> service().validateForNewPassword(user, "password"))
+                .isInstanceOf(ApiException.class);
+
+        when(passwordEncoder.matches("DifferentPassword", "current-hash")).thenReturn(true);
+        assertThatThrownBy(() -> service().validateForNewPassword(user, "DifferentPassword"))
+                .isInstanceOf(ApiException.class);
+    }
+
+    @Test
+    void acceptsPolicyWithoutCurrentPasswordOrHistoryAndReportsUnexpiredPassword() {
+        ApplicationProperties.PasswordPolicy policy =
+                new ApplicationProperties.PasswordPolicy(
+                        1, 128, 0, 0, 0, 0, false, false, false, 0, 0, "");
+        when(applicationProperties.security())
+                .thenReturn(
+                        new ApplicationProperties.Security(
+                                policy, new ApplicationProperties.BruteForce()));
+        UserEntity user = user();
+        user.setPasswordChangedAt(Instant.now());
+
+        service().validate(user, "ok");
+        service().recordChange(user, null);
+
+        org.assertj.core.api.Assertions.assertThat(service().isExpired(user)).isFalse();
+    }
+
+    @Test
     void detectsExpiredPasswordsAndTrimsHistory() {
         ApplicationProperties.PasswordPolicy policy =
                 new ApplicationProperties.PasswordPolicy(

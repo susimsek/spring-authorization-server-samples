@@ -240,6 +240,50 @@ class AdminRoleServiceTest {
         assertThat(result.userCount()).isEqualTo(1L);
     }
 
+    @Test
+    void filtersAvailableUsersInMemoryAcrossSearchAndSortFields() {
+        UserEntity alice = user(10L, "alice", true, "alice@example.com");
+        alice.setFirstName("Alice");
+        alice.setLastName("Zephyr");
+        UserEntity bob = user(11L, "bob", true, "bob@example.com");
+        bob.setFirstName("Bob");
+        bob.setLastName("Yellow");
+        when(authorityRepository.existsByName("ROLE_AUDITOR")).thenReturn(true);
+        when(userRepository.findAllWithEffectiveAuthorities()).thenReturn(List.of(alice, bob));
+
+        for (String property : List.of("email", "firstName", "lastName", "enabled", "unknown")) {
+            assertThat(
+                            service()
+                                    .availableUsers(
+                                            "ROLE_AUDITOR",
+                                            "alice",
+                                            PageRequest.of(
+                                                    0, 10, Sort.by(Sort.Order.desc(property)))))
+                    .extracting(AdminRoleUserDTO::username)
+                    .containsExactly("alice");
+        }
+    }
+
+    @Test
+    void assignsAndRemovesRoleThroughAdminUserService() {
+        AuthorityEntity role = authority(4L, "ROLE_AUDITOR");
+        var pageable = PageRequest.of(0, 20);
+        when(authorityRepository.findByName("ROLE_AUDITOR")).thenReturn(Optional.of(role));
+        when(userRepository.findAllWithEffectiveAuthorities()).thenReturn(List.of());
+        when(userRepository.findByAuthoritiesNameAndUsernameContainingIgnoreCase(
+                        "ROLE_AUDITOR", "", pageable))
+                .thenReturn(new PageImpl<>(List.of(), pageable, 0));
+        when(userRepository.countByAuthoritiesId(4L)).thenReturn(0L);
+
+        service().assignUser("ROLE_AUDITOR", 10L, "admin", pageable);
+        service().removeUser("ROLE_AUDITOR", 10L, "admin", pageable);
+
+        verify(adminUserService).assignRole(10L, "ROLE_AUDITOR", "admin");
+        verify(adminUserService).removeRole(10L, "ROLE_AUDITOR", "admin");
+        verify(adminAuditEventService).record("role.user.assigned", "role", "ROLE_AUDITOR");
+        verify(adminAuditEventService).record("role.user.removed", "role", "ROLE_AUDITOR");
+    }
+
     private AdminRoleService service() {
         return new AdminRoleService(
                 authorityRepository, userRepository, adminAuditEventService, adminUserService);

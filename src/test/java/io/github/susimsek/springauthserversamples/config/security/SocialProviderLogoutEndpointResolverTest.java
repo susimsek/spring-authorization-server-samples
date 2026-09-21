@@ -45,4 +45,41 @@ class SocialProviderLogoutEndpointResolverTest {
         assertThat(new SocialProviderLogoutEndpointResolver().resolve(provider))
                 .isEqualTo("https://github.com/logout");
     }
+
+    @Test
+    void handlesNullInvalidAndAllBuiltInProviderFallbacks() {
+        SocialProviderLogoutEndpointResolver resolver = new SocialProviderLogoutEndpointResolver();
+        assertThat(resolver.resolve(null)).isNull();
+        for (String provider : new String[] {"google", "microsoft", "linkedin"}) {
+            ProviderCredentials credentials = mock(ProviderCredentials.class);
+            when(credentials.providerType()).thenReturn(provider);
+            when(credentials.issuerUri()).thenReturn(" ");
+            assertThat(resolver.resolve(credentials)).isNotBlank();
+        }
+        ProviderCredentials unknown = mock(ProviderCredentials.class);
+        when(unknown.providerType()).thenReturn("custom");
+        assertThat(resolver.resolve(unknown)).isNull();
+    }
+
+    @Test
+    void ignoresInvalidDiscoveryAndUsesFallback() {
+        RestClient.Builder restClientBuilder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restClientBuilder).build();
+        RestClient restClient = restClientBuilder.build();
+        server.expect(
+                        request ->
+                                assertThat(request.getURI().getPath())
+                                        .endsWith("/.well-known/openid-configuration"))
+                .andRespond(
+                        org.springframework.test.web.client.response.MockRestResponseCreators
+                                .withSuccess(
+                                        "{\"end_session_endpoint\":\"javascript:bad\"}",
+                                        MediaType.APPLICATION_JSON));
+        ProviderCredentials provider = mock(ProviderCredentials.class);
+        when(provider.issuerUri()).thenReturn("https://issuer.example/");
+        when(provider.providerType()).thenReturn("google");
+        assertThat(new SocialProviderLogoutEndpointResolver(restClient).resolve(provider))
+                .isEqualTo("https://accounts.google.com/Logout");
+        server.verify();
+    }
 }
