@@ -200,16 +200,25 @@ it("saves role mappings and permission assignments", async () => {
       } as never;
     }
     if (config.url === "/api/admin/roles?page=0&size=100") {
-      return { status: 200, data: { content: [{ name: "ROLE_USER" }, { name: "ROLE_ADMIN" }] } } as never;
+      return {
+        status: 200,
+        data: { content: [{ name: "ROLE_USER" }, { name: "ROLE_ADMIN" }] },
+      } as never;
     }
     if (config.url?.includes("/permissions")) {
       return { status: 200, data: [{ userId: 1, username: "admin", permission: "VIEW" }] } as never;
     }
     if (config.method === "PUT" && config.url?.endsWith("/roles")) {
-      return { status: 200, data: { id: 7, name: "Operators", roles: ["ROLE_USER", "ROLE_ADMIN"] } } as never;
+      return {
+        status: 200,
+        data: { id: 7, name: "Operators", roles: ["ROLE_USER", "ROLE_ADMIN"] },
+      } as never;
     }
     if (config.method === "PUT" && config.url?.endsWith("/permissions")) {
-      return { status: 200, data: [{ userId: 1, username: "admin", permission: "MANAGE_ROLES" }] } as never;
+      return {
+        status: 200,
+        data: [{ userId: 1, username: "admin", permission: "MANAGE_ROLES" }],
+      } as never;
     }
     return { status: 200, data: { content: [], totalPages: 0, totalElements: 0 } } as never;
   });
@@ -218,16 +227,30 @@ it("saves role mappings and permission assignments", async () => {
   expect(await screen.findByLabelText("ROLE_ADMIN")).not.toBeChecked();
   fireEvent.click(screen.getByLabelText("ROLE_ADMIN"));
   fireEvent.click(screen.getByRole("button", { name: en.admin.groups.saveMappings }));
-  await waitFor(() => expect(request.mock.calls.some(([, config]) => config.url?.endsWith("/roles") && config.method === "PUT")).toBe(true));
+  await waitFor(() =>
+    expect(
+      request.mock.calls.some(
+        ([, config]) => config.url?.endsWith("/roles") && config.method === "PUT",
+      ),
+    ).toBe(true),
+  );
   rolesView.unmount();
 
   render(<GroupDetail id="7" locale="en" dictionary={en} tab="permissions" />);
   expect(await screen.findByRole("button", { name: en.admin.groups.addPermission })).toBeVisible();
   fireEvent.click(screen.getByRole("button", { name: en.admin.groups.addPermission }));
-  const permissionUsers = await screen.findAllByRole("combobox", { name: en.admin.groups.permissionUser });
+  const permissionUsers = await screen.findAllByRole("combobox", {
+    name: en.admin.groups.permissionUser,
+  });
   fireEvent.change(permissionUsers.at(-1)!, { target: { value: "1" } });
   fireEvent.click(screen.getByRole("button", { name: en.admin.groups.savePermissions }));
-  await waitFor(() => expect(request.mock.calls.some(([, config]) => config.url?.endsWith("/permissions") && config.method === "PUT")).toBe(true));
+  await waitFor(() =>
+    expect(
+      request.mock.calls.some(
+        ([, config]) => config.url?.endsWith("/permissions") && config.method === "PUT",
+      ),
+    ).toBe(true),
+  );
 });
 
 it("adds and removes group members through search suggestions", async () => {
@@ -252,7 +275,10 @@ it("adds and removes group members through search suggestions", async () => {
       } as never;
     }
     if (config.url?.includes("available-users")) {
-      return { status: 200, data: { content: [{ id: 2, username: "member", enabled: true }] } } as never;
+      return {
+        status: 200,
+        data: { content: [{ id: 2, username: "member", enabled: true }] },
+      } as never;
     }
     if (config.method === "POST") {
       added = true;
@@ -278,8 +304,12 @@ it("adds and removes group members through search suggestions", async () => {
   expect(await screen.findByText("member")).toBeVisible();
   fireEvent.click(screen.getAllByRole("button", { name: "member" }).at(-1)!);
   fireEvent.click(screen.getByRole("button", { name: en.admin.groups.assignUser }));
-  await waitFor(() => expect(request.mock.calls.some(([, config]) => config.method === "POST")).toBe(true));
+  await waitFor(() =>
+    expect(request.mock.calls.some(([, config]) => config.method === "POST")).toBe(true),
+  );
   const remove = await screen.findByRole("button", { name: en.admin.groups.removeUser });
   fireEvent.click(remove);
-  await waitFor(() => expect(request.mock.calls.some(([, config]) => config.method === "DELETE")).toBe(true));
+  await waitFor(() =>
+    expect(request.mock.calls.some(([, config]) => config.method === "DELETE")).toBe(true),
+  );
 });

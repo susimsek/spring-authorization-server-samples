@@ -189,10 +189,12 @@ describe("MFA authentication pages", () => {
     const recoveryInput = screen.getByLabelText(dictionary.mfa.recoveryCode);
     fireEvent.change(recoveryInput, { target: { value: "ABCD-EFGH-IJKL" } });
     fireEvent.click(screen.getByRole("button", { name: dictionary.mfa.verify }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
-      "/api/auth/mfa/recovery-code",
-      expect.objectContaining({ body: JSON.stringify({ code: "ABCD-EFGH-IJKL" }) }),
-    ));
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/auth/mfa/recovery-code",
+        expect.objectContaining({ body: JSON.stringify({ code: "ABCD-EFGH-IJKL" }) }),
+      ),
+    );
     expect(await screen.findByText(dictionary.mfa.invalidCode)).toBeVisible();
 
     fireEvent.change(recoveryInput, { target: { value: "MNOP-QRST-UVWX" } });
@@ -201,16 +203,20 @@ describe("MFA authentication pages", () => {
   });
 
   it("handles successful and failed passkey authentication", async () => {
-    mockAuthenticatePasskey.mockImplementationOnce(async (callback: (url: string, init: RequestInit) => Promise<unknown>) => {
-      fetchMock.mockResolvedValueOnce(response(200));
-      return callback("/api/auth/mfa/passkey", { method: "POST" });
-    });
+    mockAuthenticatePasskey.mockImplementationOnce(
+      async (callback: (url: string, init: RequestInit) => Promise<unknown>) => {
+        fetchMock.mockResolvedValueOnce(response(200));
+        return callback("/api/auth/mfa/passkey", { method: "POST" });
+      },
+    );
     render(<MfaChallengePage dictionary={dictionary} />);
     fireEvent.click(screen.getByRole("button", { name: dictionary.mfa.passkey }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
-      "/api/auth/mfa/passkey",
-      expect.objectContaining({ method: "POST", credentials: "same-origin" }),
-    ));
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/auth/mfa/passkey",
+        expect.objectContaining({ method: "POST", credentials: "same-origin" }),
+      ),
+    );
     await waitFor(() =>
       expect(screen.getByRole("button", { name: dictionary.mfa.passkey })).toBeEnabled(),
     );
@@ -242,7 +248,12 @@ describe("MFA authentication pages", () => {
     fetchMock
       .mockResolvedValueOnce(
         response(200, [
-          { key: "UPDATE_PROFILE", displayName: "Update profile", description: "Profile", version: 1 },
+          {
+            key: "UPDATE_PROFILE",
+            displayName: "Update profile",
+            description: "Profile",
+            version: 1,
+          },
         ]),
       )
       .mockResolvedValueOnce(response(500, { detail: "Profile save failed" }));
@@ -250,8 +261,12 @@ describe("MFA authentication pages", () => {
     await screen.findByText("Update profile");
     const firstName = document.querySelector('input[name="firstName"]')!;
     fireEvent.change(firstName, { target: { value: "Admin" } });
-    fireEvent.change(document.querySelector('input[name="lastName"]')!, { target: { value: "User" } });
-    fireEvent.change(document.querySelector('input[name="email"]')!, { target: { value: "admin@example.test" } });
+    fireEvent.change(document.querySelector('input[name="lastName"]')!, {
+      target: { value: "User" },
+    });
+    fireEvent.change(document.querySelector('input[name="email"]')!, {
+      target: { value: "admin@example.test" },
+    });
     fireEvent.click(screen.getByRole("button", { name: dictionary.requiredActions.continue }));
     expect(await screen.findByText("Profile save failed")).toBeVisible();
 
@@ -259,14 +274,21 @@ describe("MFA authentication pages", () => {
     fetchMock
       .mockResolvedValueOnce(
         response(200, [
-          { key: "UPDATE_PASSWORD", displayName: "Update password", description: "Password", version: 1 },
+          {
+            key: "UPDATE_PASSWORD",
+            displayName: "Update password",
+            description: "Password",
+            version: 1,
+          },
         ]),
       )
       .mockResolvedValueOnce(response(500, { detail: "Password save failed" }));
     render(<RequiredActionsPage dictionary={dictionary} />);
     const password = await screen.findByLabelText(dictionary.requiredActions.password);
     fireEvent.change(password, { target: { value: "StrongPassword1!" } });
-    fireEvent.change(screen.getByLabelText(dictionary.requiredActions.confirmPassword), { target: { value: "StrongPassword1!" } });
+    fireEvent.change(screen.getByLabelText(dictionary.requiredActions.confirmPassword), {
+      target: { value: "StrongPassword1!" },
+    });
     fireEvent.click(screen.getByRole("button", { name: dictionary.requiredActions.continue }));
     expect(await screen.findByText("Password save failed")).toBeVisible();
   });
@@ -282,7 +304,11 @@ describe("MFA authentication pages", () => {
 
     emailView.unmount();
     fetchMock
-      .mockResolvedValueOnce(response(200, [{ key: "VERIFY_EMAIL", displayName: "Verify email", description: "Verify", version: 2 }]))
+      .mockResolvedValueOnce(
+        response(200, [
+          { key: "VERIFY_EMAIL", displayName: "Verify email", description: "Verify", version: 2 },
+        ]),
+      )
       .mockResolvedValueOnce(response(500, { detail: "Verification failed" }));
     render(<RequiredActionsPage dictionary={dictionary} />);
     fireEvent.click(await screen.findByRole("button", { name: dictionary.requiredActions.accept }));
@@ -293,11 +319,18 @@ describe("MFA authentication pages", () => {
     mockRegisterPasskey.mockRejectedValueOnce(new Error("Passkey unavailable"));
     fetchMock.mockResolvedValueOnce(
       response(200, [
-        { key: "CONFIGURE_PASSKEY", displayName: "Register passkey", description: "Passkey", version: 1 },
+        {
+          key: "CONFIGURE_PASSKEY",
+          displayName: "Register passkey",
+          description: "Passkey",
+          version: 1,
+        },
       ]),
     );
     render(<RequiredActionsPage dictionary={dictionary} />);
-    fireEvent.click(await screen.findByRole("button", { name: dictionary.requiredActions.passkeyRegister }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: dictionary.requiredActions.passkeyRegister }),
+    );
     expect(await screen.findByText("Passkey unavailable")).toBeVisible();
   });
 
@@ -345,7 +378,9 @@ describe("MFA authentication pages", () => {
       )
       .mockResolvedValueOnce(response(201, {}));
     render(<RequiredActionsPage dictionary={dictionary} />);
-    fireEvent.click(await screen.findByRole("button", { name: dictionary.requiredActions.passkeyRegister }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: dictionary.requiredActions.passkeyRegister }),
+    );
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
     expect(screen.queryByText(dictionary.requiredActions.error)).not.toBeInTheDocument();
   });
@@ -353,7 +388,12 @@ describe("MFA authentication pages", () => {
   it("reports password policy validation details before submitting", async () => {
     fetchMock.mockResolvedValueOnce(
       response(200, [
-        { key: "UPDATE_PASSWORD", displayName: "Update password", description: "Password", version: 1 },
+        {
+          key: "UPDATE_PASSWORD",
+          displayName: "Update password",
+          description: "Password",
+          version: 1,
+        },
       ]),
     );
     render(<RequiredActionsPage dictionary={dictionary} />);

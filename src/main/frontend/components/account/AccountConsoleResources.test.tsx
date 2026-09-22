@@ -187,8 +187,12 @@ describe("Account console resources", () => {
     });
 
     renderWithStore(<AccountSessions dictionary={dictionary} />);
-    expect(await screen.findByRole("button", { name: dictionary.account.sessions.signOutOthers })).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: dictionary.account.sessions.signOutOthers }));
+    expect(
+      await screen.findByRole("button", { name: dictionary.account.sessions.signOutOthers }),
+    ).toBeVisible();
+    fireEvent.click(
+      screen.getByRole("button", { name: dictionary.account.sessions.signOutOthers }),
+    );
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", {
         name: dictionary.account.sessions.signOutOthers,
@@ -243,7 +247,12 @@ describe("Account console resources", () => {
         name: dictionary.account.sessions.signOut,
       }),
     );
-    await waitFor(() => expect(mockAccountRequest).toHaveBeenCalledWith("token", expect.objectContaining({ method: "DELETE" })));
+    await waitFor(() =>
+      expect(mockAccountRequest).toHaveBeenCalledWith(
+        "token",
+        expect.objectContaining({ method: "DELETE" }),
+      ),
+    );
   });
 
   it("confirms application consent revocation and renders grant metadata", async () => {
@@ -550,14 +559,19 @@ describe("Account console resources", () => {
       }
       if (config.url === "/api/account/profile" && config.method === "PUT") {
         updateAttempt += 1;
-        if (updateAttempt === 1) return Promise.reject({ data: { errorCode: "reauthentication_required" } });
+        if (updateAttempt === 1)
+          return Promise.reject({ data: { errorCode: "reauthentication_required" } });
         return { status: 200, data: { ...profile, firstName: "Updated" } } as never;
       }
       if (config.url === "/api/account/profile/attributes" && config.method === "PUT") {
-        return { status: 200, data: { definitions, attributes: { department: ["security"] } } } as never;
+        return {
+          status: 200,
+          data: { definitions, attributes: { department: ["security"] } },
+        } as never;
       }
       if (config.url === "/api/auth/localization/me") return { status: 204, data: null } as never;
-      if (config.url === "/api/account/send-verify-email") return { status: 204, data: null } as never;
+      if (config.url === "/api/account/send-verify-email")
+        return { status: 204, data: null } as never;
       return { status: 204, data: null } as never;
     });
     Object.defineProperty(globalThis, "fetch", {
@@ -570,7 +584,9 @@ describe("Account console resources", () => {
       target: { value: "Changed" },
     });
     fireEvent.click(screen.getByRole("button", { name: dictionary.account.common.save }));
-    expect(await screen.findByText(dictionary.account.profile.reauthenticationRequired)).toBeVisible();
+    expect(
+      await screen.findByText(dictionary.account.profile.reauthenticationRequired),
+    ).toBeVisible();
     fireEvent.change(screen.getByLabelText(dictionary.account.profile.currentPassword), {
       target: { value: "password" },
     });
@@ -581,7 +597,9 @@ describe("Account console resources", () => {
         expect.objectContaining({ url: "/api/auth/localization/me", method: "PUT" }),
       ),
     );
-    fireEvent.click(screen.getByRole("button", { name: dictionary.account.profile.sendVerification }));
+    fireEvent.click(
+      screen.getByRole("button", { name: dictionary.account.profile.sendVerification }),
+    );
     await waitFor(() =>
       expect(mockAccountRequest).toHaveBeenCalledWith(
         "token",
