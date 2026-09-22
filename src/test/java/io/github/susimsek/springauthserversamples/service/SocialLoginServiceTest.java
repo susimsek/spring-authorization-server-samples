@@ -255,6 +255,49 @@ class SocialLoginServiceTest {
     }
 
     @Test
+    void readOnlySyncModeDoesNotUpdateExistingProfile() {
+        UserEntity user = new UserEntity();
+        user.setUsername("social_google_existing");
+        user.setFirstName("Old");
+        when(socialProviderSettingsService.syncMode("google")).thenReturn("read_only");
+        when(socialIdentityRepository.findByProviderAndSubject("google", "google-subject"))
+                .thenReturn(
+                        Optional.of(new SocialIdentityEntity("google", "google-subject", user)));
+
+        assertThat(service().findOrCreate(authentication())).isEqualTo("social_google_existing");
+
+        assertThat(user.getFirstName()).isEqualTo("Old");
+        verify(userRepository, never()).save(any(UserEntity.class));
+    }
+
+    @Test
+    void createsSocialUserWithoutEmailUsingNameFallback() {
+        AuthorityEntity userRole = new AuthorityEntity(2L, AuthoritiesConstants.USER);
+        when(socialIdentityRepository.findByProviderAndSubject("google", "name-only"))
+                .thenReturn(Optional.empty());
+        when(authorityRepository.findByName(AuthoritiesConstants.USER))
+                .thenReturn(Optional.of(userRole));
+        when(passwordEncoder.encode(anyString())).thenReturn("encoded-random-password");
+        when(userRepository.save(any(UserEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            UserEntity user = invocation.getArgument(0);
+                            user.setId(44L);
+                            return user;
+                        });
+
+        service()
+                .findOrCreate(
+                        authentication(
+                                "google", Map.of("sub", "name-only", "name", "Ada Lovelace")));
+
+        ArgumentCaptor<UserEntity> userCaptor = ArgumentCaptor.forClass(UserEntity.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().getEmail()).isNull();
+        assertThat(userCaptor.getValue().getFirstName()).isEqualTo("Ada Lovelace");
+    }
+
+    @Test
     void fallsBackToIdAndNormalizesEmailAndAvatarClaims() {
         AuthorityEntity userRole = new AuthorityEntity(2L, AuthoritiesConstants.USER);
         when(socialProviderSettingsService.provider("google"))
@@ -359,6 +402,19 @@ class SocialLoginServiceTest {
                                                         "picture",
                                                         "http://images.example.test/avatar.png"))))
                 .isEqualTo("social_google_existing");
+        verify(userRepository, never()).save(any(UserEntity.class));
+
+        for (String picture :
+                java.util.List.of(
+                        "https:///avatar.png",
+                        "https://user:secret@images.example.test/avatar.png",
+                        "https://images.example.test/avatar.png#fragment",
+                        "not a uri")) {
+            service()
+                    .findOrCreate(
+                            authentication(
+                                    "google", Map.of("sub", "google-subject", "picture", picture)));
+        }
         verify(userRepository, never()).save(any(UserEntity.class));
     }
 
@@ -669,6 +725,17 @@ class SocialLoginServiceTest {
     }
 
     @Test
+    void handlesGlobalProviderDisablementAndNullProviderNames() {
+        assertThat(service().isProviderEnabled(null)).isFalse();
+        when(socialProviderSettingsService.isEnabled()).thenReturn(false);
+
+        assertThat(service().isProviderEnabled("google")).isFalse();
+        assertThat(service().isProviderLoginAllowed("google")).isFalse();
+        assertThat(service().requiresShortStateParameter(null)).isFalse();
+        assertThat(service().providerRequiresMfa(null)).isFalse();
+    }
+
+    @Test
     void linksExistingAccountAfterProviderValidation() {
         UserEntity existing = new UserEntity();
         existing.setId(42L);
@@ -746,6 +813,135 @@ class SocialLoginServiceTest {
         assertThatThrownBy(() -> service().linkPending("ada", Map.of("provider", "github")))
                 .isInstanceOf(OAuth2AuthenticationException.class)
                 .hasMessageContaining("invalid");
+
+        assertThatThrownBy(
+                        () -> service().linkExisting("ada", null, authentication("github", "123")))
+                .isInstanceOf(OAuth2AuthenticationException.class)
+                .hasMessageContaining("did not match");
+    }
+
+    @Test
+    void usesConfiguredProviderForUnlinkAndCoversProviderFlags() {
+        SocialProviderSettingsService.ProviderCredentials configured =
+                advancedProvider("github", true, false, false, false);
+        when(socialProviderSettingsService.provider("GitHub")).thenReturn(configured);
+        UserEntity user = new UserEntity();
+        user.setUsername("ada");
+        SocialIdentityEntity identity = new SocialIdentityEntity("github", "123", user);
+        when(socialIdentityRepository.findAllByUserUsernameAndProvider("ada", "github"))
+                .thenReturn(java.util.List.of(identity));
+
+        service().unlink("ada", "GitHub");
+
+        verify(socialIdentityRepository).deleteAll(java.util.List.of(identity));
+        assertThat(service().requiresShortStateParameter("GitHub")).isTrue();
+        assertThat(service().providerRequiresMfa("GitHub")).isFalse();
+    }
+
+    @Test
+    void acceptsDefaultRequiredClaimsAndCaseSensitiveMapperConfiguration() {
+        AuthorityEntity userRole = new AuthorityEntity(2L, AuthoritiesConstants.USER);
+        SocialProviderSettingsService.ProviderCredentials configured =
+                advancedProvider("google", true, true, false, true);
+        when(socialProviderSettingsService.provider("google")).thenReturn(configured);
+        when(socialIdentityRepository.findByProviderAndSubject("google", "configured"))
+                .thenReturn(Optional.empty());
+        when(authorityRepository.findByName(AuthoritiesConstants.USER))
+                .thenReturn(Optional.of(userRole));
+        when(passwordEncoder.encode(anyString())).thenReturn("encoded-random-password");
+        when(userRepository.save(any(UserEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            UserEntity user = invocation.getArgument(0);
+                            user.setId(45L);
+                            return user;
+                        });
+        when(socialIdentityMapperService.apply(
+                        org.mockito.ArgumentMatchers.eq("google"),
+                        org.mockito.ArgumentMatchers.eq(Map.of("sub", "configured")),
+                        any(UserEntity.class),
+                        org.mockito.ArgumentMatchers.eq(true),
+                        org.mockito.ArgumentMatchers.eq(true),
+                        org.mockito.ArgumentMatchers.isNull()))
+                .thenReturn(Map.of());
+
+        service().findOrCreate(authentication("google", Map.of("sub", "configured")));
+
+        verify(socialIdentityMapperService)
+                .apply(
+                        org.mockito.ArgumentMatchers.eq("google"),
+                        org.mockito.ArgumentMatchers.eq(Map.of("sub", "configured")),
+                        any(UserEntity.class),
+                        org.mockito.ArgumentMatchers.eq(true),
+                        org.mockito.ArgumentMatchers.eq(true),
+                        org.mockito.ArgumentMatchers.isNull());
+    }
+
+    @Test
+    void fillsPictureFromFallbackClaimAndHandlesMissingPicture() {
+        UserEntity user = new UserEntity();
+        user.setUsername("social_google_existing");
+        when(socialIdentityRepository.findByProviderAndSubject("google", "fallback-picture"))
+                .thenReturn(
+                        Optional.of(new SocialIdentityEntity("google", "fallback-picture", user)));
+
+        service()
+                .findOrCreate(
+                        authentication(
+                                "google",
+                                Map.of(
+                                        "sub",
+                                        "fallback-picture",
+                                        "picture",
+                                        " ",
+                                        "avatar_url",
+                                        "https://images.example.test/avatar.png")));
+
+        assertThat(user.getPictureUrl()).isEqualTo("https://images.example.test/avatar.png");
+        verify(userRepository).save(user);
+
+        UserEntity blankPictureUser = new UserEntity();
+        blankPictureUser.setUsername("social_google_blank");
+        blankPictureUser.setPictureUrl(" ");
+        when(socialIdentityRepository.findByProviderAndSubject("google", "no-picture"))
+                .thenReturn(
+                        Optional.of(
+                                new SocialIdentityEntity(
+                                        "google", "no-picture", blankPictureUser)));
+
+        service().findOrCreate(authentication("google", Map.of("sub", "no-picture")));
+
+        verify(userRepository).save(user);
+        verify(userRepository, org.mockito.Mockito.times(1)).save(any(UserEntity.class));
+    }
+
+    @Test
+    void handlesStringEmailVerificationAndMalformedPicturesDuringProfileSync() {
+        UserEntity user = new UserEntity();
+        user.setUsername("social_google_sync");
+        user.setEmailVerified(true);
+        SocialIdentityEntity identity = new SocialIdentityEntity("google", "sync", user);
+        when(socialIdentityRepository.findByProviderAndSubject("google", "sync"))
+                .thenReturn(Optional.of(identity));
+        when(socialProviderSettingsService.syncMode("google")).thenReturn("force");
+
+        service()
+                .findOrCreate(
+                        authentication(
+                                "google",
+                                Map.of(
+                                        "sub",
+                                        "sync",
+                                        "email",
+                                        "ada@example.test",
+                                        "email_verified",
+                                        "false",
+                                        "picture",
+                                        "https://[")));
+
+        assertThat(user.isEmailVerified()).isFalse();
+        assertThat(user.getEmail()).isEqualTo("ada@example.test");
+        verify(userRepository).save(user);
     }
 
     @Test
@@ -868,6 +1064,42 @@ class SocialLoginServiceTest {
                 objectMapper,
                 userAccessInvalidationService,
                 auditEventService);
+    }
+
+    private static SocialProviderSettingsService.ProviderCredentials advancedProvider(
+            String registrationId,
+            boolean shortStateParameter,
+            boolean caseSensitiveUsername,
+            boolean mfaRequired,
+            boolean requiredClaimsNull) {
+        return new SocialProviderSettingsService.ProviderCredentials(
+                registrationId,
+                registrationId,
+                registrationId,
+                registrationId,
+                "client-id",
+                "client-secret",
+                true,
+                false,
+                false,
+                false,
+                mfaRequired,
+                requiredClaimsNull ? null : "sub",
+                false,
+                false,
+                0,
+                "always",
+                null,
+                null,
+                null,
+                null,
+                null,
+                "client_secret_basic",
+                "openid,profile,email",
+                "sub",
+                registrationId,
+                shortStateParameter,
+                caseSensitiveUsername);
     }
 
     private static OAuth2AuthenticationToken authentication() {

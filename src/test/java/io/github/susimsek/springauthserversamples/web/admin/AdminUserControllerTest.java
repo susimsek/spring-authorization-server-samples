@@ -1,6 +1,7 @@
 package io.github.susimsek.springauthserversamples.web.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -84,10 +85,51 @@ class AdminUserControllerTest {
                         true,
                         Set.of("ROLE_USER"));
         controller.createUser(detailedCreate, authentication);
+        controller.createUser(
+                new AdminUserRequestDTO(
+                        "alice",
+                        null,
+                        "Example",
+                        null,
+                        false,
+                        "Change-me12!",
+                        false,
+                        false,
+                        Set.of("ROLE_USER")),
+                authentication);
+        controller.createUser(
+                new AdminUserRequestDTO(
+                        "alice",
+                        null,
+                        null,
+                        "alice@example.test",
+                        null,
+                        "Change-me12!",
+                        null,
+                        null,
+                        Set.of("ROLE_USER")),
+                authentication);
+        controller.createUser(
+                new AdminUserRequestDTO(
+                        "alice",
+                        null,
+                        null,
+                        null,
+                        null,
+                        "Change-me12!",
+                        true,
+                        true,
+                        Set.of("ROLE_USER")),
+                authentication);
         controller.bulkOperate(
                 new AdminUserBulkRequestDTO(List.of(7L), AdminUserBulkAction.DISABLE),
                 authentication);
         controller.updateUser(7L, detailedCreate, authentication);
+        controller.updateUser(
+                7L,
+                new AdminUserRequestDTO(
+                        "alice", null, null, null, false, null, null, false, Set.of("ROLE_USER")),
+                authentication);
         controller.updateAvatar(
                 7L,
                 new MockMultipartFile("file", "avatar.png", "image/png", new byte[] {1}),
@@ -121,6 +163,16 @@ class AdminUserControllerTest {
                                 Locale.ENGLISH,
                                 authentication))
                 .returns(204, response -> response.getStatusCode().value());
+        assertThatThrownBy(
+                        () ->
+                                controller.executeActionsEmail(
+                                        7L, null, Set.of(), Locale.ENGLISH, authentication))
+                .isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(
+                        () ->
+                                controller.executeActionsEmail(
+                                        7L, null, null, Locale.ENGLISH, authentication))
+                .isInstanceOf(RuntimeException.class);
         assertThat(controller.sendVerifyEmail(7L, 3600L, Locale.ENGLISH, authentication))
                 .returns(204, response -> response.getStatusCode().value());
 

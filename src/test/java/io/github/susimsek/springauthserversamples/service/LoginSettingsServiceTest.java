@@ -520,6 +520,89 @@ class LoginSettingsServiceTest {
                 .hasMessage("WebAuthn passwordless acceptable AAGUID is invalid");
     }
 
+    @Test
+    void coversRemainingWebAuthnPolicyBoundaries() {
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        request(
+                                                "none",
+                                                true,
+                                                false,
+                                                "Issuer",
+                                                "SHA1",
+                                                6,
+                                                null,
+                                                validPolicy())))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("WebAuthn policy is required");
+
+        WebAuthnPolicyDTO nullRpId =
+                new WebAuthnPolicyDTO(
+                        "Example",
+                        null,
+                        "ES256",
+                        "none",
+                        "any",
+                        "preferred",
+                        "preferred",
+                        300,
+                        true,
+                        "00000000-0000-0000-0000-000000000000");
+        service.update(request("none", true, false, "Issuer", "SHA1", 6, nullRpId, validPolicy()));
+
+        for (WebAuthnPolicyDTO policy :
+                java.util.List.of(
+                        new WebAuthnPolicyDTO(
+                                "Example",
+                                "example.test",
+                                "ES256",
+                                "none",
+                                null,
+                                "preferred",
+                                "preferred",
+                                300,
+                                true,
+                                ""),
+                        new WebAuthnPolicyDTO(
+                                "Example",
+                                "example.test",
+                                "ES256",
+                                "none",
+                                "any",
+                                null,
+                                "preferred",
+                                300,
+                                true,
+                                ""),
+                        new WebAuthnPolicyDTO(
+                                "Example",
+                                "example.test",
+                                "ES256",
+                                "none",
+                                "any",
+                                "preferred",
+                                null,
+                                300,
+                                true,
+                                ""))) {
+            assertThatThrownBy(
+                            () ->
+                                    service.update(
+                                            request(
+                                                    "none",
+                                                    true,
+                                                    false,
+                                                    "Issuer",
+                                                    "SHA1",
+                                                    6,
+                                                    policy,
+                                                    validPolicy())))
+                    .isInstanceOf(ApiException.class)
+                    .hasMessage("WebAuthn ceremony requirements are required");
+        }
+    }
+
     private static AdminLoginSettingsRequestDTO validRequest() {
         return request("none", true, false, "Issuer", "SHA1", 6, validPolicy(), validPolicy());
     }

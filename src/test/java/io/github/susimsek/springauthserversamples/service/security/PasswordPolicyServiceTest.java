@@ -39,6 +39,57 @@ class PasswordPolicyServiceTest {
     }
 
     @Test
+    void rejectsEachIndividualPasswordComplexityRequirement() {
+        UserEntity user = user();
+
+        assertThatThrownBy(
+                        () ->
+                                serviceWithPolicy(
+                                                new ApplicationProperties.PasswordPolicy(
+                                                        1, 128, 1, 0, 0, 0, false, false, false, 0,
+                                                        0, ""))
+                                        .validateForNewPassword(user, "lowercase1!"))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("uppercase");
+        assertThatThrownBy(
+                        () ->
+                                serviceWithPolicy(
+                                                new ApplicationProperties.PasswordPolicy(
+                                                        1, 128, 0, 1, 0, 0, false, false, false, 0,
+                                                        0, ""))
+                                        .validateForNewPassword(user, "UPPERCASE1!"))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("lowercase");
+        assertThatThrownBy(
+                        () ->
+                                serviceWithPolicy(
+                                                new ApplicationProperties.PasswordPolicy(
+                                                        1, 128, 0, 0, 1, 0, false, false, false, 0,
+                                                        0, ""))
+                                        .validateForNewPassword(user, "NoDigit!"))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("digits");
+        assertThatThrownBy(
+                        () ->
+                                serviceWithPolicy(
+                                                new ApplicationProperties.PasswordPolicy(
+                                                        1, 128, 0, 0, 0, 1, false, false, false, 0,
+                                                        0, ""))
+                                        .validateForNewPassword(user, "NoSpecial1"))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("special");
+        assertThatThrownBy(
+                        () ->
+                                serviceWithPolicy(
+                                                new ApplicationProperties.PasswordPolicy(
+                                                        12, 4, 0, 0, 0, 0, false, false, false, 0,
+                                                        0, ""))
+                                        .validateForNewPassword(user, "short"))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("length");
+    }
+
+    @Test
     void rejectsRecentPasswordFromHistory() {
         when(applicationProperties.security()).thenReturn(security());
         when(historyRepository.findByUserIdOrderByCreatedAtDesc(7L))
@@ -114,8 +165,41 @@ class PasswordPolicyServiceTest {
         org.assertj.core.api.Assertions.assertThat(service().isExpired(user)).isTrue();
     }
 
+    @Test
+    void coversNullCredentialsHistoryBoundariesAndMissingPasswordTimestamp() {
+        ApplicationProperties.PasswordPolicy policy =
+                new ApplicationProperties.PasswordPolicy(
+                        1, 128, 0, 0, 0, 0, true, true, false, 0, 90, "");
+        when(applicationProperties.security())
+                .thenReturn(
+                        new ApplicationProperties.Security(
+                                policy, new ApplicationProperties.BruteForce()));
+        UserEntity user = user();
+        user.setId(null);
+        user.setEmail(null);
+        user.setPassword(null);
+
+        service().validate(user, "valid-password");
+        service().recordChange(user, "previous-hash");
+        verify(historyRepository).findByUserIdOrderByCreatedAtDesc(null);
+        org.assertj.core.api.Assertions.assertThat(service().isExpired(user)).isTrue();
+
+        ApplicationProperties.PasswordPolicy noExpiry =
+                new ApplicationProperties.PasswordPolicy(
+                        1, 128, 0, 0, 0, 0, false, false, false, 0, 0, "");
+        serviceWithPolicy(noExpiry).isExpired(user);
+    }
+
     private PasswordPolicyService service() {
         return new PasswordPolicyService(historyRepository, passwordEncoder, applicationProperties);
+    }
+
+    private PasswordPolicyService serviceWithPolicy(ApplicationProperties.PasswordPolicy policy) {
+        when(applicationProperties.security())
+                .thenReturn(
+                        new ApplicationProperties.Security(
+                                policy, new ApplicationProperties.BruteForce()));
+        return service();
     }
 
     private static ApplicationProperties.Security security() {

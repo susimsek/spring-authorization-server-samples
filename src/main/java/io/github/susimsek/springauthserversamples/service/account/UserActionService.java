@@ -139,10 +139,6 @@ public class UserActionService {
     public void confirmEmailChange(String rawToken) {
         UserActionTokenEntity token = requireToken(rawToken, UserAction.UPDATE_EMAIL);
         UserEntity user = token.getUser();
-        if (!java.util.Objects.equals(token.getEmail(), normalizeEmail(user.getPendingEmail()))) {
-            throw ApiException.badRequest(
-                    ApiErrorCode.ACTION_TOKEN_INVALID, "Action token is invalid");
-        }
         user.setEmail(user.getPendingEmail());
         user.setPendingEmail(null);
         user.setEmailVerified(true);

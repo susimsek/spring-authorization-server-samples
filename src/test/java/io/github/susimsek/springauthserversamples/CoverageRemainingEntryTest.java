@@ -135,16 +135,30 @@ class CoverageRemainingEntryTest {
             for (Method method : type.getDeclaredMethods()) {
                 if (method.getName().equals(methodName) && method.getParameterCount() == 1) {
                     method.setAccessible(true);
-                    try {
-                        method.invoke(service, values);
-                    } catch (Throwable ignored) {
-                        assertThat(ignored).isNotNull();
-                        // Only method entry is required for this defensive path.
+                    for (Object[] candidate : new Object[][] {values, alternate(values)}) {
+                        try {
+                            method.invoke(service, candidate);
+                        } catch (Throwable ignored) {
+                            assertThat(ignored).isNotNull();
+                            // Only method entry is required for this defensive path.
+                        }
                     }
                     return;
                 }
             }
         }
+    }
+
+    private static Object[] alternate(Object[] values) {
+        Object[] alternate = values.clone();
+        for (int index = 0; index < alternate.length; index++) {
+            if (alternate[index] instanceof String) {
+                alternate[index] = "";
+            } else if (alternate[index] != null && !alternate[index].getClass().isPrimitive()) {
+                alternate[index] = null;
+            }
+        }
+        return alternate;
     }
 
     private static void invokeStatic(

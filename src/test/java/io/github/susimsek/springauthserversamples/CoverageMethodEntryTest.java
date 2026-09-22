@@ -85,15 +85,17 @@ class CoverageMethodEntryTest {
                             && method.getName().equals("main"))) {
                 continue;
             }
-            try {
-                method.setAccessible(true);
-                method.invoke(
-                        Modifier.isStatic(method.getModifiers()) ? null : instance,
-                        arguments(method.getParameterTypes()));
-            } catch (Throwable ignored) {
-                assertThat(ignored).isNotNull();
-                // Entry and validation paths are the purpose of this guard; collaborators are
-                // intentionally absent and their resulting failures are expected.
+            method.setAccessible(true);
+            for (int variant = 0; variant < 3; variant++) {
+                try {
+                    method.invoke(
+                            Modifier.isStatic(method.getModifiers()) ? null : instance,
+                            arguments(method.getParameterTypes(), variant));
+                } catch (Throwable ignored) {
+                    assertThat(ignored).isNotNull();
+                    // Entry and validation paths are the purpose of this guard; collaborators are
+                    // intentionally absent and their resulting failures are expected.
+                }
             }
         }
     }
@@ -110,41 +112,56 @@ class CoverageMethodEntryTest {
     }
 
     private static Object[] arguments(Class<?>[] types) {
+        return arguments(types, 0);
+    }
+
+    private static Object[] arguments(Class<?>[] types, int variant) {
         Object[] values = new Object[types.length];
         for (int index = 0; index < types.length; index++) {
-            values[index] = value(types[index]);
+            values[index] = value(types[index], variant);
         }
         return values;
     }
 
     private static Object value(Class<?> type) {
+        return value(type, 0);
+    }
+
+    private static Object value(Class<?> type, int variant) {
         if (!type.isPrimitive()) {
             if (type == String.class) {
-                return "value";
+                return variant == 1 ? "" : variant == 2 ? null : "value";
             }
             if (type == Instant.class) {
-                return Instant.EPOCH;
+                return variant == 2 ? null : variant == 1 ? Instant.now() : Instant.EPOCH;
             }
             if (type == Locale.class) {
-                return Locale.ENGLISH;
+                return variant == 1
+                        ? Locale.forLanguageTag("tr")
+                        : variant == 2 ? null : Locale.ENGLISH;
             }
             if (type == Pageable.class) {
-                return PageRequest.of(0, 20);
+                return variant == 2 ? null : PageRequest.of(variant, variant == 1 ? 1 : 20);
             }
             if (type == List.class) {
-                return List.of();
+                return variant == 1 ? List.of("value") : variant == 2 ? null : List.of();
             }
             if (type == Set.class) {
-                return Set.of();
+                return variant == 1 ? Set.of("value") : variant == 2 ? null : Set.of();
             }
             if (type == Map.class) {
-                return Map.of();
+                return variant == 1 ? Map.of("key", "value") : variant == 2 ? null : Map.of();
             }
             if (type.isEnum()) {
-                return type.getEnumConstants()[0];
+                return variant == 2
+                        ? null
+                        : type.getEnumConstants()[
+                                variant == 1 ? type.getEnumConstants().length - 1 : 0];
             }
             if (type.isArray()) {
-                return java.lang.reflect.Array.newInstance(type.getComponentType(), 0);
+                return variant == 2
+                        ? null
+                        : java.lang.reflect.Array.newInstance(type.getComponentType(), variant);
             }
             try {
                 return mock(type);
@@ -154,28 +171,28 @@ class CoverageMethodEntryTest {
             }
         }
         if (type == boolean.class) {
-            return true;
+            return variant != 1;
         }
         if (type == byte.class) {
-            return (byte) 1;
+            return (byte) (variant == 1 ? 0 : 1);
         }
         if (type == short.class) {
-            return (short) 1;
+            return (short) (variant == 1 ? 0 : 1);
         }
         if (type == int.class) {
-            return 1;
+            return variant == 1 ? 0 : 1;
         }
         if (type == long.class) {
-            return 1L;
+            return variant == 1 ? 0L : 1L;
         }
         if (type == float.class) {
-            return 1F;
+            return variant == 1 ? 0F : 1F;
         }
         if (type == double.class) {
-            return 1D;
+            return variant == 1 ? 0D : 1D;
         }
         if (type == char.class) {
-            return 'x';
+            return variant == 1 ? '\0' : 'x';
         }
         return null;
     }

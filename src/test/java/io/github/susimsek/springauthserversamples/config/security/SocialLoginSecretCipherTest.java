@@ -32,4 +32,35 @@ class SocialLoginSecretCipherTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("The social login secret could not be decrypted");
     }
+
+    @Test
+    void handlesEmptyUnsupportedAndMalformedCiphertexts() {
+        SocialLoginProperties properties = new SocialLoginProperties();
+        properties.setEncryptionKey("test-encryption-key");
+        SocialLoginSecretCipher cipher = new SocialLoginSecretCipher(properties);
+
+        assertThat(cipher.decrypt(null)).isEmpty();
+        assertThat(cipher.decrypt(" ")).isEmpty();
+        assertThatThrownBy(() -> cipher.decrypt("legacy-secret"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("The social login secret has an unsupported format");
+        assertThatThrownBy(() -> cipher.decrypt("v1:AA"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("The social login secret is invalid");
+        assertThatThrownBy(() -> cipher.decrypt("v1:" + "A".repeat(24)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("The social login secret could not be decrypted");
+    }
+
+    @Test
+    void rejectsEncryptionWithoutAConfiguredKey() {
+        SocialLoginProperties properties = new SocialLoginProperties();
+        SocialLoginSecretCipher cipher = new SocialLoginSecretCipher(properties);
+
+        assertThatThrownBy(() -> cipher.encrypt("client-secret"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage(
+                        "SOCIAL_LOGIN_ENCRYPTION_KEY must be configured before saving social"
+                                + " secrets");
+    }
 }

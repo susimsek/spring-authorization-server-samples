@@ -19,7 +19,9 @@ import io.github.susimsek.springauthserversamples.repository.AuthorityRepository
 import io.github.susimsek.springauthserversamples.repository.GroupPermissionRepository;
 import io.github.susimsek.springauthserversamples.repository.GroupRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -413,6 +415,86 @@ class AdminGroupServiceTest {
         assertThat(serviceWithPermissions().findById(8L, "manager").id()).isEqualTo(8L);
         verify(groupPermissionRepository, never())
                 .existsForUserAndGroups(3L, Set.of(8L, 7L), GroupPermission.VIEW);
+    }
+
+    @Test
+    void coversOptionalPermissionRepositoryAndRemainingGroupValidationBranches() {
+        Pageable pageable = Pageable.ofSize(20);
+        when(groupRepository.findByNameContainingIgnoreCase("", pageable))
+                .thenReturn(new PageImpl<>(List.of()));
+        assertThat(service().findAll("", pageable, "operator")).isEmpty();
+
+        GroupEntity group = group(7L, "finance");
+        GroupEntity unrelatedParent = group(8L, "operations");
+        when(groupRepository.findById(7L)).thenReturn(Optional.of(group));
+        when(groupRepository.findById(8L)).thenReturn(Optional.of(unrelatedParent));
+        when(userRepository.findAllByGroupsId(7L)).thenReturn(List.of());
+        when(groupRepository.existsByParentId(7L)).thenReturn(false);
+        service().delete(7L);
+        verify(groupRepository).delete(group);
+
+        service().update(7L, new AdminGroupRequestDTO("finance", 8L, Map.of(), false));
+        assertThat(group.getParent()).isSameAs(unrelatedParent);
+
+        UserEntity manager = user(3L, "manager");
+        manager.getAuthorities().add(authority("ROLE_USER_MANAGER"));
+        when(userRepository.findByUsername("manager")).thenReturn(Optional.of(manager));
+        when(userRepository.countByGroupsId(7L)).thenReturn(0L);
+        assertThat(serviceWithPermissions().findById(7L, "manager").id()).isEqualTo(7L);
+
+        List<Map<String, List<String>>> invalidAttributes =
+                List.of(
+                        Map.of("", List.of("value")),
+                        Map.of("attribute", List.of()),
+                        Map.of("attribute", List.of("")),
+                        Map.of("attribute", List.of("x".repeat(1001))));
+        when(groupRepository.existsByName("attributes-test")).thenReturn(false);
+        for (Map<String, List<String>> attributes : invalidAttributes) {
+            assertThatThrownBy(
+                            () ->
+                                    service()
+                                            .create(
+                                                    new AdminGroupRequestDTO(
+                                                            "attributes-test",
+                                                            null,
+                                                            attributes,
+                                                            false)))
+                    .isInstanceOf(ApiException.class);
+        }
+
+        java.util.Map<String, List<String>> nullValues = new java.util.LinkedHashMap<>();
+        nullValues.put("attribute", null);
+        java.util.Map<String, List<String>> nullItem = new java.util.LinkedHashMap<>();
+        nullItem.put("attribute", java.util.Collections.singletonList(null));
+        java.util.Map<String, List<String>> longName = new java.util.LinkedHashMap<>();
+        longName.put("x".repeat(101), List.of("value"));
+        java.util.Map<String, List<String>> tooManyValues = new java.util.LinkedHashMap<>();
+        tooManyValues.put("attribute", java.util.Collections.nCopies(21, "value"));
+        for (Map<String, List<String>> attributes :
+                List.of(nullValues, nullItem, longName, tooManyValues)) {
+            assertThatThrownBy(
+                            () ->
+                                    service()
+                                            .create(
+                                                    new AdminGroupRequestDTO(
+                                                            "attributes-test",
+                                                            null,
+                                                            attributes,
+                                                            false)))
+                    .isInstanceOf(ApiException.class);
+        }
+
+        GroupEntity descendant = group(9L, "child");
+        descendant.setParent(group);
+        when(groupRepository.findById(9L)).thenReturn(Optional.of(descendant));
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .update(
+                                                7L,
+                                                new AdminGroupRequestDTO(
+                                                        "finance", 9L, Map.of(), false)))
+                .isInstanceOf(ApiException.class);
     }
 
     private AdminGroupService service() {

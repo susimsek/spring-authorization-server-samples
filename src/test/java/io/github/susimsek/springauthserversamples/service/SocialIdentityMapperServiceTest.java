@@ -280,6 +280,46 @@ class SocialIdentityMapperServiceTest {
         assertThat(user.getEmail()).isEqualTo("new@example.test");
     }
 
+    @Test
+    void coversMapperValueAndBuiltInValidationBoundaries() {
+        SocialProviderMapperEntity blankSource = mapper(" ", "department", "force");
+        SocialProviderMapperEntity scalarNested = mapper("profile.roles", "roles", "force");
+        SocialProviderMapperEntity blankEmail = mapper("blankEmail", "email", "force");
+        SocialProviderMapperEntity invalidPicture = mapper("picture", "pictureUrl", "force");
+        when(mapperRepository.findAllByProviderAliasIgnoreCase("google"))
+                .thenReturn(List.of(blankSource, scalarNested, blankEmail, invalidPicture));
+
+        UserEntity user = new UserEntity();
+        user.setEmail("existing@example.test");
+        service()
+                .apply(
+                        "google",
+                        Map.of(
+                                "profile", "not-a-map",
+                                "blankEmail", " ",
+                                "picture", "https://user:secret@example.test/avatar"),
+                        user,
+                        true);
+
+        assertThat(user.getEmail()).isEqualTo("existing@example.test");
+        assertThat(user.getPictureUrl()).isNull();
+        verify(userProfileService, never()).saveMappedUser(user, true);
+    }
+
+    @Test
+    void rejectsNonHttpsAndMalformedPictureUrls() {
+        SocialProviderMapperEntity mapper = mapper("picture", "pictureUrl", "force");
+        when(mapperRepository.findAllByProviderAliasIgnoreCase("google"))
+                .thenReturn(List.of(mapper));
+
+        for (String picture :
+                List.of("http://example.test/avatar", "https:///avatar", "not a uri")) {
+            UserEntity user = new UserEntity();
+            service().apply("google", Map.of("picture", picture), user, true);
+            assertThat(user.getPictureUrl()).isNull();
+        }
+    }
+
     private SocialIdentityMapperService service() {
         return new SocialIdentityMapperService(mapperRepository, userProfileService);
     }

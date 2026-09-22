@@ -194,6 +194,28 @@ class AdminUserServiceTest {
     }
 
     @Test
+    void createsUserWithoutDefaultGroupsWhenRepositoryReturnsNull() {
+        UserEntity administrator = user(1L, "administrator", AuthoritiesConstants.ADMIN);
+        when(userRepository.findByUsername("administrator")).thenReturn(Optional.of(administrator));
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.empty());
+        when(authorityRepository.findByNameIn(Set.of(AuthoritiesConstants.USER)))
+                .thenReturn(List.of(authority(1L, AuthoritiesConstants.USER)));
+        when(groupRepository.findByDefaultGroupTrueOrderByNameAsc()).thenReturn(null);
+        when(userRepository.save(any(UserEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            UserEntity saved = invocation.getArgument(0);
+                            saved.setId(99L);
+                            return saved;
+                        });
+
+        AdminUserDTO created =
+                service().createUser("alice", "password-123", true, Set.of(), "administrator");
+
+        assertThat(created.username()).isEqualTo("alice");
+    }
+
+    @Test
     void entersTheShortProfileCreateOverload() {
         assertThatThrownBy(
                         () ->
@@ -780,6 +802,26 @@ class AdminUserServiceTest {
         verify(userAccessInvalidationService, org.mockito.Mockito.times(2)).invalidate("alice");
         verify(adminAuditEventService).record("user.role.assigned", "user", "5");
         verify(adminAuditEventService).record("user.role.removed", "user", "5");
+    }
+
+    @Test
+    void skipsAccessChangesForDuplicateOrMissingRoles() {
+        UserEntity target = user(5L, "alice", AuthoritiesConstants.USER);
+        UserEntity administrator = user(6L, "administrator", AuthoritiesConstants.ADMIN);
+        AuthorityEntity existingRole = authority(3L, AuthoritiesConstants.USER);
+        target.setAuthorities(new java.util.HashSet<>(Set.of(existingRole)));
+        when(userRepository.findById(5L)).thenReturn(Optional.of(target));
+        when(userRepository.findByUsername("administrator")).thenReturn(Optional.of(administrator));
+        when(authorityRepository.findByName(AuthoritiesConstants.USER))
+                .thenReturn(Optional.of(existingRole));
+        when(userAvatarRepository.findVersionByUserId(5L)).thenReturn(Optional.empty());
+
+        service().assignRole(5L, AuthoritiesConstants.USER, "administrator");
+        service().removeRole(5L, "ROLE_MISSING", "administrator");
+
+        verify(userAccessInvalidationService, never()).invalidate("alice");
+        verify(adminAuditEventService, never()).record("user.role.assigned", "user", "5");
+        verify(adminAuditEventService, never()).record("user.role.removed", "user", "5");
     }
 
     @Test

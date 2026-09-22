@@ -50,6 +50,20 @@ class SocialLoginConfigTest {
                         .issuerUri("https://login.microsoftonline.com/common/v2.0")
                         .build();
         assertThat(decoderFactory.createDecoder(microsoft)).isNotNull();
+        ClientRegistration otherIssuer =
+                ClientRegistration.withRegistrationId("other")
+                        .clientId("id")
+                        .clientSecret("secret")
+                        .authorizationGrantType(
+                                org.springframework.security.oauth2.core.AuthorizationGrantType
+                                        .AUTHORIZATION_CODE)
+                        .redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
+                        .authorizationUri("https://issuer.example/authorize")
+                        .tokenUri("https://issuer.example/token")
+                        .jwkSetUri("https://issuer.example/jwks")
+                        .issuerUri("https://issuer.example")
+                        .build();
+        assertThat(decoderFactory.createDecoder(otherIssuer)).isNotNull();
 
         SocialProviderSettingsService settingsService =
                 Mockito.mock(SocialProviderSettingsService.class);
@@ -172,6 +186,37 @@ class SocialLoginConfigTest {
                         "sub");
 
         assertThatThrownBy(() -> SocialLoginConfig.registrations(List.of(missingAuthorization)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Authorization and token endpoints are required");
+
+        ProviderCredentials missingToken =
+                new ProviderCredentials(
+                        "custom",
+                        "custom",
+                        "Custom",
+                        "oidc",
+                        "id",
+                        "secret",
+                        true,
+                        false,
+                        false,
+                        false,
+                        false,
+                        "sub",
+                        false,
+                        false,
+                        0,
+                        "always",
+                        "https://issuer.example/authorize",
+                        null,
+                        null,
+                        null,
+                        null,
+                        "client_secret_basic",
+                        "openid",
+                        "sub");
+
+        assertThatThrownBy(() -> SocialLoginConfig.registrations(List.of(missingToken)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Authorization and token endpoints are required");
     }
