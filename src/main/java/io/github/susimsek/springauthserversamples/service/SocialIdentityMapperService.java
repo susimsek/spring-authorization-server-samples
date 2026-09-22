@@ -25,7 +25,7 @@ public class SocialIdentityMapperService {
     @Transactional
     public Map<String, Map<String, Object>> apply(
             String providerAlias, Map<String, Object> claims, UserEntity user, boolean firstLogin) {
-        return apply(providerAlias, claims, user, firstLogin, false);
+        return applyInternal(providerAlias, claims, user, firstLogin, false, "import");
     }
 
     @Transactional
@@ -35,11 +35,23 @@ public class SocialIdentityMapperService {
             UserEntity user,
             boolean firstLogin,
             boolean caseSensitiveUsername) {
-        return apply(providerAlias, claims, user, firstLogin, caseSensitiveUsername, "import");
+        return applyInternal(
+                providerAlias, claims, user, firstLogin, caseSensitiveUsername, "import");
     }
 
     @Transactional
     public Map<String, Map<String, Object>> apply(
+            String providerAlias,
+            Map<String, Object> claims,
+            UserEntity user,
+            boolean firstLogin,
+            boolean caseSensitiveUsername,
+            String providerSyncMode) {
+        return applyInternal(
+                providerAlias, claims, user, firstLogin, caseSensitiveUsername, providerSyncMode);
+    }
+
+    private Map<String, Map<String, Object>> applyInternal(
             String providerAlias,
             Map<String, Object> claims,
             UserEntity user,

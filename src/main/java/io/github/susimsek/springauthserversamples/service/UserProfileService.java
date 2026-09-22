@@ -36,6 +36,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class UserProfileService {
 
+    private static final String USER_PROFILE_ATTRIBUTE = "user-profile-attribute";
+    private static final String USER_NOT_FOUND = "User not found";
+
     private static final Set<String> BUILT_IN_NAMES =
             Set.of("username", "firstName", "lastName", "email", "emailVerified");
     private static final Set<String> PROFILE_BUILT_IN_NAMES =
@@ -94,9 +97,7 @@ public class UserProfileService {
         apply(request, definition);
         UserProfileAttributeDefinitionEntity saved = definitionRepository.save(definition);
         auditEventService.record(
-                "user-profile.attribute.created",
-                "user-profile-attribute",
-                saved.getId().toString());
+                "user-profile.attribute.created", USER_PROFILE_ATTRIBUTE, saved.getId().toString());
         return toDTO(saved);
     }
 
@@ -120,7 +121,7 @@ public class UserProfileService {
         apply(request, definition);
         definitionRepository.save(definition);
         auditEventService.record(
-                "user-profile.attribute.updated", "user-profile-attribute", id.toString());
+                "user-profile.attribute.updated", USER_PROFILE_ATTRIBUTE, id.toString());
         return toDTO(definition);
     }
 
@@ -191,7 +192,7 @@ public class UserProfileService {
         }
         definitionRepository.delete(definition);
         auditEventService.record(
-                "user-profile.attribute.deleted", "user-profile-attribute", id.toString());
+                "user-profile.attribute.deleted", USER_PROFILE_ATTRIBUTE, id.toString());
     }
 
     @Transactional(readOnly = true)
@@ -205,7 +206,7 @@ public class UserProfileService {
         UserEntity user =
                 userRepository
                         .findByUsername(username)
-                        .orElseThrow(() -> ApiException.notFound("User not found"));
+                        .orElseThrow(() -> ApiException.notFound(USER_NOT_FOUND));
         return toAttributes(user);
     }
 
@@ -224,8 +225,8 @@ public class UserProfileService {
                         .findForActionById(
                                 userRepository
                                         .findIdByUsername(username)
-                                        .orElseThrow(() -> ApiException.notFound("User not found")))
-                        .orElseThrow(() -> ApiException.notFound("User not found"));
+                                        .orElseThrow(() -> ApiException.notFound(USER_NOT_FOUND)))
+                        .orElseThrow(() -> ApiException.notFound(USER_NOT_FOUND));
         return saveUserAttributes(user, values, actor);
     }
 
@@ -510,9 +511,7 @@ public class UserProfileService {
     }
 
     private UserEntity findUser(Long id) {
-        return userRepository
-                .findById(id)
-                .orElseThrow(() -> ApiException.notFound("User not found"));
+        return userRepository.findById(id).orElseThrow(() -> ApiException.notFound(USER_NOT_FOUND));
     }
 
     private static String blankToNull(String value) {

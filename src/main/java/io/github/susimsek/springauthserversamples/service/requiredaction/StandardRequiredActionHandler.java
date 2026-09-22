@@ -162,8 +162,9 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
                 }
                 AccountProfileRequestDTO profile =
                         new AccountProfileRequestDTO(firstName, lastName, email);
-                for (ConstraintViolation<AccountProfileRequestDTO> violation :
-                        validator.validate(profile)) {
+                ConstraintViolation<AccountProfileRequestDTO> violation =
+                        validator.validate(profile).stream().findFirst().orElse(null);
+                if (violation != null) {
                     throw ApiException.badRequest(
                             violation.getPropertyPath().toString(),
                             ApiErrorCode.INVALID_REQUEST,

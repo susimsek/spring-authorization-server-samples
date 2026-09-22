@@ -3,6 +3,7 @@ package io.github.susimsek.springauthserversamples.config.security;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
+import io.github.susimsek.springauthserversamples.domain.ClientScopeEntity;
 import io.github.susimsek.springauthserversamples.domain.GroupEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.repository.AuthorizationRepository;
@@ -15,6 +16,7 @@ import io.github.susimsek.springauthserversamples.security.LocalizedOAuth2ErrorR
 import io.github.susimsek.springauthserversamples.security.OAuth2KeyJwkSource;
 import io.github.susimsek.springauthserversamples.security.OidcSessionIdentifier;
 import io.github.susimsek.springauthserversamples.service.OAuth2KeyService;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -243,143 +245,176 @@ public class AuthorizationServerConfig {
             SocialIdentityRepository socialIdentityRepository,
             ObjectMapper objectMapper) {
         return context -> {
-            boolean adminAccessToken =
-                    OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())
-                            && ConsoleClients.ADMIN.equals(
-                                    context.getRegisteredClient().getClientId());
-            var groupMappers =
-                    clientScopeRepository == null
-                            ? java.util.List
-                                    .<io.github.susimsek.springauthserversamples.domain
-                                                    .ClientScopeEntity>
-                                            of()
-                            : clientScopeRepository
-                                    .findByNameIn(context.getAuthorizedScopes())
-                                    .stream()
-                                    .filter(scope -> scope.isGroupMapperEnabled())
-                                    .toList();
-            Optional<UserEntity> tokenUser = Optional.empty();
-            if (isUserProfileToken(context)
-                    || isUserEmailToken(context)
-                    || isUserLocaleToken(context)
-                    || adminAccessToken
-                    || !groupMappers.isEmpty()
-                    || isUserSocialClaimsToken(context)) {
-                tokenUser = userRepository.findByUsername(context.getPrincipal().getName());
-            }
-
+            boolean adminAccessToken = isAdminAccessToken(context);
+            List<ClientScopeEntity> groupMappers = groupMappers(context, clientScopeRepository);
+            Optional<UserEntity> tokenUser =
+                    tokenUser(context, userRepository, adminAccessToken, groupMappers);
             appendMappedClaims(context, tokenUser, socialIdentityRepository, objectMapper);
-
-            if (isUserLocaleToken(context)) {
-                tokenUser
-                        .map(UserEntity::getPreferredLocale)
-                        .filter(locale -> locale != null && !locale.isBlank())
-                        .ifPresent(locale -> context.getClaims().claim("locale", locale));
-            }
-
-            if (isUserProfileToken(context)) {
-                tokenUser.ifPresent(
-                        user -> {
-                            String picture =
-                                    userAvatarRepository
-                                            .findVersionByUserId(user.getId())
-                                            .map(
-                                                    avatar ->
-                                                            applicationProperties
-                                                                            .authorizationServer()
-                                                                            .issuer()
-                                                                    + "/avatars/"
-                                                                    + avatar.getPublicId()
-                                                                    + "?v="
-                                                                    + avatar.getUpdatedAt()
-                                                                            .toEpochMilli())
-                                            .orElse(user.getPictureUrl());
-                            if (picture != null && !picture.isBlank()) {
-                                context.getClaims().claim("picture", picture);
-                            }
-                        });
-            }
-
-            if (isUserEmailToken(context)) {
-                tokenUser.ifPresent(
-                        user -> {
-                            if (user.getEmail() != null) {
-                                context.getClaims().claim("email", user.getEmail());
-                                context.getClaims().claim("email_verified", user.isEmailVerified());
-                            }
-                        });
-            }
-
-            if (OidcParameterNames.ID_TOKEN.equals(context.getTokenType().getValue())
-                    && context.getAuthorization() != null) {
-                OAuth2AuthorizationRequest authorizationRequest =
-                        context.getAuthorization()
-                                .getAttribute(OAuth2AuthorizationRequest.class.getName());
-                if (authorizationRequest != null) {
-                    Object nonceValue =
-                            authorizationRequest
-                                    .getAdditionalParameters()
-                                    .get(OidcParameterNames.NONCE);
-                    if (nonceValue instanceof String nonce && !nonce.isBlank()) {
-                        context.getClaims().claim(OidcParameterNames.NONCE, nonce);
-                    }
-                }
-            }
-
-            if (adminAccessToken) {
-                context.getClaims()
-                        .claim(
-                                "roles",
-                                context.getPrincipal().getAuthorities().stream()
-                                        .map(authority -> authority.getAuthority())
-                                        .sorted()
-                                        .collect(Collectors.toList()));
-            }
-
-            if (legacyAdminGroups && adminAccessToken) {
-                tokenUser.ifPresent(
-                        user ->
-                                context.getClaims()
-                                        .claim(
-                                                "groups",
-                                                user.getGroups().stream()
-                                                        .map(AuthorizationServerConfig::groupPath)
-                                                        .sorted()
-                                                        .collect(Collectors.toList())));
-            }
-
-            if (!groupMappers.isEmpty()) {
-                tokenUser.ifPresent(
-                        user ->
-                                groupMappers.stream()
-                                        .findFirst()
-                                        .ifPresent(
-                                                mapper ->
-                                                        context.getClaims()
-                                                                .claim(
-                                                                        mapper.getGroupClaimName(),
-                                                                        user.getGroups().stream()
-                                                                                .map(
-                                                                                        group ->
-                                                                                                mapper
-                                                                                                                .isGroupMapperFullPath()
-                                                                                                        ? groupPath(
-                                                                                                                group)
-                                                                                                        : group
-                                                                                                                .getName())
-                                                                                .sorted()
-                                                                                .collect(
-                                                                                        Collectors
-                                                                                                .toList()))));
-            }
-
-            if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())
-                    && ConsoleClients.ALL.contains(context.getRegisteredClient().getClientId())) {
-                authorizationSessionId(context, authorizationRepository)
-                        .map(OidcSessionIdentifier::fromSessionId)
-                        .ifPresent(sessionId -> context.getClaims().claim("sid", sessionId));
-            }
+            appendUserClaims(context, tokenUser, userAvatarRepository, applicationProperties);
+            appendNonceClaim(context);
+            appendAdminClaims(context, tokenUser, legacyAdminGroups, adminAccessToken);
+            appendGroupMapperClaims(context, tokenUser, groupMappers);
+            appendSessionIdClaim(context, authorizationRepository);
         };
+    }
+
+    private static boolean isAdminAccessToken(JwtEncodingContext context) {
+        return OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())
+                && ConsoleClients.ADMIN.equals(context.getRegisteredClient().getClientId());
+    }
+
+    private static List<ClientScopeEntity> groupMappers(
+            JwtEncodingContext context, ClientScopeRepository clientScopeRepository) {
+        return clientScopeRepository == null
+                ? List.of()
+                : clientScopeRepository.findByNameIn(context.getAuthorizedScopes()).stream()
+                        .filter(ClientScopeEntity::isGroupMapperEnabled)
+                        .toList();
+    }
+
+    private static Optional<UserEntity> tokenUser(
+            JwtEncodingContext context,
+            UserRepository userRepository,
+            boolean adminAccessToken,
+            List<ClientScopeEntity> groupMappers) {
+        if (isUserProfileToken(context)
+                || isUserEmailToken(context)
+                || isUserLocaleToken(context)
+                || adminAccessToken
+                || !groupMappers.isEmpty()
+                || isUserSocialClaimsToken(context)) {
+            return userRepository.findByUsername(context.getPrincipal().getName());
+        }
+        return Optional.empty();
+    }
+
+    private static void appendUserClaims(
+            JwtEncodingContext context,
+            Optional<UserEntity> tokenUser,
+            UserAvatarRepository userAvatarRepository,
+            ApplicationProperties applicationProperties) {
+        if (isUserLocaleToken(context)) {
+            tokenUser
+                    .map(UserEntity::getPreferredLocale)
+                    .filter(locale -> locale != null && !locale.isBlank())
+                    .ifPresent(locale -> context.getClaims().claim("locale", locale));
+        }
+        if (isUserProfileToken(context)) {
+            tokenUser.ifPresent(
+                    user -> {
+                        String picture =
+                                userAvatarRepository
+                                        .findVersionByUserId(user.getId())
+                                        .map(
+                                                avatar ->
+                                                        applicationProperties
+                                                                        .authorizationServer()
+                                                                        .issuer()
+                                                                + "/avatars/"
+                                                                + avatar.getPublicId()
+                                                                + "?v="
+                                                                + avatar.getUpdatedAt()
+                                                                        .toEpochMilli())
+                                        .orElse(user.getPictureUrl());
+                        if (picture != null && !picture.isBlank()) {
+                            context.getClaims().claim("picture", picture);
+                        }
+                    });
+        }
+        if (isUserEmailToken(context)) {
+            tokenUser.ifPresent(
+                    user -> {
+                        if (user.getEmail() != null) {
+                            context.getClaims().claim("email", user.getEmail());
+                            context.getClaims().claim("email_verified", user.isEmailVerified());
+                        }
+                    });
+        }
+    }
+
+    private static void appendNonceClaim(JwtEncodingContext context) {
+        if (!OidcParameterNames.ID_TOKEN.equals(context.getTokenType().getValue())
+                || context.getAuthorization() == null) {
+            return;
+        }
+        OAuth2AuthorizationRequest authorizationRequest =
+                context.getAuthorization().getAttribute(OAuth2AuthorizationRequest.class.getName());
+        if (authorizationRequest == null) {
+            return;
+        }
+        Object nonceValue =
+                authorizationRequest.getAdditionalParameters().get(OidcParameterNames.NONCE);
+        if (nonceValue instanceof String nonce && !nonce.isBlank()) {
+            context.getClaims().claim(OidcParameterNames.NONCE, nonce);
+        }
+    }
+
+    private static void appendAdminClaims(
+            JwtEncodingContext context,
+            Optional<UserEntity> tokenUser,
+            boolean legacyAdminGroups,
+            boolean adminAccessToken) {
+        if (adminAccessToken) {
+            context.getClaims()
+                    .claim(
+                            "roles",
+                            context.getPrincipal().getAuthorities().stream()
+                                    .map(authority -> authority.getAuthority())
+                                    .sorted()
+                                    .collect(Collectors.toList()));
+        }
+        if (legacyAdminGroups && adminAccessToken) {
+            tokenUser.ifPresent(
+                    user ->
+                            context.getClaims()
+                                    .claim(
+                                            "groups",
+                                            user.getGroups().stream()
+                                                    .map(AuthorizationServerConfig::groupPath)
+                                                    .sorted()
+                                                    .collect(Collectors.toList())));
+        }
+    }
+
+    private static void appendGroupMapperClaims(
+            JwtEncodingContext context,
+            Optional<UserEntity> tokenUser,
+            List<ClientScopeEntity> groupMappers) {
+        if (groupMappers.isEmpty()) {
+            return;
+        }
+        tokenUser.ifPresent(
+                user ->
+                        groupMappers.stream()
+                                .findFirst()
+                                .ifPresent(
+                                        mapper ->
+                                                context.getClaims()
+                                                        .claim(
+                                                                mapper.getGroupClaimName(),
+                                                                user.getGroups().stream()
+                                                                        .map(
+                                                                                group ->
+                                                                                        mapper
+                                                                                                        .isGroupMapperFullPath()
+                                                                                                ? groupPath(
+                                                                                                        group)
+                                                                                                : group
+                                                                                                        .getName())
+                                                                        .sorted()
+                                                                        .collect(
+                                                                                Collectors
+                                                                                        .toList()))));
+    }
+
+    private static void appendSessionIdClaim(
+            JwtEncodingContext context, AuthorizationRepository authorizationRepository) {
+        if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())
+                && ConsoleClients.ALL.contains(context.getRegisteredClient().getClientId())) {
+            authorizationSessionId(context, authorizationRepository)
+                    .map(OidcSessionIdentifier::fromSessionId)
+                    .ifPresent(sessionId -> context.getClaims().claim("sid", sessionId));
+        }
     }
 
     private static void appendMappedClaims(

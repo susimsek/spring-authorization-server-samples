@@ -3,6 +3,7 @@ package io.github.susimsek.springauthserversamples.config.security;
 import io.github.susimsek.springauthserversamples.service.LoginSettingsService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -17,18 +18,20 @@ public class DynamicRememberMeServices implements RememberMeServices {
 
     private final LoginSettingsService loginSettingsService;
     private final UserDetailsService userDetailsService;
-    private volatile TokenBasedRememberMeServices delegate;
+    private final AtomicReference<TokenBasedRememberMeServices> delegate = new AtomicReference<>();
 
     private TokenBasedRememberMeServices delegate() {
-        TokenBasedRememberMeServices current = delegate;
-        if (current == null) {
-            current =
-                    new TokenBasedRememberMeServices(
-                            "spring-authorization-server-samples", userDetailsService);
-            current.setTokenValiditySeconds(14 * 24 * 60 * 60);
-            delegate = current;
-        }
-        return current;
+        return delegate.updateAndGet(
+                current -> {
+                    if (current != null) {
+                        return current;
+                    }
+                    TokenBasedRememberMeServices created =
+                            new TokenBasedRememberMeServices(
+                                    "spring-authorization-server-samples", userDetailsService);
+                    created.setTokenValiditySeconds(14 * 24 * 60 * 60);
+                    return created;
+                });
     }
 
     @Override

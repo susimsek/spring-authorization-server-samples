@@ -45,6 +45,7 @@ class SessionCleanupSchedulerTest {
         scheduler.afterPropertiesSet();
 
         verify(taskScheduler, never()).schedule(any(Runnable.class), any(Trigger.class));
+        verify(repository, never()).cleanUpExpiredSessions();
     }
 
     @Test

@@ -78,7 +78,7 @@ public class EmailSettingsService {
         }
         repository.save(e);
         auditEventService.record("email.settings.updated", "email-settings", "default");
-        return get();
+        return emailSettingsMapper.toDTO(e);
     }
 
     private EmailSettingsEntity entity() {

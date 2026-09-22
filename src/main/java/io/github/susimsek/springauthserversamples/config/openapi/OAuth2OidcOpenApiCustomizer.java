@@ -23,6 +23,9 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 final class OAuth2OidcOpenApiCustomizer implements OpenApiCustomizer {
 
+    private static final String REFRESH_TOKEN = "refresh_token";
+    private static final String APPLICATION_JSON = "application/json";
+
     private final ApplicationProperties applicationProperties;
 
     @Override
@@ -46,7 +49,7 @@ final class OAuth2OidcOpenApiCustomizer implements OpenApiCustomizer {
                                 "grant_types_supported",
                                 List.of(
                                         "authorization_code",
-                                        "refresh_token",
+                                        REFRESH_TOKEN,
                                         "client_credentials"))));
         paths.addPathItem(
                 "/oauth2/jwks",
@@ -79,7 +82,7 @@ final class OAuth2OidcOpenApiCustomizer implements OpenApiCustomizer {
                 formPost(
                         "Token Revocation Endpoint",
                         "Revokes an access or refresh token.",
-                        "token=eyJraWQiOi...&token_type_hint=refresh_token",
+                        "token=eyJraWQiOi...&token_type_hint=" + REFRESH_TOKEN,
                         null));
         paths.addPathItem(
                 "/userinfo",
@@ -105,7 +108,7 @@ final class OAuth2OidcOpenApiCustomizer implements OpenApiCustomizer {
                 .setContent(
                         new Content()
                                 .addMediaType(
-                                        "application/json",
+                                        APPLICATION_JSON,
                                         new MediaType()
                                                 .schema(new ObjectSchema())
                                                 .example(example)));
@@ -121,7 +124,7 @@ final class OAuth2OidcOpenApiCustomizer implements OpenApiCustomizer {
                                         .addProperty("client_id", new StringSchema())
                                         .addProperty("code", new StringSchema())
                                         .addProperty("code_verifier", new StringSchema())
-                                        .addProperty("refresh_token", new StringSchema()))
+                                        .addProperty(REFRESH_TOKEN, new StringSchema()))
                         .addExamples(
                                 "authorizationCode",
                                 new Example()
@@ -134,8 +137,9 @@ final class OAuth2OidcOpenApiCustomizer implements OpenApiCustomizer {
                                 new Example()
                                         .summary("Refresh token rotation")
                                         .value(
-                                                "grant_type=refresh_token&client_id="
-                                                        + "account-console&refresh_token=..."));
+                                                "grant_type="
+                                                        + REFRESH_TOKEN
+                                                        + "&client_id=account-console&refresh_token=..."));
         Operation operation =
                 operation(summary, description, "200")
                         .requestBody(formRequest("OAuth 2.0 form parameters.", form));
@@ -145,7 +149,7 @@ final class OAuth2OidcOpenApiCustomizer implements OpenApiCustomizer {
                 .setContent(
                         new Content()
                                 .addMediaType(
-                                        "application/json",
+                                        APPLICATION_JSON,
                                         new MediaType()
                                                 .schema(new ObjectSchema())
                                                 .example(
@@ -156,7 +160,7 @@ final class OAuth2OidcOpenApiCustomizer implements OpenApiCustomizer {
                                                                 "Bearer",
                                                                 "expires_in",
                                                                 300,
-                                                                "refresh_token",
+                                                                REFRESH_TOKEN,
                                                                 "..."))));
         return new PathItem().post(operation);
     }
@@ -180,7 +184,7 @@ final class OAuth2OidcOpenApiCustomizer implements OpenApiCustomizer {
                     .setContent(
                             new Content()
                                     .addMediaType(
-                                            "application/json",
+                                            APPLICATION_JSON,
                                             new MediaType()
                                                     .schema(new ObjectSchema())
                                                     .example(response)));
@@ -212,7 +216,7 @@ final class OAuth2OidcOpenApiCustomizer implements OpenApiCustomizer {
                                                 .content(
                                                         new Content()
                                                                 .addMediaType(
-                                                                        "application/json",
+                                                                        APPLICATION_JSON,
                                                                         new MediaType()
                                                                                 .schema(
                                                                                         new ObjectSchema())

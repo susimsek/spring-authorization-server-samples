@@ -30,9 +30,17 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class SocialProviderSettingsService {
 
+    private static final String GOOGLE = "google";
+    private static final String GITHUB = "github";
+    private static final String LINKEDIN = "linkedin";
+    private static final String MICROSOFT = "microsoft";
+    private static final String CLIENT_SECRET_BASIC = "client_secret_basic";
+    private static final String DEFAULT_SCOPES = "openid,profile,email";
+    private static final String ALWAYS = "always";
+
     private static final long SETTINGS_ID = 1L;
     private static final Set<String> SUPPORTED_PROVIDERS =
-            Set.of("google", "github", "linkedin", "microsoft");
+            Set.of(GOOGLE, GITHUB, LINKEDIN, MICROSOFT);
 
     private final LoginSettingsRepository repository;
     private final SocialIdentityRepository socialIdentityRepository;
@@ -51,7 +59,7 @@ public class SocialProviderSettingsService {
 
     @Transactional(readOnly = true)
     public List<ProviderCredentials> configuredProviders() {
-        return effectiveProviders(settings()).filter(ProviderCredentials::configured).toList();
+        return configuredProvidersInternal();
     }
 
     public ProviderCredentials provider(String value) {
@@ -90,7 +98,7 @@ public class SocialProviderSettingsService {
         if (repository != null) {
             repository.replace(
                     io.github.susimsek.springauthserversamples.config.security.SocialLoginConfig
-                            .registrations(configuredProviders()));
+                            .registrations(configuredProvidersInternal()));
         }
     }
 
@@ -155,15 +163,19 @@ public class SocialProviderSettingsService {
 
     private java.util.stream.Stream<ProviderCredentials> effectiveProviders(
             LoginSettingsEntity settings) {
-        Set<String> builtIns = Set.of("google", "github", "linkedin", "microsoft");
+        Set<String> builtIns = Set.of(GOOGLE, GITHUB, LINKEDIN, MICROSOFT);
         java.util.stream.Stream<ProviderCredentials> seeded =
-                Arrays.stream(new String[] {"google", "github", "linkedin", "microsoft"})
+                Arrays.stream(new String[] {GOOGLE, GITHUB, LINKEDIN, MICROSOFT})
                         .map(provider -> merge(credentials(provider, settings), provider));
         java.util.stream.Stream<ProviderCredentials> custom =
                 socialProviderRepository.findAll().stream()
                         .filter(entity -> !builtIns.contains(entity.getRegistrationId()))
                         .map(this::credentials);
         return java.util.stream.Stream.concat(seeded, custom);
+    }
+
+    private List<ProviderCredentials> configuredProvidersInternal() {
+        return effectiveProviders(settings()).filter(ProviderCredentials::configured).toList();
     }
 
     private ProviderCredentials merge(ProviderCredentials legacy, String registrationId) {
@@ -269,8 +281,8 @@ public class SocialProviderSettingsService {
                 null,
                 null,
                 null,
-                "client_secret_basic",
-                "openid,profile,email",
+                CLIENT_SECRET_BASIC,
+                DEFAULT_SCOPES,
                 "sub");
     }
 
@@ -330,130 +342,130 @@ public class SocialProviderSettingsService {
 
     private boolean enabled(String provider, LoginSettingsEntity settings) {
         return switch (provider) {
-            case "google" -> settings.isGoogleLoginEnabled();
-            case "github" -> settings.isGithubLoginEnabled();
-            case "linkedin" -> settings.isLinkedinLoginEnabled();
-            case "microsoft" -> settings.isMicrosoftLoginEnabled();
+            case GOOGLE -> settings.isGoogleLoginEnabled();
+            case GITHUB -> settings.isGithubLoginEnabled();
+            case LINKEDIN -> settings.isLinkedinLoginEnabled();
+            case MICROSOFT -> settings.isMicrosoftLoginEnabled();
             default -> false;
         };
     }
 
     private String storedAlias(String provider, LoginSettingsEntity settings) {
         return switch (provider) {
-            case "google" -> settings.getGoogleAlias();
-            case "github" -> settings.getGithubAlias();
-            case "linkedin" -> settings.getLinkedinAlias();
-            case "microsoft" -> settings.getMicrosoftAlias();
+            case GOOGLE -> settings.getGoogleAlias();
+            case GITHUB -> settings.getGithubAlias();
+            case LINKEDIN -> settings.getLinkedinAlias();
+            case MICROSOFT -> settings.getMicrosoftAlias();
             default -> "";
         };
     }
 
     private boolean hideOnLogin(String provider, LoginSettingsEntity settings) {
         return switch (provider) {
-            case "google" -> settings.isGoogleHideOnLogin();
-            case "github" -> settings.isGithubHideOnLogin();
-            case "linkedin" -> settings.isLinkedinHideOnLogin();
-            case "microsoft" -> settings.isMicrosoftHideOnLogin();
+            case GOOGLE -> settings.isGoogleHideOnLogin();
+            case GITHUB -> settings.isGithubHideOnLogin();
+            case LINKEDIN -> settings.isLinkedinHideOnLogin();
+            case MICROSOFT -> settings.isMicrosoftHideOnLogin();
             default -> false;
         };
     }
 
     private boolean accountLinkingOnly(String provider, LoginSettingsEntity settings) {
         return switch (provider) {
-            case "google" -> settings.isGoogleAccountLinkingOnly();
-            case "github" -> settings.isGithubAccountLinkingOnly();
-            case "linkedin" -> settings.isLinkedinAccountLinkingOnly();
-            case "microsoft" -> settings.isMicrosoftAccountLinkingOnly();
+            case GOOGLE -> settings.isGoogleAccountLinkingOnly();
+            case GITHUB -> settings.isGithubAccountLinkingOnly();
+            case LINKEDIN -> settings.isLinkedinAccountLinkingOnly();
+            case MICROSOFT -> settings.isMicrosoftAccountLinkingOnly();
             default -> false;
         };
     }
 
     private boolean trustEmail(String provider, LoginSettingsEntity settings) {
         return switch (provider) {
-            case "google" -> settings.isGoogleTrustEmail();
-            case "github" -> settings.isGithubTrustEmail();
-            case "linkedin" -> settings.isLinkedinTrustEmail();
-            case "microsoft" -> settings.isMicrosoftTrustEmail();
+            case GOOGLE -> settings.isGoogleTrustEmail();
+            case GITHUB -> settings.isGithubTrustEmail();
+            case LINKEDIN -> settings.isLinkedinTrustEmail();
+            case MICROSOFT -> settings.isMicrosoftTrustEmail();
             default -> false;
         };
     }
 
     private boolean mfaRequired(String provider, LoginSettingsEntity settings) {
         return switch (provider) {
-            case "google" -> settings.isGoogleMfaRequired();
-            case "github" -> settings.isGithubMfaRequired();
-            case "linkedin" -> settings.isLinkedinMfaRequired();
-            case "microsoft" -> settings.isMicrosoftMfaRequired();
+            case GOOGLE -> settings.isGoogleMfaRequired();
+            case GITHUB -> settings.isGithubMfaRequired();
+            case LINKEDIN -> settings.isLinkedinMfaRequired();
+            case MICROSOFT -> settings.isMicrosoftMfaRequired();
             default -> false;
         };
     }
 
     private String requiredClaims(String provider, LoginSettingsEntity settings) {
         return switch (provider) {
-            case "google" -> settings.getGoogleRequiredClaims();
-            case "github" -> settings.getGithubRequiredClaims();
-            case "linkedin" -> settings.getLinkedinRequiredClaims();
-            case "microsoft" -> settings.getMicrosoftRequiredClaims();
+            case GOOGLE -> settings.getGoogleRequiredClaims();
+            case GITHUB -> settings.getGithubRequiredClaims();
+            case LINKEDIN -> settings.getLinkedinRequiredClaims();
+            case MICROSOFT -> settings.getMicrosoftRequiredClaims();
             default -> "sub";
         };
     }
 
     private boolean storeTokens(String provider, LoginSettingsEntity settings) {
         return switch (provider) {
-            case "google" -> settings.isGoogleStoreTokens();
-            case "github" -> settings.isGithubStoreTokens();
-            case "linkedin" -> settings.isLinkedinStoreTokens();
-            case "microsoft" -> settings.isMicrosoftStoreTokens();
+            case GOOGLE -> settings.isGoogleStoreTokens();
+            case GITHUB -> settings.isGithubStoreTokens();
+            case LINKEDIN -> settings.isLinkedinStoreTokens();
+            case MICROSOFT -> settings.isMicrosoftStoreTokens();
             default -> false;
         };
     }
 
     private boolean storedTokensReadable(String provider, LoginSettingsEntity settings) {
         return switch (provider) {
-            case "google" -> settings.isGoogleStoredTokensReadable();
-            case "github" -> settings.isGithubStoredTokensReadable();
-            case "linkedin" -> settings.isLinkedinStoredTokensReadable();
-            case "microsoft" -> settings.isMicrosoftStoredTokensReadable();
+            case GOOGLE -> settings.isGoogleStoredTokensReadable();
+            case GITHUB -> settings.isGithubStoredTokensReadable();
+            case LINKEDIN -> settings.isLinkedinStoredTokensReadable();
+            case MICROSOFT -> settings.isMicrosoftStoredTokensReadable();
             default -> false;
         };
     }
 
     private int guiOrder(String provider, LoginSettingsEntity settings) {
         return switch (provider) {
-            case "google" -> settings.getGoogleGuiOrder();
-            case "github" -> settings.getGithubGuiOrder();
-            case "linkedin" -> settings.getLinkedinGuiOrder();
-            case "microsoft" -> settings.getMicrosoftGuiOrder();
+            case GOOGLE -> settings.getGoogleGuiOrder();
+            case GITHUB -> settings.getGithubGuiOrder();
+            case LINKEDIN -> settings.getLinkedinGuiOrder();
+            case MICROSOFT -> settings.getMicrosoftGuiOrder();
             default -> 0;
         };
     }
 
     private String showInAccountConsole(String provider, LoginSettingsEntity settings) {
         return switch (provider) {
-            case "google" -> settings.getGoogleShowInAccountConsole();
-            case "github" -> settings.getGithubShowInAccountConsole();
-            case "linkedin" -> settings.getLinkedinShowInAccountConsole();
-            case "microsoft" -> settings.getMicrosoftShowInAccountConsole();
-            default -> "always";
+            case GOOGLE -> settings.getGoogleShowInAccountConsole();
+            case GITHUB -> settings.getGithubShowInAccountConsole();
+            case LINKEDIN -> settings.getLinkedinShowInAccountConsole();
+            case MICROSOFT -> settings.getMicrosoftShowInAccountConsole();
+            default -> ALWAYS;
         };
     }
 
     private SocialLoginProperties.Provider configuredProperties(String provider) {
         return switch (provider) {
-            case "google" -> properties.google();
-            case "github" -> properties.github();
-            case "linkedin" -> properties.linkedin();
-            case "microsoft" -> properties.microsoft();
+            case GOOGLE -> properties.google();
+            case GITHUB -> properties.github();
+            case LINKEDIN -> properties.linkedin();
+            case MICROSOFT -> properties.microsoft();
             default -> throw new IllegalArgumentException("Unsupported social provider");
         };
     }
 
     private String storedClientId(String provider, LoginSettingsEntity settings) {
         return switch (provider) {
-            case "google" -> settings.getGoogleClientId();
-            case "github" -> settings.getGithubClientId();
-            case "linkedin" -> settings.getLinkedinClientId();
-            case "microsoft" -> settings.getMicrosoftClientId();
+            case GOOGLE -> settings.getGoogleClientId();
+            case GITHUB -> settings.getGithubClientId();
+            case LINKEDIN -> settings.getLinkedinClientId();
+            case MICROSOFT -> settings.getMicrosoftClientId();
             default -> "";
         };
     }
@@ -461,10 +473,10 @@ public class SocialProviderSettingsService {
     private String storedSecret(String provider, LoginSettingsEntity settings) {
         String encrypted =
                 switch (provider) {
-                    case "google" -> settings.getGoogleClientSecretEncrypted();
-                    case "github" -> settings.getGithubClientSecretEncrypted();
-                    case "linkedin" -> settings.getLinkedinClientSecretEncrypted();
-                    case "microsoft" -> settings.getMicrosoftClientSecretEncrypted();
+                    case GOOGLE -> settings.getGoogleClientSecretEncrypted();
+                    case GITHUB -> settings.getGithubClientSecretEncrypted();
+                    case LINKEDIN -> settings.getLinkedinClientSecretEncrypted();
+                    case MICROSOFT -> settings.getMicrosoftClientSecretEncrypted();
                     default -> "";
                 };
         return encrypted == null || encrypted.isBlank() ? "" : secretCipher.decrypt(encrypted);
@@ -482,20 +494,20 @@ public class SocialProviderSettingsService {
 
     private void setAlias(String provider, LoginSettingsEntity settings, String value) {
         switch (provider) {
-            case "google" -> settings.setGoogleAlias(value);
-            case "github" -> settings.setGithubAlias(value);
-            case "linkedin" -> settings.setLinkedinAlias(value);
-            case "microsoft" -> settings.setMicrosoftAlias(value);
+            case GOOGLE -> settings.setGoogleAlias(value);
+            case GITHUB -> settings.setGithubAlias(value);
+            case LINKEDIN -> settings.setLinkedinAlias(value);
+            case MICROSOFT -> settings.setMicrosoftAlias(value);
             default -> {}
         }
     }
 
     private void setHideOnLogin(String provider, LoginSettingsEntity settings, boolean value) {
         switch (provider) {
-            case "google" -> settings.setGoogleHideOnLogin(value);
-            case "github" -> settings.setGithubHideOnLogin(value);
-            case "linkedin" -> settings.setLinkedinHideOnLogin(value);
-            case "microsoft" -> settings.setMicrosoftHideOnLogin(value);
+            case GOOGLE -> settings.setGoogleHideOnLogin(value);
+            case GITHUB -> settings.setGithubHideOnLogin(value);
+            case LINKEDIN -> settings.setLinkedinHideOnLogin(value);
+            case MICROSOFT -> settings.setMicrosoftHideOnLogin(value);
             default -> {}
         }
     }
@@ -503,30 +515,30 @@ public class SocialProviderSettingsService {
     private void setAccountLinkingOnly(
             String provider, LoginSettingsEntity settings, boolean value) {
         switch (provider) {
-            case "google" -> settings.setGoogleAccountLinkingOnly(value);
-            case "github" -> settings.setGithubAccountLinkingOnly(value);
-            case "linkedin" -> settings.setLinkedinAccountLinkingOnly(value);
-            case "microsoft" -> settings.setMicrosoftAccountLinkingOnly(value);
+            case GOOGLE -> settings.setGoogleAccountLinkingOnly(value);
+            case GITHUB -> settings.setGithubAccountLinkingOnly(value);
+            case LINKEDIN -> settings.setLinkedinAccountLinkingOnly(value);
+            case MICROSOFT -> settings.setMicrosoftAccountLinkingOnly(value);
             default -> {}
         }
     }
 
     private void setTrustEmail(String provider, LoginSettingsEntity settings, boolean value) {
         switch (provider) {
-            case "google" -> settings.setGoogleTrustEmail(value);
-            case "github" -> settings.setGithubTrustEmail(value);
-            case "linkedin" -> settings.setLinkedinTrustEmail(value);
-            case "microsoft" -> settings.setMicrosoftTrustEmail(value);
+            case GOOGLE -> settings.setGoogleTrustEmail(value);
+            case GITHUB -> settings.setGithubTrustEmail(value);
+            case LINKEDIN -> settings.setLinkedinTrustEmail(value);
+            case MICROSOFT -> settings.setMicrosoftTrustEmail(value);
             default -> {}
         }
     }
 
     private void setMfaRequired(String provider, LoginSettingsEntity settings, boolean value) {
         switch (provider) {
-            case "google" -> settings.setGoogleMfaRequired(value);
-            case "github" -> settings.setGithubMfaRequired(value);
-            case "linkedin" -> settings.setLinkedinMfaRequired(value);
-            case "microsoft" -> settings.setMicrosoftMfaRequired(value);
+            case GOOGLE -> settings.setGoogleMfaRequired(value);
+            case GITHUB -> settings.setGithubMfaRequired(value);
+            case LINKEDIN -> settings.setLinkedinMfaRequired(value);
+            case MICROSOFT -> settings.setMicrosoftMfaRequired(value);
             default -> {}
         }
     }
@@ -534,20 +546,20 @@ public class SocialProviderSettingsService {
     private void setRequiredClaims(String provider, LoginSettingsEntity settings, String value) {
         String normalized = normalizeRequiredClaims(value);
         switch (provider) {
-            case "google" -> settings.setGoogleRequiredClaims(normalized);
-            case "github" -> settings.setGithubRequiredClaims(normalized);
-            case "linkedin" -> settings.setLinkedinRequiredClaims(normalized);
-            case "microsoft" -> settings.setMicrosoftRequiredClaims(normalized);
+            case GOOGLE -> settings.setGoogleRequiredClaims(normalized);
+            case GITHUB -> settings.setGithubRequiredClaims(normalized);
+            case LINKEDIN -> settings.setLinkedinRequiredClaims(normalized);
+            case MICROSOFT -> settings.setMicrosoftRequiredClaims(normalized);
             default -> {}
         }
     }
 
     private void setStoreTokens(String provider, LoginSettingsEntity settings, boolean value) {
         switch (provider) {
-            case "google" -> settings.setGoogleStoreTokens(value);
-            case "github" -> settings.setGithubStoreTokens(value);
-            case "linkedin" -> settings.setLinkedinStoreTokens(value);
-            case "microsoft" -> settings.setMicrosoftStoreTokens(value);
+            case GOOGLE -> settings.setGoogleStoreTokens(value);
+            case GITHUB -> settings.setGithubStoreTokens(value);
+            case LINKEDIN -> settings.setLinkedinStoreTokens(value);
+            case MICROSOFT -> settings.setMicrosoftStoreTokens(value);
             default -> {}
         }
     }
@@ -555,20 +567,20 @@ public class SocialProviderSettingsService {
     private void setStoredTokensReadable(
             String provider, LoginSettingsEntity settings, boolean value) {
         switch (provider) {
-            case "google" -> settings.setGoogleStoredTokensReadable(value);
-            case "github" -> settings.setGithubStoredTokensReadable(value);
-            case "linkedin" -> settings.setLinkedinStoredTokensReadable(value);
-            case "microsoft" -> settings.setMicrosoftStoredTokensReadable(value);
+            case GOOGLE -> settings.setGoogleStoredTokensReadable(value);
+            case GITHUB -> settings.setGithubStoredTokensReadable(value);
+            case LINKEDIN -> settings.setLinkedinStoredTokensReadable(value);
+            case MICROSOFT -> settings.setMicrosoftStoredTokensReadable(value);
             default -> {}
         }
     }
 
     private void setGuiOrder(String provider, LoginSettingsEntity settings, int value) {
         switch (provider) {
-            case "google" -> settings.setGoogleGuiOrder(value);
-            case "github" -> settings.setGithubGuiOrder(value);
-            case "linkedin" -> settings.setLinkedinGuiOrder(value);
-            case "microsoft" -> settings.setMicrosoftGuiOrder(value);
+            case GOOGLE -> settings.setGoogleGuiOrder(value);
+            case GITHUB -> settings.setGithubGuiOrder(value);
+            case LINKEDIN -> settings.setLinkedinGuiOrder(value);
+            case MICROSOFT -> settings.setMicrosoftGuiOrder(value);
             default -> {}
         }
     }
@@ -576,10 +588,10 @@ public class SocialProviderSettingsService {
     private void setShowInAccountConsole(
             String provider, LoginSettingsEntity settings, String value) {
         switch (provider) {
-            case "google" -> settings.setGoogleShowInAccountConsole(value);
-            case "github" -> settings.setGithubShowInAccountConsole(value);
-            case "linkedin" -> settings.setLinkedinShowInAccountConsole(value);
-            case "microsoft" -> settings.setMicrosoftShowInAccountConsole(value);
+            case GOOGLE -> settings.setGoogleShowInAccountConsole(value);
+            case GITHUB -> settings.setGithubShowInAccountConsole(value);
+            case LINKEDIN -> settings.setLinkedinShowInAccountConsole(value);
+            case MICROSOFT -> settings.setMicrosoftShowInAccountConsole(value);
             default -> {}
         }
     }
@@ -601,10 +613,10 @@ public class SocialProviderSettingsService {
             Consumer<String> linkedin,
             Consumer<String> microsoft) {
         return switch (provider) {
-            case "google" -> google;
-            case "github" -> github;
-            case "linkedin" -> linkedin;
-            case "microsoft" -> microsoft;
+            case GOOGLE -> google;
+            case GITHUB -> github;
+            case LINKEDIN -> linkedin;
+            case MICROSOFT -> microsoft;
             default -> value -> {};
         };
     }
@@ -615,7 +627,7 @@ public class SocialProviderSettingsService {
 
     private static String normalizeAccountConsoleVisibility(String value) {
         String normalized = value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
-        if (!Set.of("always", "when-linked", "never").contains(normalized)) {
+        if (!Set.of(ALWAYS, "when-linked", "never").contains(normalized)) {
             throw ApiException.badRequest(
                     "showInAccountConsole",
                     ApiErrorCode.INVALID_REQUEST,
@@ -841,14 +853,14 @@ public class SocialProviderSettingsService {
                     false,
                     false,
                     0,
-                    "always",
+                    ALWAYS,
                     null,
                     null,
                     null,
                     null,
                     null,
-                    "client_secret_basic",
-                    "openid,profile,email",
+                    CLIENT_SECRET_BASIC,
+                    DEFAULT_SCOPES,
                     "sub");
         }
 
@@ -884,8 +896,8 @@ public class SocialProviderSettingsService {
                     null,
                     null,
                     null,
-                    "client_secret_basic",
-                    "openid,profile,email",
+                    CLIENT_SECRET_BASIC,
+                    DEFAULT_SCOPES,
                     "sub");
         }
 
@@ -923,8 +935,8 @@ public class SocialProviderSettingsService {
                     null,
                     null,
                     null,
-                    "client_secret_basic",
-                    "openid,profile,email",
+                    CLIENT_SECRET_BASIC,
+                    DEFAULT_SCOPES,
                     "sub");
         }
 
@@ -965,8 +977,8 @@ public class SocialProviderSettingsService {
                     null,
                     null,
                     null,
-                    "client_secret_basic",
-                    "openid,profile,email",
+                    CLIENT_SECRET_BASIC,
+                    DEFAULT_SCOPES,
                     "sub");
         }
 
@@ -1007,8 +1019,8 @@ public class SocialProviderSettingsService {
                     null,
                     null,
                     null,
-                    "client_secret_basic",
-                    "openid,profile,email",
+                    CLIENT_SECRET_BASIC,
+                    DEFAULT_SCOPES,
                     "sub");
         }
 

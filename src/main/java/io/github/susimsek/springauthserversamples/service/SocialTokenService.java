@@ -6,6 +6,7 @@ import io.github.susimsek.springauthserversamples.dto.account.SocialProviderToke
 import io.github.susimsek.springauthserversamples.repository.SocialIdentityRepository;
 import io.github.susimsek.springauthserversamples.service.error.ApiErrorCode;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
@@ -38,27 +39,31 @@ public class SocialTokenService {
         if (!provider.storeTokens()) {
             clear(identity);
         } else {
-            OAuth2AccessToken accessToken = authorizedClient.getAccessToken();
+            Optional<OAuth2AccessToken> accessToken =
+                    Optional.ofNullable(authorizedClient.getAccessToken());
             OAuth2RefreshToken refreshToken = authorizedClient.getRefreshToken();
-            if (accessToken == null) {
+            if (accessToken.isEmpty()) {
                 clear(identity);
                 socialIdentityRepository.save(identity);
                 return;
             }
-            identity.setAccessTokenEncrypted(encrypt(accessToken.getTokenValue()));
+            OAuth2AccessToken token = accessToken.get();
+            identity.setAccessTokenEncrypted(encrypt(token.getTokenValue()));
             identity.setRefreshTokenEncrypted(
                     refreshToken == null ? null : encrypt(refreshToken.getTokenValue()));
-            identity.setAccessTokenExpiresAt(accessToken.getExpiresAt());
+            identity.setAccessTokenExpiresAt(token.getExpiresAt());
             identity.setTokenType(
-                    accessToken.getTokenType() == null
-                            ? null
-                            : accessToken.getTokenType().getValue());
+                    Optional.ofNullable(token.getTokenType())
+                            .map(OAuth2AccessToken.TokenType::getValue)
+                            .orElse(null));
             identity.setTokenScopes(
-                    accessToken.getScopes() == null
-                            ? null
-                            : accessToken.getScopes().stream()
-                                    .sorted()
-                                    .collect(Collectors.joining(" ")));
+                    Optional.ofNullable(token.getScopes())
+                            .map(
+                                    scopes ->
+                                            scopes.stream()
+                                                    .sorted()
+                                                    .collect(Collectors.joining(" ")))
+                            .orElse(null));
         }
         socialIdentityRepository.save(identity);
     }

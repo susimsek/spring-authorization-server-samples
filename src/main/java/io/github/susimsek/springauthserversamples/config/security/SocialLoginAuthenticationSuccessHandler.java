@@ -149,13 +149,13 @@ public class SocialLoginAuthenticationSuccessHandler implements AuthenticationSu
                 ensureProviderMfaAvailable(username);
             }
             securityContextRepository.saveContext(context, request, response);
-            if (linkTarget instanceof java.util.Map<?, ?>) {
-                response.sendRedirect("/account/security?social_linked=1");
-            } else if (providerMfaRequired) {
-                requireProviderMfa(request, response, username);
-            } else {
-                delegate.onAuthenticationSuccess(request, response, localAuthentication);
-            }
+            completeResponse(
+                    request,
+                    response,
+                    localAuthentication,
+                    username,
+                    linkTarget instanceof java.util.Map<?, ?>,
+                    providerMfaRequired);
         } catch (RuntimeException exception) {
             if (exception instanceof SocialAccountLinkRequiredException linkRequired) {
                 request.getSession(true)
@@ -172,6 +172,23 @@ public class SocialLoginAuthenticationSuccessHandler implements AuthenticationSu
                             : new org.springframework.security.authentication
                                     .AuthenticationServiceException(
                                     "Social login could not be completed", exception));
+        }
+    }
+
+    private void completeResponse(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            Authentication localAuthentication,
+            String username,
+            boolean socialLink,
+            boolean providerMfaRequired)
+            throws IOException, ServletException {
+        if (socialLink) {
+            response.sendRedirect("/account/security?social_linked=1");
+        } else if (providerMfaRequired) {
+            requireProviderMfa(request, response, username);
+        } else {
+            delegate.onAuthenticationSuccess(request, response, localAuthentication);
         }
     }
 

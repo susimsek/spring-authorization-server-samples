@@ -22,6 +22,8 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration(proxyBeanMethods = false)
 public class AdminApiSecurityConfig {
 
+    private static final String USERS_API_PATH = "/api/admin/users/**";
+
     @Bean
     @Order(1)
     SecurityFilterChain adminApiSecurityFilterChain(
@@ -80,7 +82,7 @@ public class AdminApiSecurityConfig {
                                         .hasAnyAuthority(
                                                 AuthoritiesConstants.ADMIN,
                                                 AuthoritiesConstants.CLIENT_MANAGER)
-                                        .requestMatchers(HttpMethod.GET, "/api/admin/users/**")
+                                        .requestMatchers(HttpMethod.GET, USERS_API_PATH)
                                         .hasAnyAuthority(
                                                 AuthoritiesConstants.ADMIN,
                                                 AuthoritiesConstants.USER_VIEWER,
@@ -145,7 +147,7 @@ public class AdminApiSecurityConfig {
                                         .hasAnyAuthority(
                                                 AuthoritiesConstants.ADMIN,
                                                 AuthoritiesConstants.USER_IMPERSONATOR)
-                                        .requestMatchers(HttpMethod.PUT, "/api/admin/users/**")
+                                        .requestMatchers(HttpMethod.PUT, USERS_API_PATH)
                                         .hasAnyAuthority(
                                                 AuthoritiesConstants.ADMIN,
                                                 AuthoritiesConstants.USER_MANAGER)
@@ -162,7 +164,7 @@ public class AdminApiSecurityConfig {
                                         .hasAnyAuthority(
                                                 AuthoritiesConstants.ADMIN,
                                                 AuthoritiesConstants.USER_MANAGER)
-                                        .requestMatchers(HttpMethod.DELETE, "/api/admin/users/**")
+                                        .requestMatchers(HttpMethod.DELETE, USERS_API_PATH)
                                         .hasAnyAuthority(
                                                 AuthoritiesConstants.ADMIN,
                                                 AuthoritiesConstants.USER_MANAGER)

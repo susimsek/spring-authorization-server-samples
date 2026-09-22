@@ -11,7 +11,7 @@ public final class SocialAccountLinkRequiredException extends OAuth2Authenticati
 
     public static final String ERROR_CODE = "account_link_required";
 
-    private final Map<String, Object> pendingLink;
+    private final transient Map<String, Object> pendingLink;
 
     public SocialAccountLinkRequiredException(
             String provider, String subject, String email, Map<String, Object> attributes) {

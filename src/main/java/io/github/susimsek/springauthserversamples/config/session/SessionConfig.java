@@ -77,7 +77,7 @@ public class SessionConfig {
         }
         sessionRepository.setDefaultMaxInactiveInterval(
                 timeout != null ? timeout : MapSession.DEFAULT_MAX_INACTIVE_INTERVAL);
-        return new SessionCleanupScheduler(
+        return createSessionCleanupScheduler(
                 sessionRepository, taskScheduler, applicationProperties.session().cleanupCron());
     }
 
@@ -86,8 +86,33 @@ public class SessionConfig {
             TaskScheduler taskScheduler,
             SessionProperties sessionProperties,
             ApplicationProperties applicationProperties) {
-        return sessionCleanupScheduler(
+        return createSessionCleanupScheduler(
                 sessionRepository, taskScheduler, sessionProperties, applicationProperties, null);
+    }
+
+    private static SessionCleanupScheduler createSessionCleanupScheduler(
+            JpaIndexedSessionRepository sessionRepository,
+            TaskScheduler taskScheduler,
+            SessionProperties sessionProperties,
+            ApplicationProperties applicationProperties,
+            LoginSettingsService loginSettingsService) {
+        Duration timeout = sessionProperties.getTimeout();
+        if (loginSettingsService != null) {
+            timeout =
+                    Duration.ofMinutes(
+                            loginSettingsService.adminLoginSettings().sessionTimeoutMinutes());
+        }
+        sessionRepository.setDefaultMaxInactiveInterval(
+                timeout != null ? timeout : MapSession.DEFAULT_MAX_INACTIVE_INTERVAL);
+        return createSessionCleanupScheduler(
+                sessionRepository, taskScheduler, applicationProperties.session().cleanupCron());
+    }
+
+    private static SessionCleanupScheduler createSessionCleanupScheduler(
+            JpaIndexedSessionRepository sessionRepository,
+            TaskScheduler taskScheduler,
+            String cleanupCron) {
+        return new SessionCleanupScheduler(sessionRepository, taskScheduler, cleanupCron);
     }
 
     private static final class JsonSerializer implements Serializer<Object> {
