@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -19,6 +20,7 @@ public class SocialProviderLogoutEndpointResolver {
     private final RestClient restClient;
     private final ConcurrentMap<String, String> discoveredEndpoints = new ConcurrentHashMap<>();
 
+    @Autowired
     public SocialProviderLogoutEndpointResolver() {
         JdkClientHttpRequestFactory requestFactory =
                 new JdkClientHttpRequestFactory(
@@ -83,7 +85,7 @@ public class SocialProviderLogoutEndpointResolver {
                 return null;
             }
             return value;
-        } catch (RuntimeException exception) {
+        } catch (RuntimeException _) {
             return null;
         }
     }

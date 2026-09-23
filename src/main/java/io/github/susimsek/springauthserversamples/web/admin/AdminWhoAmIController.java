@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -33,7 +34,7 @@ public class AdminWhoAmIController {
     AdminWhoAmIDTO whoAmI(Authentication authentication) {
         Set<String> authorities =
                 authentication.getAuthorities().stream()
-                        .map(authority -> authority.getAuthority())
+                        .map(GrantedAuthority::getAuthority)
                         .collect(Collectors.toUnmodifiableSet());
 
         return new AdminWhoAmIDTO(

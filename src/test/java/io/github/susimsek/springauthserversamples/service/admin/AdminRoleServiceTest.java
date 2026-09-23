@@ -26,6 +26,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("java:S5778")
 class AdminRoleServiceTest {
 
     @Mock private AuthorityRepository authorityRepository;
@@ -200,6 +201,26 @@ class AdminRoleServiceTest {
     }
 
     @Test
+    void fallsBackToRepositoryQueriesWhenEffectiveUsersAreUnavailable() {
+        var pageable = PageRequest.of(0, 20);
+        AuthorityEntity role = authority(4L, "ROLE_AUDITOR");
+        UserEntity bob = user(11L, "bob", true, "bob@example.com");
+        when(authorityRepository.existsByName("ROLE_AUDITOR")).thenReturn(true);
+        when(authorityRepository.findByName("ROLE_AUDITOR")).thenReturn(Optional.of(role));
+        when(userRepository.findAllWithEffectiveAuthorities()).thenReturn(null);
+        when(userRepository.findAvailableRoleUsers("ROLE_AUDITOR", "", pageable))
+                .thenReturn(new PageImpl<>(List.of(bob), pageable, 1));
+        when(userRepository.findByAuthoritiesNameAndUsernameContainingIgnoreCase(
+                        "ROLE_AUDITOR", "", pageable))
+                .thenReturn(new PageImpl<>(List.of(bob), pageable, 1));
+        when(userRepository.countByAuthoritiesId(4L)).thenReturn(1L);
+
+        assertThat(service().availableUsers("ROLE_AUDITOR", "", pageable).getTotalElements())
+                .isEqualTo(1);
+        assertThat(service().role("ROLE_AUDITOR", "", pageable).userCount()).isEqualTo(1L);
+    }
+
+    @Test
     void excludesUsersWhoAlreadyReceiveRoleFromAGroup() {
         UserEntity alice = new UserEntity();
         alice.setId(12L);
@@ -262,6 +283,19 @@ class AdminRoleServiceTest {
                     .extracting(AdminRoleUserDTO::username)
                     .containsExactly("alice");
         }
+        assertThat(
+                        service()
+                                .availableUsers(
+                                        "ROLE_AUDITOR",
+                                        "",
+                                        PageRequest.of(
+                                                0,
+                                                10,
+                                                Sort.by(
+                                                        Sort.Order.asc("email"),
+                                                        Sort.Order.desc("lastName")))))
+                .extracting(AdminRoleUserDTO::username)
+                .containsExactly("alice", "bob");
     }
 
     @Test

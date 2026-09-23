@@ -23,8 +23,9 @@ class AuthorizationConsentJsonTest {
 
         String json = JsonMapper.builder().build().writeValueAsString(view);
 
-        assertThat(json).contains("\"scopes\":[\"profile\"]");
-        assertThat(json).contains("\"previouslyApprovedScopes\":[]");
-        assertThat(json).doesNotContain("java.util.LinkedHashSet");
+        assertThat(json)
+                .contains("\"scopes\":[\"profile\"]")
+                .contains("\"previouslyApprovedScopes\":[]")
+                .doesNotContain("java.util.LinkedHashSet");
     }
 }

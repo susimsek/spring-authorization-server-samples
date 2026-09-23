@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
+@SuppressWarnings("java:S6829")
 public class AccountRegistrationService {
 
     private final UserRepository userRepository;

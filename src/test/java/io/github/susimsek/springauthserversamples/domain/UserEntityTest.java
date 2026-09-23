@@ -52,8 +52,8 @@ class UserEntityTest {
                 .isNotEqualTo(withoutId)
                 .isNotEqualTo(otherWithoutId)
                 .isNotEqualTo(null)
-                .isNotEqualTo("user");
-        assertThat(user.hashCode()).isEqualTo(UserEntity.class.hashCode());
+                .isNotEqualTo("user")
+                .hasSameHashCodeAs(UserEntity.class);
         assertThat(withoutId).isNotEqualTo(user);
     }
 
@@ -64,7 +64,6 @@ class UserEntityTest {
         proxy.setId(1L);
 
         assertThat(user).isEqualTo(proxy);
-        assertThat(proxy).isEqualTo(user);
-        assertThat(proxy.hashCode()).isEqualTo(UserEntity.class.hashCode());
+        assertThat(proxy).isEqualTo(user).hasSameHashCodeAs(UserEntity.class);
     }
 }

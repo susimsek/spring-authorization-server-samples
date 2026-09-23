@@ -27,6 +27,7 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("java:S5778")
 class ImpersonationServiceTest {
 
     @Mock private UserRepository userRepository;

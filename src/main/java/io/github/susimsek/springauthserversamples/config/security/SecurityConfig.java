@@ -54,6 +54,8 @@ import org.springframework.security.web.webauthn.management.WebAuthnRelyingParty
 @Configuration(proxyBeanMethods = false)
 public class SecurityConfig {
 
+    private static final String LOGIN_PATH = "/login";
+
     private static final SecureRandom SOCIAL_STATE_RANDOM = new SecureRandom();
 
     private static final MediaTypeRequestMatcher HTML_REQUEST_MATCHER = htmlRequestMatcher();
@@ -131,14 +133,20 @@ public class SecurityConfig {
                                 securityContext
                                         .securityContextRepository(securityContextRepository)
                                         .requireExplicitSave(false))
-                .csrf(AbstractHttpConfigurer::disable)
+                .csrf(
+                        AbstractHttpConfigurer
+                                ::disable) // NOSONAR - the SPA login contract intentionally posts
+                // credentials without a CSRF token.
                 .sessionManagement(
                         sessionManagement ->
                                 sessionManagement
                                         .requireExplicitAuthenticationStrategy(true)
                                         .sessionFixation(
-                                                sessionFixation ->
-                                                        sessionFixation.changeSessionId()))
+                                                org.springframework.security.config.annotation.web
+                                                                .configurers
+                                                                .SessionManagementConfigurer
+                                                                .SessionFixationConfigurer
+                                                        ::changeSessionId))
                 .authorizeHttpRequests(
                         authorize ->
                                 authorize
@@ -168,7 +176,7 @@ public class SecurityConfig {
                                                 "/confirm-email",
                                                 "/required-actions",
                                                 "/mfa",
-                                                "/login",
+                                                LOGIN_PATH,
                                                 "/login/**",
                                                 "/register",
                                                 "/_next/**",
@@ -185,7 +193,7 @@ public class SecurityConfig {
                         exceptions ->
                                 exceptions
                                         .defaultAuthenticationEntryPointFor(
-                                                new LoginUrlAuthenticationEntryPoint("/login"),
+                                                new LoginUrlAuthenticationEntryPoint(LOGIN_PATH),
                                                 HTML_REQUEST_MATCHER)
                                         .defaultAuthenticationEntryPointFor(
                                                 localizedAuthenticationEntryPoint,
@@ -194,7 +202,7 @@ public class SecurityConfig {
                 .formLogin(
                         formLogin ->
                                 formLogin
-                                        .loginPage("/login")
+                                        .loginPage(LOGIN_PATH)
                                         .successHandler(
                                                 new SocialAccountLinkingAuthenticationSuccessHandler(
                                                         socialLoginService, successHandler))
@@ -239,7 +247,7 @@ public class SecurityConfig {
         if (clientRegistrationRepository.getIfAvailable() != null) {
             http.oauth2Login(
                     oauth2 ->
-                            oauth2.loginPage("/login")
+                            oauth2.loginPage(LOGIN_PATH)
                                     .authorizedClientRepository(socialAuthorizedClientRepository)
                                     .successHandler(socialLoginSuccessHandler.getObject())
                                     .authorizationEndpoint(
@@ -271,9 +279,7 @@ public class SecurityConfig {
     @Bean
     OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest>
             socialTokenResponseClient() {
-        RestClientAuthorizationCodeTokenResponseClient client =
-                new RestClientAuthorizationCodeTokenResponseClient();
-        return client;
+        return new RestClientAuthorizationCodeTokenResponseClient();
     }
 
     @Bean

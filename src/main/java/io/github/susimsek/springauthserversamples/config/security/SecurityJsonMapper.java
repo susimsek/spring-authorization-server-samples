@@ -37,6 +37,8 @@ import tools.jackson.databind.module.SimpleModule;
  */
 public final class SecurityJsonMapper {
 
+    private static final String USER_VERIFICATION = "userVerification";
+
     private static final byte[] WEBAUTHN_CREATION_OPTIONS_MARKER =
             "spring-security-webauthn-creation-options\n"
                     .getBytes(java.nio.charset.StandardCharsets.UTF_8);
@@ -115,8 +117,8 @@ public final class SecurityJsonMapper {
     }
 
     @SuppressWarnings("unchecked")
-    private PublicKeyCredentialCreationOptions readWebauthnCreationOptions(InputStream inputStream)
-            throws IOException {
+    private PublicKeyCredentialCreationOptions readWebauthnCreationOptions(
+            InputStream inputStream) {
         Map<String, Object> source = webauthnDelegate.readValue(inputStream, Map.class);
         Map<String, Object> rp = (Map<String, Object>) source.get("rp");
         Map<String, Object> user = (Map<String, Object>) source.get("user");
@@ -160,9 +162,9 @@ public final class SecurityJsonMapper {
                 selectionBuilder.residentKey(
                         ResidentKeyRequirement.valueOf((String) selection.get("residentKey")));
             }
-            if (selection.get("userVerification") != null) {
+            if (selection.get(USER_VERIFICATION) != null) {
                 selectionBuilder.userVerification(
-                        userVerificationRequirement((String) selection.get("userVerification")));
+                        userVerificationRequirement((String) selection.get(USER_VERIFICATION)));
             }
             builder.authenticatorSelection(selectionBuilder.build());
         }
@@ -175,7 +177,7 @@ public final class SecurityJsonMapper {
 
     @SuppressWarnings("unchecked")
     private org.springframework.security.web.webauthn.api.PublicKeyCredentialRequestOptions
-            readWebauthnRequestOptions(InputStream inputStream) throws IOException {
+            readWebauthnRequestOptions(InputStream inputStream) {
         Map<String, Object> source = webauthnDelegate.readValue(inputStream, Map.class);
         org.springframework.security.web.webauthn.api.PublicKeyCredentialRequestOptions
                         .PublicKeyCredentialRequestOptionsBuilder
@@ -192,9 +194,9 @@ public final class SecurityJsonMapper {
         if (timeout != null) {
             builder.timeout(Duration.ofMillis(timeout));
         }
-        if (source.get("userVerification") != null) {
+        if (source.get(USER_VERIFICATION) != null) {
             builder.userVerification(
-                    userVerificationRequirement((String) source.get("userVerification")));
+                    userVerificationRequirement((String) source.get(USER_VERIFICATION)));
         }
         return builder.build();
     }

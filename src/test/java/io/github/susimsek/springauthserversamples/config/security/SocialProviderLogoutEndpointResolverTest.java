@@ -19,8 +19,8 @@ class SocialProviderLogoutEndpointResolverTest {
         RestClient restClient = restClientBuilder.build();
         server.expect(
                         request ->
-                                assertThat(request.getURI().toString())
-                                        .isEqualTo(
+                                assertThat(request.getURI())
+                                        .hasToString(
                                                 "https://issuer.example/.well-known/openid-configuration"))
                 .andRespond(
                         org.springframework.test.web.client.response.MockRestResponseCreators

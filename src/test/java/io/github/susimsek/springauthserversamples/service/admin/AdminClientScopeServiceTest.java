@@ -3,6 +3,7 @@ package io.github.susimsek.springauthserversamples.service.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -24,6 +25,7 @@ import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 
+@SuppressWarnings("java:S5778")
 class AdminClientScopeServiceTest {
 
     private final ClientScopeRepository clientScopeRepository = mock(ClientScopeRepository.class);
@@ -165,7 +167,7 @@ class AdminClientScopeServiceTest {
                                         new io.github.susimsek.springauthserversamples.dto.admin
                                                 .AdminClientScopeRequestDTO("billing", null, null)))
                 .isNotNull();
-        verify(clientRepository, org.mockito.Mockito.never()).findAll();
+        verify(clientRepository, never()).findAll();
     }
 
     @Test

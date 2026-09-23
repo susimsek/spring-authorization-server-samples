@@ -3,7 +3,9 @@ package io.github.susimsek.springauthserversamples.service.account;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -287,8 +289,7 @@ class UserActionServiceTest {
 
     @Test
     void sendsVerificationAndEmailChangeActionsWithLocalizedRoutes() {
-        EmailSettingsService emailSettingsService =
-                org.mockito.Mockito.mock(EmailSettingsService.class);
+        EmailSettingsService emailSettingsService = mock(EmailSettingsService.class);
         when(emailSettingsService.current())
                 .thenReturn(
                         new EmailSettingsService.EmailConfiguration(
@@ -317,7 +318,7 @@ class UserActionServiceTest {
 
         ArgumentCaptor<UserActionEmailEvent> events =
                 ArgumentCaptor.forClass(UserActionEmailEvent.class);
-        verify(eventPublisher, org.mockito.Mockito.times(2)).publishEvent(events.capture());
+        verify(eventPublisher, times(2)).publishEvent(events.capture());
         assertThat(events.getAllValues().get(0).actionUrl()).contains("/verify-email?");
         assertThat(events.getAllValues().get(0).locale()).isEqualTo(Locale.forLanguageTag("tr"));
         assertThat(events.getAllValues().get(1).actionUrl()).contains("/confirm-email?");
@@ -380,6 +381,38 @@ class UserActionServiceTest {
                 .thenReturn(Optional.of(recent));
         service.forgotPassword("alice", Locale.ENGLISH);
         verify(tokenRepository, never()).deleteActive(7L, UserAction.UPDATE_PASSWORD);
+    }
+
+    @Test
+    void rejectsDisabledUsersAndCooldownForExplicitResends() throws Exception {
+        when(applicationProperties.mail())
+                .thenReturn(
+                        new ApplicationProperties.Mail(
+                                true, "no-reply@example.test", "https://example.test"));
+        UserEntity disabled = user();
+        disabled.setEnabled(false);
+        when(userRepository.findIdByUsername("alice")).thenReturn(Optional.of(7L));
+        when(userRepository.findForActionById(7L)).thenReturn(Optional.of(disabled));
+        assertThatThrownBy(
+                        () ->
+                                service.sendForCurrentUser(
+                                        "alice", UserAction.VERIFY_EMAIL, Locale.ENGLISH))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("User is disabled");
+
+        UserActionTokenEntity recent =
+                token(UserAction.VERIFY_EMAIL, Instant.now().plusSeconds(60));
+        recent.setIssuedAt(Instant.now());
+        when(userRepository.findForActionById(7L)).thenReturn(Optional.of(user()));
+        when(tokenRepository.findFirstByUserIdAndActionOrderByIssuedAtDesc(
+                        7L, UserAction.VERIFY_EMAIL))
+                .thenReturn(Optional.of(recent));
+        assertThatThrownBy(
+                        () ->
+                                service.sendForCurrentUser(
+                                        "alice", UserAction.VERIFY_EMAIL, Locale.ENGLISH))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("Please wait before resending the email");
     }
 
     @Test
@@ -450,6 +483,49 @@ class UserActionServiceTest {
                                         7L, UserAction.UPDATE_PASSWORD, 86401L, Locale.ENGLISH))
                 .isInstanceOf(ApiException.class)
                 .hasMessage("Lifespan must be between 60 and 86400 seconds");
+    }
+
+    @Test
+    void acceptsOptionalOtpWhenTotpIsNotConfigured() throws Exception {
+        service = serviceWith(null, loginSettingsService, totpService);
+        when(loginSettingsService.passwordResetOtpMode()).thenReturn("if-configured");
+        UserActionTokenEntity token =
+                token(UserAction.UPDATE_PASSWORD, Instant.now().plusSeconds(60));
+        when(tokenRepository.findUserIdByTokenHash(hash("raw-token"))).thenReturn(Optional.of(7L));
+        when(userRepository.findForActionById(7L)).thenReturn(Optional.of(token.getUser()));
+        when(tokenRepository.findByTokenHash(hash("raw-token"))).thenReturn(Optional.of(token));
+
+        service.resetPassword("raw-token", "valid-password", null);
+
+        verify(passwordService).changePassword(token.getUser(), "valid-password");
+        assertThat(token.getConsumedAt()).isNotNull();
+    }
+
+    @Test
+    void rejectsMissingOtpAndReplayedOtpCounters() throws Exception {
+        service = serviceWith(null, loginSettingsService, totpService);
+        when(loginSettingsService.passwordResetOtpMode()).thenReturn("required");
+        UserActionTokenEntity token =
+                token(UserAction.UPDATE_PASSWORD, Instant.now().plusSeconds(60));
+        token.getUser().setTotpEnabled(true);
+        token.getUser().setTotpSecret("SECRET");
+        when(tokenRepository.findUserIdByTokenHash(hash("raw-token"))).thenReturn(Optional.of(7L));
+        when(userRepository.findForActionById(7L)).thenReturn(Optional.of(token.getUser()));
+        when(tokenRepository.findByTokenHash(hash("raw-token"))).thenReturn(Optional.of(token));
+        assertThatThrownBy(() -> service.resetPassword("raw-token", "valid-password", null))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("The OTP code is invalid");
+
+        when(loginSettingsService.otpAlgorithm()).thenReturn("SHA1");
+        when(loginSettingsService.otpDigits()).thenReturn(6);
+        when(loginSettingsService.otpPeriodSeconds()).thenReturn(30);
+        when(loginSettingsService.otpLookAheadWindow()).thenReturn(1);
+        token.getUser().setTotpLastUsedCounter(42L);
+        when(totpService.matchingCounter("SECRET", "123456", "SHA1", 6, 30, 1))
+                .thenReturn(OptionalLong.of(42));
+        assertThatThrownBy(() -> service.resetPassword("raw-token", "valid-password", "123456"))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("The OTP code is invalid");
     }
 
     @Test

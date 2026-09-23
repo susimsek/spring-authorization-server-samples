@@ -28,6 +28,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AdminIdentityProviderService {
 
+    private static final String ALIAS_FIELD = "alias";
+    private static final String REGISTRATION_ID_FIELD = "registrationId";
+    private static final String IDENTITY_PROVIDER_TARGET = "identity-provider";
+    private static final String IDENTITY_PROVIDER_NOT_FOUND = "Identity provider was not found";
+    private static final String PROVIDER_MAPPER_NOT_FOUND = "Provider mapper was not found";
+
     private final SocialProviderRepository providerRepository;
     private final SocialProviderMapperRepository mapperRepository;
     private final SocialIdentityRepository identityRepository;
@@ -46,8 +52,8 @@ public class AdminIdentityProviderService {
                     String like = "%" + search + "%";
                     return cb.or(
                             cb.like(cb.lower(root.get("displayName")), like),
-                            cb.like(cb.lower(root.get("alias")), like),
-                            cb.like(cb.lower(root.get("registrationId")), like),
+                            cb.like(cb.lower(root.get(ALIAS_FIELD)), like),
+                            cb.like(cb.lower(root.get(REGISTRATION_ID_FIELD)), like),
                             cb.like(cb.lower(root.get("providerType")), like));
                 };
         Page<SocialProviderEntity> page = providerRepository.findAll(specification, pageable);
@@ -85,20 +91,21 @@ public class AdminIdentityProviderService {
         String alias = normalize(request.alias());
         if (providerRepository.existsByRegistrationId(registrationId)) {
             throw ApiException.conflict(
-                    "registrationId",
+                    REGISTRATION_ID_FIELD,
                     ApiErrorCode.CONFLICT,
                     "Registration id is already registered");
         }
         if (providerRepository.existsByAliasIgnoreCase(alias)) {
             throw ApiException.conflict(
-                    "alias", ApiErrorCode.CONFLICT, "Provider alias is already registered");
+                    ALIAS_FIELD, ApiErrorCode.CONFLICT, "Provider alias is already registered");
         }
         SocialProviderEntity entity = new SocialProviderEntity();
         entity.setRegistrationId(registrationId);
         apply(entity, request, alias, true);
         providerRepository.save(entity);
         settingsService.refreshClientRegistrations();
-        auditEventService.record("identity-provider.created", "identity-provider", entity.getId());
+        auditEventService.record(
+                "identity-provider.created", IDENTITY_PROVIDER_TARGET, entity.getId());
         return toDto(entity);
     }
 
@@ -114,8 +121,7 @@ public class AdminIdentityProviderService {
         SocialProviderEntity entity =
                 providerRepository
                         .findById(id)
-                        .orElseThrow(
-                                () -> ApiException.notFound("Identity provider was not found"));
+                        .orElseThrow(() -> ApiException.notFound(IDENTITY_PROVIDER_NOT_FOUND));
         String registrationId = normalize(request.registrationId());
         String alias = normalize(request.alias());
         String previousAlias = entity.getAlias();
@@ -125,7 +131,7 @@ public class AdminIdentityProviderService {
                 .ifPresent(
                         other -> {
                             throw ApiException.conflict(
-                                    "registrationId",
+                                    REGISTRATION_ID_FIELD,
                                     ApiErrorCode.CONFLICT,
                                     "Registration id is already registered");
                         });
@@ -135,7 +141,7 @@ public class AdminIdentityProviderService {
                 .ifPresent(
                         other -> {
                             throw ApiException.conflict(
-                                    "alias",
+                                    ALIAS_FIELD,
                                     ApiErrorCode.CONFLICT,
                                     "Provider alias is already registered");
                         });
@@ -148,7 +154,7 @@ public class AdminIdentityProviderService {
                     .forEach(mapper -> mapper.setProviderAlias(entity.getAlias()));
         }
         settingsService.refreshClientRegistrations();
-        auditEventService.record("identity-provider.updated", "identity-provider", id);
+        auditEventService.record("identity-provider.updated", IDENTITY_PROVIDER_TARGET, id);
         return toDto(entity);
     }
 
@@ -164,8 +170,7 @@ public class AdminIdentityProviderService {
         SocialProviderEntity entity =
                 providerRepository
                         .findById(id)
-                        .orElseThrow(
-                                () -> ApiException.notFound("Identity provider was not found"));
+                        .orElseThrow(() -> ApiException.notFound(IDENTITY_PROVIDER_NOT_FOUND));
         if (!identityRepository.findAllByProvider(entity.getRegistrationId()).isEmpty()
                 || !identityRepository.findAllByProvider(entity.getAlias()).isEmpty()) {
             throw ApiException.conflict(
@@ -177,7 +182,7 @@ public class AdminIdentityProviderService {
                         .toList());
         providerRepository.delete(entity);
         settingsService.refreshClientRegistrations();
-        auditEventService.record("identity-provider.deleted", "identity-provider", id);
+        auditEventService.record("identity-provider.deleted", IDENTITY_PROVIDER_TARGET, id);
     }
 
     @Transactional(readOnly = true)
@@ -209,7 +214,7 @@ public class AdminIdentityProviderService {
         apply(entity, request);
         mapperRepository.save(entity);
         auditEventService.record(
-                "identity-provider.mapper.created", "identity-provider", providerId);
+                "identity-provider.mapper.created", IDENTITY_PROVIDER_TARGET, providerId);
         return toMapperDto(entity);
     }
 
@@ -223,9 +228,9 @@ public class AdminIdentityProviderService {
         SocialProviderMapperEntity entity =
                 mapperRepository
                         .findById(mapperId)
-                        .orElseThrow(() -> ApiException.notFound("Provider mapper was not found"));
+                        .orElseThrow(() -> ApiException.notFound(PROVIDER_MAPPER_NOT_FOUND));
         if (!entity.getProviderAlias().equals(provider.getAlias())) {
-            throw ApiException.notFound("Provider mapper was not found");
+            throw ApiException.notFound(PROVIDER_MAPPER_NOT_FOUND);
         }
         if (mapperRepository.findAll().stream()
                 .anyMatch(
@@ -240,7 +245,7 @@ public class AdminIdentityProviderService {
         apply(entity, request);
         mapperRepository.save(entity);
         auditEventService.record(
-                "identity-provider.mapper.updated", "identity-provider", providerId);
+                "identity-provider.mapper.updated", IDENTITY_PROVIDER_TARGET, providerId);
         return toMapperDto(entity);
     }
 
@@ -253,19 +258,19 @@ public class AdminIdentityProviderService {
         SocialProviderMapperEntity entity =
                 mapperRepository
                         .findById(mapperId)
-                        .orElseThrow(() -> ApiException.notFound("Provider mapper was not found"));
+                        .orElseThrow(() -> ApiException.notFound(PROVIDER_MAPPER_NOT_FOUND));
         if (!entity.getProviderAlias().equals(provider.getAlias())) {
-            throw ApiException.notFound("Provider mapper was not found");
+            throw ApiException.notFound(PROVIDER_MAPPER_NOT_FOUND);
         }
         mapperRepository.delete(entity);
         auditEventService.record(
-                "identity-provider.mapper.deleted", "identity-provider", providerId);
+                "identity-provider.mapper.deleted", IDENTITY_PROVIDER_TARGET, providerId);
     }
 
     private SocialProviderEntity require(String id) {
         return providerRepository
                 .findById(id)
-                .orElseThrow(() -> ApiException.notFound("Identity provider was not found"));
+                .orElseThrow(() -> ApiException.notFound(IDENTITY_PROVIDER_NOT_FOUND));
     }
 
     private void apply(

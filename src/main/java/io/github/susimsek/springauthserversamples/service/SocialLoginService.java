@@ -39,8 +39,10 @@ import tools.jackson.databind.ObjectMapper;
 @RequiredArgsConstructor
 public class SocialLoginService {
 
+    private static final String LINKEDIN = "linkedin";
+
     private static final Set<String> SUPPORTED_PROVIDERS =
-            Set.of("google", "github", "linkedin", "microsoft");
+            Set.of("google", "github", LINKEDIN, "microsoft");
 
     public static final String PENDING_SOCIAL_LINK = "socialLogin.pendingLink";
     public static final String PENDING_SOCIAL_LINK_TARGET = "socialLogin.pendingLinkTarget";
@@ -213,7 +215,7 @@ public class SocialLoginService {
         return java.util.stream.Stream.of(
                         new ProviderConfiguration("google", properties.google()),
                         new ProviderConfiguration("github", properties.github()),
-                        new ProviderConfiguration("linkedin", properties.linkedin()),
+                        new ProviderConfiguration(LINKEDIN, properties.linkedin()),
                         new ProviderConfiguration("microsoft", properties.microsoft()))
                 .filter(
                         configuration ->
@@ -298,7 +300,7 @@ public class SocialLoginService {
     }
 
     public boolean isLinkedInProvider(String provider) {
-        return "linkedin".equals(canonicalProvider(provider));
+        return LINKEDIN.equals(canonicalProvider(provider));
     }
 
     public boolean providerRequiresMfa(String provider) {
@@ -539,7 +541,7 @@ public class SocialLoginService {
                             && uri.getFragment() == null
                     ? uri.toString()
                     : null;
-        } catch (IllegalArgumentException exception) {
+        } catch (IllegalArgumentException _) {
             return null;
         }
     }

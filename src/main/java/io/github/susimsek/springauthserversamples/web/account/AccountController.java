@@ -63,6 +63,7 @@ import org.springframework.web.multipart.MultipartFile;
         name = "Account",
         description = "Account Console profile, session, and application management.")
 @SecurityRequirement(name = OpenApiConfig.ACCOUNT_BEARER)
+@SuppressWarnings("java:S107")
 public class AccountController {
 
     private final AccountProfileService accountProfileService;
@@ -243,12 +244,13 @@ public class AccountController {
                     @Valid
                     @RequestBody
                     AccountProfileRequestDTO request) {
-        java.time.Instant authenticationTime =
-                jwt == null
-                        ? java.time.Instant.now()
-                        : jwt.getClaimAsInstant("auth_time") != null
-                                ? jwt.getClaimAsInstant("auth_time")
-                                : jwt.getIssuedAt();
+        java.time.Instant authenticationTime;
+        if (jwt == null) {
+            authenticationTime = java.time.Instant.now();
+        } else {
+            java.time.Instant authTime = jwt.getClaimAsInstant("auth_time");
+            authenticationTime = authTime != null ? authTime : jwt.getIssuedAt();
+        }
         return accountProfileService.updateProfile(
                 authentication.getName(), request, authenticationTime);
     }

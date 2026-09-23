@@ -14,12 +14,24 @@ import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 
 @Controller
 @Tag(name = "Application", description = "Application error handling endpoints.")
 public class AuthorizationErrorController implements ErrorController {
 
-    @RequestMapping("/error")
+    @RequestMapping(
+            value = "/error",
+            method = {
+                RequestMethod.GET,
+                RequestMethod.POST,
+                RequestMethod.PUT,
+                RequestMethod.PATCH,
+                RequestMethod.DELETE,
+                RequestMethod.HEAD,
+                RequestMethod.OPTIONS,
+                RequestMethod.TRACE
+            })
     @Operation(
             summary = "Handle authorization errors",
             description =

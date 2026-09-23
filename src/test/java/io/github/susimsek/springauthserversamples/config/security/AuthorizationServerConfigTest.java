@@ -1,6 +1,7 @@
 package io.github.susimsek.springauthserversamples.config.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -104,7 +105,7 @@ class AuthorizationServerConfigTest {
     }
 
     @Test
-    void buildsAuthorizationServerSecurityFilterChain() throws Exception {
+    void buildsAuthorizationServerSecurityFilterChain() {
         SecurityFilterChain chain =
                 config.authorizationServerSecurityFilterChain(
                         httpSecurity(),
@@ -167,7 +168,7 @@ class AuthorizationServerConfigTest {
         UserRepository userRepository = mock(UserRepository.class);
         UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
         AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
-        JwtClaimsSet.Builder claims = JwtClaimsSet.builder();
+        JwtClaimsSet.Builder claims = JwtClaimsSet.builder().claim("sub", "admin");
 
         config.jwtTokenCustomizer(userRepository, avatarRepository, authorizationRepository)
                 .customize(
@@ -180,8 +181,7 @@ class AuthorizationServerConfigTest {
 
         claims.claim("sub", "admin");
         assertThat(claims.build().getClaims()).doesNotContainKeys("picture", "roles");
-        verify(userRepository, org.mockito.Mockito.never())
-                .findByUsername(org.mockito.ArgumentMatchers.anyString());
+        verify(userRepository, never()).findByUsername(org.mockito.ArgumentMatchers.anyString());
     }
 
     @Test
@@ -285,7 +285,7 @@ class AuthorizationServerConfigTest {
         SocialIdentityRepository socialIdentityRepository = mock(SocialIdentityRepository.class);
         when(socialIdentityRepository.findAllByUserUsername("admin")).thenReturn(List.of());
         ObjectMapper objectMapper = mock(ObjectMapper.class);
-        JwtClaimsSet.Builder claims = JwtClaimsSet.builder().claim("sub", "admin");
+        JwtClaimsSet.Builder claims = JwtClaimsSet.builder();
 
         config.jwtTokenCustomizer(
                         userRepository,
@@ -306,7 +306,7 @@ class AuthorizationServerConfigTest {
     }
 
     @Test
-    void mapsFullGroupPathsAndSocialClaimsForAccessToken() throws Exception {
+    void mapsFullGroupPathsAndSocialClaimsForAccessToken() {
         UserEntity user = new UserEntity();
         user.setUsername("admin");
         GroupEntity parent = new GroupEntity();
@@ -404,7 +404,7 @@ class AuthorizationServerConfigTest {
     }
 
     @Test
-    void skipsSocialClaimsWhenMappedTokenSectionIsAbsent() throws Exception {
+    void skipsSocialClaimsWhenMappedTokenSectionIsAbsent() {
         UserEntity user = new UserEntity();
         UserRepository userRepository = mock(UserRepository.class);
         when(userRepository.findByUsername("admin")).thenReturn(Optional.of(user));
@@ -479,7 +479,7 @@ class AuthorizationServerConfigTest {
     }
 
     @Test
-    void mapsSocialClaimsForOidcIdToken() throws Exception {
+    void mapsSocialClaimsForOidcIdToken() {
         UserEntity user = new UserEntity();
         user.setUsername("admin");
         UserRepository userRepository = mock(UserRepository.class);
@@ -506,6 +506,150 @@ class AuthorizationServerConfigTest {
                                 Set.of("openid")));
 
         assertThat(claims.build().getClaims()).containsEntry("tenant", "acme");
+    }
+
+    @Test
+    void coversIdTokenClaimBranchesAndOptionalSocialPayloads() {
+        UserEntity user = new UserEntity();
+        user.setUsername("admin");
+        user.setPictureUrl(" ");
+        UserRepository userRepository = mock(UserRepository.class);
+        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(user));
+        UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
+        when(avatarRepository.findVersionByUserId(null)).thenReturn(Optional.empty());
+        AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
+        SocialIdentityEntity identity = new SocialIdentityEntity();
+        identity.setMappedClaims(null);
+        SocialIdentityRepository socialIdentityRepository = mock(SocialIdentityRepository.class);
+        when(socialIdentityRepository.findAllByUserUsername("admin")).thenReturn(List.of(identity));
+        JwtClaimsSet.Builder claims = JwtClaimsSet.builder().claim("sub", "admin");
+
+        config.jwtTokenCustomizer(
+                        userRepository,
+                        avatarRepository,
+                        authorizationRepository,
+                        mock(ClientScopeRepository.class),
+                        socialIdentityRepository,
+                        new ObjectMapper())
+                .customize(
+                        jwtContext(
+                                claims,
+                                new OAuth2TokenType(OidcParameterNames.ID_TOKEN),
+                                AuthorizationGrantType.REFRESH_TOKEN,
+                                "account-console",
+                                Set.of("profile", "email", "openid"),
+                                " "));
+
+        assertThat(claims.build().getClaims())
+                .doesNotContainKeys("picture", "email", "locale", "nonce");
+
+        JwtClaimsSet.Builder noAuthorizationClaims = JwtClaimsSet.builder().claim("sub", "admin");
+        config.jwtTokenCustomizer(
+                        userRepository,
+                        avatarRepository,
+                        authorizationRepository,
+                        null,
+                        socialIdentityRepository,
+                        new ObjectMapper())
+                .customize(
+                        jwtContextWithoutAuthorization(
+                                noAuthorizationClaims,
+                                new OAuth2TokenType(OidcParameterNames.ID_TOKEN),
+                                AuthorizationGrantType.AUTHORIZATION_CODE,
+                                "account-console",
+                                Set.of("openid")));
+        assertThat(noAuthorizationClaims.build().getClaims()).doesNotContainKey("nonce");
+    }
+
+    @Test
+    void skipsUserClaimsWhenScopesUseAnUnsupportedGrant() {
+        UserRepository userRepository = mock(UserRepository.class);
+        UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
+        AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
+        JwtClaimsSet.Builder claims = JwtClaimsSet.builder().claim("sub", "client");
+
+        config.jwtTokenCustomizer(userRepository, avatarRepository, authorizationRepository)
+                .customize(
+                        jwtContextWithoutAuthorization(
+                                claims,
+                                OAuth2TokenType.ACCESS_TOKEN,
+                                AuthorizationGrantType.CLIENT_CREDENTIALS,
+                                "other-client",
+                                Set.of("profile", "email", "openid")));
+
+        verify(userRepository, never()).findByUsername(anyString());
+        assertThat(claims.build().getClaims()).doesNotContainKeys("picture", "email", "locale");
+    }
+
+    @Test
+    void skipsMappedClaimsWhenEligibleTokenHasNoUser() {
+        UserRepository userRepository = mock(UserRepository.class);
+        when(userRepository.findByUsername("missing")).thenReturn(Optional.empty());
+        SocialIdentityRepository socialIdentityRepository = mock(SocialIdentityRepository.class);
+        ObjectMapper objectMapper = new ObjectMapper();
+        JwtClaimsSet.Builder claims = JwtClaimsSet.builder().claim("sub", "missing");
+
+        config.jwtTokenCustomizer(
+                        userRepository,
+                        mock(UserAvatarRepository.class),
+                        mock(AuthorizationRepository.class),
+                        null,
+                        socialIdentityRepository,
+                        objectMapper)
+                .customize(
+                        jwtContext(
+                                claims,
+                                OAuth2TokenType.ACCESS_TOKEN,
+                                AuthorizationGrantType.AUTHORIZATION_CODE,
+                                "account-console",
+                                Set.of("openid")));
+
+        verify(socialIdentityRepository, never()).findAllByUserUsername(anyString());
+    }
+
+    @Test
+    void coversNonMatchingTokenPredicatesAndDisabledGroupScopes() {
+        UserRepository userRepository = mock(UserRepository.class);
+        UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
+        AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
+        ClientScopeRepository clientScopeRepository = mock(ClientScopeRepository.class);
+        ClientScopeEntity disabledMapper = new ClientScopeEntity();
+        disabledMapper.setName("groups");
+        disabledMapper.setGroupMapperEnabled(false);
+        when(clientScopeRepository.findByNameIn(Set.of("groups")))
+                .thenReturn(List.of(disabledMapper));
+
+        JwtClaimsSet.Builder customClaims = JwtClaimsSet.builder().claim("sub", "client");
+        config.jwtTokenCustomizer(
+                        userRepository,
+                        avatarRepository,
+                        authorizationRepository,
+                        clientScopeRepository,
+                        null,
+                        null)
+                .customize(
+                        jwtContextWithoutAuthorization(
+                                customClaims,
+                                new OAuth2TokenType("custom"),
+                                AuthorizationGrantType.AUTHORIZATION_CODE,
+                                "other-client",
+                                Set.of("groups")));
+
+        assertThat(customClaims.build().getClaims()).containsEntry("sub", "client");
+        verify(userRepository, never()).findByUsername(anyString());
+
+        when(userRepository.findByUsername("admin")).thenReturn(Optional.empty());
+        JwtClaimsSet.Builder adminClaims = JwtClaimsSet.builder().claim("sub", "admin");
+        config.jwtTokenCustomizer(userRepository, avatarRepository, authorizationRepository)
+                .customize(
+                        jwtContextWithoutAuthorization(
+                                adminClaims,
+                                OAuth2TokenType.ACCESS_TOKEN,
+                                AuthorizationGrantType.CLIENT_CREDENTIALS,
+                                "admin-console",
+                                Set.of()));
+
+        assertThat(adminClaims.build().getClaims()).containsEntry("roles", List.of());
     }
 
     private static JwtEncodingContext jwtContext(

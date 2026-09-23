@@ -21,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MfaService {
 
+    private static final String INVALID_AUTHENTICATOR_CODE = "The authenticator code is invalid";
+
     private final UserRepository userRepository;
     private final LoginSettingsRepository loginSettingsRepository;
     private final TotpService totpService;
@@ -117,12 +119,12 @@ public class MfaService {
         UserEntity user = userForMfaUpdate(username);
         if (user.isMfaPermanentlyLocked()) {
             throw ApiException.badRequest(
-                    ApiErrorCode.INVALID_TOTP_CODE, "The authenticator code is invalid");
+                    ApiErrorCode.INVALID_TOTP_CODE, INVALID_AUTHENTICATOR_CODE);
         }
         if (!settings.isOtpEnabled() || !consumeCode(user, settings, code)) {
             recordMfaFailure(username);
             throw ApiException.badRequest(
-                    ApiErrorCode.INVALID_TOTP_CODE, "The authenticator code is invalid");
+                    ApiErrorCode.INVALID_TOTP_CODE, INVALID_AUTHENTICATOR_CODE);
         }
         user.setTotpEnabled(true);
         userRepository.save(user);
@@ -139,12 +141,12 @@ public class MfaService {
         UserEntity user = userForMfaUpdate(username);
         if (user.isMfaPermanentlyLocked()) {
             throw ApiException.badRequest(
-                    ApiErrorCode.INVALID_TOTP_CODE, "The authenticator code is invalid");
+                    ApiErrorCode.INVALID_TOTP_CODE, INVALID_AUTHENTICATOR_CODE);
         }
         if (!consumeCode(user, settings, code)) {
             recordMfaFailure(username);
             throw ApiException.badRequest(
-                    ApiErrorCode.INVALID_TOTP_CODE, "The authenticator code is invalid");
+                    ApiErrorCode.INVALID_TOTP_CODE, INVALID_AUTHENTICATOR_CODE);
         }
         user.setTotpSecret(null);
         user.setTotpEnabled(false);
@@ -183,7 +185,7 @@ public class MfaService {
     private void rejectIfMfaLocked(String username) {
         if (isMfaLocked(username)) {
             throw ApiException.badRequest(
-                    ApiErrorCode.INVALID_TOTP_CODE, "The authenticator code is invalid");
+                    ApiErrorCode.INVALID_TOTP_CODE, INVALID_AUTHENTICATOR_CODE);
         }
     }
 

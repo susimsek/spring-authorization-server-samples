@@ -18,6 +18,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.util.UriUtils;
 
 @Component
+@SuppressWarnings("java:S4449")
 public class AuthorizationEndpointErrorResponseHandler implements AuthenticationFailureHandler {
 
     private final RedirectStrategy redirectStrategy = new DefaultRedirectStrategy();

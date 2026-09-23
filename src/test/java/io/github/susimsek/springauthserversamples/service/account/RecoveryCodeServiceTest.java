@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -21,6 +23,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+@SuppressWarnings("java:S5778")
 class RecoveryCodeServiceTest {
 
     private final UserRepository userRepository = mock(UserRepository.class);
@@ -127,7 +130,7 @@ class RecoveryCodeServiceTest {
         assertThat(serviceWithMfa().consume("alice", "ABCD-EFGH-IJKL")).isFalse();
         assertThat(serviceWithMfa().consume("alice", "ABCD-EFGH-IJKL")).isFalse();
 
-        verify(mfaBruteForceService, org.mockito.Mockito.never()).recordFailure("alice");
+        verify(mfaBruteForceService, never()).recordFailure("alice");
     }
 
     @Test
@@ -145,7 +148,7 @@ class RecoveryCodeServiceTest {
         when(passwordEncoder.matches("ABCDEFGHIJKL", "encoded")).thenReturn(false);
 
         assertThat(serviceWithMfa().consume("alice", "ABCD-EFGH-IJKL")).isFalse();
-        verify(mfaBruteForceService, org.mockito.Mockito.times(2)).recordFailure("alice");
+        verify(mfaBruteForceService, times(2)).recordFailure("alice");
     }
 
     @Test

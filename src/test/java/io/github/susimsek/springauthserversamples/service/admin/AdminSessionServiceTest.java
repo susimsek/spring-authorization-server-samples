@@ -31,6 +31,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("java:S5778")
 class AdminSessionServiceTest {
     @Mock private AdminUserService adminUserService;
     @Mock private UserSessionRepository userSessionRepository;

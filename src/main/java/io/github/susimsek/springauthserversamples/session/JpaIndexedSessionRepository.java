@@ -93,18 +93,18 @@ public class JpaIndexedSessionRepository implements FindByIndexNameSessionReposi
         }
 
         List<JpaSession> sessions =
-                transactionTemplate.execute(
-                        status ->
-                                sessionRepository
-                                        .findAllByPrincipalNameAndExpiryTimeAfter(
-                                                indexValue, System.currentTimeMillis())
-                                        .stream()
-                                        .map(this::toSession)
-                                        .toList());
+                Optional.ofNullable(
+                                transactionTemplate.execute(
+                                        status ->
+                                                sessionRepository
+                                                        .findAllByPrincipalNameAndExpiryTimeAfter(
+                                                                indexValue,
+                                                                System.currentTimeMillis())
+                                                        .stream()
+                                                        .map(this::toSession)
+                                                        .toList()))
+                        .orElseGet(Collections::emptyList);
 
-        if (sessions == null) {
-            return Collections.emptyMap();
-        }
         return sessions.stream().collect(Collectors.toMap(JpaSession::getId, Function.identity()));
     }
 

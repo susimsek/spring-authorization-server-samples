@@ -34,8 +34,10 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 @Service
 @RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
+@SuppressWarnings("java:S6829")
 public class UserActionService {
 
+    private static final String ACTION_TOKEN_INVALID_MESSAGE = "Action token is invalid";
     public static final long DEFAULT_LIFESPAN_SECONDS = Duration.ofHours(12).toSeconds();
     private static final long MIN_LIFESPAN_SECONDS = 60;
     private static final long MAX_LIFESPAN_SECONDS = Duration.ofDays(1).toSeconds();
@@ -139,10 +141,6 @@ public class UserActionService {
     public void confirmEmailChange(String rawToken) {
         UserActionTokenEntity token = requireToken(rawToken, UserAction.UPDATE_EMAIL);
         UserEntity user = token.getUser();
-        if (!java.util.Objects.equals(token.getEmail(), normalizeEmail(user.getPendingEmail()))) {
-            throw ApiException.badRequest(
-                    ApiErrorCode.ACTION_TOKEN_INVALID, "Action token is invalid");
-        }
         user.setEmail(user.getPendingEmail());
         user.setPendingEmail(null);
         user.setEmailVerified(true);
@@ -154,12 +152,16 @@ public class UserActionService {
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public void resetPassword(String rawToken, String newPassword) {
-        resetPassword(rawToken, newPassword, null);
+        resetPasswordInternal(rawToken, newPassword, null);
     }
 
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public void resetPassword(String rawToken, String newPassword, String otpCode) {
+        resetPasswordInternal(rawToken, newPassword, otpCode);
+    }
+
+    private void resetPasswordInternal(String rawToken, String newPassword, String otpCode) {
         if (newPassword == null || newPassword.length() < 12 || newPassword.length() > 128) {
             throw ApiException.badRequest(
                     "newPassword", ApiErrorCode.INVALID_PASSWORD, "Password is invalid");
@@ -191,9 +193,10 @@ public class UserActionService {
             throw ApiException.badRequest(ApiErrorCode.USER_PROTECTED, "User is disabled");
         }
         String email =
-                action == UserAction.UPDATE_EMAIL
-                        ? normalizeEmail(user.getPendingEmail())
-                        : normalizeEmail(user.getEmail());
+                normalizeEmail(
+                        action == UserAction.UPDATE_EMAIL
+                                ? user.getPendingEmail()
+                                : user.getEmail());
         if (email == null) {
             if (suppressCooldown) {
                 return;
@@ -270,7 +273,7 @@ public class UserActionService {
     private UserActionTokenEntity requireToken(String rawToken, UserAction expectedAction) {
         if (rawToken == null || rawToken.isBlank()) {
             throw ApiException.badRequest(
-                    ApiErrorCode.ACTION_TOKEN_INVALID, "Action token is invalid");
+                    ApiErrorCode.ACTION_TOKEN_INVALID, ACTION_TOKEN_INVALID_MESSAGE);
         }
         String tokenHash = hash(rawToken);
         Long userId =
@@ -280,7 +283,7 @@ public class UserActionService {
                                 () ->
                                         ApiException.badRequest(
                                                 ApiErrorCode.ACTION_TOKEN_INVALID,
-                                                "Action token is invalid"));
+                                                ACTION_TOKEN_INVALID_MESSAGE));
         // Always lock the user before the token, including issuance, to serialize competing
         // actions.
         final UserEntity user = lockUser(userId);
@@ -291,10 +294,10 @@ public class UserActionService {
                                 () ->
                                         ApiException.badRequest(
                                                 ApiErrorCode.ACTION_TOKEN_INVALID,
-                                                "Action token is invalid"));
+                                                ACTION_TOKEN_INVALID_MESSAGE));
         if (token.getAction() != expectedAction) {
             throw ApiException.badRequest(
-                    ApiErrorCode.ACTION_TOKEN_INVALID, "Action token is invalid");
+                    ApiErrorCode.ACTION_TOKEN_INVALID, ACTION_TOKEN_INVALID_MESSAGE);
         }
         if (token.getConsumedAt() != null) {
             throw ApiException.conflict(ApiErrorCode.ACTION_TOKEN_USED, "Action token was used");
@@ -304,15 +307,16 @@ public class UserActionService {
                     ApiErrorCode.ACTION_TOKEN_EXPIRED, "Action token expired");
         }
         String expectedEmail =
-                expectedAction == UserAction.UPDATE_EMAIL
-                        ? normalizeEmail(user.getPendingEmail())
-                        : normalizeEmail(user.getEmail());
+                normalizeEmail(
+                        expectedAction == UserAction.UPDATE_EMAIL
+                                ? user.getPendingEmail()
+                                : user.getEmail());
         if (!user.isEnabled()
                 || !java.util.Objects.equals(token.getEmail(), expectedEmail)
                 || !java.util.Objects.equals(
                         token.getCredentialFingerprint(), hash(user.getPassword()))) {
             throw ApiException.badRequest(
-                    ApiErrorCode.ACTION_TOKEN_INVALID, "Action token is invalid");
+                    ApiErrorCode.ACTION_TOKEN_INVALID, ACTION_TOKEN_INVALID_MESSAGE);
         }
         return token;
     }
@@ -334,10 +338,14 @@ public class UserActionService {
     }
 
     private long validateLifespan(Long requested, UserAction action) {
-        long value =
-                requested == null && action == UserAction.UPDATE_PASSWORD
-                        ? resetTokenLifespanSeconds()
-                        : requested == null ? DEFAULT_LIFESPAN_SECONDS : requested;
+        long value;
+        if (requested != null) {
+            value = requested;
+        } else if (action == UserAction.UPDATE_PASSWORD) {
+            value = resetTokenLifespanSeconds();
+        } else {
+            value = DEFAULT_LIFESPAN_SECONDS;
+        }
         if (value < MIN_LIFESPAN_SECONDS || value > MAX_LIFESPAN_SECONDS) {
             throw ApiException.badRequest(
                     "lifespan",

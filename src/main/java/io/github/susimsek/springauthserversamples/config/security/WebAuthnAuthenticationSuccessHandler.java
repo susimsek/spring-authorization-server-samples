@@ -55,7 +55,7 @@ final class WebAuthnAuthenticationSuccessHandler implements AuthenticationSucces
                 return DEFAULT_TARGET_URL;
             }
             return target.getRawQuery() == null ? path : path + "?" + target.getRawQuery();
-        } catch (IllegalArgumentException exception) {
+        } catch (IllegalArgumentException _) {
             return DEFAULT_TARGET_URL;
         }
     }

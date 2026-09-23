@@ -6,7 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -25,6 +25,7 @@ import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRequiredActionRepository;
 import io.github.susimsek.springauthserversamples.service.LoginSettingsService;
 import io.github.susimsek.springauthserversamples.service.admin.AdminAuditEventService;
+import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import jakarta.validation.Validation;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("java:S5778")
 class RequiredActionServiceTest {
 
     @Mock private UserRepository userRepository;
@@ -64,7 +66,7 @@ class RequiredActionServiceTest {
                 .thenReturn(Optional.empty());
 
         assertThat(service().pending("alice"))
-                .extracting(action -> action.key())
+                .extracting(RequiredActionDTO::key)
                 .containsExactly("UPDATE_PROFILE", "TERMS_AND_CONDITIONS");
     }
 
@@ -134,10 +136,57 @@ class RequiredActionServiceTest {
         verify(handler).complete(user, Map.of("value", "ok"));
         verify(completionRepository).save(any(RequiredActionCompletionEntity.class));
 
+        when(handler.isPending(user, definition, false)).thenReturn(true);
+        assertThat(service.completeInSession("alice", "CUSTOM_ACTION", null, null, null, null))
+                .isTrue();
+        verify(handler).complete(user, Map.of());
+
         when(handler.isPending(user, definition, false)).thenReturn(false);
         assertThat(service.completeInSession("alice", "CUSTOM_ACTION", Map.of(), null, null, null))
                 .isFalse();
-        verify(handler, never()).complete(user, Map.of());
+        verify(handler, times(1)).complete(user, Map.of());
+    }
+
+    @Test
+    void rejectsCompletionOfUnassignedNonGlobalAction() {
+        UserEntity user = user(7L, "alice");
+        RequiredActionDefinitionEntity definition = definition("CUSTOM_ACTION", true, false, 10);
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(userRepository.findForActionById(7L)).thenReturn(Optional.of(user));
+        when(definitionRepository.findById("CUSTOM_ACTION")).thenReturn(Optional.of(definition));
+        when(assignmentRepository.findByUserIdAndActionKey(7L, "CUSTOM_ACTION"))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+                        () ->
+                                service(List.of(), null, null)
+                                        .completeInSession(
+                                                "alice",
+                                                "CUSTOM_ACTION",
+                                                Map.of(),
+                                                null,
+                                                null,
+                                                null))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("Required action not found");
+    }
+
+    @Test
+    void usesWildcardHandlerForUnknownAction() {
+        UserEntity user = user(7L, "alice");
+        RequiredActionDefinitionEntity definition = definition("UNKNOWN", true, true, 1);
+        RequiredActionHandler wildcard = mock(RequiredActionHandler.class);
+        when(wildcard.key()).thenReturn("*");
+        when(wildcard.isPending(user, definition, false)).thenReturn(false);
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(assignmentRepository.findAllByUserId(7L)).thenReturn(List.of());
+        when(definitionRepository.findAllByEnabledTrueOrderByPriorityAscActionKeyAsc())
+                .thenReturn(List.of(definition));
+        when(completionRepository.findTopByUserIdAndActionKeyOrderByVersionDesc(7L, "UNKNOWN"))
+                .thenReturn(Optional.empty());
+
+        assertThat(service(List.of(wildcard), null, null).pending("alice")).isEmpty();
+        verify(wildcard).isPending(user, definition, false);
     }
 
     @Test

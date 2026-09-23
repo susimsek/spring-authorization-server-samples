@@ -30,7 +30,7 @@ public class LoginCaptchaFilter extends OncePerRequestFilter {
         try {
             captchaService.verifyLoginOrThrow(request.getParameter("captchaToken"), request);
             filterChain.doFilter(request, response);
-        } catch (ApiException exception) {
+        } catch (ApiException _) {
             response.sendRedirect(request.getContextPath() + "/login?error&captcha=failed");
         }
     }

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -40,6 +41,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("java:S5778")
 class AdminConsentServiceTest {
     @Mock private AdminUserService adminUserService;
     @Mock private AuthorizationConsentRepository authorizationConsentRepository;
@@ -215,12 +217,12 @@ class AdminConsentServiceTest {
         verify(authorizationConsentRepository)
                 .findAll(specification.capture(), org.mockito.ArgumentMatchers.eq(pageable));
 
-        CriteriaBuilder criteriaBuilder = org.mockito.Mockito.mock(CriteriaBuilder.class);
-        CriteriaQuery<?> criteriaQuery = org.mockito.Mockito.mock(CriteriaQuery.class);
-        Root<AuthorizationConsentEntity> root = org.mockito.Mockito.mock(Root.class);
-        Path<Object> idPath = org.mockito.Mockito.mock(Path.class);
-        Path<String> valuePath = org.mockito.Mockito.mock(Path.class);
-        Predicate predicate = org.mockito.Mockito.mock(Predicate.class);
+        CriteriaBuilder criteriaBuilder = mock(CriteriaBuilder.class);
+        CriteriaQuery<?> criteriaQuery = mock(CriteriaQuery.class);
+        Root<AuthorizationConsentEntity> root = mock(Root.class);
+        Path<Object> idPath = mock(Path.class);
+        Path<String> valuePath = mock(Path.class);
+        Predicate predicate = mock(Predicate.class);
         when(criteriaBuilder.conjunction()).thenReturn(predicate);
         when(criteriaBuilder.and(any(Predicate.class), any(Predicate.class))).thenReturn(predicate);
         when(criteriaBuilder.or(any(Predicate.class), any(Predicate.class))).thenReturn(predicate);

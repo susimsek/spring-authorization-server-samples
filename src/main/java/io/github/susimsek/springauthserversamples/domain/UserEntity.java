@@ -10,7 +10,6 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.NamedAttributeNode;
 import jakarta.persistence.NamedEntityGraph;
-import jakarta.persistence.NamedEntityGraphs;
 import jakarta.persistence.NamedSubgraph;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
@@ -33,21 +32,19 @@ import org.hibernate.proxy.HibernateProxy;
 @Entity
 @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 @Table(name = "users")
-@NamedEntityGraphs({
-    @NamedEntityGraph(
-            name = "User.withAuthorities",
-            attributeNodes = @NamedAttributeNode("authorities")),
-    @NamedEntityGraph(
-            name = "User.withEffectiveAuthorities",
-            attributeNodes = {
-                @NamedAttributeNode("authorities"),
-                @NamedAttributeNode(value = "groups", subgraph = "groups")
-            },
-            subgraphs =
-                    @NamedSubgraph(
-                            name = "groups",
-                            attributeNodes = @NamedAttributeNode("authorities")))
-})
+@NamedEntityGraph(
+        name = "User.withAuthorities",
+        attributeNodes = @NamedAttributeNode("authorities"))
+@NamedEntityGraph(
+        name = "User.withEffectiveAuthorities",
+        attributeNodes = {
+            @NamedAttributeNode("authorities"),
+            @NamedAttributeNode(value = "groups", subgraph = "groups")
+        },
+        subgraphs =
+                @NamedSubgraph(
+                        name = "groups",
+                        attributeNodes = @NamedAttributeNode("authorities")))
 public class UserEntity extends AuditableEntity {
 
     @Id
@@ -162,12 +159,12 @@ public class UserEntity extends AuditableEntity {
             return false;
         }
         Class<?> otherEffectiveClass =
-                o instanceof HibernateProxy
-                        ? ((HibernateProxy) o).getHibernateLazyInitializer().getPersistentClass()
+                o instanceof HibernateProxy hibernateProxy
+                        ? hibernateProxy.getHibernateLazyInitializer().getPersistentClass()
                         : o.getClass();
         Class<?> thisEffectiveClass =
-                this instanceof HibernateProxy
-                        ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass()
+                this instanceof HibernateProxy hibernateProxy
+                        ? hibernateProxy.getHibernateLazyInitializer().getPersistentClass()
                         : this.getClass();
         if (thisEffectiveClass != otherEffectiveClass) {
             return false;
@@ -178,11 +175,8 @@ public class UserEntity extends AuditableEntity {
 
     @Override
     public int hashCode() {
-        return this instanceof HibernateProxy
-                ? ((HibernateProxy) this)
-                        .getHibernateLazyInitializer()
-                        .getPersistentClass()
-                        .hashCode()
+        return this instanceof HibernateProxy hibernateProxy
+                ? hibernateProxy.getHibernateLazyInitializer().getPersistentClass().hashCode()
                 : getClass().hashCode();
     }
 }

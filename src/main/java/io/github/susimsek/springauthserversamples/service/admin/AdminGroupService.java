@@ -38,6 +38,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
 public class AdminGroupService {
 
+    private static final String GROUP_TARGET = "group";
+
     private final GroupRepository groupRepository;
     private final AuthorityRepository authorityRepository;
     private final UserRepository userRepository;
@@ -64,6 +66,10 @@ public class AdminGroupService {
 
     @Transactional(readOnly = true)
     public Page<AdminGroupDTO> findAll(String query, Pageable pageable) {
+        return findAllInternal(query, pageable);
+    }
+
+    private Page<AdminGroupDTO> findAllInternal(String query, Pageable pageable) {
         return groupViews(
                 groupRepository.findByNameContainingIgnoreCase(
                         AdminSearch.normalize(query), pageable),
@@ -73,7 +79,7 @@ public class AdminGroupService {
     @Transactional(readOnly = true)
     public Page<AdminGroupDTO> findAll(String query, Pageable pageable, String currentUsername) {
         if (currentUsername == null || groupPermissionRepository == null) {
-            return findAll(query, pageable);
+            return findAllInternal(query, pageable);
         }
         UserEntity user = findUserByUsername(currentUsername);
         Set<String> roles = EffectiveRoleService.effectiveRoleNames(user);
@@ -83,7 +89,7 @@ public class AdminGroupService {
                 || roles.contains(
                         io.github.susimsek.springauthserversamples.security.AuthoritiesConstants
                                 .USER_MANAGER)) {
-            return findAll(query, pageable);
+            return findAllInternal(query, pageable);
         }
 
         Set<Long> permissionRoots =
@@ -113,11 +119,15 @@ public class AdminGroupService {
 
     @Transactional(readOnly = true)
     public AdminGroupDTO findById(Long id) {
-        return findById(id, null);
+        return findByIdInternal(id, null);
     }
 
     @Transactional(readOnly = true)
     public AdminGroupDTO findById(Long id, String currentUsername) {
+        return findByIdInternal(id, currentUsername);
+    }
+
+    private AdminGroupDTO findByIdInternal(Long id, String currentUsername) {
         GroupEntity group = findGroup(id);
         assertPermission(group, currentUsername, GroupPermission.VIEW);
         return groupView(group);
@@ -136,19 +146,24 @@ public class AdminGroupService {
         adminGroupMapper.updateAttributes(normalizeAttributes(request.attributes()), group);
         group.setDefaultGroup(request.defaultGroupValue());
         AdminGroupDTO view = groupView(groupRepository.save(group));
-        adminAuditEventService.record("group.created", "group", view.id().toString());
+        adminAuditEventService.record("group.created", GROUP_TARGET, view.id().toString());
         return view;
     }
 
     @Transactional
     @CacheEvict(cacheNames = GroupRepository.DEFAULT_GROUPS_CACHE, allEntries = true)
     public AdminGroupDTO update(Long id, AdminGroupRequestDTO request) {
-        return update(id, request, null);
+        return updateInternal(id, request, null);
     }
 
     @Transactional
     @CacheEvict(cacheNames = GroupRepository.DEFAULT_GROUPS_CACHE, allEntries = true)
     public AdminGroupDTO update(Long id, AdminGroupRequestDTO request, String currentUsername) {
+        return updateInternal(id, request, currentUsername);
+    }
+
+    private AdminGroupDTO updateInternal(
+            Long id, AdminGroupRequestDTO request, String currentUsername) {
         GroupEntity group = findGroup(id);
         assertPermission(group, currentUsername, GroupPermission.MANAGE_GROUP);
         String name = normalizeName(request.name());
@@ -161,34 +176,45 @@ public class AdminGroupService {
         adminGroupMapper.updateAttributes(normalizeAttributes(request.attributes()), group);
         group.setDefaultGroup(request.defaultGroupValue());
         invalidateUsersInGroupTree(group);
-        adminAuditEventService.record("group.updated", "group", group.getId().toString());
+        adminAuditEventService.record("group.updated", GROUP_TARGET, group.getId().toString());
         return groupView(group);
     }
 
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public AdminGroupDTO updateRoles(Long id, AdminGroupRolesRequestDTO request) {
-        return updateRoles(id, request, null);
+        return updateRolesInternal(id, request, null);
     }
 
     @Transactional
     public AdminGroupDTO updateRoles(
             Long id, AdminGroupRolesRequestDTO request, String currentUsername) {
+        return updateRolesInternal(id, request, currentUsername);
+    }
+
+    private AdminGroupDTO updateRolesInternal(
+            Long id, AdminGroupRolesRequestDTO request, String currentUsername) {
         GroupEntity group = findGroup(id);
         assertPermission(group, currentUsername, GroupPermission.MANAGE_ROLES);
         adminGroupMapper.updateRoles(resolveAuthorities(request.roles()), group);
         invalidateUsersInGroupTree(group);
-        adminAuditEventService.record("group.roles.updated", "group", group.getId().toString());
+        adminAuditEventService.record(
+                "group.roles.updated", GROUP_TARGET, group.getId().toString());
         return groupView(group);
     }
 
     @Transactional(readOnly = true)
     public Page<AdminGroupUserDTO> users(Long id, String query, Pageable pageable) {
-        return users(id, query, pageable, null);
+        return usersInternal(id, query, pageable, null);
     }
 
     @Transactional(readOnly = true)
     public Page<AdminGroupUserDTO> users(
+            Long id, String query, Pageable pageable, String currentUsername) {
+        return usersInternal(id, query, pageable, currentUsername);
+    }
+
+    private Page<AdminGroupUserDTO> usersInternal(
             Long id, String query, Pageable pageable, String currentUsername) {
         GroupEntity group = findGroup(id);
         assertPermission(group, currentUsername, GroupPermission.VIEW);
@@ -200,11 +226,16 @@ public class AdminGroupService {
 
     @Transactional(readOnly = true)
     public Page<AdminGroupUserDTO> availableUsers(Long id, String query, Pageable pageable) {
-        return availableUsers(id, query, pageable, null);
+        return availableUsersInternal(id, query, pageable, null);
     }
 
     @Transactional(readOnly = true)
     public Page<AdminGroupUserDTO> availableUsers(
+            Long id, String query, Pageable pageable, String currentUsername) {
+        return availableUsersInternal(id, query, pageable, currentUsername);
+    }
+
+    private Page<AdminGroupUserDTO> availableUsersInternal(
             Long id, String query, Pageable pageable, String currentUsername) {
         GroupEntity group = findGroup(id);
         assertPermission(group, currentUsername, GroupPermission.MANAGE_MEMBERS);
@@ -216,36 +247,44 @@ public class AdminGroupService {
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public AdminGroupDTO addUser(Long id, Long userId) {
-        return addUser(id, userId, null);
+        return addUserInternal(id, userId, null);
     }
 
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public AdminGroupDTO addUser(Long id, Long userId, String currentUsername) {
+        return addUserInternal(id, userId, currentUsername);
+    }
+
+    private AdminGroupDTO addUserInternal(Long id, Long userId, String currentUsername) {
         GroupEntity group = findGroup(id);
         assertPermission(group, currentUsername, GroupPermission.MANAGE_MEMBERS);
         UserEntity user = findUser(userId);
         user.getGroups().add(group);
         userAccessInvalidationService.invalidate(user.getUsername());
-        adminAuditEventService.record("group.user.added", "group", group.getId().toString());
+        adminAuditEventService.record("group.user.added", GROUP_TARGET, group.getId().toString());
         return groupView(group);
     }
 
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public AdminGroupDTO removeUser(Long id, Long userId) {
-        return removeUser(id, userId, null);
+        return removeUserInternal(id, userId, null);
     }
 
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public AdminGroupDTO removeUser(Long id, Long userId, String currentUsername) {
+        return removeUserInternal(id, userId, currentUsername);
+    }
+
+    private AdminGroupDTO removeUserInternal(Long id, Long userId, String currentUsername) {
         GroupEntity group = findGroup(id);
         assertPermission(group, currentUsername, GroupPermission.MANAGE_MEMBERS);
         UserEntity user = findUser(userId);
         user.getGroups().remove(group);
         userAccessInvalidationService.invalidate(user.getUsername());
-        adminAuditEventService.record("group.user.removed", "group", group.getId().toString());
+        adminAuditEventService.record("group.user.removed", GROUP_TARGET, group.getId().toString());
         return groupView(group);
     }
 
@@ -257,7 +296,7 @@ public class AdminGroupService {
             },
             allEntries = true)
     public void delete(Long id) {
-        delete(id, null);
+        deleteInternal(id, null);
     }
 
     @Transactional
@@ -268,6 +307,10 @@ public class AdminGroupService {
             },
             allEntries = true)
     public void delete(Long id, String currentUsername) {
+        deleteInternal(id, currentUsername);
+    }
+
+    private void deleteInternal(Long id, String currentUsername) {
         GroupEntity group = findGroup(id);
         assertPermission(group, currentUsername, GroupPermission.MANAGE_GROUP);
         if (groupRepository.existsByParentId(id)) {
@@ -282,7 +325,7 @@ public class AdminGroupService {
             groupPermissionRepository.deleteByGroupId(id);
         }
         groupRepository.delete(group);
-        adminAuditEventService.record("group.deleted", "group", id.toString());
+        adminAuditEventService.record("group.deleted", GROUP_TARGET, id.toString());
     }
 
     private GroupEntity findGroup(Long id) {
@@ -357,6 +400,10 @@ public class AdminGroupService {
 
     @Transactional(readOnly = true)
     public List<AdminGroupPermissionDTO> permissions(Long id) {
+        return permissionsInternal(id);
+    }
+
+    private List<AdminGroupPermissionDTO> permissionsInternal(Long id) {
         requireGroup(id);
         if (groupPermissionRepository == null) {
             return List.of();
@@ -403,8 +450,8 @@ public class AdminGroupService {
         groupPermissionRepository.deleteByGroupId(id);
         groupPermissionRepository.saveAll(assignments);
         affectedUsernames.forEach(userAccessInvalidationService::invalidate);
-        adminAuditEventService.record("group.permissions.updated", "group", id.toString());
-        return permissions(id);
+        adminAuditEventService.record("group.permissions.updated", GROUP_TARGET, id.toString());
+        return permissionsInternal(id);
     }
 
     private static String normalizeName(String value) {

@@ -31,6 +31,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("java:S5778")
 class UserProfileServiceTest {
 
     @Mock private UserProfileAttributeDefinitionRepository definitionRepository;
@@ -240,6 +241,66 @@ class UserProfileServiceTest {
                 .isInstanceOf(ApiException.class)
                 .extracting(exception -> ((ApiException) exception).getErrorCode())
                 .isEqualTo(ApiErrorCode.USER_PROFILE_INVALID_NAME);
+
+        when(definitionRepository.findById(9L)).thenReturn(Optional.of(custom));
+        when(attributeRepository.existsByDefinitionId(9L)).thenReturn(false);
+        service().delete(9L);
+    }
+
+    @Test
+    void coversNullMappedValuesAndRemainingTypedValidationBranches() {
+        UserEntity user = user();
+        UserProfileAttributeDefinitionEntity department = definition("department", false);
+        department.setId(12L);
+        department.setPattern("[a-z]+");
+        when(definitionRepository.findAllByEnabledTrueOrderByDisplayOrderAscNameAsc())
+                .thenReturn(List.of(department));
+
+        Map<String, List<String>> mapped = new java.util.LinkedHashMap<>();
+        mapped.put("department", null);
+        service().mergeMappedAttributes(user, mapped, "provider");
+
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .saveAttributes(
+                                                7L,
+                                                Map.of("department", List.of("not-matching")),
+                                                "admin"))
+                .isInstanceOf(ApiException.class);
+
+        department.setPattern(" ");
+        when(definitionRepository.findAllByEnabledTrueOrderByDisplayOrderAscNameAsc())
+                .thenReturn(List.of(department));
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+        service().saveAttributes(7L, Map.of("department", List.of("anything")), "admin");
+
+        UserProfileAttributeDefinitionEntity email = definition("emailValue", false);
+        email.setType(UserProfileAttributeType.EMAIL);
+        when(definitionRepository.findAllByEnabledTrueOrderByDisplayOrderAscNameAsc())
+                .thenReturn(List.of(email));
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+        for (String invalid : List.of("@example.com", "user@example.com@")) {
+            assertThatThrownBy(
+                            () ->
+                                    service()
+                                            .saveAttributes(
+                                                    7L,
+                                                    Map.of("emailValue", List.of(invalid)),
+                                                    "admin"))
+                    .isInstanceOf(ApiException.class);
+        }
+
+        UserProfileAttributeDefinitionEntity bool = definition("flag", false);
+        bool.setType(UserProfileAttributeType.BOOLEAN);
+        when(definitionRepository.findAllByEnabledTrueOrderByDisplayOrderAscNameAsc())
+                .thenReturn(List.of(bool));
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .saveAttributes(
+                                                7L, Map.of("flag", List.of("maybe")), "admin"))
+                .isInstanceOf(ApiException.class);
     }
 
     @Test
@@ -516,6 +577,36 @@ class UserProfileServiceTest {
         assertThat(service().attributes("alice").attributes())
                 .containsEntry("text", List.of("valid"))
                 .doesNotContainKey("ignored");
+    }
+
+    @Test
+    void coversBuiltInMapperRowsNullSubmittedValuesAndBuiltInRequestKeys() {
+        UserEntity user = user();
+        UserProfileAttributeDefinitionEntity builtIn = definition("email", false);
+        builtIn.setId(1L);
+        UserProfileAttributeDefinitionEntity tags = definition("tags", false);
+        tags.setId(2L);
+        tags.setMultivalued(true);
+
+        when(definitionRepository.findAllByEnabledTrueOrderByDisplayOrderAscNameAsc())
+                .thenReturn(List.of(builtIn, tags));
+        java.util.Map<String, List<String>> mapped = new java.util.LinkedHashMap<>();
+        mapped.put("tags", List.of("one"));
+        service().mergeMappedAttributes(user, mapped, "provider");
+
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+        when(definitionRepository.findAllByEnabledTrueOrderByDisplayOrderAscNameAsc())
+                .thenReturn(List.of(tags));
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .saveAttributes(
+                                                7L, Map.of("email", List.of("ignored")), "admin"))
+                .isInstanceOf(ApiException.class);
+
+        java.util.Map<String, List<String>> nullValues = new java.util.LinkedHashMap<>();
+        nullValues.put("tags", null);
+        service().saveAttributes(7L, nullValues, "admin");
     }
 
     private UserProfileService service() {

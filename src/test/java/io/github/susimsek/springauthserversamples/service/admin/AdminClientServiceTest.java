@@ -34,6 +34,7 @@ import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("java:S5778")
 class AdminClientServiceTest {
 
     @Mock private ClientRepository clientRepository;
@@ -319,6 +320,72 @@ class AdminClientServiceTest {
         assertThat(savedClient.get().getTokenSettings().getAccessTokenTimeToLive())
                 .isEqualTo(Duration.ofMinutes(9));
         verify(adminAuditEventService).record("client.updated", "client", "client-id");
+    }
+
+    @Test
+    void rejectsRenamingClientToAnExistingClientId() {
+        RegisteredClientEntity entity = new RegisteredClientEntity();
+        RegisteredClient existing = registeredClient("client-id", "service-client");
+        when(clientRepository.findById("client-id")).thenReturn(Optional.of(entity));
+        when(registeredClientMapper.toObject(entity, mapperSupport)).thenReturn(existing);
+        when(clientRepository.existsByClientId("other-client")).thenReturn(true);
+
+        assertThatThrownBy(
+                        () ->
+                                service()
+                                        .update(
+                                                "client-id",
+                                                new AdminClientRequestDTO(
+                                                        "other-client",
+                                                        "Other client",
+                                                        Set.of("client_secret_basic"),
+                                                        Set.of("client_credentials"),
+                                                        Set.of(),
+                                                        Set.of(),
+                                                        Set.of("openid"),
+                                                        false,
+                                                        false,
+                                                        null,
+                                                        null,
+                                                        null)))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("Client ID is already registered");
+    }
+
+    @Test
+    void appliesExplicitTokenTtlsWhenUpdatingClient() {
+        AtomicReference<RegisteredClient> savedClient = wireSaveMapper();
+        RegisteredClientEntity entity = new RegisteredClientEntity();
+        RegisteredClient existing =
+                RegisteredClient.from(registeredClient("client-id", "service-client"))
+                        .clientSecret("encoded-secret")
+                        .build();
+        when(clientRepository.findById("client-id")).thenReturn(Optional.of(entity));
+        when(registeredClientMapper.toObject(entity, mapperSupport)).thenReturn(existing);
+
+        service()
+                .update(
+                        "client-id",
+                        new AdminClientRequestDTO(
+                                "service-client",
+                                "Service Client",
+                                Set.of("client_secret_basic"),
+                                Set.of("client_credentials"),
+                                Set.of(),
+                                Set.of(),
+                                Set.of("openid"),
+                                false,
+                                false,
+                                Duration.ofMinutes(7),
+                                Duration.ofMinutes(8),
+                                Duration.ofMinutes(9)));
+
+        assertThat(savedClient.get().getTokenSettings().getAuthorizationCodeTimeToLive())
+                .isEqualTo(Duration.ofMinutes(7));
+        assertThat(savedClient.get().getTokenSettings().getAccessTokenTimeToLive())
+                .isEqualTo(Duration.ofMinutes(8));
+        assertThat(savedClient.get().getTokenSettings().getRefreshTokenTimeToLive())
+                .isEqualTo(Duration.ofMinutes(9));
     }
 
     @Test

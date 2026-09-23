@@ -32,7 +32,7 @@ class ApiSecurityConfigTest {
             };
 
     @Test
-    void buildsAdminApiSecurityChainAndMapsScopesAndRoles() throws Exception {
+    void buildsAdminApiSecurityChainAndMapsScopesAndRoles() {
         AdminApiSecurityConfig config = new AdminApiSecurityConfig();
         JwtDecoder decoder =
                 config.adminApiJwtDecoder(
@@ -59,7 +59,7 @@ class ApiSecurityConfigTest {
     }
 
     @Test
-    void buildsAccountApiSecurityChainAndCreatesDecoder() throws Exception {
+    void buildsAccountApiSecurityChainAndCreatesDecoder() {
         AccountApiSecurityConfig config = new AccountApiSecurityConfig();
         JwtDecoder decoder =
                 config.accountApiJwtDecoder(

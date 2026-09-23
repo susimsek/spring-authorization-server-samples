@@ -36,7 +36,7 @@ public class AccountLockService {
         }
         userRepository
                 .findForLoginUpdate(username.trim())
-                .ifPresent(user -> recordFailure(user, Instant.now(), ipAddress));
+                .ifPresent(user -> recordFailure(user, Instant.now()));
     }
 
     @Transactional
@@ -67,7 +67,7 @@ public class AccountLockService {
                 || (user.getLockedUntil() != null && user.getLockedUntil().isAfter(now));
     }
 
-    private void recordFailure(UserEntity user, Instant now, String ipAddress) {
+    private void recordFailure(UserEntity user, Instant now) {
         ApplicationProperties.BruteForce policy = policy();
         if (!user.isEnabled() || user.isPermanentlyLocked()) {
             return;

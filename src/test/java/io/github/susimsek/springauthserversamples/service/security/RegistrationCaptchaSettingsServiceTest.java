@@ -15,6 +15,7 @@ import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
+@SuppressWarnings("java:S5778")
 class RegistrationCaptchaSettingsServiceTest {
 
     @Test
@@ -300,6 +301,61 @@ class RegistrationCaptchaSettingsServiceTest {
 
         settings.setRegistrationCaptchaSecretEncrypted("encrypted");
         assertThat(service.verificationConfiguration().secretKey()).isEmpty();
+    }
+
+    @Test
+    void appliesDefaultsWhenPublicCaptchaSecretsAreMissingAndAcceptsEnterpriseKeys() {
+        LoginSettingsEntity settings = settings();
+        settings.setRegistrationCaptchaProvider(null);
+        settings.setRegistrationCaptchaAction(null);
+        settings.setLoginCaptchaAction(null);
+        settings.setRegistrationCaptchaEnabled(false);
+        settings.setLoginCaptchaEnabled(false);
+        settings.setRegistrationCaptchaSiteKey(null);
+        LoginSettingsRepository repository = mock(LoginSettingsRepository.class);
+        when(repository.findById(1L)).thenReturn(Optional.of(settings));
+        when(repository.save(settings)).thenReturn(settings);
+        SocialLoginSecretCipher cipher = mock(SocialLoginSecretCipher.class);
+        when(cipher.encrypt("api-key")).thenReturn("encrypted-api-key");
+        RegistrationCaptchaSettingsService service = service(repository, cipher);
+
+        assertThat(service.publicConfiguration().provider()).isEqualTo("recaptcha");
+        assertThat(service.publicConfiguration().secretKey()).isEmpty();
+        assertThat(service.loginPublicConfiguration().action()).isEqualTo("login");
+        assertThat(service.verificationConfiguration().apiKey()).isEmpty();
+
+        service.update(
+                new AdminRegistrationCaptchaRequestDTO(
+                        true,
+                        "enterprise",
+                        "site",
+                        "",
+                        "project",
+                        "api-key",
+                        "register",
+                        true,
+                        0.0,
+                        false,
+                        false,
+                        "login",
+                        false,
+                        0.5));
+
+        assertThat(settings.getRegistrationCaptchaProvider()).isEqualTo("enterprise");
+        assertThat(settings.getRegistrationCaptchaApiKeyEncrypted()).isEqualTo("encrypted-api-key");
+    }
+
+    @Test
+    void rejectsUninitializedCaptchaSettings() {
+        LoginSettingsRepository repository = mock(LoginSettingsRepository.class);
+        when(repository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+                        () ->
+                                service(repository, mock(SocialLoginSecretCipher.class))
+                                        .adminSettings())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Login settings are not initialized");
     }
 
     private static LoginSettingsEntity settings() {

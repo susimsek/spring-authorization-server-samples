@@ -22,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AccountProfileService {
 
+    private static final String CURRENT_PASSWORD_FIELD = "currentPassword";
+
     private final UserRepository userRepository;
     private final AccountProfileMapper accountProfileMapper;
     private final PasswordService passwordService;
@@ -73,12 +75,17 @@ public class AccountProfileService {
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, key = "#username")
     public AccountProfileDTO updateProfile(String username, AccountProfileRequestDTO request) {
-        return updateProfile(username, request, Instant.now());
+        return updateProfileInternal(username, request, Instant.now());
     }
 
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, key = "#username")
     public AccountProfileDTO updateProfile(
+            String username, AccountProfileRequestDTO request, Instant authenticationTime) {
+        return updateProfileInternal(username, request, authenticationTime);
+    }
+
+    private AccountProfileDTO updateProfileInternal(
             String username, AccountProfileRequestDTO request, Instant authenticationTime) {
         UserEntity user = requireUser(username);
         AccountProfileRequestDTO normalized = accountProfileMapper.normalize(request);
@@ -120,13 +127,13 @@ public class AccountProfileService {
         }
         if (currentPassword == null || currentPassword.isBlank()) {
             throw ApiException.forbidden(
-                    "currentPassword",
+                    CURRENT_PASSWORD_FIELD,
                     ApiErrorCode.REAUTHENTICATION_REQUIRED,
                     "Re-authentication is required before changing the email address");
         }
         if (!passwordService.matchesCurrentPassword(currentPassword, user)) {
             throw ApiException.badRequest(
-                    "currentPassword",
+                    CURRENT_PASSWORD_FIELD,
                     ApiErrorCode.INVALID_CURRENT_PASSWORD,
                     "Current password is invalid");
         }
@@ -138,7 +145,7 @@ public class AccountProfileService {
         UserEntity user = requireUser(username);
         if (!passwordService.matchesCurrentPassword(currentPassword, user)) {
             throw ApiException.badRequest(
-                    "currentPassword",
+                    CURRENT_PASSWORD_FIELD,
                     ApiErrorCode.INVALID_CURRENT_PASSWORD,
                     "Current password is incorrect");
         }

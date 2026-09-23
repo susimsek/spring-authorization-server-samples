@@ -25,6 +25,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 
+@SuppressWarnings("java:S5778")
 class SocialProviderSettingsServiceTest {
 
     private final LoginSettingsRepository repository = mock(LoginSettingsRepository.class);

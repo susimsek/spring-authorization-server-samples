@@ -1,6 +1,7 @@
 package io.github.susimsek.springauthserversamples.config.openapi;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.mock;
 
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
@@ -105,16 +106,26 @@ class OpenApiConfigTest {
     @Test
     void toleratesMissingOpenApiParts() {
         ApplicationApiOpenApiCustomizer customizer = new ApplicationApiOpenApiCustomizer();
-        customizer.customise(new OpenAPI());
-        customizer.customise(
-                new OpenAPI().paths(new Paths().addPathItem("/other", new PathItem())));
-        customizer.customise(
-                new OpenAPI()
-                        .paths(
-                                new Paths()
-                                        .addPathItem(
-                                                "/api/account/profile",
-                                                new PathItem().get(new Operation()))));
+        assertThatCode(
+                        () -> {
+                            customizer.customise(new OpenAPI());
+                            customizer.customise(
+                                    new OpenAPI()
+                                            .paths(
+                                                    new Paths()
+                                                            .addPathItem(
+                                                                    "/other", new PathItem())));
+                            customizer.customise(
+                                    new OpenAPI()
+                                            .paths(
+                                                    new Paths()
+                                                            .addPathItem(
+                                                                    "/api/account/profile",
+                                                                    new PathItem()
+                                                                            .get(
+                                                                                    new Operation()))));
+                        })
+                .doesNotThrowAnyException();
     }
 
     @Test

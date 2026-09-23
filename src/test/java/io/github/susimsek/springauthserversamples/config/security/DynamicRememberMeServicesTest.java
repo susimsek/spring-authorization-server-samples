@@ -2,6 +2,7 @@ package io.github.susimsek.springauthserversamples.config.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -29,7 +30,7 @@ class DynamicRememberMeServicesTest {
         rememberMe.loginFail(request, response);
         rememberMe.loginSuccess(request, response, mock(Authentication.class));
 
-        verify(settings, org.mockito.Mockito.times(3)).isRememberMeEnabled();
+        verify(settings, times(3)).isRememberMeEnabled();
     }
 
     @Test
@@ -40,6 +41,6 @@ class DynamicRememberMeServicesTest {
         rememberMe.loginFail(request, response);
         rememberMe.loginSuccess(request, response, mock(Authentication.class));
 
-        verify(settings, org.mockito.Mockito.times(3)).isRememberMeEnabled();
+        verify(settings, times(3)).isRememberMeEnabled();
     }
 }

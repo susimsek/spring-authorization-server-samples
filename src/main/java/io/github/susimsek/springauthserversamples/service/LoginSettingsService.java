@@ -20,9 +20,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
+@SuppressWarnings("java:S6829")
 public class LoginSettingsService {
 
     private static final long SETTINGS_ID = 1L;
+    private static final String REQUIRED = "required";
     private final LoginSettingsRepository repository;
     private final AdminAuditEventService auditEventService;
     private final JpaIndexedSessionRepository sessionRepository;
@@ -271,13 +273,13 @@ public class LoginSettingsService {
         validateWebAuthnPolicy(request.webauthnPolicy(), "WebAuthn");
         validateWebAuthnPolicy(request.webauthnPasswordlessPolicy(), "WebAuthn passwordless");
         String resetMode = request.passwordResetOtpMode().toLowerCase(Locale.ROOT);
-        if (!java.util.Set.of("none", "if-configured", "required").contains(resetMode)) {
+        if (!java.util.Set.of("none", "if-configured", REQUIRED).contains(resetMode)) {
             throw io.github.susimsek.springauthserversamples.service.error.ApiException.badRequest(
                     io.github.susimsek.springauthserversamples.service.error.ApiErrorCode
                             .INVALID_REQUEST,
                     "Password-reset OTP mode is invalid");
         }
-        if ("required".equals(resetMode) && !request.otpEnabled()) {
+        if (REQUIRED.equals(resetMode) && !request.otpEnabled()) {
             throw io.github.susimsek.springauthserversamples.service.error.ApiException.badRequest(
                     io.github.susimsek.springauthserversamples.service.error.ApiErrorCode
                             .INVALID_REQUEST,
@@ -322,15 +324,25 @@ public class LoginSettingsService {
         if (policy.rpId() != null && policy.rpId().chars().anyMatch(Character::isWhitespace)) {
             throw invalidWebAuthn(label + " relying-party id cannot contain whitespace");
         }
+        validateCeremonyRequirements(policy, label);
+        if (policy.timeoutSeconds() < 1 || policy.timeoutSeconds() > 86400) {
+            throw invalidWebAuthn(label + " timeout must be between 1 and 86400 seconds");
+        }
+        validateAlgorithms(policy, label);
+        validateCeremonyValues(policy, label);
+        validateAaguids(policy, label);
+    }
+
+    private static void validateCeremonyRequirements(WebAuthnPolicyDTO policy, String label) {
         if (policy.attestation() == null
                 || policy.authenticatorAttachment() == null
                 || policy.residentKey() == null
                 || policy.userVerification() == null) {
             throw invalidWebAuthn(label + " ceremony requirements are required");
         }
-        if (policy.timeoutSeconds() < 1 || policy.timeoutSeconds() > 86400) {
-            throw invalidWebAuthn(label + " timeout must be between 1 and 86400 seconds");
-        }
+    }
+
+    private static void validateAlgorithms(WebAuthnPolicyDTO policy, String label) {
         java.util.Set<String> algorithms =
                 csv(policy.signatureAlgorithms()).stream()
                         .map(value -> value.toUpperCase(Locale.ROOT))
@@ -345,26 +357,38 @@ public class LoginSettingsService {
                                                 .contains(value))) {
             throw invalidWebAuthn(label + " signature algorithms are invalid");
         }
-        if (!java.util.Set.of("none", "indirect", "direct", "enterprise")
-                .contains(policy.attestation().toLowerCase(Locale.ROOT))) {
-            throw invalidWebAuthn(label + " attestation is invalid");
+    }
+
+    private static void validateCeremonyValues(WebAuthnPolicyDTO policy, String label) {
+        validateValue(
+                policy.attestation(),
+                java.util.Set.of("none", "indirect", "direct", "enterprise"),
+                label + " attestation is invalid");
+        validateValue(
+                policy.authenticatorAttachment(),
+                java.util.Set.of("any", "platform", "cross-platform"),
+                label + " authenticator attachment is invalid");
+        validateValue(
+                policy.residentKey(),
+                java.util.Set.of("discouraged", "preferred", REQUIRED),
+                label + " resident key requirement is invalid");
+        validateValue(
+                policy.userVerification(),
+                java.util.Set.of("discouraged", "preferred", REQUIRED),
+                label + " user verification requirement is invalid");
+    }
+
+    private static void validateValue(String value, java.util.Set<String> allowed, String message) {
+        if (!allowed.contains(value.toLowerCase(Locale.ROOT))) {
+            throw invalidWebAuthn(message);
         }
-        if (!java.util.Set.of("any", "platform", "cross-platform")
-                .contains(policy.authenticatorAttachment().toLowerCase(Locale.ROOT))) {
-            throw invalidWebAuthn(label + " authenticator attachment is invalid");
-        }
-        if (!java.util.Set.of("discouraged", "preferred", "required")
-                .contains(policy.residentKey().toLowerCase(Locale.ROOT))) {
-            throw invalidWebAuthn(label + " resident key requirement is invalid");
-        }
-        if (!java.util.Set.of("discouraged", "preferred", "required")
-                .contains(policy.userVerification().toLowerCase(Locale.ROOT))) {
-            throw invalidWebAuthn(label + " user verification requirement is invalid");
-        }
+    }
+
+    private static void validateAaguids(WebAuthnPolicyDTO policy, String label) {
         for (String aaguid : csv(policy.acceptableAaguids())) {
             try {
                 java.util.UUID.fromString(aaguid);
-            } catch (IllegalArgumentException ex) {
+            } catch (IllegalArgumentException _) {
                 throw invalidWebAuthn(label + " acceptable AAGUID is invalid");
             }
         }

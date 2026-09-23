@@ -2,6 +2,7 @@ package io.github.susimsek.springauthserversamples.config.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
@@ -93,6 +94,71 @@ class LocaleConfigTest {
         request.setParameter("ui_locales", "en tr");
 
         assertThat(resolver.resolveLocale(request)).isEqualTo(Locale.of("tr"));
+    }
+
+    @Test
+    void handlesDisabledInternationalizationAndUnsupportedCookie() {
+        LocalizationSettingsService settings = mock(LocalizationSettingsService.class);
+        when(settings.isInternationalizationEnabled()).thenReturn(false);
+        CookieLocaleResolver resolver =
+                (CookieLocaleResolver)
+                        new LocaleConfig(settings).localeResolver(new WebProperties());
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addPreferredLocale(Locale.GERMAN);
+
+        assertThat(resolver.resolveLocale(request)).isEqualTo(Locale.ENGLISH);
+
+        when(settings.isInternationalizationEnabled()).thenReturn(true);
+        when(settings.isSupported(Locale.GERMAN)).thenReturn(false);
+        request.setCookies(new jakarta.servlet.http.Cookie("locale", "de"));
+        request.addPreferredLocale(Locale.ENGLISH);
+
+        assertThat(resolver.resolveLocale(request)).isEqualTo(Locale.ENGLISH);
+        verify(settings).isSupported(Locale.GERMAN);
+    }
+
+    @Test
+    void resolvesFirstSupportedUiLocaleAndFallsBackForBlankOrUnsupportedValues() {
+        LocalizationSettingsService settings = mock(LocalizationSettingsService.class);
+        when(settings.isInternationalizationEnabled()).thenReturn(true);
+        when(settings.isSupported(Locale.GERMAN)).thenReturn(false);
+        when(settings.isSupported(Locale.of("tr"))).thenReturn(true);
+        CookieLocaleResolver resolver =
+                (CookieLocaleResolver)
+                        new LocaleConfig(settings).localeResolver(new WebProperties());
+
+        MockHttpServletRequest supported = new MockHttpServletRequest();
+        supported.setParameter("ui_locales", "de tr");
+        assertThat(resolver.resolveLocale(supported)).isEqualTo(Locale.of("tr"));
+
+        MockHttpServletRequest blank = new MockHttpServletRequest();
+        blank.setParameter("ui_locales", "   ");
+        blank.addPreferredLocale(Locale.ENGLISH);
+        assertThat(resolver.resolveLocale(blank)).isEqualTo(Locale.ENGLISH);
+
+        MockHttpServletRequest unsupported = new MockHttpServletRequest();
+        unsupported.setParameter("ui_locales", "de");
+        unsupported.addPreferredLocale(Locale.ENGLISH);
+        assertThat(resolver.resolveLocale(unsupported)).isEqualTo(Locale.ENGLISH);
+    }
+
+    @Test
+    void ignoresUnauthenticatedUserPreferences() {
+        LocalizationSettingsService settings = mock(LocalizationSettingsService.class);
+        UserRepository users = mock(UserRepository.class);
+        when(settings.isInternationalizationEnabled()).thenReturn(true);
+        SecurityContextHolder.getContext()
+                .setAuthentication(new TestingAuthenticationToken("alice", "token"));
+        SecurityContextHolder.getContext().getAuthentication().setAuthenticated(false);
+
+        CookieLocaleResolver resolver =
+                (CookieLocaleResolver)
+                        new LocaleConfig(settings, users).localeResolver(new WebProperties());
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addPreferredLocale(Locale.ENGLISH);
+
+        assertThat(resolver.resolveLocale(request)).isEqualTo(Locale.ENGLISH);
     }
 
     private static LocaleConfig localeConfig() {

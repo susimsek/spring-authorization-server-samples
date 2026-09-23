@@ -40,8 +40,8 @@ class OAuth2KeyEntityTest {
                 .isNotEqualTo(different)
                 .isNotEqualTo(withoutId)
                 .isNotEqualTo(null)
-                .isNotEqualTo("key");
-        assertThat(entity.hashCode()).isEqualTo(OAuth2KeyEntity.class.hashCode());
+                .isNotEqualTo("key")
+                .hasSameHashCodeAs(OAuth2KeyEntity.class);
     }
 
     @Test
@@ -52,7 +52,6 @@ class OAuth2KeyEntityTest {
         proxy.setId("id-1");
 
         assertThat(entity).isEqualTo(proxy);
-        assertThat(proxy).isEqualTo(entity);
-        assertThat(proxy.hashCode()).isEqualTo(OAuth2KeyEntity.class.hashCode());
+        assertThat(proxy).isEqualTo(entity).hasSameHashCodeAs(OAuth2KeyEntity.class);
     }
 }

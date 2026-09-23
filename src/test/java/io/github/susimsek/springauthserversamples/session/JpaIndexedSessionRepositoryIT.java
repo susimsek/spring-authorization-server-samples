@@ -3,6 +3,7 @@ package io.github.susimsek.springauthserversamples.session;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.susimsek.springauthserversamples.IntegrationTest;
+import java.security.Principal;
 import java.time.Duration;
 import java.time.Instant;
 import org.junit.jupiter.api.AfterEach;
@@ -43,7 +44,7 @@ class JpaIndexedSessionRepositoryIT {
         assertThat(secondRead.isExpired()).isFalse();
         assertThat(secondRead.<SecurityContext>getAttribute("SPRING_SECURITY_CONTEXT"))
                 .extracting(SecurityContext::getAuthentication)
-                .extracting(authentication -> authentication.getName())
+                .extracting(Principal::getName)
                 .isEqualTo("admin");
 
         sessionRepository.deleteById(session.getId());

@@ -2,6 +2,7 @@ package io.github.susimsek.springauthserversamples.service.admin;
 
 import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentEntity;
 import io.github.susimsek.springauthserversamples.domain.AuthorizationConsentId;
+import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminConsentDTO;
 import io.github.susimsek.springauthserversamples.mapper.AdminConsentMapper;
 import io.github.susimsek.springauthserversamples.mapper.AuthorizationServerMapperSupport;
@@ -156,7 +157,7 @@ public class AdminConsentService {
                 .stream()
                 .collect(
                         java.util.stream.Collectors.toMap(
-                                user -> user.getUsername(), user -> user.getId()));
+                                UserEntity::getUsername, UserEntity::getId));
     }
 
     @Transactional(readOnly = true)

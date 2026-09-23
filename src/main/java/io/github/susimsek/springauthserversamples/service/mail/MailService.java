@@ -21,6 +21,7 @@ import org.thymeleaf.spring6.SpringTemplateEngine;
 
 /** Sends localized HTML email without coupling delivery to an HTTP request transaction. */
 @Service
+@SuppressWarnings("java:S4449")
 public class MailService {
 
     private static final Logger LOG = LoggerFactory.getLogger(MailService.class);

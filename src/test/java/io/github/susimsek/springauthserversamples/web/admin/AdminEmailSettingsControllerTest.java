@@ -3,6 +3,7 @@ package io.github.susimsek.springauthserversamples.web.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import io.github.susimsek.springauthserversamples.dto.admin.AdminEmailSettingsRequestDTO;
 import io.github.susimsek.springauthserversamples.service.EmailConnectionTestService;
@@ -35,7 +36,7 @@ class AdminEmailSettingsControllerTest {
                         true,
                         true,
                         false);
-        org.mockito.Mockito.when(authentication.getName()).thenReturn("admin");
+        when(authentication.getName()).thenReturn("admin");
 
         var response = controller.testConnection(request, authentication, Locale.ENGLISH);
 
