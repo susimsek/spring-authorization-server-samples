@@ -1,0 +1,33 @@
+#!/usr/bin/env sh
+set -eu
+
+MVN="./mvnw"
+
+if [ ! -f "$MVN" ]; then
+  echo "[pre-push] Maven wrapper bulunamadı: $MVN" >&2
+  exit 1
+fi
+
+echo "[pre-push] Spotless, Checkstyle ve verify çalıştırılıyor..."
+"$MVN" -q spotless:check checkstyle:check verify
+
+SONAR_TOKEN_VALUE="${SONARQUBE_TOKEN:-${SONAR_TOKEN:-}}"
+if [ -z "$SONAR_TOKEN_VALUE" ]; then
+  echo "[pre-push] SONARQUBE_TOKEN veya SONAR_TOKEN tanımlı değil; Sonar taraması atlandı."
+  echo "[pre-push] Sonar Quality Gate CI tarafından doğrulanmalıdır."
+  exit 0
+fi
+
+BRANCH_NAME="$(git branch --show-current)"
+if [ -z "$BRANCH_NAME" ]; then
+  echo "[pre-push] Aktif Git branch'i belirlenemedi." >&2
+  exit 1
+fi
+
+echo "[pre-push] Sonar taraması çalıştırılıyor: $BRANCH_NAME"
+"$MVN" -q -Psonar initialize sonar:sonar \
+  "-Dsonar.token=$SONAR_TOKEN_VALUE" \
+  "-Dsonar.branch.name=$BRANCH_NAME" \
+  "-Dsonar.java.checkstyle.reportPaths="
+
+echo "[pre-push] Tüm kontroller başarılı."
