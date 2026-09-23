@@ -47,7 +47,7 @@ class AdminClientServiceTest {
 
     @Test
     void createsSecretClientWithDefaultsAndAuditEvent() {
-        AtomicReference<RegisteredClient> savedClient = wireSaveMapper();
+        final AtomicReference<RegisteredClient> savedClient = wireSaveMapper();
         when(clientRepository.existsByClientId("service-client")).thenReturn(false);
         when(passwordEncoder.encode(any())).thenReturn("encoded-secret");
 
@@ -188,7 +188,7 @@ class AdminClientServiceTest {
 
     @Test
     void regenerateSecretPersistsEncodedSecretAndAudits() {
-        AtomicReference<RegisteredClient> savedClient = wireSaveMapper();
+        final AtomicReference<RegisteredClient> savedClient = wireSaveMapper();
         RegisteredClientEntity entity = new RegisteredClientEntity();
         RegisteredClient client = registeredClient("client-id", "service-client");
         when(clientRepository.findById("client-id")).thenReturn(Optional.of(entity));
@@ -390,7 +390,7 @@ class AdminClientServiceTest {
 
     @Test
     void disablesSecretAuthenticationAndClearsSecretOnUpdate() {
-        AtomicReference<RegisteredClient> savedClient = wireSaveMapper();
+        final AtomicReference<RegisteredClient> savedClient = wireSaveMapper();
         RegisteredClientEntity entity = new RegisteredClientEntity();
         RegisteredClient existing = registeredClient("client-id", "service-client");
         existing =

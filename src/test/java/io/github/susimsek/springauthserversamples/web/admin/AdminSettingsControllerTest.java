@@ -48,7 +48,7 @@ class AdminSettingsControllerTest {
         when(service.overrides("login", "tr", "admin", pageable)).thenReturn(messages);
         when(service.bundledMessages("tr", "admin")).thenReturn(bundled);
         when(service.create(messageRequest)).thenReturn(message);
-        when(service.update(7L, messageRequest)).thenReturn(message);
+        when(service.updateMessageOverride(7L, messageRequest)).thenReturn(message);
 
         assertThat(controller.get()).isSameAs(settings);
         assertThat(controller.update(settingsRequest)).isSameAs(settings);

@@ -16,6 +16,7 @@ import io.github.susimsek.springauthserversamples.security.LocalizedOAuth2ErrorR
 import io.github.susimsek.springauthserversamples.security.OAuth2KeyJwkSource;
 import io.github.susimsek.springauthserversamples.security.OidcSessionIdentifier;
 import io.github.susimsek.springauthserversamples.service.OAuth2KeyService;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -365,7 +366,7 @@ public class AuthorizationServerConfig {
                             context.getPrincipal().getAuthorities().stream()
                                     .map(GrantedAuthority::getAuthority)
                                     .sorted()
-                                    .collect(Collectors.toList()));
+                                    .collect(Collectors.toCollection(ArrayList::new)));
         }
         if (legacyAdminGroups && adminAccessToken) {
             tokenUser.ifPresent(
@@ -376,7 +377,9 @@ public class AuthorizationServerConfig {
                                             user.getGroups().stream()
                                                     .map(AuthorizationServerConfig::groupPath)
                                                     .sorted()
-                                                    .collect(Collectors.toList())));
+                                                    .collect(
+                                                            Collectors.toCollection(
+                                                                    ArrayList::new))));
         }
     }
 
@@ -408,7 +411,9 @@ public class AuthorizationServerConfig {
                                                                         .sorted()
                                                                         .collect(
                                                                                 Collectors
-                                                                                        .toList()))));
+                                                                                        .toCollection(
+                                                                                                ArrayList
+                                                                                                        ::new)))));
     }
 
     private static void appendSessionIdClaim(
@@ -455,6 +460,7 @@ public class AuthorizationServerConfig {
                             } catch (Exception _) {
                                 // A malformed optional mapper payload must not block token
                                 // issuance.
+                                return;
                             }
                         });
     }

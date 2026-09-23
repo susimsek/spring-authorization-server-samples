@@ -226,7 +226,7 @@ public class LocalizationSettingsService {
                     LocalizationMessageOverrideRepository
                             .LOCALIZATION_MESSAGE_OVERRIDE_BY_KEY_CACHE,
             allEntries = true)
-    public LocalizationMessageOverrideDTO update(
+    public LocalizationMessageOverrideDTO updateMessageOverride(
             Long id, LocalizationMessageOverrideRequestDTO request) {
         LocalizationMessageOverrideEntity entity =
                 overrideRepository

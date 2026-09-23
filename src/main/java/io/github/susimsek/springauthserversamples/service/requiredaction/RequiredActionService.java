@@ -117,7 +117,7 @@ public class RequiredActionService {
                                         || assignments.containsKey(definition.getActionKey()))
                 .filter(
                         definition ->
-                                pending(
+                                isPending(
                                         user,
                                         definition,
                                         assignments.get(definition.getActionKey())))
@@ -170,7 +170,7 @@ public class RequiredActionService {
         RequiredActionDefinitionEntity definition = definition(actionKey);
         UserRequiredActionEntity assignment =
                 assignmentRepository.findByUserIdAndActionKey(user.getId(), actionKey).orElse(null);
-        long version = requiredVersion(definition, assignment);
+        final long version = requiredVersion(definition, assignment);
         if (!definition.isGlobalPolicy() && assignment == null) {
             throw ApiException.notFound(REQUIRED_ACTION_NOT_FOUND_MESSAGE);
         }
@@ -289,7 +289,7 @@ public class RequiredActionService {
         auditEventService.record("user.required-action.unassigned", "user", userId.toString());
     }
 
-    private boolean pending(
+    private boolean isPending(
             UserEntity user,
             RequiredActionDefinitionEntity definition,
             UserRequiredActionEntity assignment) {

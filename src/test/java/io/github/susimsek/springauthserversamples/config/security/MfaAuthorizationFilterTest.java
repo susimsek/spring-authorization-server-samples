@@ -185,7 +185,7 @@ class MfaAuthorizationFilterTest {
     void usesConfiguredVerificationTimeout() throws Exception {
         LoginSettingsService settings = mock(LoginSettingsService.class);
         when(settings.mfaVerificationTimeout()).thenReturn(Duration.ofMinutes(10));
-        MfaAuthorizationFilter settingsAwareFilter =
+        final MfaAuthorizationFilter settingsAwareFilter =
                 new MfaAuthorizationFilter(mfaService, requiredActionService, settings);
         authenticate("alice");
         when(requiredActionService.pending("alice")).thenReturn(List.of());

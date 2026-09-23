@@ -24,6 +24,7 @@
           : "changed";
       }
     } catch (_) {
+      // A failed status check is treated as a changed session so the caller can re-authenticate.
       result = "changed";
     }
     if (event.source) event.source.postMessage(result, event.origin);

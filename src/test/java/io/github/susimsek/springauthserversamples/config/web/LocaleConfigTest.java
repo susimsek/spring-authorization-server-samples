@@ -52,7 +52,7 @@ class LocaleConfigTest {
     @Test
     void selectedCookieLocaleOverridesAuthenticatedUsersPreferredLocale() {
         LocalizationSettingsService settings = mock(LocalizationSettingsService.class);
-        UserRepository users = mock(UserRepository.class);
+        final UserRepository users = mock(UserRepository.class);
         UserEntity user = new UserEntity();
         user.setPreferredLocale("tr");
         when(settings.isInternationalizationEnabled()).thenReturn(true);
@@ -76,7 +76,7 @@ class LocaleConfigTest {
     @Test
     void authenticatedUsersPreferredLocaleOverridesExplicitUiLocales() {
         LocalizationSettingsService settings = mock(LocalizationSettingsService.class);
-        UserRepository users = mock(UserRepository.class);
+        final UserRepository users = mock(UserRepository.class);
         UserEntity user = new UserEntity();
         user.setPreferredLocale("tr");
         when(settings.isInternationalizationEnabled()).thenReturn(true);

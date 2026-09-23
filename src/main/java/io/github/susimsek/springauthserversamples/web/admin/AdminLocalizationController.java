@@ -109,7 +109,7 @@ class AdminLocalizationController {
     LocalizationMessageOverrideDTO updateMessage(
             @PathVariable Long id,
             @Valid @RequestBody LocalizationMessageOverrideRequestDTO request) {
-        return service.update(id, request);
+        return service.updateMessageOverride(id, request);
     }
 
     @DeleteMapping("/messages/{id}")

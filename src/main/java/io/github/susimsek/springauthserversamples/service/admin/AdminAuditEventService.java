@@ -40,21 +40,21 @@ public class AdminAuditEventService {
 
     @Transactional
     public void record(String action, String targetType, String targetId) {
-        record(action, targetType, targetId, null, currentActor());
+        recordInternal(action, targetType, targetId, null, currentActor());
     }
 
     @Transactional
     public void record(String action, String targetType, String targetId, String details) {
-        record(action, targetType, targetId, details, currentActor());
+        recordInternal(action, targetType, targetId, details, currentActor());
     }
 
     @Transactional
     public void recordAs(
             String actor, String action, String targetType, String targetId, String details) {
-        record(action, targetType, targetId, details, actor);
+        recordInternal(action, targetType, targetId, details, actor);
     }
 
-    private void record(
+    private void recordInternal(
             String action, String targetType, String targetId, String details, String actor) {
         if (settingsRepository != null) {
             var settings =
@@ -96,7 +96,7 @@ public class AdminAuditEventService {
     @Transactional
     public void deleteAll() {
         adminEventRepository.deleteAllInBatch();
-        record("events.cleared", "event", "all", null, currentActor());
+        recordInternal("events.cleared", "event", "all", null, currentActor());
     }
 
     public Page<AdminEventDTO> events(
@@ -180,11 +180,11 @@ public class AdminAuditEventService {
 
     @Transactional
     public void avatarUpdated(Long userId) {
-        record("user.avatar.updated", "user", userId.toString(), null, currentActor());
+        recordInternal("user.avatar.updated", "user", userId.toString(), null, currentActor());
     }
 
     @Transactional
     public void avatarDeleted(Long userId) {
-        record("user.avatar.deleted", "user", userId.toString(), null, currentActor());
+        recordInternal("user.avatar.deleted", "user", userId.toString(), null, currentActor());
     }
 }

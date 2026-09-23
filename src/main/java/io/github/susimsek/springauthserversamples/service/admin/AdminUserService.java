@@ -548,6 +548,7 @@ public class AdminUserService {
                     userRepository.delete(user);
                     adminAuditEventService.record("user.deleted", "user", user.getId().toString());
                 }
+                default -> throw new IllegalStateException("Unsupported bulk action: " + action);
             }
         }
         return new AdminUserBulkOperationDTO(action, users.size());

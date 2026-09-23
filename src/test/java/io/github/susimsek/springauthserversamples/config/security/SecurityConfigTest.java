@@ -410,7 +410,7 @@ class SecurityConfigTest {
                         return object;
                     }
                 };
-        HttpSecurity httpSecurity =
+        final HttpSecurity httpSecurity =
                 new HttpSecurity(
                         postProcessor,
                         new AuthenticationManagerBuilder(postProcessor),

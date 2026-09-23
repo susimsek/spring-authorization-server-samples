@@ -46,15 +46,16 @@ public class PasswordPolicyService {
 
     @Transactional(readOnly = true)
     public void validate(UserEntity user, String rawPassword) {
-        validate(user, rawPassword, true);
+        validateInternal(user, rawPassword, true);
     }
 
     @Transactional(readOnly = true)
     public void validateForNewPassword(UserEntity user, String rawPassword) {
-        validate(user, rawPassword, true);
+        validateInternal(user, rawPassword, true);
     }
 
-    private void validate(UserEntity user, String rawPassword, boolean checkCurrentPassword) {
+    private void validateInternal(
+            UserEntity user, String rawPassword, boolean checkCurrentPassword) {
         ApplicationProperties.PasswordPolicy policy = policy();
         validatePasswordRules(rawPassword, policy);
         validateUserRules(user, rawPassword, policy, checkCurrentPassword);

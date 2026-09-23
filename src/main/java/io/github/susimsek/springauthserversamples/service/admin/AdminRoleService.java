@@ -96,9 +96,14 @@ public class AdminRoleService {
         return roleInternal(name, query, enabled, pageable);
     }
 
+    @Transactional(readOnly = true)
+    public AdminRoleDetailDTO role(String name, Pageable pageable) {
+        return roleInternal(name, "", null, pageable);
+    }
+
     private AdminRoleDetailDTO roleInternal(
             String name, String query, Boolean enabled, Pageable pageable) {
-        AuthorityEntity role =
+        final AuthorityEntity role =
                 authorityRepository
                         .findByName(name)
                         .orElseThrow(() -> ApiException.notFound(ROLE_NOT_FOUND));
@@ -146,11 +151,6 @@ public class AdminRoleService {
                 userCount,
                 AuthoritiesConstants.ADMIN.equals(name) || AuthoritiesConstants.USER.equals(name),
                 users);
-    }
-
-    @Transactional(readOnly = true)
-    public AdminRoleDetailDTO role(String name, Pageable pageable) {
-        return roleInternal(name, "", null, pageable);
     }
 
     @Transactional

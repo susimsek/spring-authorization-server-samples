@@ -400,7 +400,7 @@ class AdminGroupServiceTest {
         GroupEntity child = group(8L, "operations");
         child.setParent(parent);
         UserEntity manager = user(3L, "manager");
-        AuthorityEntity admin = authority("ROLE_ADMIN");
+        final AuthorityEntity admin = authority("ROLE_ADMIN");
         when(groupRepository.findById(8L)).thenReturn(Optional.of(child));
         when(userRepository.findByUsername("manager")).thenReturn(Optional.of(manager));
         when(groupPermissionRepository.existsForUserAndGroups(

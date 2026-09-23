@@ -77,7 +77,7 @@ class UserProfileServiceTest {
         when(definitionRepository.findAllByEnabledTrueOrderByDisplayOrderAscNameAsc())
                 .thenReturn(List.of(definition));
 
-        UserEntity user = user();
+        final UserEntity user = user();
         when(userRepository.findById(7L)).thenReturn(Optional.of(user));
         UserProfileService service = service();
 
@@ -106,7 +106,7 @@ class UserProfileServiceTest {
                         .findAllByUserIdOrderByDefinitionDisplayOrderAscDefinitionNameAscPositionAsc(
                                 7L))
                 .thenReturn(List.of());
-        UserEntity user = user();
+        final UserEntity user = user();
         when(userRepository.findById(7L)).thenReturn(Optional.of(user));
 
         var result =
@@ -249,7 +249,7 @@ class UserProfileServiceTest {
 
     @Test
     void coversNullMappedValuesAndRemainingTypedValidationBranches() {
-        UserEntity user = user();
+        final UserEntity user = user();
         UserProfileAttributeDefinitionEntity department = definition("department", false);
         department.setId(12L);
         department.setPattern("[a-z]+");
@@ -327,7 +327,7 @@ class UserProfileServiceTest {
                 .isInstanceOf(ApiException.class)
                 .hasMessage("Profile attribute not found");
 
-        UserEntity user = user();
+        final UserEntity user = user();
         when(userRepository.findByUsername("missing")).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service().attributes("missing"))
                 .isInstanceOf(ApiException.class)
@@ -581,7 +581,7 @@ class UserProfileServiceTest {
 
     @Test
     void coversBuiltInMapperRowsNullSubmittedValuesAndBuiltInRequestKeys() {
-        UserEntity user = user();
+        final UserEntity user = user();
         UserProfileAttributeDefinitionEntity builtIn = definition("email", false);
         builtIn.setId(1L);
         UserProfileAttributeDefinitionEntity tags = definition("tags", false);
