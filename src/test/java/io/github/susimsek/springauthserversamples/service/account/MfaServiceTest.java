@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import org.junit.jupiter.api.Test;
 
+@SuppressWarnings("java:S5778")
 class MfaServiceTest {
 
     private final UserRepository userRepository = mock(UserRepository.class);
@@ -77,7 +78,7 @@ class MfaServiceTest {
         when(loginSettingsRepository.findById(1L)).thenReturn(Optional.of(settings));
 
         assertThat(service().setup("alice").secret()).isEqualTo("SECRET");
-        verify(totpService, org.mockito.Mockito.never()).newSecret();
+        verify(totpService, never()).newSecret();
     }
 
     @Test

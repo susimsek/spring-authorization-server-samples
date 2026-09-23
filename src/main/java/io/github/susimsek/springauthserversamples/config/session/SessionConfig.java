@@ -75,10 +75,8 @@ public class SessionConfig {
                     Duration.ofMinutes(
                             loginSettingsService.adminLoginSettings().sessionTimeoutMinutes());
         }
-        sessionRepository.setDefaultMaxInactiveInterval(
-                timeout != null ? timeout : MapSession.DEFAULT_MAX_INACTIVE_INTERVAL);
-        return new SessionCleanupScheduler(
-                sessionRepository, taskScheduler, applicationProperties.session().cleanupCron());
+        return configureSessionCleanupScheduler(
+                sessionRepository, taskScheduler, applicationProperties, timeout);
     }
 
     SessionCleanupScheduler sessionCleanupScheduler(
@@ -86,8 +84,29 @@ public class SessionConfig {
             TaskScheduler taskScheduler,
             SessionProperties sessionProperties,
             ApplicationProperties applicationProperties) {
-        return sessionCleanupScheduler(
-                sessionRepository, taskScheduler, sessionProperties, applicationProperties, null);
+        return configureSessionCleanupScheduler(
+                sessionRepository,
+                taskScheduler,
+                applicationProperties,
+                sessionProperties.getTimeout());
+    }
+
+    private static SessionCleanupScheduler configureSessionCleanupScheduler(
+            JpaIndexedSessionRepository sessionRepository,
+            TaskScheduler taskScheduler,
+            ApplicationProperties applicationProperties,
+            Duration timeout) {
+        sessionRepository.setDefaultMaxInactiveInterval(
+                timeout != null ? timeout : MapSession.DEFAULT_MAX_INACTIVE_INTERVAL);
+        return createSessionCleanupScheduler(
+                sessionRepository, taskScheduler, applicationProperties.session().cleanupCron());
+    }
+
+    private static SessionCleanupScheduler createSessionCleanupScheduler(
+            JpaIndexedSessionRepository sessionRepository,
+            TaskScheduler taskScheduler,
+            String cleanupCron) {
+        return new SessionCleanupScheduler(sessionRepository, taskScheduler, cleanupCron);
     }
 
     private static final class JsonSerializer implements Serializer<Object> {

@@ -50,7 +50,7 @@ class AccountLockServiceTest {
         when(userRepository.findForLoginUpdate("alice")).thenReturn(Optional.of(user));
         when(userRepository.findForActionById(7L)).thenReturn(Optional.of(user));
 
-        AccountLockService service =
+        final AccountLockService service =
                 new AccountLockService(userRepository, invalidationService, applicationProperties);
         service.recordFailure("alice", "127.0.0.1");
         service.recordFailure("alice", "127.0.0.1");
@@ -75,7 +75,7 @@ class AccountLockServiceTest {
                                 new ApplicationProperties.PasswordPolicy(),
                                 policy(false, 5, 3, false)));
 
-        AccountLockService service =
+        final AccountLockService service =
                 new AccountLockService(userRepository, invalidationService, applicationProperties);
         service.recordFailure(null, "127.0.0.1");
         service.recordFailure(" ", "127.0.0.1");
@@ -97,7 +97,7 @@ class AccountLockServiceTest {
         user.setLockedUntil(Instant.now().plusSeconds(30));
         when(userRepository.findForLoginUpdate("alice")).thenReturn(Optional.of(user));
 
-        AccountLockService service =
+        final AccountLockService service =
                 new AccountLockService(userRepository, invalidationService, applicationProperties);
         service.recordSuccess(" alice ");
 
@@ -132,7 +132,7 @@ class AccountLockServiceTest {
                 .thenReturn(
                         new ApplicationProperties.Security(
                                 new ApplicationProperties.PasswordPolicy(), policy));
-        AccountLockService service =
+        final AccountLockService service =
                 new AccountLockService(userRepository, invalidationService, applicationProperties);
 
         UserEntity disabled = user(1L, "disabled");

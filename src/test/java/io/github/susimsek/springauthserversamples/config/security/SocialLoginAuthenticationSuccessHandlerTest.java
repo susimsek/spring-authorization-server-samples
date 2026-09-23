@@ -3,6 +3,7 @@ package io.github.susimsek.springauthserversamples.config.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -38,7 +39,8 @@ class SocialLoginAuthenticationSuccessHandlerTest {
     void addsAuthenticationFactorForOidcTokenGeneration() throws Exception {
         SocialLoginService socialLoginService = mock(SocialLoginService.class);
         UserDetailsService userDetailsService = mock(UserDetailsService.class);
-        SecurityContextRepository securityContextRepository = mock(SecurityContextRepository.class);
+        final SecurityContextRepository securityContextRepository =
+                mock(SecurityContextRepository.class);
         OAuth2AuthenticationToken oauth2Authentication = mock(OAuth2AuthenticationToken.class);
         UserDetails user =
                 User.withUsername("social_user").password("encoded").roles("USER").build();
@@ -87,8 +89,7 @@ class SocialLoginAuthenticationSuccessHandlerTest {
 
         assertThat(response.getRedirectedUrl()).isEqualTo("/login?error");
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
-        verify(securityContextRepository, org.mockito.Mockito.never())
-                .saveContext(any(), any(), any());
+        verify(securityContextRepository, never()).saveContext(any(), any(), any());
     }
 
     @Test
@@ -134,8 +135,9 @@ class SocialLoginAuthenticationSuccessHandlerTest {
     void redirectsToMfaWhenProviderRequiresAnEnrolledFactor() throws Exception {
         SocialLoginService socialLoginService = mock(SocialLoginService.class);
         UserDetailsService userDetailsService = mock(UserDetailsService.class);
-        SecurityContextRepository securityContextRepository = mock(SecurityContextRepository.class);
-        MfaService mfaService = mock(MfaService.class);
+        final SecurityContextRepository securityContextRepository =
+                mock(SecurityContextRepository.class);
+        final MfaService mfaService = mock(MfaService.class);
         OAuth2AuthenticationToken authentication = mock(OAuth2AuthenticationToken.class);
         UserDetails user = User.withUsername("alice").password("encoded").roles("USER").build();
         when(authentication.getAuthorizedClientRegistrationId()).thenReturn("google");
@@ -165,8 +167,9 @@ class SocialLoginAuthenticationSuccessHandlerTest {
     void sendsFailureRedirectForLockedAccountAndMissingProviderMfa() throws Exception {
         SocialLoginService socialLoginService = mock(SocialLoginService.class);
         UserDetailsService userDetailsService = mock(UserDetailsService.class);
-        SecurityContextRepository securityContextRepository = mock(SecurityContextRepository.class);
-        MfaService mfaService = mock(MfaService.class);
+        final SecurityContextRepository securityContextRepository =
+                mock(SecurityContextRepository.class);
+        final MfaService mfaService = mock(MfaService.class);
         OAuth2AuthenticationToken authentication = mock(OAuth2AuthenticationToken.class);
         when(authentication.getAuthorizedClientRegistrationId()).thenReturn("google");
         when(socialLoginService.findOrCreate(authentication)).thenReturn("alice");

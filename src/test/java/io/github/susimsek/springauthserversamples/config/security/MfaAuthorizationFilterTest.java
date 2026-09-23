@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.github.susimsek.springauthserversamples.dto.account.MfaStatusDTO;
+import io.github.susimsek.springauthserversamples.dto.account.RequiredActionDTO;
 import io.github.susimsek.springauthserversamples.service.LoginSettingsService;
 import io.github.susimsek.springauthserversamples.service.account.MfaService;
 import io.github.susimsek.springauthserversamples.service.requiredaction.RequiredActionService;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -113,6 +115,94 @@ class MfaAuthorizationFilterTest {
 
         verify(filterChain).doFilter(firstRequest, firstResponse);
         verify(filterChain).doFilter(secondRequest, secondResponse);
+    }
+
+    @Test
+    void bypassesNonAuthorizationUnauthenticatedAnonymousAndPendingRequests() throws Exception {
+        MockHttpServletRequest otherRequest = new MockHttpServletRequest("GET", "/home");
+        MockHttpServletResponse otherResponse = new MockHttpServletResponse();
+        filter.doFilter(otherRequest, otherResponse, filterChain);
+
+        SecurityContextHolder.getContext()
+                .setAuthentication(
+                        UsernamePasswordAuthenticationToken.unauthenticated("alice", "password"));
+        MockHttpServletRequest unauthenticatedRequest =
+                new MockHttpServletRequest("GET", "/oauth2/authorize");
+        MockHttpServletResponse unauthenticatedResponse = new MockHttpServletResponse();
+        filter.doFilter(unauthenticatedRequest, unauthenticatedResponse, filterChain);
+
+        SecurityContextHolder.getContext()
+                .setAuthentication(
+                        new AnonymousAuthenticationToken(
+                                "key",
+                                "anonymous",
+                                List.of(new SimpleGrantedAuthority("ROLE_ANONYMOUS"))));
+        MockHttpServletRequest anonymousRequest =
+                new MockHttpServletRequest("GET", "/oauth2/authorize");
+        MockHttpServletResponse anonymousResponse = new MockHttpServletResponse();
+        filter.doFilter(anonymousRequest, anonymousResponse, filterChain);
+
+        authenticate("alice");
+        when(requiredActionService.pending("alice"))
+                .thenReturn(List.of(new RequiredActionDTO("TERMS", "Terms", "Terms", 1L)));
+        MockHttpServletRequest pendingRequest =
+                new MockHttpServletRequest("GET", "/oauth2/authorize");
+        MockHttpServletResponse pendingResponse = new MockHttpServletResponse();
+        filter.doFilter(pendingRequest, pendingResponse, filterChain);
+
+        verify(filterChain).doFilter(otherRequest, otherResponse);
+        verify(filterChain).doFilter(unauthenticatedRequest, unauthenticatedResponse);
+        verify(filterChain).doFilter(anonymousRequest, anonymousResponse);
+        verify(filterChain).doFilter(pendingRequest, pendingResponse);
+        verifyNoInteractions(mfaService);
+    }
+
+    @Test
+    void rejectsMalformedAndFutureVerificationTimestamps() throws Exception {
+        authenticate("alice");
+        when(requiredActionService.pending("alice")).thenReturn(List.of());
+        when(mfaService.status("alice")).thenReturn(status(true, true));
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/oauth2/authorize");
+        request.getSession().setAttribute(MfaAuthorizationFilter.MFA_VERIFIED, true);
+        request.getSession().setAttribute(MfaAuthorizationFilter.MFA_VERIFIED_AT, "not-a-number");
+        request.getSession()
+                .setAttribute(MfaAuthorizationFilter.MFA_VERIFIED_REQUEST, "/oauth2/authorize");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, filterChain);
+        assertThat(response.getRedirectedUrl()).startsWith("/mfa?return_to=");
+
+        request.getSession()
+                .setAttribute(
+                        MfaAuthorizationFilter.MFA_VERIFIED_AT,
+                        Instant.now().plusSeconds(60).toEpochMilli());
+        MockHttpServletResponse futureResponse = new MockHttpServletResponse();
+        filter.doFilter(request, futureResponse, filterChain);
+        assertThat(futureResponse.getRedirectedUrl()).startsWith("/mfa?return_to=");
+    }
+
+    @Test
+    void usesConfiguredVerificationTimeout() throws Exception {
+        LoginSettingsService settings = mock(LoginSettingsService.class);
+        when(settings.mfaVerificationTimeout()).thenReturn(Duration.ofMinutes(10));
+        final MfaAuthorizationFilter settingsAwareFilter =
+                new MfaAuthorizationFilter(mfaService, requiredActionService, settings);
+        authenticate("alice");
+        when(requiredActionService.pending("alice")).thenReturn(List.of());
+        when(mfaService.status("alice")).thenReturn(status(true, true));
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/oauth2/authorize");
+        request.getSession().setAttribute(MfaAuthorizationFilter.MFA_VERIFIED, true);
+        request.getSession()
+                .setAttribute(
+                        MfaAuthorizationFilter.MFA_VERIFIED_AT,
+                        Instant.now().minus(Duration.ofMinutes(6)).toEpochMilli());
+        request.getSession()
+                .setAttribute(MfaAuthorizationFilter.MFA_VERIFIED_REQUEST, "/oauth2/authorize");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        settingsAwareFilter.doFilter(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
     }
 
     @Test

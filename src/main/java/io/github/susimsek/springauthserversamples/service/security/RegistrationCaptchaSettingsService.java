@@ -19,11 +19,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("java:S107")
 public class RegistrationCaptchaSettingsService {
 
     private static final long SETTINGS_ID = 1L;
+    private static final String ENTERPRISE_PROVIDER = "enterprise";
+    private static final String REGISTER_ACTION = "register";
+    private static final String LOGIN_ACTION = "login";
+    private static final String CONFIGURED_VALUE = "configured";
     private static final Pattern ACTION_PATTERN = Pattern.compile("[A-Za-z0-9/_]+");
-    private static final Set<String> PROVIDERS = Set.of("recaptcha", "enterprise");
+    private static final Set<String> PROVIDERS = Set.of("recaptcha", ENTERPRISE_PROVIDER);
 
     private final LoginSettingsRepository repository;
     private final SocialLoginSecretCipher secretCipher;
@@ -31,20 +36,24 @@ public class RegistrationCaptchaSettingsService {
 
     @Transactional(readOnly = true)
     public AdminRegistrationCaptchaDTO adminSettings() {
+        return adminSettingsInternal();
+    }
+
+    private AdminRegistrationCaptchaDTO adminSettingsInternal() {
         LoginSettingsEntity settings = settings();
         return new AdminRegistrationCaptchaDTO(
                 settings.isRegistrationCaptchaEnabled(),
                 provider(settings),
                 value(settings.getRegistrationCaptchaSiteKey()),
                 value(settings.getRegistrationCaptchaProjectId()),
-                action(settings.getRegistrationCaptchaAction(), "register"),
+                action(settings.getRegistrationCaptchaAction(), REGISTER_ACTION),
                 settings.isRegistrationCaptchaV3(),
                 settings.getRegistrationCaptchaScoreThreshold(),
                 settings.isRegistrationCaptchaUseRecaptchaNet(),
                 present(settings.getRegistrationCaptchaSecretEncrypted()),
                 present(settings.getRegistrationCaptchaApiKeyEncrypted()),
                 settings.isLoginCaptchaEnabled(),
-                action(settings.getLoginCaptchaAction(), "login"),
+                action(settings.getLoginCaptchaAction(), LOGIN_ACTION),
                 settings.isLoginCaptchaV3(),
                 settings.getLoginCaptchaScoreThreshold());
     }
@@ -54,8 +63,8 @@ public class RegistrationCaptchaSettingsService {
         LoginSettingsEntity settings = settings();
         return configuration(
                 settings,
-                present(settings.getRegistrationCaptchaSecretEncrypted()) ? "configured" : "",
-                present(settings.getRegistrationCaptchaApiKeyEncrypted()) ? "configured" : "");
+                present(settings.getRegistrationCaptchaSecretEncrypted()) ? CONFIGURED_VALUE : "",
+                present(settings.getRegistrationCaptchaApiKeyEncrypted()) ? CONFIGURED_VALUE : "");
     }
 
     @Transactional(readOnly = true)
@@ -63,10 +72,10 @@ public class RegistrationCaptchaSettingsService {
         LoginSettingsEntity settings = settings();
         return configuration(
                 settings,
-                present(settings.getRegistrationCaptchaSecretEncrypted()) ? "configured" : "",
-                present(settings.getRegistrationCaptchaApiKeyEncrypted()) ? "configured" : "",
+                present(settings.getRegistrationCaptchaSecretEncrypted()) ? CONFIGURED_VALUE : "",
+                present(settings.getRegistrationCaptchaApiKeyEncrypted()) ? CONFIGURED_VALUE : "",
                 settings.isLoginCaptchaEnabled(),
-                action(settings.getLoginCaptchaAction(), "login"),
+                action(settings.getLoginCaptchaAction(), LOGIN_ACTION),
                 settings.isLoginCaptchaV3(),
                 settings.getLoginCaptchaScoreThreshold());
     }
@@ -88,7 +97,7 @@ public class RegistrationCaptchaSettingsService {
                 decrypt(settings.getRegistrationCaptchaSecretEncrypted()),
                 decrypt(settings.getRegistrationCaptchaApiKeyEncrypted()),
                 settings.isLoginCaptchaEnabled(),
-                action(settings.getLoginCaptchaAction(), "login"),
+                action(settings.getLoginCaptchaAction(), LOGIN_ACTION),
                 settings.isLoginCaptchaV3(),
                 settings.getLoginCaptchaScoreThreshold());
     }
@@ -99,8 +108,8 @@ public class RegistrationCaptchaSettingsService {
         if (!PROVIDERS.contains(provider)) {
             throw invalid("provider", "CAPTCHA provider is invalid");
         }
-        String action = normalizeAction(request.action(), "register");
-        String loginAction = normalizeAction(request.loginAction(), "login");
+        String action = normalizeAction(request.action(), REGISTER_ACTION);
+        String loginAction = normalizeAction(request.loginAction(), LOGIN_ACTION);
 
         LoginSettingsEntity settings = settings();
         validateConfiguration(request, settings, provider, action, loginAction);
@@ -125,7 +134,7 @@ public class RegistrationCaptchaSettingsService {
         }
         repository.save(settings);
         auditEventService.record("registration.captcha.updated", "registration-captcha", "default");
-        return adminSettings();
+        return adminSettingsInternal();
     }
 
     private void validateConfiguration(
@@ -181,7 +190,18 @@ public class RegistrationCaptchaSettingsService {
         if (!present(siteKey)) {
             throw invalid("siteKey", "CAPTCHA site key is required when CAPTCHA is enabled");
         }
-        if ("enterprise".equals(provider)) {
+        validateProviderCredentials(projectId, secretKey, apiKey, settings, provider);
+        validateActionAndScore(
+                provider, action, recaptchaV3, scoreThreshold, actionField, scoreField);
+    }
+
+    private static void validateProviderCredentials(
+            String projectId,
+            String secretKey,
+            String apiKey,
+            LoginSettingsEntity settings,
+            String provider) {
+        if (ENTERPRISE_PROVIDER.equals(provider)) {
             if (!present(projectId)) {
                 throw invalid(
                         "projectId", "Enterprise project ID is required when CAPTCHA is enabled");
@@ -193,7 +213,16 @@ public class RegistrationCaptchaSettingsService {
                 && !present(settings.getRegistrationCaptchaSecretEncrypted())) {
             throw invalid("secretKey", "reCAPTCHA secret key is required when CAPTCHA is enabled");
         }
-        if ("enterprise".equals(provider) || recaptchaV3) {
+    }
+
+    private static void validateActionAndScore(
+            String provider,
+            String action,
+            boolean recaptchaV3,
+            double scoreThreshold,
+            String actionField,
+            String scoreField) {
+        if (ENTERPRISE_PROVIDER.equals(provider) || recaptchaV3) {
             if (!validAction(action)) {
                 throw invalid(actionField, "CAPTCHA action is invalid");
             }
@@ -210,7 +239,7 @@ public class RegistrationCaptchaSettingsService {
                 secretKey,
                 apiKey,
                 settings.isRegistrationCaptchaEnabled(),
-                action(settings.getRegistrationCaptchaAction(), "register"),
+                action(settings.getRegistrationCaptchaAction(), REGISTER_ACTION),
                 settings.isRegistrationCaptchaV3(),
                 settings.getRegistrationCaptchaScoreThreshold());
     }

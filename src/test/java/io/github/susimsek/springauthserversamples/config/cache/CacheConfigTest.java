@@ -47,6 +47,7 @@ import org.springframework.boot.hibernate.autoconfigure.HibernatePropertiesCusto
 import org.springframework.cache.Cache;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
 
+@SuppressWarnings("java:S5961")
 class CacheConfigTest {
 
     @AfterEach

@@ -2,6 +2,7 @@ package io.github.susimsek.springauthserversamples.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.nimbusds.jose.jwk.JWKSet;
@@ -13,12 +14,11 @@ import java.security.KeyPair;
 import java.util.Base64;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.dao.DataRetrievalFailureException;
 
 class OAuth2KeyServiceTest {
 
-    private final OAuth2KeyRepository repository = Mockito.mock(OAuth2KeyRepository.class);
+    private final OAuth2KeyRepository repository = mock(OAuth2KeyRepository.class);
     private final OAuth2KeyMapper mapper = new OAuth2KeyMapper();
     private final OAuth2KeyService service = new OAuth2KeyService(repository, mapper);
 

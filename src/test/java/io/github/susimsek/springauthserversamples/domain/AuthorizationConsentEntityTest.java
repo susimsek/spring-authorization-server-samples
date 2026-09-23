@@ -30,8 +30,8 @@ class AuthorizationConsentEntityTest {
                 .isNotEqualTo(different)
                 .isNotEqualTo(withoutId)
                 .isNotEqualTo(null)
-                .isNotEqualTo("consent");
-        assertThat(entity.hashCode()).isEqualTo(AuthorizationConsentEntity.class.hashCode());
+                .isNotEqualTo("consent")
+                .hasSameHashCodeAs(AuthorizationConsentEntity.class);
     }
 
     @Test
@@ -44,7 +44,6 @@ class AuthorizationConsentEntityTest {
         proxy.setId(new AuthorizationConsentId("client", "admin"));
 
         assertThat(entity).isEqualTo(proxy);
-        assertThat(proxy).isEqualTo(entity);
-        assertThat(proxy.hashCode()).isEqualTo(AuthorizationConsentEntity.class.hashCode());
+        assertThat(proxy).isEqualTo(entity).hasSameHashCodeAs(AuthorizationConsentEntity.class);
     }
 }

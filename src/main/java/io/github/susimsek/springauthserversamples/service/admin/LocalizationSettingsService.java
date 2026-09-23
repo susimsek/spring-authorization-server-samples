@@ -34,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class LocalizationSettingsService {
 
     private static final long SETTINGS_ID = 1L;
+    private static final String LOCALIZATION_MESSAGE_TARGET = "localization-message";
     private static final List<String> AVAILABLE_LOCALES = List.of("en", "tr");
     private static final List<String> AVAILABLE_BUNDLES =
             List.of("login", "account", "admin", "email", "backend", "common");
@@ -67,6 +68,10 @@ public class LocalizationSettingsService {
 
     @Transactional(readOnly = true)
     public List<String> supportedLocales() {
+        return supportedLocalesInternal();
+    }
+
+    private List<String> supportedLocalesInternal() {
         return parseLocales(entity().getSupportedLocales());
     }
 
@@ -81,7 +86,8 @@ public class LocalizationSettingsService {
     @Transactional(readOnly = true)
     public boolean isSupported(Locale locale) {
         return locale != null
-                && supportedLocales().contains(LocaleConfig.normalize(locale).getLanguage());
+                && supportedLocalesInternal()
+                        .contains(LocaleConfig.normalize(locale).getLanguage());
     }
 
     @Transactional
@@ -209,7 +215,7 @@ public class LocalizationSettingsService {
         LocalizationMessageOverrideEntity saved = overrideRepository.save(entity);
         auditEventService.record(
                 "localization.message.override.created",
-                "localization-message",
+                LOCALIZATION_MESSAGE_TARGET,
                 saved.getId().toString());
         return toDTO(saved);
     }
@@ -220,7 +226,7 @@ public class LocalizationSettingsService {
                     LocalizationMessageOverrideRepository
                             .LOCALIZATION_MESSAGE_OVERRIDE_BY_KEY_CACHE,
             allEntries = true)
-    public LocalizationMessageOverrideDTO update(
+    public LocalizationMessageOverrideDTO updateMessageOverride(
             Long id, LocalizationMessageOverrideRequestDTO request) {
         LocalizationMessageOverrideEntity entity =
                 overrideRepository
@@ -238,7 +244,9 @@ public class LocalizationSettingsService {
         apply(entity, locale, bundle, key, request.messageValue());
         overrideRepository.save(entity);
         auditEventService.record(
-                "localization.message.override.updated", "localization-message", id.toString());
+                "localization.message.override.updated",
+                LOCALIZATION_MESSAGE_TARGET,
+                id.toString());
         return toDTO(entity);
     }
 
@@ -255,12 +263,15 @@ public class LocalizationSettingsService {
                         .orElseThrow(() -> ApiException.notFound("Message override not found"));
         overrideRepository.delete(entity);
         auditEventService.record(
-                "localization.message.override.deleted", "localization-message", id.toString());
+                "localization.message.override.deleted",
+                LOCALIZATION_MESSAGE_TARGET,
+                id.toString());
     }
 
     private String validateLocale(String locale) {
         String normalized = normalizeLocale(locale);
-        if (!AVAILABLE_LOCALES.contains(normalized) || !supportedLocales().contains(normalized)) {
+        if (!AVAILABLE_LOCALES.contains(normalized)
+                || !supportedLocalesInternal().contains(normalized)) {
             throw ApiException.badRequest(
                     "locale", ApiErrorCode.INVALID_REQUEST, "The locale is not enabled.");
         }

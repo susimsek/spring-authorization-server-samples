@@ -41,16 +41,13 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
             setRateLimitHeaders(response, decision);
         }
         if (!decision.allowed()) {
-            writeProblemDetail(response, request, decision);
+            writeProblemDetail(response, request);
             return;
         }
         filterChain.doFilter(request, response);
     }
 
-    private void writeProblemDetail(
-            HttpServletResponse response,
-            HttpServletRequest request,
-            LoginRateLimitService.RateLimitDecision decision)
+    private void writeProblemDetail(HttpServletResponse response, HttpServletRequest request)
             throws IOException {
         ProblemDetail problem =
                 ProblemDetail.forStatusAndDetail(

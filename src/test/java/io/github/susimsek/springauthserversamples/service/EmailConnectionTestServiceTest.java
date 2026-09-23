@@ -13,6 +13,7 @@ import io.github.susimsek.springauthserversamples.service.mail.MailService;
 import java.util.Locale;
 import org.junit.jupiter.api.Test;
 
+@SuppressWarnings("java:S5778")
 class EmailConnectionTestServiceTest {
 
     private final EmailSettingsService emailSettingsService = mock(EmailSettingsService.class);

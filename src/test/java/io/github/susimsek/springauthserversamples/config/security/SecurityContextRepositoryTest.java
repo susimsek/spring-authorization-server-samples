@@ -23,8 +23,8 @@ class SecurityContextRepositoryTest {
                 new ReadOnlySecurityContextRepository(delegate);
         HttpServletRequest request = mock(HttpServletRequest.class);
         HttpServletResponse response = mock(HttpServletResponse.class);
-        SecurityContext context = mock(SecurityContext.class);
-        HttpRequestResponseHolder holder = new HttpRequestResponseHolder(request, response);
+        final SecurityContext context = mock(SecurityContext.class);
+        final HttpRequestResponseHolder holder = new HttpRequestResponseHolder(request, response);
 
         when(delegate.containsContext(request)).thenReturn(true);
 
@@ -45,7 +45,7 @@ class SecurityContextRepositoryTest {
         MockHttpServletRequest tokenRequest = new MockHttpServletRequest();
         tokenRequest.setRequestURI("/oauth2/token");
         MockHttpServletResponse tokenResponse = new MockHttpServletResponse();
-        SecurityContext context = mock(SecurityContext.class);
+        final SecurityContext context = mock(SecurityContext.class);
 
         assertThat(repository.containsContext(tokenRequest)).isFalse();
         repository.loadDeferredContext(tokenRequest);

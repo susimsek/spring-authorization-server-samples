@@ -31,7 +31,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
+@SuppressWarnings("java:S6829")
 public class RequiredActionService {
+
+    private static final String USER_NOT_FOUND_MESSAGE = "User not found";
+    private static final String REQUIRED_ACTION_NOT_FOUND_MESSAGE = "Required action not found";
+    private static final String RECOVERY_CODES_ACTION = "RECOVERY_CODES";
 
     private final UserRepository userRepository;
     private final RequiredActionDefinitionRepository definitionRepository;
@@ -81,6 +86,10 @@ public class RequiredActionService {
 
     @Transactional(readOnly = true)
     public List<RequiredActionDTO> pending(String username) {
+        return pendingInternal(username);
+    }
+
+    private List<RequiredActionDTO> pendingInternal(String username) {
         UserEntity user = findUser(username);
         Map<String, UserRequiredActionEntity> assignments =
                 assignmentRepository.findAllByUserId(user.getId()).stream()
@@ -108,7 +117,7 @@ public class RequiredActionService {
                                         || assignments.containsKey(definition.getActionKey()))
                 .filter(
                         definition ->
-                                pending(
+                                isPending(
                                         user,
                                         definition,
                                         assignments.get(definition.getActionKey())))
@@ -131,7 +140,7 @@ public class RequiredActionService {
             Map<String, Object> values,
             String ipAddress,
             String userAgent) {
-        completeInSession(username, actionKey, values, ipAddress, userAgent, null);
+        completeInSessionInternal(username, actionKey, values, ipAddress, userAgent, null);
     }
 
     @Transactional(noRollbackFor = ApiException.class)
@@ -143,19 +152,30 @@ public class RequiredActionService {
             String ipAddress,
             String userAgent,
             String currentSessionId) {
+        return completeInSessionInternal(
+                username, actionKey, values, ipAddress, userAgent, currentSessionId);
+    }
+
+    private boolean completeInSessionInternal(
+            String username,
+            String actionKey,
+            Map<String, Object> values,
+            String ipAddress,
+            String userAgent,
+            String currentSessionId) {
         UserEntity user =
                 userRepository
                         .findForActionById(findUser(username).getId())
-                        .orElseThrow(() -> ApiException.notFound("User not found"));
+                        .orElseThrow(() -> ApiException.notFound(USER_NOT_FOUND_MESSAGE));
         RequiredActionDefinitionEntity definition = definition(actionKey);
         UserRequiredActionEntity assignment =
                 assignmentRepository.findByUserIdAndActionKey(user.getId(), actionKey).orElse(null);
-        long version = requiredVersion(definition, assignment);
+        final long version = requiredVersion(definition, assignment);
         if (!definition.isGlobalPolicy() && assignment == null) {
-            throw ApiException.notFound("Required action not found");
+            throw ApiException.notFound(REQUIRED_ACTION_NOT_FOUND_MESSAGE);
         }
-        if (!pending(user.getUsername()).stream()
-                .anyMatch(action -> action.key().equals(actionKey))) {
+        if (pendingInternal(user.getUsername()).stream()
+                .noneMatch(action -> action.key().equals(actionKey))) {
             return false;
         }
         RequiredActionHandler actionHandler = handler(actionKey);
@@ -177,17 +197,20 @@ public class RequiredActionService {
         if (!"CONFIGURE_TOTP".equals(actionKey)
                 || loginSettingsService == null
                 || !loginSettingsService.isOtpAddRecoveryCodesEnabled()
-                || definitionRepository.findById("RECOVERY_CODES").isEmpty()
+                || definitionRepository.findById(RECOVERY_CODES_ACTION).isEmpty()
                 || assignmentRepository
-                        .findByUserIdAndActionKey(user.getId(), "RECOVERY_CODES")
+                        .findByUserIdAndActionKey(user.getId(), RECOVERY_CODES_ACTION)
                         .isPresent()) {
             return;
         }
         RequiredActionDefinitionEntity recoveryDefinition =
-                definitionRepository.findById("RECOVERY_CODES").orElseThrow();
+                definitionRepository.findById(RECOVERY_CODES_ACTION).orElseThrow();
         assignmentRepository.save(
                 requiredActionMapper.toAssignment(
-                        user, "RECOVERY_CODES", recoveryDefinition.getVersion(), Instant.now()));
+                        user,
+                        RECOVERY_CODES_ACTION,
+                        recoveryDefinition.getVersion(),
+                        Instant.now()));
     }
 
     @Transactional
@@ -218,7 +241,7 @@ public class RequiredActionService {
     @Transactional(readOnly = true)
     public List<AdminUserRequiredActionDTO> userActions(Long userId) {
         if (!userRepository.existsById(userId)) {
-            throw ApiException.notFound("User not found");
+            throw ApiException.notFound(USER_NOT_FOUND_MESSAGE);
         }
         var assigned =
                 assignmentRepository.findAllByUserId(userId).stream()
@@ -244,9 +267,9 @@ public class RequiredActionService {
         UserEntity user =
                 userRepository
                         .findById(userId)
-                        .orElseThrow(() -> ApiException.notFound("User not found"));
+                        .orElseThrow(() -> ApiException.notFound(USER_NOT_FOUND_MESSAGE));
         if (!definitionRepository.existsById(actionKey)) {
-            throw ApiException.notFound("Required action not found");
+            throw ApiException.notFound(REQUIRED_ACTION_NOT_FOUND_MESSAGE);
         }
         if (assignmentRepository.findByUserIdAndActionKey(userId, actionKey).isEmpty()) {
             UserRequiredActionEntity assignment =
@@ -266,7 +289,7 @@ public class RequiredActionService {
         auditEventService.record("user.required-action.unassigned", "user", userId.toString());
     }
 
-    private boolean pending(
+    private boolean isPending(
             UserEntity user,
             RequiredActionDefinitionEntity definition,
             UserRequiredActionEntity assignment) {
@@ -282,9 +305,10 @@ public class RequiredActionService {
 
     private long requiredVersion(
             RequiredActionDefinitionEntity definition, UserRequiredActionEntity assignment) {
-        return definition.isGlobalPolicy()
-                ? definition.getVersion()
-                : assignment == null ? definition.getVersion() : assignment.getVersion();
+        if (definition.isGlobalPolicy() || assignment == null) {
+            return definition.getVersion();
+        }
+        return assignment.getVersion();
     }
 
     private RequiredActionHandler handler(String key) {
@@ -307,13 +331,13 @@ public class RequiredActionService {
     private RequiredActionDefinitionEntity definition(String key) {
         return definitionRepository
                 .findById(key)
-                .orElseThrow(() -> ApiException.notFound("Required action not found"));
+                .orElseThrow(() -> ApiException.notFound(REQUIRED_ACTION_NOT_FOUND_MESSAGE));
     }
 
     private UserEntity findUser(String username) {
         return userRepository
                 .findByUsername(username)
-                .orElseThrow(() -> ApiException.notFound("User not found"));
+                .orElseThrow(() -> ApiException.notFound(USER_NOT_FOUND_MESSAGE));
     }
 
     private AdminRequiredActionDTO toDTO(RequiredActionDefinitionEntity definition) {

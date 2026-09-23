@@ -17,17 +17,19 @@ public record ApiViolationDTO(
                         example = "Enter a valid email address.")
                 @Nullable String message) {
 
+    private static final String REQUEST = "request";
+
     public ApiViolationDTO {
         field = normalizeField(field);
     }
 
     public static ApiViolationDTO from(ObjectError error, @Nullable String message) {
-        String field = error instanceof FieldError fieldError ? fieldError.getField() : "request";
+        String field = error instanceof FieldError fieldError ? fieldError.getField() : REQUEST;
         return new ApiViolationDTO(field, message);
     }
 
     public static ApiViolationDTO from(ConstraintViolation<?> violation) {
-        String field = "request";
+        String field = REQUEST;
         for (Path.Node node : violation.getPropertyPath()) {
             if (node.getName() != null
                     && (node.getKind() == ElementKind.PROPERTY
@@ -40,7 +42,7 @@ public record ApiViolationDTO(
 
     private static String normalizeField(String field) {
         if (field == null || field.isBlank()) {
-            return "request";
+            return REQUEST;
         }
         int indexedField = field.indexOf('[');
         int nestedField = field.indexOf('.');
@@ -52,6 +54,6 @@ public record ApiViolationDTO(
             end = Math.min(end, nestedField);
         }
         String normalized = field.substring(0, end);
-        return normalized.isBlank() ? "request" : normalized;
+        return normalized.isBlank() ? REQUEST : normalized;
     }
 }

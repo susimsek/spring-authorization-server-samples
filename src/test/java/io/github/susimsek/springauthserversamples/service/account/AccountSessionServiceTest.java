@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -28,6 +29,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("java:S5778")
 class AccountSessionServiceTest {
 
     @Mock private UserSessionRepository userSessionRepository;
@@ -117,7 +119,7 @@ class AccountSessionServiceTest {
         when(userSessionRepository.findAllByPrincipalNameAndExpiryTimeAfter(eq("alice"), anyLong()))
                 .thenReturn(List.of(session("session-1")));
         service().deleteOtherSessions("alice", OidcSessionIdentifier.fromSessionId("session-1"));
-        verify(sessionInvalidationService, org.mockito.Mockito.never()).invalidateSessions(any());
+        verify(sessionInvalidationService, never()).invalidateSessions(any());
 
         try {
             var mapper =

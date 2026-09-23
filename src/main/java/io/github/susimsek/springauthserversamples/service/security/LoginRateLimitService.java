@@ -40,7 +40,11 @@ public class LoginRateLimitService {
         Counter userCounter =
                 consume("user-ip:" + user + ":" + ip, policy.usernameIpRequestsPerMinute());
         long limit = Math.min(ipCounter.limit(), userCounter.limit());
-        long remaining = Math.max(0, Math.min(ipCounter.remaining(), userCounter.remaining()));
+        long remaining =
+                Math.clamp(
+                        Math.min(ipCounter.remaining(), userCounter.remaining()),
+                        0L,
+                        Long.MAX_VALUE);
         long resetSeconds = Math.max(ipCounter.resetSeconds(), userCounter.resetSeconds());
         return new RateLimitDecision(
                 ipCounter.allowed() && userCounter.allowed(), limit, remaining, resetSeconds);

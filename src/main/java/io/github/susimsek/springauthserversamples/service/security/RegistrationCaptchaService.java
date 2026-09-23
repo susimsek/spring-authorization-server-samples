@@ -21,6 +21,7 @@ import org.springframework.web.client.RestClient;
 public class RegistrationCaptchaService {
 
     private static final String DEFAULT_ACTION = "register";
+    private static final String ENTERPRISE_PROVIDER = "enterprise";
 
     private final RegistrationCaptchaSettingsService settingsService;
     private final RegistrationCaptchaConfiguration fixedConfiguration;
@@ -46,14 +47,14 @@ public class RegistrationCaptchaService {
     }
 
     public RegistrationCaptchaDTO publicSettings() {
-        return publicSettings(publicConfiguration());
+        return publicSettingsInternal(publicConfiguration());
     }
 
     public RegistrationCaptchaDTO publicLoginSettings() {
-        return publicSettings(loginPublicConfiguration());
+        return publicSettingsInternal(loginPublicConfiguration());
     }
 
-    private RegistrationCaptchaDTO publicSettings(RegistrationCaptchaConfiguration config) {
+    private RegistrationCaptchaDTO publicSettingsInternal(RegistrationCaptchaConfiguration config) {
         if (!isEnabled(config) || !isConfigured(config)) {
             return new RegistrationCaptchaDTO(false, "", "", "", false, false);
         }
@@ -67,14 +68,14 @@ public class RegistrationCaptchaService {
     }
 
     public void verifyOrThrow(String token, HttpServletRequest request) {
-        verifyOrThrow(token, request, verificationConfiguration());
+        verifyInternal(token, request, verificationConfiguration());
     }
 
     public void verifyLoginOrThrow(String token, HttpServletRequest request) {
-        verifyOrThrow(token, request, loginVerificationConfiguration());
+        verifyInternal(token, request, loginVerificationConfiguration());
     }
 
-    private void verifyOrThrow(
+    private void verifyInternal(
             String token, HttpServletRequest request, RegistrationCaptchaConfiguration config) {
         if (!isEnabled(config)) {
             return;
@@ -91,7 +92,7 @@ public class RegistrationCaptchaService {
     private boolean verify(
             RegistrationCaptchaConfiguration config, String token, HttpServletRequest request) {
         try {
-            return "enterprise".equals(provider(config))
+            return ENTERPRISE_PROVIDER.equals(provider(config))
                     ? verifyEnterprise(config, token, request)
                     : verifyStandard(config, token, request);
         } catch (Exception exception) {
@@ -174,7 +175,7 @@ public class RegistrationCaptchaService {
                             || (validAction(action(config))
                                     && validScoreThreshold(config.scoreThreshold())));
         }
-        return "enterprise".equals(provider(config))
+        return ENTERPRISE_PROVIDER.equals(provider(config))
                 && present(config.siteKey())
                 && present(config.projectId())
                 && present(config.apiKey())
@@ -184,7 +185,8 @@ public class RegistrationCaptchaService {
 
     private static boolean isEnabled(RegistrationCaptchaConfiguration config) {
         return config.enabled()
-                && ("recaptcha".equals(provider(config)) || "enterprise".equals(provider(config)));
+                && ("recaptcha".equals(provider(config))
+                        || ENTERPRISE_PROVIDER.equals(provider(config)));
     }
 
     private static boolean actionMatches(String actual, RegistrationCaptchaConfiguration config) {

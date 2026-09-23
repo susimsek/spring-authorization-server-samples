@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 /** Applies the configured identity-provider mappers during broker login. */
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("java:S107")
 public class SocialIdentityMapperService {
 
     private final SocialProviderMapperRepository mapperRepository;
@@ -25,7 +26,7 @@ public class SocialIdentityMapperService {
     @Transactional
     public Map<String, Map<String, Object>> apply(
             String providerAlias, Map<String, Object> claims, UserEntity user, boolean firstLogin) {
-        return apply(providerAlias, claims, user, firstLogin, false);
+        return applyInternal(providerAlias, claims, user, firstLogin, false, "import");
     }
 
     @Transactional
@@ -35,11 +36,23 @@ public class SocialIdentityMapperService {
             UserEntity user,
             boolean firstLogin,
             boolean caseSensitiveUsername) {
-        return apply(providerAlias, claims, user, firstLogin, caseSensitiveUsername, "import");
+        return applyInternal(
+                providerAlias, claims, user, firstLogin, caseSensitiveUsername, "import");
     }
 
     @Transactional
     public Map<String, Map<String, Object>> apply(
+            String providerAlias,
+            Map<String, Object> claims,
+            UserEntity user,
+            boolean firstLogin,
+            boolean caseSensitiveUsername,
+            String providerSyncMode) {
+        return applyInternal(
+                providerAlias, claims, user, firstLogin, caseSensitiveUsername, providerSyncMode);
+    }
+
+    private Map<String, Map<String, Object>> applyInternal(
             String providerAlias,
             Map<String, Object> claims,
             UserEntity user,
@@ -62,39 +75,16 @@ public class SocialIdentityMapperService {
         Map<String, Map<String, Object>> mappedClaims = new LinkedHashMap<>();
         boolean userChanged = false;
         for (SocialProviderMapperEntity mapper : mappers) {
-            if (!isApplicable(mapper, firstLogin, effectiveProviderSyncMode)) {
-                continue;
-            }
-            List<String> values = values(claims, mapper.getSourceClaim());
-            if (values.isEmpty()) {
-                continue;
-            }
-            String target = mapper.getTarget() == null ? "" : mapper.getTarget().trim();
-            if (target.isEmpty()) {
-                continue;
-            }
-            if ("user-attribute".equalsIgnoreCase(mapper.getMapperType())) {
-                if (applyBuiltIn(user, target, values.getFirst(), caseSensitiveUsername)) {
-                    userChanged = true;
-                } else if (!isBuiltInTarget(target)) {
-                    profileValues.put(target, values);
-                }
-            }
-            if (mapper.isAddToIdToken() || mapper.isAddToAccessToken()) {
-                Object claimValue = values.size() == 1 ? values.getFirst() : values;
-                if (!isReservedClaim(target)) {
-                    if (mapper.isAddToIdToken()) {
-                        mappedClaims
-                                .computeIfAbsent("id_token", ignored -> new LinkedHashMap<>())
-                                .put(target, claimValue);
-                    }
-                    if (mapper.isAddToAccessToken()) {
-                        mappedClaims
-                                .computeIfAbsent("access_token", ignored -> new LinkedHashMap<>())
-                                .put(target, claimValue);
-                    }
-                }
-            }
+            userChanged |=
+                    applyMapper(
+                            mapper,
+                            claims,
+                            user,
+                            firstLogin,
+                            caseSensitiveUsername,
+                            effectiveProviderSyncMode,
+                            profileValues,
+                            mappedClaims);
         }
         if (userChanged) {
             userProfileService.saveMappedUser(user, firstLogin);
@@ -103,6 +93,76 @@ public class SocialIdentityMapperService {
             userProfileService.mergeMappedAttributes(user, profileValues, "social-login");
         }
         return mappedClaims;
+    }
+
+    private static boolean applyMapper(
+            SocialProviderMapperEntity mapper,
+            Map<String, Object> claims,
+            UserEntity user,
+            boolean firstLogin,
+            boolean caseSensitiveUsername,
+            String providerSyncMode,
+            Map<String, List<String>> profileValues,
+            Map<String, Map<String, Object>> mappedClaims) {
+        if (!isApplicable(mapper, firstLogin, providerSyncMode)) {
+            return false;
+        }
+        List<String> values = values(claims, mapper.getSourceClaim());
+        if (values.isEmpty()) {
+            return false;
+        }
+        String target = mapper.getTarget() == null ? "" : mapper.getTarget().trim();
+        if (target.isEmpty()) {
+            return false;
+        }
+        boolean userChanged =
+                applyUserAttribute(
+                        mapper, user, target, values, caseSensitiveUsername, profileValues);
+        addTokenClaims(mapper, target, values, mappedClaims);
+        return userChanged;
+    }
+
+    private static boolean applyUserAttribute(
+            SocialProviderMapperEntity mapper,
+            UserEntity user,
+            String target,
+            List<String> values,
+            boolean caseSensitiveUsername,
+            Map<String, List<String>> profileValues) {
+        if (!"user-attribute".equalsIgnoreCase(mapper.getMapperType())) {
+            return false;
+        }
+        if (applyBuiltIn(user, target, values.getFirst(), caseSensitiveUsername)) {
+            return true;
+        }
+        if (!isBuiltInTarget(target)) {
+            profileValues.put(target, values);
+        }
+        return false;
+    }
+
+    private static void addTokenClaims(
+            SocialProviderMapperEntity mapper,
+            String target,
+            List<String> values,
+            Map<String, Map<String, Object>> mappedClaims) {
+        if (!mapper.isAddToIdToken() && !mapper.isAddToAccessToken()) {
+            return;
+        }
+        if (isReservedClaim(target)) {
+            return;
+        }
+        Object claimValue = values.size() == 1 ? values.getFirst() : values;
+        if (mapper.isAddToIdToken()) {
+            mappedClaims
+                    .computeIfAbsent("id_token", ignored -> new LinkedHashMap<>())
+                    .put(target, claimValue);
+        }
+        if (mapper.isAddToAccessToken()) {
+            mappedClaims
+                    .computeIfAbsent("access_token", ignored -> new LinkedHashMap<>())
+                    .put(target, claimValue);
+        }
     }
 
     private static boolean isApplicable(
@@ -116,7 +176,7 @@ public class SocialIdentityMapperService {
         }
         try {
             return SocialProviderSyncMode.from(mode).applies(firstLogin);
-        } catch (IllegalArgumentException ignored) {
+        } catch (IllegalArgumentException _) {
             return firstLogin;
         }
     }
@@ -214,7 +274,7 @@ public class SocialIdentityMapperService {
                             && uri.getFragment() == null
                     ? uri.toString()
                     : null;
-        } catch (IllegalArgumentException exception) {
+        } catch (IllegalArgumentException _) {
             return null;
         }
     }

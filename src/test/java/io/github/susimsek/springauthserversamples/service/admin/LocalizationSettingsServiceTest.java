@@ -37,6 +37,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("java:S5778")
 class LocalizationSettingsServiceTest {
 
     @Mock private LocalizationSettingsRepository settingsRepository;
@@ -214,7 +215,7 @@ class LocalizationSettingsServiceTest {
         when(overrideRepository.findById(8L)).thenReturn(Optional.of(existing));
         var updated =
                 service()
-                        .update(
+                        .updateMessageOverride(
                                 8L,
                                 new LocalizationMessageOverrideRequestDTO(
                                         "tr", "admin", "home.title", " Ana sayfa "));
@@ -238,7 +239,8 @@ class LocalizationSettingsServiceTest {
         assertThatThrownBy(() -> service().create(request)).isInstanceOf(ApiException.class);
 
         when(overrideRepository.findById(9L)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service().update(9L, request)).isInstanceOf(ApiException.class);
+        assertThatThrownBy(() -> service().updateMessageOverride(9L, request))
+                .isInstanceOf(ApiException.class);
         assertThatThrownBy(() -> service().delete(9L)).isInstanceOf(ApiException.class);
 
         LocalizationMessageOverrideEntity existing = override("en", "admin", "home.title");
@@ -247,7 +249,8 @@ class LocalizationSettingsServiceTest {
         when(overrideRepository.existsByLocaleAndBundleAndMessageKeyAndIdNot(
                         "en", "admin", "home.title", 10L))
                 .thenReturn(true);
-        assertThatThrownBy(() -> service().update(10L, request)).isInstanceOf(ApiException.class);
+        assertThatThrownBy(() -> service().updateMessageOverride(10L, request))
+                .isInstanceOf(ApiException.class);
     }
 
     @Test
@@ -288,16 +291,17 @@ class LocalizationSettingsServiceTest {
         var result = service().bundledMessages("en", "backend");
 
         assertThat(result)
-                .containsEntry("app.security.unauthorized", "Authentication is required.");
-        assertThat(result).doesNotContainKey("mail.test.subject");
+                .containsEntry("app.security.unauthorized", "Authentication is required.")
+                .doesNotContainKey("mail.test.subject");
     }
 
     @Test
     void exposesBundledEmailMessagesForEffectiveMessageSearch() {
         var result = service().bundledMessages("en", "email");
 
-        assertThat(result).containsEntry("mail.test.subject", "SMTP connection test");
-        assertThat(result).doesNotContainKey("app.security.unauthorized");
+        assertThat(result)
+                .containsEntry("mail.test.subject", "SMTP connection test")
+                .doesNotContainKey("app.security.unauthorized");
     }
 
     private LocalizationSettingsService service() {

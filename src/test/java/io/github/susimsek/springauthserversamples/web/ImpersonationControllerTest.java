@@ -35,6 +35,7 @@ import org.springframework.security.web.authentication.switchuser.SwitchUserGran
 import org.springframework.security.web.context.SecurityContextRepository;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("java:S5778")
 class ImpersonationControllerTest {
 
     @Mock private ImpersonationService impersonationService;

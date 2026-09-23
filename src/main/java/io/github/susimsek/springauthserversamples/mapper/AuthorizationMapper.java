@@ -29,7 +29,6 @@ public class AuthorizationMapper {
         AuthorizationEntity entity = new AuthorizationEntity();
         mapBaseFields(entity, authorization, support);
         mapStandardToken(
-                entity,
                 authorization.getToken(OAuth2AuthorizationCode.class),
                 entity::setAuthorizationCodeValue,
                 entity::setAuthorizationCodeIssuedAt,
@@ -41,7 +40,6 @@ public class AuthorizationMapper {
         entity.setOidcIdTokenClaims(
                 writeClaims(authorization.getToken(OidcIdToken.class), support));
         mapStandardToken(
-                entity,
                 authorization.getRefreshToken(),
                 entity::setRefreshTokenValue,
                 entity::setRefreshTokenIssuedAt,
@@ -49,7 +47,6 @@ public class AuthorizationMapper {
                 entity::setRefreshTokenMetadata,
                 support);
         mapStandardToken(
-                entity,
                 authorization.getToken(OAuth2UserCode.class),
                 entity::setUserCodeValue,
                 entity::setUserCodeIssuedAt,
@@ -57,7 +54,6 @@ public class AuthorizationMapper {
                 entity::setUserCodeMetadata,
                 support);
         mapStandardToken(
-                entity,
                 authorization.getToken(OAuth2DeviceCode.class),
                 entity::setDeviceCodeValue,
                 entity::setDeviceCodeIssuedAt,
@@ -142,7 +138,6 @@ public class AuthorizationMapper {
     }
 
     private static void mapStandardToken(
-            AuthorizationEntity entity,
             Token<? extends OAuth2Token> token,
             Consumer<String> valueSetter,
             Consumer<Instant> issuedAtSetter,
@@ -160,7 +155,6 @@ public class AuthorizationMapper {
             Token<OAuth2AccessToken> accessToken,
             AuthorizationServerMapperSupport support) {
         mapStandardToken(
-                entity,
                 accessToken,
                 entity::setAccessTokenValue,
                 entity::setAccessTokenIssuedAt,

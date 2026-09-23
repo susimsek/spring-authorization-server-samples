@@ -162,7 +162,7 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         String defaultMessage = error.getDefaultMessage();
         try {
             return messageSource.getMessage(error, LocaleContextHolder.getLocale());
-        } catch (NoSuchMessageException exception) {
+        } catch (NoSuchMessageException _) {
             return defaultMessage == null ? "The request contains invalid data." : defaultMessage;
         }
     }

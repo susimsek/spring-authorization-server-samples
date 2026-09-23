@@ -8,11 +8,11 @@ class SocialLoginPropertiesTest {
 
     @Test
     void bindsAllProviderProperties() {
-        SocialLoginProperties properties = new SocialLoginProperties();
+        final SocialLoginProperties properties = new SocialLoginProperties();
         SocialLoginProperties.Provider google = new SocialLoginProperties.Provider();
         SocialLoginProperties.Provider github = new SocialLoginProperties.Provider();
-        SocialLoginProperties.Provider linkedin = new SocialLoginProperties.Provider();
-        SocialLoginProperties.Provider microsoft = new SocialLoginProperties.Provider();
+        final SocialLoginProperties.Provider linkedin = new SocialLoginProperties.Provider();
+        final SocialLoginProperties.Provider microsoft = new SocialLoginProperties.Provider();
         google.setClientId("google-id");
         google.setClientSecret("google-secret");
         github.setClientId("github-id");

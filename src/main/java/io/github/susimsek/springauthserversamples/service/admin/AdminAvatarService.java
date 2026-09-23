@@ -1,7 +1,6 @@
 package io.github.susimsek.springauthserversamples.service.admin;
 
 import io.github.susimsek.springauthserversamples.domain.UserAvatarEntity;
-import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminAvatarDTO;
 import io.github.susimsek.springauthserversamples.mapper.AdminAvatarMapper;
 import io.github.susimsek.springauthserversamples.repository.UserAvatarRepository;
@@ -10,6 +9,8 @@ import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.Objects;
 import java.util.UUID;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
@@ -26,6 +27,7 @@ public class AdminAvatarService {
 
     private static final long MAX_AVATAR_PIXELS = 4_000_000;
     private static final int MAX_AVATAR_DIMENSION = 4_096;
+    private static final String AVATAR_FIELD = "avatar";
 
     private final AdminUserService adminUserService;
     private final UserAvatarRepository userAvatarRepository;
@@ -45,7 +47,7 @@ public class AdminAvatarService {
 
     @Transactional
     public AdminAvatarDTO updateAvatar(Long id, MultipartFile file, String currentUsername) {
-        UserEntity user = adminUserService.requireManageableUser(id, currentUsername);
+        adminUserService.requireManageableUser(id, currentUsername);
         AvatarPayload payload = avatarPayload(file);
         UserAvatarEntity avatar =
                 userAvatarRepository.findById(id).orElseGet(UserAvatarEntity::new);
@@ -73,25 +75,25 @@ public class AdminAvatarService {
     private static AvatarPayload avatarPayload(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw ApiException.badRequest(
-                    "avatar", ApiErrorCode.AVATAR_EMPTY, "Avatar file is required");
+                    AVATAR_FIELD, ApiErrorCode.AVATAR_EMPTY, "Avatar file is required");
         }
         if (file.getSize() > 2 * 1024 * 1024) {
             throw ApiException.badRequest(
-                    "avatar", ApiErrorCode.AVATAR_TOO_LARGE, "Avatar must not exceed 2 MiB");
+                    AVATAR_FIELD, ApiErrorCode.AVATAR_TOO_LARGE, "Avatar must not exceed 2 MiB");
         }
         try {
             byte[] content = file.getBytes();
             String contentType = imageContentType(content);
             if (contentType == null) {
                 throw ApiException.badRequest(
-                        "avatar",
+                        AVATAR_FIELD,
                         ApiErrorCode.AVATAR_INVALID_TYPE,
                         "Avatar must be a JPEG or PNG image");
             }
             return new AvatarPayload(content, contentType);
-        } catch (IOException exception) {
+        } catch (IOException _) {
             throw ApiException.badRequest(
-                    "avatar", ApiErrorCode.AVATAR_UNREADABLE, "Avatar could not be read");
+                    AVATAR_FIELD, ApiErrorCode.AVATAR_UNREADABLE, "Avatar could not be read");
         }
     }
 
@@ -114,7 +116,7 @@ public class AdminAvatarService {
                         || height > MAX_AVATAR_DIMENSION
                         || (long) width * height > MAX_AVATAR_PIXELS) {
                     throw ApiException.badRequest(
-                            "avatar",
+                            AVATAR_FIELD,
                             ApiErrorCode.AVATAR_DIMENSIONS,
                             "Avatar dimensions must not exceed 4 megapixels");
                 }
@@ -126,10 +128,37 @@ public class AdminAvatarService {
             } finally {
                 reader.dispose();
             }
-        } catch (IOException exception) {
+        } catch (IOException _) {
             return null;
         }
     }
 
-    private record AvatarPayload(byte[] content, String contentType) {}
+    private record AvatarPayload(byte[] content, String contentType) {
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) {
+                return true;
+            }
+            if (!(other instanceof AvatarPayload(byte[] otherContent, String otherContentType))) {
+                return false;
+            }
+            return Arrays.equals(content, otherContent)
+                    && Objects.equals(contentType, otherContentType);
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * Arrays.hashCode(content) + Objects.hashCode(contentType);
+        }
+
+        @Override
+        public String toString() {
+            return "AvatarPayload[content="
+                    + Arrays.toString(content)
+                    + ", contentType="
+                    + contentType
+                    + "]";
+        }
+    }
 }

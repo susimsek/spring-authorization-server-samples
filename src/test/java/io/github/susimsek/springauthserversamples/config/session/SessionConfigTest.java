@@ -25,6 +25,7 @@ import org.springframework.core.convert.ConversionService;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextImpl;
@@ -179,7 +180,7 @@ class SessionConfigTest {
 
         assertThat(deserialized.getAuthentication().getName()).isEqualTo("admin");
         assertThat(deserialized.getAuthentication().getAuthorities())
-                .extracting(authority -> authority.getAuthority())
+                .extracting(GrantedAuthority::getAuthority)
                 .contains("ROLE_ADMIN", "FACTOR_PASSWORD");
     }
 
@@ -361,10 +362,14 @@ class SessionConfigTest {
         }
 
         @Override
-        public void commit(TransactionStatus status) {}
+        public void commit(TransactionStatus status) {
+            // The test transaction manager does not persist anything.
+        }
 
         @Override
-        public void rollback(TransactionStatus status) {}
+        public void rollback(TransactionStatus status) {
+            // The test transaction manager does not persist anything.
+        }
     }
 
     private static final class InMemorySessionStore {

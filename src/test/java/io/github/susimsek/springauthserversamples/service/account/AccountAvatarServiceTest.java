@@ -1,6 +1,7 @@
 package io.github.susimsek.springauthserversamples.service.account;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -27,8 +28,7 @@ class AccountAvatarServiceTest {
     @Test
     void returnsVersionedAvatarUrlWhenConfigured() {
         UserEntity user = user(7L);
-        UserAvatarRepository.AvatarVersion version =
-                org.mockito.Mockito.mock(UserAvatarRepository.AvatarVersion.class);
+        UserAvatarRepository.AvatarVersion version = mock(UserAvatarRepository.AvatarVersion.class);
         when(userRepository.findByUsername("user")).thenReturn(Optional.of(user));
         when(userAvatarRepository.findVersionByUserId(7L)).thenReturn(Optional.of(version));
         when(version.getPublicId()).thenReturn("public-avatar");

@@ -18,6 +18,9 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 @Configuration(proxyBeanMethods = false)
 public class SocialLoginConfig {
 
+    private static final String OAUTH2_CALLBACK_URI =
+            "{baseUrl}/login/oauth2/code/{registrationId}";
+
     @Bean
     JwtDecoderFactory<ClientRegistration> socialOidcJwtDecoderFactory() {
         OidcIdTokenDecoderFactory factory = new OidcIdTokenDecoderFactory();
@@ -72,7 +75,7 @@ public class SocialLoginConfig {
                                         ? ClientAuthenticationMethod.CLIENT_SECRET_POST
                                         : ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                         .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                        .redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
+                        .redirectUri(OAUTH2_CALLBACK_URI)
                         .scope(provider.scopes().split(","))
                         .authorizationUri(provider.authorizationUri())
                         .tokenUri(provider.tokenUri())
@@ -112,7 +115,7 @@ public class SocialLoginConfig {
                 .clientId(provider.clientId())
                 .clientSecret(provider.clientSecret())
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
+                .redirectUri(OAUTH2_CALLBACK_URI)
                 .scope("read:user", "user:email")
                 .authorizationUri("https://github.com/login/oauth/authorize")
                 .tokenUri("https://github.com/login/oauth/access_token")
@@ -174,7 +177,7 @@ public class SocialLoginConfig {
                 .clientSecret(provider.clientSecret())
                 .clientAuthenticationMethod(clientAuthenticationMethod)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
+                .redirectUri(OAUTH2_CALLBACK_URI)
                 .scope("openid", "profile", "email")
                 .authorizationUri(authorizationUri)
                 .tokenUri(tokenUri)

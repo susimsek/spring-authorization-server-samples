@@ -19,6 +19,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("java:S5778")
 class KeyManagementServiceTest {
     @Mock private OAuth2KeyRepository keyRepository;
     @Mock private AdminAuditEventService auditEventService;

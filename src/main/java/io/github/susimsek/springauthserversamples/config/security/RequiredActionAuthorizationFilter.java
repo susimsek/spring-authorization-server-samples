@@ -29,19 +29,18 @@ public class RequiredActionAuthorizationFilter extends OncePerRequestFilter {
         if ("/oauth2/authorize".equals(request.getRequestURI())
                 && authentication != null
                 && authentication.isAuthenticated()
-                && !authentication.getClass().getName().contains("Anonymous")) {
-            if (!requiredActionService.pending(authentication.getName()).isEmpty()) {
-                String current = request.getRequestURI();
-                if (request.getQueryString() != null) {
-                    current += "?" + request.getQueryString();
-                }
-                request.getSession(true)
-                        .setAttribute(MfaAuthorizationFilter.MFA_PENDING_REQUEST, current);
-                response.sendRedirect(
-                        "/required-actions?return_to="
-                                + URLEncoder.encode(current, StandardCharsets.UTF_8));
-                return;
+                && !authentication.getClass().getName().contains("Anonymous")
+                && !requiredActionService.pending(authentication.getName()).isEmpty()) {
+            String current = request.getRequestURI();
+            if (request.getQueryString() != null) {
+                current += "?" + request.getQueryString();
             }
+            request.getSession(true)
+                    .setAttribute(MfaAuthorizationFilter.MFA_PENDING_REQUEST, current);
+            response.sendRedirect(
+                    "/required-actions?return_to="
+                            + URLEncoder.encode(current, StandardCharsets.UTF_8));
+            return;
         }
         filterChain.doFilter(request, response);
     }

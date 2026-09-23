@@ -64,8 +64,8 @@ class AuthorizationEntityTest {
                 .isNotEqualTo(different)
                 .isNotEqualTo(withoutId)
                 .isNotEqualTo(null)
-                .isNotEqualTo("authorization");
-        assertThat(entity.hashCode()).isEqualTo(AuthorizationEntity.class.hashCode());
+                .isNotEqualTo("authorization")
+                .hasSameHashCodeAs(AuthorizationEntity.class);
     }
 
     @Test
@@ -76,7 +76,6 @@ class AuthorizationEntityTest {
         proxy.setId("auth-1");
 
         assertThat(entity).isEqualTo(proxy);
-        assertThat(proxy).isEqualTo(entity);
-        assertThat(proxy.hashCode()).isEqualTo(AuthorizationEntity.class.hashCode());
+        assertThat(proxy).isEqualTo(entity).hasSameHashCodeAs(AuthorizationEntity.class);
     }
 }

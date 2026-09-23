@@ -46,16 +46,23 @@ public class PasswordPolicyService {
 
     @Transactional(readOnly = true)
     public void validate(UserEntity user, String rawPassword) {
-        validate(user, rawPassword, true);
+        validateInternal(user, rawPassword, true);
     }
 
     @Transactional(readOnly = true)
     public void validateForNewPassword(UserEntity user, String rawPassword) {
-        validate(user, rawPassword, true);
+        validateInternal(user, rawPassword, true);
     }
 
-    private void validate(UserEntity user, String rawPassword, boolean checkCurrentPassword) {
+    private void validateInternal(
+            UserEntity user, String rawPassword, boolean checkCurrentPassword) {
         ApplicationProperties.PasswordPolicy policy = policy();
+        validatePasswordRules(rawPassword, policy);
+        validateUserRules(user, rawPassword, policy, checkCurrentPassword);
+    }
+
+    private void validatePasswordRules(
+            String rawPassword, ApplicationProperties.PasswordPolicy policy) {
         if (!StringUtils.hasText(rawPassword)
                 || rawPassword.length() < policy.minimumLength()
                 || rawPassword.length() > policy.maximumLength()) {
@@ -73,6 +80,13 @@ public class PasswordPolicyService {
         if (count(rawPassword, this::isSpecial) < policy.minimumSpecialCharacters()) {
             reject("Password must contain more special characters");
         }
+    }
+
+    private void validateUserRules(
+            UserEntity user,
+            String rawPassword,
+            ApplicationProperties.PasswordPolicy policy,
+            boolean checkCurrentPassword) {
         if (policy.rejectUsername() && rawPassword.equalsIgnoreCase(user.getUsername())) {
             reject("Password cannot be the username");
         }
@@ -85,11 +99,24 @@ public class PasswordPolicyService {
                 && commonPasswords().contains(rawPassword.toLowerCase(Locale.ROOT))) {
             reject("Password is too common");
         }
+        rejectIfCurrentPasswordMatches(user, rawPassword, checkCurrentPassword);
+        rejectIfPasswordWasUsed(user, rawPassword, policy, checkCurrentPassword);
+    }
+
+    private void rejectIfCurrentPasswordMatches(
+            UserEntity user, String rawPassword, boolean checkCurrentPassword) {
         if (checkCurrentPassword
                 && StringUtils.hasText(user.getPassword())
                 && passwordEncoder.matches(rawPassword, user.getPassword())) {
             reject("New password must be different");
         }
+    }
+
+    private void rejectIfPasswordWasUsed(
+            UserEntity user,
+            String rawPassword,
+            ApplicationProperties.PasswordPolicy policy,
+            boolean checkCurrentPassword) {
         if (checkCurrentPassword && user.getId() != null) {
             passwordHistoryRepository.findByUserIdOrderByCreatedAtDesc(user.getId()).stream()
                     .limit(policy.historySize())

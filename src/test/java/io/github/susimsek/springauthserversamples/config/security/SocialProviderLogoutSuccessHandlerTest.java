@@ -20,11 +20,11 @@ class SocialProviderLogoutSuccessHandlerTest {
     void startsMicrosoftLogoutWithTheRegisteredPostLogoutUri() throws Exception {
         SocialProviderSettingsService settings = mock(SocialProviderSettingsService.class);
         HttpServletRequest request = mock(HttpServletRequest.class);
-        HttpServletResponse response = mock(HttpServletResponse.class);
+        final HttpServletResponse response = mock(HttpServletResponse.class);
         HttpSession session = mock(HttpSession.class);
         Authentication principal =
                 UsernamePasswordAuthenticationToken.authenticated("ada", null, java.util.List.of());
-        OidcLogoutAuthenticationToken logout =
+        final OidcLogoutAuthenticationToken logout =
                 new OidcLogoutAuthenticationToken(
                         "id-token-hint",
                         principal,
@@ -53,11 +53,11 @@ class SocialProviderLogoutSuccessHandlerTest {
     void startsGitHubLogoutWithReturnToUri() throws Exception {
         SocialProviderSettingsService settings = mock(SocialProviderSettingsService.class);
         HttpServletRequest request = mock(HttpServletRequest.class);
-        HttpServletResponse response = mock(HttpServletResponse.class);
+        final HttpServletResponse response = mock(HttpServletResponse.class);
         HttpSession session = mock(HttpSession.class);
         Authentication principal =
                 UsernamePasswordAuthenticationToken.authenticated("ada", null, java.util.List.of());
-        OidcLogoutAuthenticationToken logout =
+        final OidcLogoutAuthenticationToken logout =
                 new OidcLogoutAuthenticationToken(
                         "id-token-hint",
                         principal,
@@ -84,11 +84,11 @@ class SocialProviderLogoutSuccessHandlerTest {
     void startsLinkedInLogoutWithRedirectUri() throws Exception {
         SocialProviderSettingsService settings = mock(SocialProviderSettingsService.class);
         HttpServletRequest request = mock(HttpServletRequest.class);
-        HttpServletResponse response = mock(HttpServletResponse.class);
+        final HttpServletResponse response = mock(HttpServletResponse.class);
         HttpSession session = mock(HttpSession.class);
         Authentication principal =
                 UsernamePasswordAuthenticationToken.authenticated("ada", null, java.util.List.of());
-        OidcLogoutAuthenticationToken logout =
+        final OidcLogoutAuthenticationToken logout =
                 new OidcLogoutAuthenticationToken(
                         "id-token-hint",
                         principal,
@@ -115,11 +115,11 @@ class SocialProviderLogoutSuccessHandlerTest {
     void startsGoogleLogoutWithContinueParameterWhenNoIssuerIsConfigured() throws Exception {
         SocialProviderSettingsService settings = mock(SocialProviderSettingsService.class);
         HttpServletRequest request = mock(HttpServletRequest.class);
-        HttpServletResponse response = mock(HttpServletResponse.class);
+        final HttpServletResponse response = mock(HttpServletResponse.class);
         HttpSession session = mock(HttpSession.class);
         Authentication principal =
                 UsernamePasswordAuthenticationToken.authenticated("ada", null, java.util.List.of());
-        OidcLogoutAuthenticationToken logout =
+        final OidcLogoutAuthenticationToken logout =
                 new OidcLogoutAuthenticationToken(
                         "hint", principal, "account-console", null, "/account", null);
         when(request.getSession(false)).thenReturn(session);

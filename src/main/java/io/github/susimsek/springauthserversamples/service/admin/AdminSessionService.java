@@ -26,6 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
 public class AdminSessionService {
 
+    private static final String ACTIVE_STATUS = "active";
+
     private final AdminUserService adminUserService;
     private final UserSessionRepository userSessionRepository;
     private final AuthorizationRepository authorizationRepository;
@@ -169,12 +171,12 @@ public class AdminSessionService {
 
     private static String normalizeStatus(String status) {
         if (status == null || status.isBlank()) {
-            return "active";
+            return ACTIVE_STATUS;
         }
         String normalized = status.trim().toLowerCase(java.util.Locale.ROOT);
         return switch (normalized) {
-            case "active", "expired", "all" -> normalized;
-            default -> "active";
+            case ACTIVE_STATUS, "expired", "all" -> normalized;
+            default -> ACTIVE_STATUS;
         };
     }
 }

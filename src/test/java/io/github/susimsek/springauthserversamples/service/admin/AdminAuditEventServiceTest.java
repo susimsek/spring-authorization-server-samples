@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -23,24 +26,23 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mockito;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+@SuppressWarnings("java:S5778")
 class AdminAuditEventServiceTest {
 
-    private final AdminEventRepository eventRepository =
-            org.mockito.Mockito.mock(AdminEventRepository.class);
+    private final AdminEventRepository eventRepository = mock(AdminEventRepository.class);
     private final AdminEventSettingsRepository settingsRepository =
-            org.mockito.Mockito.mock(AdminEventSettingsRepository.class);
+            mock(AdminEventSettingsRepository.class);
     private final AdminAuditEventService service = new AdminAuditEventService(eventRepository);
 
     @BeforeEach
     void resetRepositoryStubs() {
-        org.mockito.Mockito.reset(eventRepository, settingsRepository);
+        reset(eventRepository, settingsRepository);
     }
 
     @AfterEach
@@ -93,7 +95,7 @@ class AdminAuditEventServiceTest {
         service.avatarUpdated(8L);
 
         ArgumentCaptor<AdminEventEntity> events = ArgumentCaptor.forClass(AdminEventEntity.class);
-        verify(eventRepository, Mockito.times(2)).save(events.capture());
+        verify(eventRepository, times(2)).save(events.capture());
         assertThat(events.getAllValues())
                 .extracting(AdminEventEntity::getActor)
                 .contains("system-job", "system");
@@ -192,9 +194,9 @@ class AdminAuditEventServiceTest {
 
     @Test
     void mapsTargetSpecificEventPages() {
-        AdminEventMapper mapper = Mockito.mock(AdminEventMapper.class);
+        AdminEventMapper mapper = mock(AdminEventMapper.class);
         AdminEventEntity entity = new AdminEventEntity();
-        AdminEventDTO dto = Mockito.mock(AdminEventDTO.class);
+        AdminEventDTO dto = mock(AdminEventDTO.class);
         var pageable = PageRequest.of(0, 20);
         when(eventRepository.findByTargetTypeAndTargetId("user", "7", pageable))
                 .thenReturn(
@@ -225,10 +227,10 @@ class AdminAuditEventServiceTest {
 
         ArgumentCaptor<Specification<AdminEventEntity>> specifications =
                 ArgumentCaptor.forClass(Specification.class);
-        verify(eventRepository, Mockito.times(2)).findAll(specifications.capture(), eq(pageable));
-        Root<AdminEventEntity> root = Mockito.mock(Root.class);
-        CriteriaQuery<?> query = Mockito.mock(CriteriaQuery.class);
-        CriteriaBuilder criteriaBuilder = Mockito.mock(CriteriaBuilder.class);
+        verify(eventRepository, times(2)).findAll(specifications.capture(), eq(pageable));
+        Root<AdminEventEntity> root = mock(Root.class);
+        CriteriaQuery<?> query = mock(CriteriaQuery.class);
+        CriteriaBuilder criteriaBuilder = mock(CriteriaBuilder.class);
         specifications
                 .getAllValues()
                 .forEach(specification -> specification.toPredicate(root, query, criteriaBuilder));

@@ -6,19 +6,24 @@ import static org.mockito.Answers.RETURNS_SELF;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.webauthn4j.converter.util.ObjectConverter;
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
 import io.github.susimsek.springauthserversamples.dto.admin.WebAuthnPolicyDTO;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import io.github.susimsek.springauthserversamples.service.LoginSettingsService;
+import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
 import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -36,13 +41,14 @@ import org.springframework.security.web.webauthn.management.UserCredentialReposi
 import org.springframework.security.web.webauthn.management.WebAuthnRelyingPartyOperations;
 import org.springframework.security.web.webauthn.management.Webauthn4JRelyingPartyOperations;
 
+@SuppressWarnings("java:S6213")
 class WebAuthnConfigTest {
 
     private final WebAuthnConfig config = new WebAuthnConfig();
 
     @Test
     void createsWebAuthnInfrastructureBeans() {
-        PublicKeyCredentialUserEntityRepository users =
+        final PublicKeyCredentialUserEntityRepository users =
                 config.webAuthnUserEntityRepository(mock(UserRepository.class));
         UserCredentialRepository credentials =
                 config.webAuthnUserCredentialRepository(mock(JdbcOperations.class));
@@ -129,7 +135,7 @@ class WebAuthnConfigTest {
                         "");
         when(settings.webAuthnPolicy(false)).thenReturn(registrationPolicy);
         when(settings.webAuthnPolicy(true)).thenReturn(authenticationPolicy);
-        ApplicationProperties properties =
+        final ApplicationProperties properties =
                 new ApplicationProperties(
                         new ApplicationProperties.Cache(
                                 new ApplicationProperties.Caffeine(Duration.ofHours(1), 1, 10)),
@@ -155,7 +161,7 @@ class WebAuthnConfigTest {
                                         .PublicKeyCredentialRequestOptions
                                         .PublicKeyCredentialRequestOptionsBuilder>>
                 requestCustomizer = new AtomicReference<>();
-        try (MockedConstruction<Webauthn4JRelyingPartyOperations> ignored =
+        try (var _ =
                 Mockito.mockConstruction(
                         Webauthn4JRelyingPartyOperations.class,
                         (delegate, context) -> {
@@ -208,7 +214,7 @@ class WebAuthnConfigTest {
 
     @Test
     void usesFallbackRelyingPartySettingsAndRejectsMissingAllowedAaguid() {
-        PublicKeyCredentialUserEntityRepository users =
+        final PublicKeyCredentialUserEntityRepository users =
                 mock(PublicKeyCredentialUserEntityRepository.class);
         UserCredentialRepository credentials = mock(UserCredentialRepository.class);
         LoginSettingsService settings = mock(LoginSettingsService.class);
@@ -225,7 +231,7 @@ class WebAuthnConfigTest {
                         true,
                         "00000000-0000-0000-0000-000000000001");
         when(settings.webAuthnPolicy(false)).thenReturn(policy);
-        ApplicationProperties properties =
+        final ApplicationProperties properties =
                 new ApplicationProperties(
                         new ApplicationProperties.Cache(
                                 new ApplicationProperties.Caffeine(Duration.ofHours(1), 1, 10)),
@@ -249,7 +255,7 @@ class WebAuthnConfigTest {
         when(record.getCredentialId()).thenReturn(credentialId);
         when(credentials.findByCredentialId(record.getCredentialId())).thenReturn(record);
 
-        try (MockedConstruction<Webauthn4JRelyingPartyOperations> ignored =
+        try (var _ =
                 Mockito.mockConstruction(
                         Webauthn4JRelyingPartyOperations.class,
                         (delegate, context) ->
@@ -264,6 +270,105 @@ class WebAuthnConfigTest {
                     .hasMessageContaining("AAGUID");
             verify(credentials).delete(record.getCredentialId());
         }
+    }
+
+    @Test
+    void enforcesAllowedAndDisallowedAaguidsFromAttestationData() throws Exception {
+        final PublicKeyCredentialUserEntityRepository users =
+                mock(PublicKeyCredentialUserEntityRepository.class);
+        UserCredentialRepository credentials = mock(UserCredentialRepository.class);
+        LoginSettingsService settings = mock(LoginSettingsService.class);
+        UUID allowedAaguid = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        WebAuthnPolicyDTO policy =
+                new WebAuthnPolicyDTO(
+                        "Configured RP",
+                        "rp.example",
+                        "ES256",
+                        "NONE",
+                        "ANY",
+                        "REQUIRED",
+                        "REQUIRED",
+                        30,
+                        true,
+                        allowedAaguid.toString());
+        when(settings.webAuthnPolicy(false)).thenReturn(policy);
+        CredentialRecord record = mock(CredentialRecord.class);
+        Bytes credentialId = new Bytes(new byte[] {1, 2, 3});
+        when(record.getCredentialId()).thenReturn(credentialId);
+        when(record.getAttestationObject()).thenReturn(new Bytes(attestationObject(allowedAaguid)));
+        when(credentials.findByCredentialId(credentialId)).thenReturn(record);
+
+        try (var _ =
+                Mockito.mockConstruction(
+                        Webauthn4JRelyingPartyOperations.class,
+                        (delegate, context) ->
+                                when(delegate.registerCredential(any())).thenReturn(record))) {
+            WebAuthnRelyingPartyOperations operations =
+                    config.webAuthnRelyingPartyOperations(
+                            users, credentials, properties(), settings);
+
+            operations.registerCredential(mock(RelyingPartyRegistrationRequest.class));
+            verify(credentials, never()).delete(credentialId);
+
+            UUID disallowedAaguid = UUID.fromString("00000000-0000-0000-0000-000000000002");
+            when(record.getAttestationObject())
+                    .thenReturn(new Bytes(attestationObject(disallowedAaguid)));
+            assertThatThrownBy(
+                            () ->
+                                    operations.registerCredential(
+                                            mock(RelyingPartyRegistrationRequest.class)))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("not allowed");
+            verify(credentials, org.mockito.Mockito.atLeastOnce()).delete(credentialId);
+        }
+    }
+
+    private static ApplicationProperties properties() {
+        return new ApplicationProperties(
+                new ApplicationProperties.Cache(
+                        new ApplicationProperties.Caffeine(Duration.ofHours(1), 1, 10)),
+                new ApplicationProperties.Session("*"),
+                new ApplicationProperties.AuthorizationServer("https://issuer.example"),
+                new ApplicationProperties.Mail(
+                        false, "no-reply@example.test", "https://issuer.example"),
+                new ApplicationProperties.Security(),
+                new ApplicationProperties.WebAuthn(
+                        "Fallback RP", " ", "", 300, "REQUIRED", "REQUIRED", "NONE"),
+                new ApplicationProperties.RegistrationCaptcha());
+    }
+
+    private static byte[] attestationObject(UUID aaguid) throws Exception {
+        byte[] credentialId = new byte[] {1, 2, 3};
+        byte[] credentialPublicKey =
+                new ObjectConverter()
+                        .getCborConverter()
+                        .writeValueAsBytes(
+                                Map.of(
+                                        1, 2,
+                                        3, -7,
+                                        -1, 1,
+                                        -2, new byte[32],
+                                        -3, new byte[32]));
+        ByteArrayOutputStream authenticatorData = new ByteArrayOutputStream();
+        authenticatorData.write(new byte[32]);
+        authenticatorData.write(0x41);
+        authenticatorData.write(new byte[4]);
+        authenticatorData.write(
+                ByteBuffer.allocate(16)
+                        .putLong(aaguid.getMostSignificantBits())
+                        .putLong(aaguid.getLeastSignificantBits())
+                        .array());
+        authenticatorData.write((credentialId.length >>> 8) & 0xff);
+        authenticatorData.write(credentialId.length & 0xff);
+        authenticatorData.write(credentialId);
+        authenticatorData.write(credentialPublicKey);
+        return new ObjectConverter()
+                .getCborConverter()
+                .writeValueAsBytes(
+                        Map.of(
+                                "authData", authenticatorData.toByteArray(),
+                                "fmt", "none",
+                                "attStmt", Map.of()));
     }
 
     private static Object invoke(String name, Class<?> parameterType, Object value)

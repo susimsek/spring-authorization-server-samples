@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.OptionalLong;
 import org.junit.jupiter.api.Test;
 
+@SuppressWarnings("java:S5778")
 class StandardRequiredActionHandlerTest {
 
     private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
@@ -74,7 +75,7 @@ class StandardRequiredActionHandlerTest {
         when(settings.otpLookAheadWindow()).thenReturn(1);
         when(totp.matchingCounter("SECRET", "123456", "SHA1", 6, 30, 1))
                 .thenReturn(OptionalLong.of(100L));
-        StandardRequiredActionHandler handler =
+        final StandardRequiredActionHandler handler =
                 new StandardRequiredActionHandler(
                         validator, null, null, invalidation, settings, totp);
         UserEntity user = new UserEntity();
@@ -100,7 +101,7 @@ class StandardRequiredActionHandlerTest {
         when(settings.otpDigits()).thenReturn(6);
         when(settings.otpPeriodSeconds()).thenReturn(30);
         when(settings.otpLookAheadWindow()).thenReturn(1);
-        StandardRequiredActionHandler handler =
+        final StandardRequiredActionHandler handler =
                 new StandardRequiredActionHandler(
                         validator, null, null, invalidation, settings, totp);
         UserEntity user = new UserEntity();
@@ -136,7 +137,7 @@ class StandardRequiredActionHandlerTest {
         when(settings.otpLookAheadWindow()).thenReturn(1);
         when(totp.matchingCounter("SECRET", "123456", "SHA1", 6, 30, 1))
                 .thenReturn(OptionalLong.of(100L));
-        StandardRequiredActionHandler handler =
+        final StandardRequiredActionHandler handler =
                 new StandardRequiredActionHandler(
                         validator, null, null, invalidation, settings, totp);
         UserEntity user = new UserEntity();
@@ -160,7 +161,7 @@ class StandardRequiredActionHandlerTest {
         UserEntity user = new UserEntity();
         user.setUsername("alice");
         when(recoveryCodes.status("alice")).thenReturn(new RecoveryCodesStatusDTO(12));
-        StandardRequiredActionHandler handler =
+        final StandardRequiredActionHandler handler =
                 new StandardRequiredActionHandler(
                         validator, null, null, null, null, null, recoveryCodes);
         RequiredActionDefinitionEntity definition = new RequiredActionDefinitionEntity();
@@ -209,7 +210,7 @@ class StandardRequiredActionHandlerTest {
         when(settings.isOtpRequired()).thenReturn(true);
         when(policy.isExpired(org.mockito.ArgumentMatchers.any())).thenReturn(true);
         when(webAuthn.hasCredential("alice")).thenReturn(false);
-        StandardRequiredActionHandler handler =
+        final StandardRequiredActionHandler handler =
                 new StandardRequiredActionHandler(
                         validator, policy, null, null, settings, null, null, null, webAuthn);
         UserEntity user = new UserEntity();
@@ -239,12 +240,44 @@ class StandardRequiredActionHandlerTest {
     }
 
     @Test
+    void reportsCompletedPendingConditionsAndPasswordlessPasskeyState() {
+        LoginSettingsService settings = mock(LoginSettingsService.class);
+        WebAuthnService webAuthn = mock(WebAuthnService.class);
+        when(settings.isOtpRequired()).thenReturn(false);
+        when(webAuthn.hasCredential("alice")).thenReturn(true);
+        final StandardRequiredActionHandler handler =
+                new StandardRequiredActionHandler(
+                        validator, null, null, null, settings, null, null, null, webAuthn);
+        UserEntity user = new UserEntity();
+        user.setUsername("alice");
+        user.setFirstName("Ada");
+        user.setLastName("Lovelace");
+        user.setEmail("ada@example.test");
+        user.setMustChangePassword(false);
+        user.setTemporaryPassword(false);
+        RequiredActionDefinitionEntity definition = new RequiredActionDefinitionEntity();
+
+        definition.setActionKey("UPDATE_PROFILE");
+        assertThat(handler.isPending(user, definition, false)).isFalse();
+        definition.setActionKey("UPDATE_EMAIL");
+        assertThat(handler.isPending(user, definition, false)).isFalse();
+        definition.setActionKey("UPDATE_PASSWORD");
+        assertThat(handler.isPending(user, definition, false)).isFalse();
+        definition.setActionKey("CONFIGURE_TOTP");
+        assertThat(handler.isPending(user, definition, false)).isFalse();
+        definition.setActionKey("CONFIGURE_PASSKEY_PASSWORDLESS");
+        assertThat(handler.isPending(user, definition, false)).isFalse();
+        definition.setActionKey("UNKNOWN");
+        assertThat(handler.isPending(user, definition, false)).isTrue();
+    }
+
+    @Test
     void completesPasswordEmailAndPasskeyActions() {
         PasswordService password = mock(PasswordService.class);
         UserAccessInvalidationService invalidation = mock(UserAccessInvalidationService.class);
         WebAuthnService webAuthn = mock(WebAuthnService.class);
         when(webAuthn.hasCredential("alice")).thenReturn(true);
-        StandardRequiredActionHandler handler =
+        final StandardRequiredActionHandler handler =
                 new StandardRequiredActionHandler(
                         validator, null, password, invalidation, null, null, null, null, webAuthn);
         UserEntity user = new UserEntity();
@@ -262,7 +295,7 @@ class StandardRequiredActionHandlerTest {
 
     @Test
     void rejectsUnsupportedAndUnconfirmedActions() {
-        StandardRequiredActionHandler handler = new StandardRequiredActionHandler(validator);
+        final StandardRequiredActionHandler handler = new StandardRequiredActionHandler(validator);
         UserEntity user = new UserEntity();
 
         assertThatThrownBy(() -> handler.complete(user, Map.of()))
@@ -292,7 +325,7 @@ class StandardRequiredActionHandlerTest {
         when(bruteForce.isLocked("alice")).thenReturn(true, false);
         when(totp.matchingCounter("SECRET", "123456", "SHA1", 6, 30, 1))
                 .thenReturn(OptionalLong.of(100L));
-        StandardRequiredActionHandler handler =
+        final StandardRequiredActionHandler handler =
                 new StandardRequiredActionHandler(
                         validator, null, null, null, settings, totp, null, bruteForce, null);
         UserEntity user = new UserEntity();
@@ -364,5 +397,108 @@ class StandardRequiredActionHandlerTest {
         assertThatThrownBy(() -> handler.completeStandard(user, "CONFIGURE_PASSKEY", Map.of()))
                 .isInstanceOf(ApiException.class);
         verify(invalidation, never()).invalidateOtherSessions("alice", null);
+    }
+
+    @Test
+    void handlesNullServicesMissingProfileValuesAndConfirmationVariants() {
+        final StandardRequiredActionHandler handler = new StandardRequiredActionHandler(validator);
+        UserEntity user = new UserEntity();
+        user.setUsername("alice");
+
+        assertThatThrownBy(() -> handler.completeStandard(user, "UPDATE_PROFILE", null))
+                .isInstanceOf(ApiException.class);
+        assertThatThrownBy(
+                        () ->
+                                handler.completeStandard(
+                                        user,
+                                        "UPDATE_PASSWORD",
+                                        Map.of("newPassword", "new-password")))
+                .isInstanceOf(ApiException.class);
+        assertThatThrownBy(
+                        () ->
+                                handler.completeStandard(
+                                        user, "RECOVERY_CODES", Map.of("accepted", true)))
+                .isInstanceOf(ApiException.class);
+        assertThatThrownBy(
+                        () ->
+                                handler.completeStandard(
+                                        user, "CONFIGURE_PASSKEY_PASSWORDLESS", Map.of()))
+                .isInstanceOf(ApiException.class);
+
+        handler.completeStandard(user, "TERMS_AND_CONDITIONS", Map.of("confirmed", true));
+        assertThatThrownBy(
+                        () ->
+                                handler.completeStandard(
+                                        user,
+                                        "TERMS_AND_CONDITIONS",
+                                        Map.of("accepted", false, "confirmed", false)))
+                .isInstanceOf(ApiException.class);
+    }
+
+    @Test
+    void completesPasswordWithoutSessionInvalidationService() {
+        PasswordService password = mock(PasswordService.class);
+        StandardRequiredActionHandler handler =
+                new StandardRequiredActionHandler(validator, null, password, null, null, null);
+        UserEntity user = new UserEntity();
+
+        handler.completeStandard(user, "UPDATE_PASSWORD", Map.of("newPassword", "new-password"));
+
+        verify(password).changePassword(user, "new-password");
+    }
+
+    @Test
+    void coversPendingFlagsBlankProfileAndMissingOptionalServices() {
+        final StandardRequiredActionHandler handler = new StandardRequiredActionHandler(validator);
+        UserEntity user = new UserEntity();
+        user.setUsername("alice");
+        user.setFirstName(" ");
+        user.setLastName("Lovelace");
+        user.setEmail("ada@example.test");
+        RequiredActionDefinitionEntity definition = new RequiredActionDefinitionEntity();
+
+        definition.setActionKey("UPDATE_PROFILE");
+        assertThat(handler.isPending(user, definition, false)).isTrue();
+        definition.setActionKey("UPDATE_PASSWORD");
+        user.setMustChangePassword(true);
+        assertThat(handler.isPending(user, definition, false)).isTrue();
+        user.setMustChangePassword(false);
+        user.setTemporaryPassword(true);
+        assertThat(handler.isPending(user, definition, false)).isTrue();
+        user.setTemporaryPassword(false);
+        assertThat(handler.isPending(user, definition, false)).isFalse();
+        definition.setActionKey("CONFIGURE_TOTP");
+        assertThat(handler.isPending(user, definition, false)).isFalse();
+        definition.setActionKey("CONFIGURE_PASSKEY");
+        assertThat(handler.isPending(user, definition, false)).isFalse();
+    }
+
+    @Test
+    void completesPasswordlessAndTotpWithoutSessionInvalidation() {
+        WebAuthnService webAuthn = mock(WebAuthnService.class);
+        when(webAuthn.hasCredential("alice")).thenReturn(true);
+        StandardRequiredActionHandler passkeyHandler =
+                new StandardRequiredActionHandler(
+                        validator, null, null, null, null, null, null, null, webAuthn);
+        UserEntity user = new UserEntity();
+        user.setUsername("alice");
+        passkeyHandler.completeStandard(user, "CONFIGURE_PASSKEY_PASSWORDLESS", Map.of());
+
+        LoginSettingsService settings = mock(LoginSettingsService.class);
+        TotpService totp = mock(TotpService.class);
+        when(settings.otpAlgorithm()).thenReturn("SHA1");
+        when(settings.otpDigits()).thenReturn(6);
+        when(settings.otpPeriodSeconds()).thenReturn(30);
+        when(settings.otpLookAheadWindow()).thenReturn(1);
+        when(totp.matchingCounter("SECRET", "123456", "SHA1", 6, 30, 1))
+                .thenReturn(OptionalLong.of(1L));
+        StandardRequiredActionHandler totpHandler =
+                new StandardRequiredActionHandler(validator, null, null, null, settings, totp);
+        user.setTotpSecret("SECRET");
+
+        totpHandler.completeStandard(user, "CONFIGURE_TOTP", Map.of("code", "123456"));
+
+        assertThat(user.isTotpEnabled()).isTrue();
+        assertThat(user.getTotpLastUsedCounter()).isEqualTo(1L);
     }
 }

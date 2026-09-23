@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -29,6 +30,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
+@SuppressWarnings("java:S5778")
 class MailServiceTest {
 
     private final JavaMailSender mailSender = mock(JavaMailSender.class);
@@ -99,7 +101,7 @@ class MailServiceTest {
         service.sendEmail("user@example.com", "Subject", "<b>Body</b>", true);
 
         verify(templateEngine).process(eq("mail/passwordReset"), any(Context.class));
-        verify(mailSender, org.mockito.Mockito.times(2)).send(mimeMessage);
+        verify(mailSender, times(2)).send(mimeMessage);
     }
 
     @Test

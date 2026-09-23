@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import org.junit.jupiter.api.Test;
 
+@SuppressWarnings("java:S5778")
 class AdminSearchTest {
 
     @Test

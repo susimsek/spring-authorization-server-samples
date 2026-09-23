@@ -23,8 +23,10 @@
           ? "unchanged"
           : "changed";
       }
-    } catch (_) {
+    } catch (error) {
+      // A failed status check is treated as a changed session so the caller can re-authenticate.
       result = "changed";
+      console.warn("OIDC session status check failed; treating the session as changed.", error);
     }
     if (event.source) event.source.postMessage(result, event.origin);
   });

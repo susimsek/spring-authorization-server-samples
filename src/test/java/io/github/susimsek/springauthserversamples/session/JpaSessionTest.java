@@ -1,6 +1,7 @@
 package io.github.susimsek.springauthserversamples.session;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.time.Duration;
@@ -8,7 +9,6 @@ import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.session.MapSession;
 
@@ -36,7 +36,7 @@ class JpaSessionTest {
         assertThat(session.getLastAccessedTime()).isEqualTo(lastAccessedTime);
         assertThat(session.getMaxInactiveInterval()).isEqualTo(maxInactiveInterval);
         assertThat(session.getDelta()).containsEntry("alpha", null);
-        Mockito.verify(repository, Mockito.times(5)).flushIfRequired(session);
+        verify(repository, times(5)).flushIfRequired(session);
     }
 
     @Test

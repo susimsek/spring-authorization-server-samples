@@ -23,7 +23,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@SuppressWarnings("java:S6213")
 public class WebAuthnService {
+
+    private static final String PASSKEY_NOT_FOUND = "Passkey not found";
 
     private final UserRepository userRepository;
     private final UserCredentialRepository credentialRepository;
@@ -63,14 +66,14 @@ public class WebAuthnService {
         Bytes id;
         try {
             id = Bytes.fromBase64(credentialId);
-        } catch (RuntimeException ex) {
-            throw ApiException.notFound("Passkey not found");
+        } catch (RuntimeException _) {
+            throw ApiException.notFound(PASSKEY_NOT_FOUND);
         }
         CredentialRecord record = credentialRepository.findByCredentialId(id);
         if (record == null
                 || !record.getUserEntityUserId()
                         .equals(WebAuthnUserEntityRepository.userHandle(user.getId()))) {
-            throw ApiException.notFound("Passkey not found");
+            throw ApiException.notFound(PASSKEY_NOT_FOUND);
         }
         return toDTO(record);
     }
@@ -87,12 +90,12 @@ public class WebAuthnService {
 
     @Transactional
     public void delete(String username, String credentialId) {
-        delete(username, credentialId, "account.passkey.deleted", "account");
+        deleteCredential(username, credentialId, "account.passkey.deleted", "account");
     }
 
     @Transactional
     public void deleteForAdministrator(String username, String credentialId, String actorUsername) {
-        delete(username, credentialId, "admin.passkey.deleted", "user");
+        deleteCredential(username, credentialId, "admin.passkey.deleted", "user");
     }
 
     @Transactional
@@ -102,8 +105,8 @@ public class WebAuthnService {
         Bytes id;
         try {
             id = Bytes.fromBase64(credentialId);
-        } catch (IllegalArgumentException ex) {
-            throw ApiException.notFound("Passkey not found");
+        } catch (IllegalArgumentException _) {
+            throw ApiException.notFound(PASSKEY_NOT_FOUND);
         }
         CredentialRecord record = credentialRepository.findByCredentialId(id);
         if (record == null
@@ -111,7 +114,7 @@ public class WebAuthnService {
                         record.getUserEntityUserId(),
                         io.github.susimsek.springauthserversamples.config.security
                                 .WebAuthnUserEntityRepository.userHandle(user.getId()))) {
-            throw ApiException.notFound("Passkey not found");
+            throw ApiException.notFound(PASSKEY_NOT_FOUND);
         }
         credentialRepository.save(
                 ImmutableCredentialRecord.fromCredentialRecord(record).label(label).build());
@@ -121,13 +124,14 @@ public class WebAuthnService {
                 user.getId().toString());
     }
 
-    private void delete(String username, String credentialId, String event, String resourceType) {
+    private void deleteCredential(
+            String username, String credentialId, String event, String resourceType) {
         UserEntity user = user(username);
         Bytes id;
         try {
             id = Bytes.fromBase64(credentialId);
-        } catch (IllegalArgumentException ex) {
-            throw ApiException.notFound("Passkey not found");
+        } catch (IllegalArgumentException _) {
+            throw ApiException.notFound(PASSKEY_NOT_FOUND);
         }
         CredentialRecord record = credentialRepository.findByCredentialId(id);
         if (record == null
@@ -135,7 +139,7 @@ public class WebAuthnService {
                         record.getUserEntityUserId(),
                         io.github.susimsek.springauthserversamples.config.security
                                 .WebAuthnUserEntityRepository.userHandle(user.getId()))) {
-            throw ApiException.notFound("Passkey not found");
+            throw ApiException.notFound(PASSKEY_NOT_FOUND);
         }
         credentialRepository.delete(id);
         userAccessInvalidationService.invalidate(user.getUsername());

@@ -222,6 +222,267 @@ class RegistrationCaptchaServiceTest {
     }
 
     @Test
+    void rejectsMissingTokensAndNullStandardResponses() {
+        RestClient.Builder restClientBuilder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restClientBuilder).build();
+        RegistrationCaptchaService service =
+                new RegistrationCaptchaService(
+                        configuration(
+                                true,
+                                "recaptcha",
+                                "site-key",
+                                "secret",
+                                "",
+                                "",
+                                "register",
+                                false,
+                                0.7,
+                                false),
+                        restClientBuilder.build());
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+
+        assertThatThrownBy(() -> service.verifyOrThrow(null, request))
+                .hasFieldOrPropertyWithValue("errorCodeValue", "captcha_failed");
+        assertThatThrownBy(() -> service.verifyOrThrow(" ", request))
+                .hasFieldOrPropertyWithValue("errorCodeValue", "captcha_failed");
+
+        server.expect(requestTo("https://www.google.com/recaptcha/api/siteverify"))
+                .andRespond(
+                        withSuccess("null", org.springframework.http.MediaType.APPLICATION_JSON));
+        assertThatThrownBy(() -> service.verifyOrThrow("token", request))
+                .hasFieldOrPropertyWithValue("errorCodeValue", "captcha_failed");
+        server.verify();
+    }
+
+    @Test
+    void usesDefaultActionAndRejectsIncompleteEnterpriseResponses() {
+        RestClient.Builder standardBuilder = RestClient.builder();
+        MockRestServiceServer standardServer =
+                MockRestServiceServer.bindTo(standardBuilder).build();
+        standardServer
+                .expect(requestTo("https://www.google.com/recaptcha/api/siteverify"))
+                .andRespond(
+                        withSuccess(
+                                "{\"success\":true,\"score\":0.9,\"action\":\"register\"}",
+                                org.springframework.http.MediaType.APPLICATION_JSON));
+        RegistrationCaptchaService standardService =
+                new RegistrationCaptchaService(
+                        configuration(
+                                true,
+                                "recaptcha",
+                                "site-key",
+                                "secret",
+                                "",
+                                "",
+                                " ",
+                                true,
+                                0.7,
+                                false),
+                        standardBuilder.build());
+        assertThat(standardService.publicSettings().action()).isEqualTo("register");
+        standardService.verifyOrThrow("token", Mockito.mock(HttpServletRequest.class));
+        standardServer.verify();
+
+        RestClient.Builder enterpriseBuilder = RestClient.builder();
+        MockRestServiceServer enterpriseServer =
+                MockRestServiceServer.bindTo(enterpriseBuilder).build();
+        enterpriseServer
+                .expect(
+                        requestTo(
+                                org.hamcrest.Matchers.containsString(
+                                        "recaptchaenterprise.googleapis.com")))
+                .andRespond(
+                        withSuccess(
+                                "{\"tokenProperties\":null,\"riskAnalysis\":null,\"event\":null}",
+                                org.springframework.http.MediaType.APPLICATION_JSON));
+        RegistrationCaptchaService enterpriseService =
+                new RegistrationCaptchaService(
+                        configuration(
+                                true,
+                                "enterprise",
+                                "site-key",
+                                "",
+                                "project",
+                                "api-key",
+                                "register",
+                                true,
+                                0.7,
+                                false),
+                        enterpriseBuilder.build());
+
+        assertThatThrownBy(
+                        () ->
+                                enterpriseService.verifyOrThrow(
+                                        "token", Mockito.mock(HttpServletRequest.class)))
+                .hasFieldOrPropertyWithValue("errorCodeValue", "captcha_failed");
+        enterpriseServer.verify();
+    }
+
+    @Test
+    void coversCaptchaResponseVariantsAndConfigurationBoundaries() {
+        RestClient.Builder standardBuilder = RestClient.builder();
+        MockRestServiceServer standardServer =
+                MockRestServiceServer.bindTo(standardBuilder).build();
+        standardServer
+                .expect(requestTo("https://www.google.com/recaptcha/api/siteverify"))
+                .andRespond(
+                        withSuccess(
+                                "{\"success\":false}",
+                                org.springframework.http.MediaType.APPLICATION_JSON));
+        RegistrationCaptchaService standardService =
+                new RegistrationCaptchaService(
+                        configuration(
+                                true,
+                                "recaptcha",
+                                "site-key",
+                                "secret",
+                                "",
+                                "",
+                                "register",
+                                false,
+                                0.7,
+                                false),
+                        standardBuilder.build());
+        assertThatThrownBy(
+                        () ->
+                                standardService.verifyOrThrow(
+                                        "token", Mockito.mock(HttpServletRequest.class)))
+                .hasFieldOrPropertyWithValue("errorCodeValue", "captcha_failed");
+        standardServer.verify();
+
+        RestClient.Builder v3Builder = RestClient.builder();
+        MockRestServiceServer v3Server = MockRestServiceServer.bindTo(v3Builder).build();
+        v3Server.expect(requestTo("https://www.google.com/recaptcha/api/siteverify"))
+                .andRespond(
+                        withSuccess(
+                                "{\"success\":true,\"action\":\"register\"}",
+                                org.springframework.http.MediaType.APPLICATION_JSON));
+        RegistrationCaptchaService v3Service =
+                new RegistrationCaptchaService(
+                        configuration(
+                                true,
+                                "recaptcha",
+                                "site-key",
+                                "secret",
+                                "",
+                                "",
+                                "register",
+                                true,
+                                0.7,
+                                false),
+                        v3Builder.build());
+        assertThatThrownBy(
+                        () ->
+                                v3Service.verifyOrThrow(
+                                        "token", Mockito.mock(HttpServletRequest.class)))
+                .hasFieldOrPropertyWithValue("errorCodeValue", "captcha_failed");
+        v3Server.verify();
+
+        assertEnterpriseFailure(
+                "{\"tokenProperties\":null,\"riskAnalysis\":{\"score\":0.9},"
+                        + "\"event\":{\"expectedAction\":\"register\"}}");
+        assertEnterpriseFailure(
+                "{\"tokenProperties\":{\"valid\":true,\"action\":\"register\"},"
+                        + "\"riskAnalysis\":null,\"event\":{\"expectedAction\":\"register\"}}");
+        assertEnterpriseFailure(
+                "{\"tokenProperties\":{\"valid\":true,\"action\":\"register\"},"
+                        + "\"riskAnalysis\":{\"score\":0.9},\"event\":null}");
+        assertEnterpriseFailure(
+                "{\"tokenProperties\":{\"valid\":false,\"action\":\"register\"},"
+                        + "\"riskAnalysis\":{\"score\":0.9},"
+                        + "\"event\":{\"expectedAction\":\"register\"}}");
+        assertEnterpriseFailure(
+                "{\"tokenProperties\":{\"valid\":true,\"action\":\"other\"},"
+                        + "\"riskAnalysis\":{\"score\":0.9},"
+                        + "\"event\":{\"expectedAction\":\"register\"}}");
+        assertEnterpriseFailure(
+                "{\"tokenProperties\":{\"valid\":true,\"action\":\"register\"},"
+                        + "\"riskAnalysis\":{\"score\":0.1},"
+                        + "\"event\":{\"expectedAction\":\"register\"}}");
+
+        assertThat(
+                        service(
+                                        configuration(
+                                                true,
+                                                "recaptcha",
+                                                "site-key",
+                                                "secret",
+                                                "",
+                                                "",
+                                                "register",
+                                                true,
+                                                0.0,
+                                                false))
+                                .publicSettings()
+                                .enabled())
+                .isTrue();
+        assertThat(
+                        service(
+                                        configuration(
+                                                true,
+                                                "recaptcha",
+                                                "site-key",
+                                                "secret",
+                                                "",
+                                                "",
+                                                "register",
+                                                true,
+                                                1.0,
+                                                false))
+                                .publicSettings()
+                                .enabled())
+                .isTrue();
+        assertThat(
+                        service(
+                                        configuration(
+                                                false,
+                                                "recaptcha",
+                                                "site-key",
+                                                "secret",
+                                                "",
+                                                "",
+                                                "register",
+                                                false,
+                                                0.7,
+                                                false))
+                                .publicSettings()
+                                .enabled())
+                .isFalse();
+        assertThat(
+                        service(
+                                        configuration(
+                                                true,
+                                                "recaptcha",
+                                                "",
+                                                "secret",
+                                                "",
+                                                "",
+                                                "register",
+                                                false,
+                                                0.7,
+                                                false))
+                                .publicSettings()
+                                .enabled())
+                .isFalse();
+        assertThat(
+                        service(
+                                        configuration(
+                                                true,
+                                                "recaptcha",
+                                                "site-key",
+                                                "",
+                                                "",
+                                                "",
+                                                "register",
+                                                false,
+                                                0.7,
+                                                false))
+                                .publicSettings()
+                                .enabled())
+                .isFalse();
+    }
+
+    @Test
     void verifiesSuccessfulEnterpriseResponse() {
         RestClient.Builder restClientBuilder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(restClientBuilder).build();
@@ -337,6 +598,38 @@ class RegistrationCaptchaServiceTest {
     private static RegistrationCaptchaService service(
             RegistrationCaptchaConfiguration configuration) {
         return new RegistrationCaptchaService(configuration, RestClient.builder().build());
+    }
+
+    private static void assertEnterpriseFailure(String response) {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(
+                        requestTo(
+                                org.hamcrest.Matchers.containsString(
+                                        "recaptchaenterprise.googleapis.com")))
+                .andRespond(
+                        withSuccess(response, org.springframework.http.MediaType.APPLICATION_JSON));
+        RegistrationCaptchaService service =
+                new RegistrationCaptchaService(
+                        configuration(
+                                true,
+                                "enterprise",
+                                "site-key",
+                                "",
+                                "project",
+                                "api-key",
+                                "register",
+                                true,
+                                0.7,
+                                false),
+                        builder.build());
+
+        assertThatThrownBy(
+                        () ->
+                                service.verifyOrThrow(
+                                        "token", Mockito.mock(HttpServletRequest.class)))
+                .hasFieldOrPropertyWithValue("errorCodeValue", "captcha_failed");
+        server.verify();
     }
 
     private static RegistrationCaptchaConfiguration configuration(

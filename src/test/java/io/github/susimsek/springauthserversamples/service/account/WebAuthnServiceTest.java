@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -24,6 +25,7 @@ import org.springframework.security.web.webauthn.api.Bytes;
 import org.springframework.security.web.webauthn.api.CredentialRecord;
 import org.springframework.security.web.webauthn.management.UserCredentialRepository;
 
+@SuppressWarnings({"java:S5778", "java:S6213"})
 class WebAuthnServiceTest {
 
     private final UserRepository userRepository = mock(UserRepository.class);
@@ -144,7 +146,7 @@ class WebAuthnServiceTest {
         verify(auditEventService).record("admin.passkey.renamed", "user", "7");
         service().deleteForAdministrator("alice", credentialId.toBase64UrlString(), "admin");
         verify(auditEventService).record("admin.passkey.deleted", "user", "7");
-        verify(invalidationService, org.mockito.Mockito.times(1)).invalidate("alice");
+        verify(invalidationService, times(1)).invalidate("alice");
     }
 
     @Test

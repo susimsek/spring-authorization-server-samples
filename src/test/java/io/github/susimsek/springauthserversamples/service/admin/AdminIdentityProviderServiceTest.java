@@ -37,6 +37,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
+@SuppressWarnings("java:S5778")
 class AdminIdentityProviderServiceTest {
 
     private final SocialProviderRepository providerRepository =
@@ -129,7 +130,7 @@ class AdminIdentityProviderServiceTest {
         verify(settingsService).refreshClientRegistrations();
         verify(secretCipher).encrypt("secret");
 
-        SocialProviderEntity existing = provider();
+        final SocialProviderEntity existing = provider();
         SocialProviderMapperEntity mapper = mapper("acme");
         when(providerRepository.findById("provider-1")).thenReturn(Optional.of(existing));
         when(providerRepository.findByRegistrationId("acme-new")).thenReturn(Optional.empty());
@@ -157,6 +158,12 @@ class AdminIdentityProviderServiceTest {
 
         verify(mapperRepository).deleteAll(List.of(mapper));
         verify(providerRepository).delete(provider);
+
+        when(identityRepository.findAllByProvider("acme"))
+                .thenReturn(List.of(new SocialIdentityEntity()));
+        assertThatThrownBy(() -> service.delete("provider-1"))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("still linked");
 
         when(identityRepository.findAllByProvider("acme"))
                 .thenReturn(List.of(new SocialIdentityEntity()));
@@ -196,6 +203,51 @@ class AdminIdentityProviderServiceTest {
                 .isInstanceOf(ApiException.class);
         assertThatThrownBy(() -> service.deleteMapper("provider-1", "missing"))
                 .isInstanceOf(ApiException.class);
+
+        mapper.setProviderAlias("other");
+        assertThatThrownBy(() -> service.deleteMapper("provider-1", "mapper-1"))
+                .isInstanceOf(ApiException.class);
+    }
+
+    @Test
+    void coversMapperConflictsOptionalSearchAndProviderSecretFlags() {
+        SocialProviderEntity provider = provider();
+        when(providerRepository.findById("provider-1")).thenReturn(Optional.of(provider));
+        when(mapperRepository
+                        .findByProviderAliasAndNameContainingIgnoreCaseOrProviderAliasAndSourceClaimContainingIgnoreCase(
+                                eq("acme"), eq(""), eq("acme"), eq(""), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+        assertThat(service.findMappers("provider-1", null, PageRequest.of(0, 20))).isEmpty();
+
+        SocialProviderMapperEntity current = mapper("acme");
+        current.setId("mapper-1");
+        current.setName("current");
+        SocialProviderMapperEntity duplicate = mapper("acme");
+        duplicate.setId("mapper-2");
+        when(mapperRepository.findById("mapper-1")).thenReturn(Optional.of(current));
+        when(mapperRepository.findAll()).thenReturn(List.of(current, duplicate));
+        assertThatThrownBy(
+                        () ->
+                                service.updateMapper(
+                                        "provider-1", "mapper-1", mapperRequest("email-mapper")))
+                .isInstanceOf(ApiException.class);
+
+        when(mapperRepository.existsByProviderAliasAndNameIgnoreCase("acme", "read-only"))
+                .thenReturn(false);
+        when(mapperRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        assertThat(service.createMapper("provider-1", mapperRequest("read-only")).syncMode())
+                .isEqualTo("read_only");
+
+        provider.setClientSecretEncrypted(" ");
+        assertThat(service.findById("provider-1").clientSecretConfigured()).isFalse();
+        provider.setClientId(null);
+        provider.setClientSecretEncrypted("encrypted");
+        assertThat(service.findById("provider-1"))
+                .satisfies(
+                        result -> {
+                            assertThat(result.configured()).isFalse();
+                            assertThat(result.clientSecretConfigured()).isTrue();
+                        });
     }
 
     @Test
@@ -273,7 +325,7 @@ class AdminIdentityProviderServiceTest {
 
     @Test
     void rejectsUpdateConflictsAndAllowsKeepingExistingSecret() {
-        SocialProviderEntity existing = provider();
+        final SocialProviderEntity existing = provider();
         SocialProviderEntity other = provider();
         other.setId("provider-2");
         other.setRegistrationId("other");
@@ -284,11 +336,20 @@ class AdminIdentityProviderServiceTest {
                 .isInstanceOf(ApiException.class);
 
         when(providerRepository.findByRegistrationId("acme")).thenReturn(Optional.of(existing));
+        when(providerRepository.findByAliasIgnoreCase("acme")).thenReturn(Optional.of(existing));
         when(providerRepository.findByAliasIgnoreCase("new-alias")).thenReturn(Optional.empty());
-        AdminIdentityProviderRequestDTO changed = request("New");
+        AdminIdentityProviderRequestDTO changed = requestWithClientSecret(request("New"), null);
         when(providerRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         service.update("provider-1", changed);
         assertThat(existing.getClientSecretEncrypted()).isEqualTo("encrypted");
+
+        SocialProviderEntity aliasConflict = provider();
+        aliasConflict.setId("provider-2");
+        aliasConflict.setAlias("other");
+        when(providerRepository.findByAliasIgnoreCase("other"))
+                .thenReturn(Optional.of(aliasConflict));
+        assertThatThrownBy(() -> service.update("provider-1", requestWithAlias("Other", "other")))
+                .isInstanceOf(ApiException.class);
     }
 
     @Test
@@ -374,6 +435,18 @@ class AdminIdentityProviderServiceTest {
                         base.scopes(),
                         base.userNameAttribute());
         assertThatThrownBy(() -> service.create(blankSecret)).isInstanceOf(ApiException.class);
+
+        assertThatThrownBy(() -> service.create(requestWithClientSecret(base, null)))
+                .isInstanceOf(ApiException.class);
+
+        AdminIdentityProviderRequestDTO missingToken =
+                requestWithEndpoints(base, "https://acme.example/authorize", null);
+        assertThatThrownBy(() -> service.create(missingToken)).isInstanceOf(ApiException.class);
+
+        AdminIdentityProviderRequestDTO missingAuthorization =
+                requestWithEndpoints(base, null, "https://acme.example/token");
+        assertThatThrownBy(() -> service.create(missingAuthorization))
+                .isInstanceOf(ApiException.class);
     }
 
     @Test
@@ -565,8 +638,78 @@ class AdminIdentityProviderServiceTest {
                 base.userNameAttribute());
     }
 
+    private static AdminIdentityProviderRequestDTO requestWithClientSecret(
+            AdminIdentityProviderRequestDTO base, String clientSecret) {
+        return new AdminIdentityProviderRequestDTO(
+                base.registrationId(),
+                base.providerType(),
+                base.displayName(),
+                base.alias(),
+                base.iconKey(),
+                base.shortStateParameter(),
+                base.caseSensitiveUsername(),
+                base.enabled(),
+                base.clientId(),
+                clientSecret,
+                base.hideOnLogin(),
+                base.accountLinkingOnly(),
+                base.trustEmail(),
+                base.mfaRequired(),
+                base.requiredClaims(),
+                base.storeTokens(),
+                base.storedTokensReadable(),
+                base.guiOrder(),
+                base.showInAccountConsole(),
+                base.syncMode(),
+                base.authorizationUri(),
+                base.tokenUri(),
+                base.userInfoUri(),
+                base.jwkSetUri(),
+                base.issuerUri(),
+                base.clientAuthenticationMethod(),
+                base.scopes(),
+                base.userNameAttribute());
+    }
+
+    private static AdminIdentityProviderRequestDTO requestWithEndpoints(
+            AdminIdentityProviderRequestDTO base, String authorizationUri, String tokenUri) {
+        return new AdminIdentityProviderRequestDTO(
+                base.registrationId(),
+                base.providerType(),
+                base.displayName(),
+                base.alias(),
+                base.iconKey(),
+                base.shortStateParameter(),
+                base.caseSensitiveUsername(),
+                base.enabled(),
+                base.clientId(),
+                base.clientSecret(),
+                base.hideOnLogin(),
+                base.accountLinkingOnly(),
+                base.trustEmail(),
+                base.mfaRequired(),
+                base.requiredClaims(),
+                base.storeTokens(),
+                base.storedTokensReadable(),
+                base.guiOrder(),
+                base.showInAccountConsole(),
+                base.syncMode(),
+                authorizationUri,
+                tokenUri,
+                base.userInfoUri(),
+                base.jwkSetUri(),
+                base.issuerUri(),
+                base.clientAuthenticationMethod(),
+                base.scopes(),
+                base.userNameAttribute());
+    }
+
     private static AdminProviderMapperRequestDTO mapperRequest() {
+        return mapperRequest("inherit");
+    }
+
+    private static AdminProviderMapperRequestDTO mapperRequest(String syncMode) {
         return new AdminProviderMapperRequestDTO(
-                " email-mapper ", " email ", " email ", "user-attribute", "inherit", true, true);
+                " email-mapper ", " email ", " email ", "user-attribute", syncMode, true, true);
     }
 }

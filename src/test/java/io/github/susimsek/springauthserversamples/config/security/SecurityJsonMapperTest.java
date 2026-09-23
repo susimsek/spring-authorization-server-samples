@@ -183,7 +183,39 @@ class SecurityJsonMapperTest {
                         + "\"user\":{\"name\":\"admin\",\"displayName\":\"Admin\",\"id\":\"AQID\"},"
                         + "\"challenge\":\"BAUG\",\"pubKeyCredParams\":[{\"alg\":1,\"type\":\"public-key\"}],"
                         + "\"excludeCredentials\":[]}";
-        assertThatThrownBy(
-                () -> mapper.readSessionAttribute(new ByteArrayInputStream(invalid.getBytes())));
+        ByteArrayInputStream invalidInput = new ByteArrayInputStream(invalid.getBytes());
+        assertThatThrownBy(() -> mapper.readSessionAttribute(invalidInput))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void readsWebauthnPayloadsWithMissingOptionalFieldsAndStringTimeouts() throws Exception {
+        SecurityJsonMapper mapper = new SecurityJsonMapper(getClass().getClassLoader());
+        String creationMarker = "spring-security-webauthn-creation-options\n";
+        String creationJson =
+                "{\"rp\":{\"id\":\"localhost\",\"name\":\"Sample\"},"
+                    + "\"user\":{\"name\":\"admin\",\"displayName\":\"Admin\",\"id\":\"AQID\"},"
+                    + "\"challenge\":\"BAUG\",\"pubKeyCredParams\":null,"
+                    + "\"excludeCredentials\":[{\"type\":\"public-key\",\"id\":\"CQgH\",\"transports\":null}],"
+                    + "\"timeout\":\"PT30S\",\"authenticatorSelection\":{"
+                    + "\"authenticatorAttachment\":null,\"residentKey\":null,"
+                    + "\"userVerification\":null},\"attestation\":null}";
+        Object creation =
+                mapper.readSessionAttribute(
+                        new ByteArrayInputStream((creationMarker + creationJson).getBytes()));
+        assertThat(creation).isInstanceOf(PublicKeyCredentialCreationOptions.class);
+        assertThat(((PublicKeyCredentialCreationOptions) creation).getExcludeCredentials())
+                .hasSize(1);
+
+        String requestMarker = "spring-security-webauthn-request-options\n";
+        String requestJson =
+                "{\"challenge\":\"BAUG\",\"rpId\":\"localhost\"," + "\"allowCredentials\":null}";
+        Object request =
+                mapper.readSessionAttribute(
+                        new ByteArrayInputStream((requestMarker + requestJson).getBytes()));
+        assertThat(request)
+                .isInstanceOf(
+                        org.springframework.security.web.webauthn.api
+                                .PublicKeyCredentialRequestOptions.class);
     }
 }

@@ -28,8 +28,8 @@ class AuthorityEntityTest {
                 .isNotEqualTo(withoutId)
                 .isNotEqualTo(otherWithoutId)
                 .isNotEqualTo(null)
-                .isNotEqualTo("authority");
-        assertThat(authority.hashCode()).isEqualTo(AuthorityEntity.class.hashCode());
+                .isNotEqualTo("authority")
+                .hasSameHashCodeAs(AuthorityEntity.class);
         assertThat(withoutId).isNotEqualTo(authority);
     }
 
@@ -40,7 +40,6 @@ class AuthorityEntityTest {
         proxy.setId(1L);
 
         assertThat(authority).isEqualTo(proxy);
-        assertThat(proxy).isEqualTo(authority);
-        assertThat(proxy.hashCode()).isEqualTo(AuthorityEntity.class.hashCode());
+        assertThat(proxy).isEqualTo(authority).hasSameHashCodeAs(AuthorityEntity.class);
     }
 }

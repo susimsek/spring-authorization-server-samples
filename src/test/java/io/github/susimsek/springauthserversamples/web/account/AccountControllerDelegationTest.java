@@ -43,7 +43,7 @@ class AccountControllerDelegationTest {
 
     @Test
     void delegatesAccountAvatarEndpoints() {
-        var controller =
+        final var controller =
                 new AccountController(
                         profileService,
                         userProfileService,
@@ -53,7 +53,7 @@ class AccountControllerDelegationTest {
                         deletionService,
                         mfaService,
                         recoveryCodeService);
-        Authentication authentication =
+        final Authentication authentication =
                 UsernamePasswordAuthenticationToken.authenticated(
                         "alice", "ignored", java.util.List.of());
         var avatar = new AccountAvatarDTO("/avatars/alice?v=1");
@@ -73,7 +73,7 @@ class AccountControllerDelegationTest {
 
     @Test
     void delegatesProfileSessionMfaApplicationAndPasskeyEndpoints() {
-        var controller =
+        final var controller =
                 new AccountController(
                         profileService,
                         userProfileService,
@@ -84,15 +84,15 @@ class AccountControllerDelegationTest {
                         mfaService,
                         recoveryCodeService,
                         webAuthnService);
-        Authentication authentication =
+        final Authentication authentication =
                 UsernamePasswordAuthenticationToken.authenticated(
                         "alice", "ignored", java.util.List.of());
         var jwt = mock(org.springframework.security.oauth2.jwt.Jwt.class);
         when(jwt.getClaimAsString("sid")).thenReturn("sid-1");
         when(jwt.getClaimAsInstant("auth_time"))
                 .thenReturn(java.time.Instant.parse("2026-01-01T00:00:00Z"));
-        var pageable = org.springframework.data.domain.PageRequest.of(0, 20);
-        var profileRequest = mock(AccountProfileRequestDTO.class);
+        final var pageable = org.springframework.data.domain.PageRequest.of(0, 20);
+        final var profileRequest = mock(AccountProfileRequestDTO.class);
         var attributesRequest = mock(UserProfileAttributesRequestDTO.class);
         when(attributesRequest.attributes())
                 .thenReturn(java.util.Map.of("department", java.util.List.of("security")));

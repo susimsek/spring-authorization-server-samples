@@ -12,12 +12,13 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration(proxyBeanMethods = false)
+@SuppressWarnings("java:S112")
 public class AccountApiSecurityConfig {
 
     @Bean
     @Order(2)
     SecurityFilterChain accountApiSecurityFilterChain(
-            HttpSecurity http, JwtDecoder accountApiJwtDecoder) throws Exception {
+            HttpSecurity http, JwtDecoder accountApiJwtDecoder) {
         ConsoleApiSecurity.stateless(http);
         http.securityMatcher("/api/account/**")
                 .authorizeHttpRequests(

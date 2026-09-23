@@ -225,11 +225,13 @@ class SecurityConfigTest {
                 mock(ObjectProvider.class);
         ObjectProvider<OAuth2AuthorizationRequestResolver> resolverProvider =
                 mock(ObjectProvider.class);
+        SocialLoginAuthenticationSuccessHandler successHandler =
+                mock(SocialLoginAuthenticationSuccessHandler.class);
+        OAuth2AuthorizationRequestResolver resolver =
+                mock(OAuth2AuthorizationRequestResolver.class);
         when(clientProvider.getIfAvailable()).thenReturn(repository);
-        when(successProvider.getObject())
-                .thenReturn(mock(SocialLoginAuthenticationSuccessHandler.class));
-        when(resolverProvider.getObject())
-                .thenReturn(mock(OAuth2AuthorizationRequestResolver.class));
+        when(successProvider.getObject()).thenReturn(successHandler);
+        when(resolverProvider.getObject()).thenReturn(resolver);
 
         SecurityConfig securityConfig =
                 new SecurityConfig(
@@ -408,7 +410,7 @@ class SecurityConfigTest {
                         return object;
                     }
                 };
-        HttpSecurity httpSecurity =
+        final HttpSecurity httpSecurity =
                 new HttpSecurity(
                         postProcessor,
                         new AuthenticationManagerBuilder(postProcessor),

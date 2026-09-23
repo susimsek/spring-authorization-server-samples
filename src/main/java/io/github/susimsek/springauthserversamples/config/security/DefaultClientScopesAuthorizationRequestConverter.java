@@ -9,6 +9,7 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.security.oauth2.server.authorization.web.authentication.OAuth2AuthorizationCodeRequestAuthenticationConverter;
 import org.springframework.security.web.authentication.AuthenticationConverter;
 
+@SuppressWarnings("java:S4449")
 public final class DefaultClientScopesAuthorizationRequestConverter
         implements AuthenticationConverter {
 
