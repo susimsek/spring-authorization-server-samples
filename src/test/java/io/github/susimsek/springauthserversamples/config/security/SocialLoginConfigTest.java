@@ -11,6 +11,7 @@ import org.mockito.Mockito;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 
+@SuppressWarnings("java:S5778")
 class SocialLoginConfigTest {
 
     @Test

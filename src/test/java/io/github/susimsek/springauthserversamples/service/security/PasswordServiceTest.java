@@ -1,6 +1,7 @@
 package io.github.susimsek.springauthserversamples.service.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -11,8 +12,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 class PasswordServiceTest {
 
-    private final PasswordPolicyService policyService = org.mockito.Mockito.mock();
-    private final PasswordEncoder passwordEncoder = org.mockito.Mockito.mock();
+    private final PasswordPolicyService policyService = mock();
+    private final PasswordEncoder passwordEncoder = mock();
     private final PasswordService service = new PasswordService(policyService, passwordEncoder);
 
     @Test

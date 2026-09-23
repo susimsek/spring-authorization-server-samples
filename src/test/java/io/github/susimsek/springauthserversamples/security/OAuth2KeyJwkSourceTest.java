@@ -1,6 +1,7 @@
 package io.github.susimsek.springauthserversamples.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.nimbusds.jose.JWSAlgorithm;
@@ -15,13 +16,12 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 class OAuth2KeyJwkSourceTest {
 
     @Test
     void selectsKeysFromDatabaseBackedJwkSet() throws Exception {
-        OAuth2KeyService service = Mockito.mock(OAuth2KeyService.class);
+        OAuth2KeyService service = mock(OAuth2KeyService.class);
         KeyPair keyPair = TestKeySupport.generateRsaKey();
         RSAKey rsaKey =
                 new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())

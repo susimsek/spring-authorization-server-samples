@@ -45,6 +45,7 @@ import org.springframework.security.web.webauthn.management.WebAuthnRelyingParty
 import org.springframework.security.web.webauthn.management.Webauthn4JRelyingPartyOperations;
 
 @Configuration(proxyBeanMethods = false)
+@SuppressWarnings("java:S6213")
 public class WebAuthnConfig {
 
     @Bean

@@ -3,6 +3,7 @@ package io.github.susimsek.springauthserversamples.config.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -87,8 +88,7 @@ class SocialLoginAuthenticationSuccessHandlerTest {
 
         assertThat(response.getRedirectedUrl()).isEqualTo("/login?error");
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
-        verify(securityContextRepository, org.mockito.Mockito.never())
-                .saveContext(any(), any(), any());
+        verify(securityContextRepository, never()).saveContext(any(), any(), any());
     }
 
     @Test

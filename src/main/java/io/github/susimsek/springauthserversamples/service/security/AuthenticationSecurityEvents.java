@@ -31,9 +31,10 @@ public class AuthenticationSecurityEvents {
 
     private static String username(Authentication authentication) {
         Object principal = authentication == null ? null : authentication.getPrincipal();
-        return principal instanceof String value
-                ? value
-                : authentication == null ? null : authentication.getName();
+        if (principal instanceof String value) {
+            return value;
+        }
+        return authentication == null ? null : authentication.getName();
     }
 
     private static String remoteAddress() {

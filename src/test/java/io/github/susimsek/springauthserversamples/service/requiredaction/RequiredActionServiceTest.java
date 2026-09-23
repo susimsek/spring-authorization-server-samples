@@ -36,6 +36,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("java:S5778")
 class RequiredActionServiceTest {
 
     @Mock private UserRepository userRepository;
@@ -65,7 +66,7 @@ class RequiredActionServiceTest {
                 .thenReturn(Optional.empty());
 
         assertThat(service().pending("alice"))
-                .extracting(action -> action.key())
+                .extracting(RequiredActionDTO::key)
                 .containsExactly("UPDATE_PROFILE", "TERMS_AND_CONDITIONS");
     }
 

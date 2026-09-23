@@ -2,6 +2,7 @@ package io.github.susimsek.springauthserversamples.service.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -22,6 +23,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("java:S5778")
 class AdminAvatarServiceTest {
 
     @Mock private AdminUserService adminUserService;
@@ -111,7 +113,7 @@ class AdminAvatarServiceTest {
                 .isInstanceOf(ApiException.class)
                 .hasMessage("Avatar must not exceed 2 MiB");
 
-        MultipartFile unreadable = org.mockito.Mockito.mock(MultipartFile.class);
+        MultipartFile unreadable = mock(MultipartFile.class);
         when(unreadable.isEmpty()).thenReturn(false);
         when(unreadable.getSize()).thenReturn(10L);
         when(unreadable.getBytes()).thenThrow(new IOException("read failure"));
@@ -135,7 +137,7 @@ class AdminAvatarServiceTest {
     }
 
     @Test
-    void rejectsUnsupportedImageFormat() throws Exception {
+    void rejectsUnsupportedImageFormat() {
         UserEntity user = new UserEntity();
         user.setId(5L);
         when(adminUserService.requireManageableUser(5L, "admin")).thenReturn(user);

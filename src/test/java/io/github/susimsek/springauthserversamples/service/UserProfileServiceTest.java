@@ -31,6 +31,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("java:S5778")
 class UserProfileServiceTest {
 
     @Mock private UserProfileAttributeDefinitionRepository definitionRepository;

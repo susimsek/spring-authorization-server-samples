@@ -3,7 +3,9 @@ package io.github.susimsek.springauthserversamples.service.account;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -287,8 +289,7 @@ class UserActionServiceTest {
 
     @Test
     void sendsVerificationAndEmailChangeActionsWithLocalizedRoutes() {
-        EmailSettingsService emailSettingsService =
-                org.mockito.Mockito.mock(EmailSettingsService.class);
+        EmailSettingsService emailSettingsService = mock(EmailSettingsService.class);
         when(emailSettingsService.current())
                 .thenReturn(
                         new EmailSettingsService.EmailConfiguration(
@@ -317,7 +318,7 @@ class UserActionServiceTest {
 
         ArgumentCaptor<UserActionEmailEvent> events =
                 ArgumentCaptor.forClass(UserActionEmailEvent.class);
-        verify(eventPublisher, org.mockito.Mockito.times(2)).publishEvent(events.capture());
+        verify(eventPublisher, times(2)).publishEvent(events.capture());
         assertThat(events.getAllValues().get(0).actionUrl()).contains("/verify-email?");
         assertThat(events.getAllValues().get(0).locale()).isEqualTo(Locale.forLanguageTag("tr"));
         assertThat(events.getAllValues().get(1).actionUrl()).contains("/confirm-email?");

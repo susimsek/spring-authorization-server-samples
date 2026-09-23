@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("java:S5778")
 class DomainUserDetailsServiceTest {
 
     @Mock private UserRepository userRepository;

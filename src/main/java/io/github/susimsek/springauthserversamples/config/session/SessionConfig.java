@@ -75,10 +75,8 @@ public class SessionConfig {
                     Duration.ofMinutes(
                             loginSettingsService.adminLoginSettings().sessionTimeoutMinutes());
         }
-        sessionRepository.setDefaultMaxInactiveInterval(
-                timeout != null ? timeout : MapSession.DEFAULT_MAX_INACTIVE_INTERVAL);
-        return createSessionCleanupScheduler(
-                sessionRepository, taskScheduler, applicationProperties.session().cleanupCron());
+        return configureSessionCleanupScheduler(
+                sessionRepository, taskScheduler, applicationProperties, timeout);
     }
 
     SessionCleanupScheduler sessionCleanupScheduler(
@@ -86,22 +84,18 @@ public class SessionConfig {
             TaskScheduler taskScheduler,
             SessionProperties sessionProperties,
             ApplicationProperties applicationProperties) {
-        return createSessionCleanupScheduler(
-                sessionRepository, taskScheduler, sessionProperties, applicationProperties, null);
+        return configureSessionCleanupScheduler(
+                sessionRepository,
+                taskScheduler,
+                applicationProperties,
+                sessionProperties.getTimeout());
     }
 
-    private static SessionCleanupScheduler createSessionCleanupScheduler(
+    private static SessionCleanupScheduler configureSessionCleanupScheduler(
             JpaIndexedSessionRepository sessionRepository,
             TaskScheduler taskScheduler,
-            SessionProperties sessionProperties,
             ApplicationProperties applicationProperties,
-            LoginSettingsService loginSettingsService) {
-        Duration timeout = sessionProperties.getTimeout();
-        if (loginSettingsService != null) {
-            timeout =
-                    Duration.ofMinutes(
-                            loginSettingsService.adminLoginSettings().sessionTimeoutMinutes());
-        }
+            Duration timeout) {
         sessionRepository.setDefaultMaxInactiveInterval(
                 timeout != null ? timeout : MapSession.DEFAULT_MAX_INACTIVE_INTERVAL);
         return createSessionCleanupScheduler(

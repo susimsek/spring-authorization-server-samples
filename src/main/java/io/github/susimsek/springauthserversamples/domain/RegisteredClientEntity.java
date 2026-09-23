@@ -72,12 +72,12 @@ public class RegisteredClientEntity extends AuditableEntity {
             return false;
         }
         Class<?> otherEffectiveClass =
-                o instanceof HibernateProxy
-                        ? ((HibernateProxy) o).getHibernateLazyInitializer().getPersistentClass()
+                o instanceof HibernateProxy hibernateProxy
+                        ? hibernateProxy.getHibernateLazyInitializer().getPersistentClass()
                         : o.getClass();
         Class<?> thisEffectiveClass =
-                this instanceof HibernateProxy
-                        ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass()
+                this instanceof HibernateProxy hibernateProxy
+                        ? hibernateProxy.getHibernateLazyInitializer().getPersistentClass()
                         : this.getClass();
         if (thisEffectiveClass != otherEffectiveClass) {
             return false;
@@ -88,11 +88,8 @@ public class RegisteredClientEntity extends AuditableEntity {
 
     @Override
     public int hashCode() {
-        return this instanceof HibernateProxy
-                ? ((HibernateProxy) this)
-                        .getHibernateLazyInitializer()
-                        .getPersistentClass()
-                        .hashCode()
+        return this instanceof HibernateProxy hibernateProxy
+                ? hibernateProxy.getHibernateLazyInitializer().getPersistentClass().hashCode()
                 : getClass().hashCode();
     }
 }

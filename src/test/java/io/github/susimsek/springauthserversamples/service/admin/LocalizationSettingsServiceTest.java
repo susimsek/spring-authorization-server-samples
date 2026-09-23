@@ -37,6 +37,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("java:S5778")
 class LocalizationSettingsServiceTest {
 
     @Mock private LocalizationSettingsRepository settingsRepository;
@@ -288,16 +289,17 @@ class LocalizationSettingsServiceTest {
         var result = service().bundledMessages("en", "backend");
 
         assertThat(result)
-                .containsEntry("app.security.unauthorized", "Authentication is required.");
-        assertThat(result).doesNotContainKey("mail.test.subject");
+                .containsEntry("app.security.unauthorized", "Authentication is required.")
+                .doesNotContainKey("mail.test.subject");
     }
 
     @Test
     void exposesBundledEmailMessagesForEffectiveMessageSearch() {
         var result = service().bundledMessages("en", "email");
 
-        assertThat(result).containsEntry("mail.test.subject", "SMTP connection test");
-        assertThat(result).doesNotContainKey("app.security.unauthorized");
+        assertThat(result)
+                .containsEntry("mail.test.subject", "SMTP connection test")
+                .doesNotContainKey("app.security.unauthorized");
     }
 
     private LocalizationSettingsService service() {

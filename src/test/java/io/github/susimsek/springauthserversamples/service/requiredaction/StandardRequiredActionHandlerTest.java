@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.OptionalLong;
 import org.junit.jupiter.api.Test;
 
+@SuppressWarnings("java:S5778")
 class StandardRequiredActionHandlerTest {
 
     private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();

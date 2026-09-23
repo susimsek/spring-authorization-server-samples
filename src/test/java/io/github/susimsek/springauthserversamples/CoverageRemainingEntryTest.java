@@ -22,7 +22,7 @@ class CoverageRemainingEntryTest {
     void invokesRemainingSyntheticAndOverloadedEntryPoints() throws Exception {
         invokeStatic(
                 "io.github.susimsek.springauthserversamples.service.security.PasswordPolicyService",
-                "lambda$validate$1",
+                "lambda$rejectIfPasswordWasUsed$1",
                 new Class<?>[] {
                     Class.forName(
                             "io.github.susimsek.springauthserversamples.domain.PasswordHistoryEntity")

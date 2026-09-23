@@ -81,7 +81,7 @@ class ControllerMethodCoverageTest {
     private static Object dependency(Class<?> type) {
         try {
             return mock(type);
-        } catch (RuntimeException exception) {
+        } catch (RuntimeException _) {
             return null;
         }
     }

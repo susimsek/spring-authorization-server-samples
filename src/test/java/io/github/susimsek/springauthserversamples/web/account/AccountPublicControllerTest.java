@@ -33,6 +33,7 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 
+@SuppressWarnings("java:S5778")
 class AccountPublicControllerTest {
 
     @Test

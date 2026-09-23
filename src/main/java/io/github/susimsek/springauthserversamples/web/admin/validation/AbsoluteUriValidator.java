@@ -14,7 +14,7 @@ public class AbsoluteUriValidator implements ConstraintValidator<AbsoluteUri, St
         try {
             URI uri = URI.create(value);
             return uri.isAbsolute() && uri.getScheme() != null && uri.getFragment() == null;
-        } catch (IllegalArgumentException exception) {
+        } catch (IllegalArgumentException _) {
             return false;
         }
     }

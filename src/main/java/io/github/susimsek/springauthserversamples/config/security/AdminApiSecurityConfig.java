@@ -20,6 +20,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtGra
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration(proxyBeanMethods = false)
+@SuppressWarnings("java:S112")
 public class AdminApiSecurityConfig {
 
     private static final String USERS_API_PATH = "/api/admin/users/**";
@@ -27,7 +28,7 @@ public class AdminApiSecurityConfig {
     @Bean
     @Order(1)
     SecurityFilterChain adminApiSecurityFilterChain(
-            HttpSecurity http, JwtDecoder adminApiJwtDecoder) throws Exception {
+            HttpSecurity http, JwtDecoder adminApiJwtDecoder) {
         ConsoleApiSecurity.stateless(http);
         http.securityMatcher("/api/admin/**")
                 .authorizeHttpRequests(

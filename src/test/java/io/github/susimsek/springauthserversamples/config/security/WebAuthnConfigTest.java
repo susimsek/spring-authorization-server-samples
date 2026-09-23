@@ -6,6 +6,7 @@ import static org.mockito.Answers.RETURNS_SELF;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -23,7 +24,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
 import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -41,6 +41,7 @@ import org.springframework.security.web.webauthn.management.UserCredentialReposi
 import org.springframework.security.web.webauthn.management.WebAuthnRelyingPartyOperations;
 import org.springframework.security.web.webauthn.management.Webauthn4JRelyingPartyOperations;
 
+@SuppressWarnings("java:S6213")
 class WebAuthnConfigTest {
 
     private final WebAuthnConfig config = new WebAuthnConfig();
@@ -160,7 +161,7 @@ class WebAuthnConfigTest {
                                         .PublicKeyCredentialRequestOptions
                                         .PublicKeyCredentialRequestOptionsBuilder>>
                 requestCustomizer = new AtomicReference<>();
-        try (MockedConstruction<Webauthn4JRelyingPartyOperations> ignored =
+        try (var _ =
                 Mockito.mockConstruction(
                         Webauthn4JRelyingPartyOperations.class,
                         (delegate, context) -> {
@@ -254,7 +255,7 @@ class WebAuthnConfigTest {
         when(record.getCredentialId()).thenReturn(credentialId);
         when(credentials.findByCredentialId(record.getCredentialId())).thenReturn(record);
 
-        try (MockedConstruction<Webauthn4JRelyingPartyOperations> ignored =
+        try (var _ =
                 Mockito.mockConstruction(
                         Webauthn4JRelyingPartyOperations.class,
                         (delegate, context) ->
@@ -297,7 +298,7 @@ class WebAuthnConfigTest {
         when(record.getAttestationObject()).thenReturn(new Bytes(attestationObject(allowedAaguid)));
         when(credentials.findByCredentialId(credentialId)).thenReturn(record);
 
-        try (MockedConstruction<Webauthn4JRelyingPartyOperations> ignored =
+        try (var _ =
                 Mockito.mockConstruction(
                         Webauthn4JRelyingPartyOperations.class,
                         (delegate, context) ->
@@ -307,7 +308,7 @@ class WebAuthnConfigTest {
                             users, credentials, properties(), settings);
 
             operations.registerCredential(mock(RelyingPartyRegistrationRequest.class));
-            verify(credentials, org.mockito.Mockito.never()).delete(credentialId);
+            verify(credentials, never()).delete(credentialId);
 
             UUID disallowedAaguid = UUID.fromString("00000000-0000-0000-0000-000000000002");
             when(record.getAttestationObject())

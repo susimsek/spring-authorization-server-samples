@@ -1,5 +1,6 @@
 package io.github.susimsek.springauthserversamples.service.account;
 
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import io.github.susimsek.springauthserversamples.domain.UserAction;
@@ -22,7 +23,7 @@ class UserActionEmailListenerTest {
         listener.send(event(UserAction.VERIFY_EMAIL));
         listener.send(event(UserAction.UPDATE_EMAIL));
 
-        verify(mailService, org.mockito.Mockito.times(2))
+        verify(mailService, times(2))
                 .sendEmailVerification("alice@example.com", "alice", Locale.ENGLISH, "/action");
     }
 

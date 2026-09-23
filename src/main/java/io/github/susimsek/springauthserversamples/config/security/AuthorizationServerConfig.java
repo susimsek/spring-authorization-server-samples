@@ -34,6 +34,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.OAuth2Token;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
@@ -84,7 +85,10 @@ public class AuthorizationServerConfig {
                 new OAuth2AuthorizationServerConfigurer();
 
         http.securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
-                .csrf(AbstractHttpConfigurer::disable)
+                .csrf(
+                        AbstractHttpConfigurer
+                                ::disable) // NOSONAR - OAuth2 protocol endpoints use bearer/client
+                // authentication, not browser cookies.
                 .securityContext(
                         securityContext ->
                                 securityContext
@@ -359,7 +363,7 @@ public class AuthorizationServerConfig {
                     .claim(
                             "roles",
                             context.getPrincipal().getAuthorities().stream()
-                                    .map(authority -> authority.getAuthority())
+                                    .map(GrantedAuthority::getAuthority)
                                     .sorted()
                                     .collect(Collectors.toList()));
         }
@@ -448,7 +452,7 @@ public class AuthorizationServerConfig {
                                             (name, claim) ->
                                                     context.getClaims().claim(name, claim));
                                 }
-                            } catch (Exception ignored) {
+                            } catch (Exception _) {
                                 // A malformed optional mapper payload must not block token
                                 // issuance.
                             }

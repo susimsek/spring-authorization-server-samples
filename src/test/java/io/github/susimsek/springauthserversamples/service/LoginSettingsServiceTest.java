@@ -18,6 +18,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+@SuppressWarnings({"java:S5778", "java:S5961"})
 class LoginSettingsServiceTest {
 
     private final LoginSettingsRepository repository = mock(LoginSettingsRepository.class);

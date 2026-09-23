@@ -183,8 +183,9 @@ class SecurityJsonMapperTest {
                         + "\"user\":{\"name\":\"admin\",\"displayName\":\"Admin\",\"id\":\"AQID\"},"
                         + "\"challenge\":\"BAUG\",\"pubKeyCredParams\":[{\"alg\":1,\"type\":\"public-key\"}],"
                         + "\"excludeCredentials\":[]}";
-        assertThatThrownBy(
-                () -> mapper.readSessionAttribute(new ByteArrayInputStream(invalid.getBytes())));
+        ByteArrayInputStream invalidInput = new ByteArrayInputStream(invalid.getBytes());
+        assertThatThrownBy(() -> mapper.readSessionAttribute(invalidInput))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

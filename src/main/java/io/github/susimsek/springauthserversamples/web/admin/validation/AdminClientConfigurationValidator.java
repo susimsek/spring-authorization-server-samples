@@ -10,6 +10,10 @@ import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 public class AdminClientConfigurationValidator
         implements ConstraintValidator<ValidAdminClientConfiguration, AdminClientRequestDTO> {
 
+    private static final String CLIENT_AUTHENTICATION_METHODS_FIELD = "clientAuthenticationMethods";
+    private static final String AUTHORIZATION_GRANT_TYPES_FIELD = "authorizationGrantTypes";
+    private static final String SELECTION_MESSAGE = "{app.api.problem.violation.selection}";
+
     private static final Set<String> ALLOWED_METHODS =
             Set.of(
                     ClientAuthenticationMethod.CLIENT_SECRET_BASIC.getValue(),
@@ -38,16 +42,13 @@ public class AdminClientConfigurationValidator
                 || (methods.contains(ClientAuthenticationMethod.NONE.getValue())
                         && methods.size() > 1)) {
             valid = false;
-            violation(
-                    context,
-                    "clientAuthenticationMethods",
-                    "{app.api.problem.violation.selection}");
+            violation(context, CLIENT_AUTHENTICATION_METHODS_FIELD, SELECTION_MESSAGE);
         }
         if (!ALLOWED_GRANTS.containsAll(grants)
                 || (methods.contains(ClientAuthenticationMethod.NONE.getValue())
                         && grants.contains(AuthorizationGrantType.CLIENT_CREDENTIALS.getValue()))) {
             valid = false;
-            violation(context, "authorizationGrantTypes", "{app.api.problem.violation.selection}");
+            violation(context, AUTHORIZATION_GRANT_TYPES_FIELD, SELECTION_MESSAGE);
         }
 
         boolean authorizationCode =
@@ -61,11 +62,11 @@ public class AdminClientConfigurationValidator
                 && authorizationCode
                 && !request.requireProofKey()) {
             valid = false;
-            violation(context, "authorizationGrantTypes", "{app.api.problem.violation.selection}");
+            violation(context, AUTHORIZATION_GRANT_TYPES_FIELD, SELECTION_MESSAGE);
         }
         if (request.requireProofKey() && !authorizationCode) {
             valid = false;
-            violation(context, "authorizationGrantTypes", "{app.api.problem.violation.selection}");
+            violation(context, AUTHORIZATION_GRANT_TYPES_FIELD, SELECTION_MESSAGE);
         }
         return valid;
     }

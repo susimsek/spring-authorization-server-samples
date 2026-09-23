@@ -53,8 +53,8 @@ class RegisteredClientEntityTest {
                 .isNotEqualTo(different)
                 .isNotEqualTo(withoutId)
                 .isNotEqualTo(null)
-                .isNotEqualTo("registeredClient");
-        assertThat(entity.hashCode()).isEqualTo(RegisteredClientEntity.class.hashCode());
+                .isNotEqualTo("registeredClient")
+                .hasSameHashCodeAs(RegisteredClientEntity.class);
     }
 
     @Test
@@ -66,7 +66,6 @@ class RegisteredClientEntityTest {
         proxy.setId("id-1");
 
         assertThat(entity).isEqualTo(proxy);
-        assertThat(proxy).isEqualTo(entity);
-        assertThat(proxy.hashCode()).isEqualTo(RegisteredClientEntity.class.hashCode());
+        assertThat(proxy).isEqualTo(entity).hasSameHashCodeAs(RegisteredClientEntity.class);
     }
 }

@@ -42,7 +42,7 @@ public class SocialLoginService {
     private static final String LINKEDIN = "linkedin";
 
     private static final Set<String> SUPPORTED_PROVIDERS =
-            Set.of("google", "github", "linkedin", "microsoft");
+            Set.of("google", "github", LINKEDIN, "microsoft");
 
     public static final String PENDING_SOCIAL_LINK = "socialLogin.pendingLink";
     public static final String PENDING_SOCIAL_LINK_TARGET = "socialLogin.pendingLinkTarget";
@@ -541,7 +541,7 @@ public class SocialLoginService {
                             && uri.getFragment() == null
                     ? uri.toString()
                     : null;
-        } catch (IllegalArgumentException exception) {
+        } catch (IllegalArgumentException _) {
             return null;
         }
     }

@@ -85,7 +85,7 @@ public class SocialProviderLogoutEndpointResolver {
                 return null;
             }
             return value;
-        } catch (RuntimeException exception) {
+        } catch (RuntimeException _) {
             return null;
         }
     }

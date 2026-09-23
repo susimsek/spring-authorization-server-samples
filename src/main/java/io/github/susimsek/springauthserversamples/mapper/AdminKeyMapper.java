@@ -7,6 +7,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.MappingConstants;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
+@SuppressWarnings("java:S107")
 public interface AdminKeyMapper {
 
     @org.mapstruct.Mapping(target = "createdAt", ignore = true)

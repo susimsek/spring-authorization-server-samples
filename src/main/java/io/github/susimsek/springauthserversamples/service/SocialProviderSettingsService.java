@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("java:S107")
 public class SocialProviderSettingsService {
 
     private static final String GOOGLE = "google";
@@ -53,6 +54,10 @@ public class SocialProviderSettingsService {
 
     @Transactional(readOnly = true)
     public List<AdminSocialProviderDTO> adminSettings() {
+        return adminSettingsInternal();
+    }
+
+    private List<AdminSocialProviderDTO> adminSettingsInternal() {
         LoginSettingsEntity settings = settings();
         return effectiveProviders(settings).sorted().map(this::toAdminDTO).toList();
     }
@@ -93,10 +98,10 @@ public class SocialProviderSettingsService {
     }
 
     public void refreshClientRegistrations() {
-        ReloadableClientRegistrationRepository repository =
+        ReloadableClientRegistrationRepository clientRegistration =
                 clientRegistrationRepository.getIfAvailable();
-        if (repository != null) {
-            repository.replace(
+        if (clientRegistration != null) {
+            clientRegistration.replace(
                     io.github.susimsek.springauthserversamples.config.security.SocialLoginConfig
                             .registrations(configuredProvidersInternal()));
         }
@@ -154,7 +159,7 @@ public class SocialProviderSettingsService {
         repository.save(settings);
         refreshClientRegistrations();
         auditEventService.record("social.providers.updated", "social-providers", "default");
-        return adminSettings();
+        return adminSettingsInternal();
     }
 
     public List<ProviderCredentials> effectiveProviders() {
@@ -498,7 +503,8 @@ public class SocialProviderSettingsService {
             case GITHUB -> settings.setGithubAlias(value);
             case LINKEDIN -> settings.setLinkedinAlias(value);
             case MICROSOFT -> settings.setMicrosoftAlias(value);
-            default -> {}
+            default -> { // Unknown providers are intentionally ignored.
+            }
         }
     }
 
@@ -508,7 +514,8 @@ public class SocialProviderSettingsService {
             case GITHUB -> settings.setGithubHideOnLogin(value);
             case LINKEDIN -> settings.setLinkedinHideOnLogin(value);
             case MICROSOFT -> settings.setMicrosoftHideOnLogin(value);
-            default -> {}
+            default -> { // Unknown providers are intentionally ignored.
+            }
         }
     }
 
@@ -519,7 +526,8 @@ public class SocialProviderSettingsService {
             case GITHUB -> settings.setGithubAccountLinkingOnly(value);
             case LINKEDIN -> settings.setLinkedinAccountLinkingOnly(value);
             case MICROSOFT -> settings.setMicrosoftAccountLinkingOnly(value);
-            default -> {}
+            default -> { // Unknown providers are intentionally ignored.
+            }
         }
     }
 
@@ -529,7 +537,8 @@ public class SocialProviderSettingsService {
             case GITHUB -> settings.setGithubTrustEmail(value);
             case LINKEDIN -> settings.setLinkedinTrustEmail(value);
             case MICROSOFT -> settings.setMicrosoftTrustEmail(value);
-            default -> {}
+            default -> { // Unknown providers are intentionally ignored.
+            }
         }
     }
 
@@ -539,7 +548,8 @@ public class SocialProviderSettingsService {
             case GITHUB -> settings.setGithubMfaRequired(value);
             case LINKEDIN -> settings.setLinkedinMfaRequired(value);
             case MICROSOFT -> settings.setMicrosoftMfaRequired(value);
-            default -> {}
+            default -> { // Unknown providers are intentionally ignored.
+            }
         }
     }
 
@@ -550,7 +560,8 @@ public class SocialProviderSettingsService {
             case GITHUB -> settings.setGithubRequiredClaims(normalized);
             case LINKEDIN -> settings.setLinkedinRequiredClaims(normalized);
             case MICROSOFT -> settings.setMicrosoftRequiredClaims(normalized);
-            default -> {}
+            default -> { // Unknown providers are intentionally ignored.
+            }
         }
     }
 
@@ -560,7 +571,8 @@ public class SocialProviderSettingsService {
             case GITHUB -> settings.setGithubStoreTokens(value);
             case LINKEDIN -> settings.setLinkedinStoreTokens(value);
             case MICROSOFT -> settings.setMicrosoftStoreTokens(value);
-            default -> {}
+            default -> { // Unknown providers are intentionally ignored.
+            }
         }
     }
 
@@ -571,7 +583,8 @@ public class SocialProviderSettingsService {
             case GITHUB -> settings.setGithubStoredTokensReadable(value);
             case LINKEDIN -> settings.setLinkedinStoredTokensReadable(value);
             case MICROSOFT -> settings.setMicrosoftStoredTokensReadable(value);
-            default -> {}
+            default -> { // Unknown providers are intentionally ignored.
+            }
         }
     }
 
@@ -581,7 +594,8 @@ public class SocialProviderSettingsService {
             case GITHUB -> settings.setGithubGuiOrder(value);
             case LINKEDIN -> settings.setLinkedinGuiOrder(value);
             case MICROSOFT -> settings.setMicrosoftGuiOrder(value);
-            default -> {}
+            default -> { // Unknown providers are intentionally ignored.
+            }
         }
     }
 
@@ -592,7 +606,8 @@ public class SocialProviderSettingsService {
             case GITHUB -> settings.setGithubShowInAccountConsole(value);
             case LINKEDIN -> settings.setLinkedinShowInAccountConsole(value);
             case MICROSOFT -> settings.setMicrosoftShowInAccountConsole(value);
-            default -> {}
+            default -> { // Unknown providers are intentionally ignored.
+            }
         }
     }
 
@@ -646,7 +661,7 @@ public class SocialProviderSettingsService {
                         .map(String::trim)
                         .filter(claim -> !claim.isBlank())
                         .distinct()
-                        .peek(
+                        .map(
                                 claim -> {
                                     if (!claim.matches("[A-Za-z0-9_.-]+")) {
                                         throw ApiException.badRequest(
@@ -654,6 +669,7 @@ public class SocialProviderSettingsService {
                                                 ApiErrorCode.INVALID_REQUEST,
                                                 "Provider claim names are invalid");
                                     }
+                                    return claim;
                                 })
                         .reduce((left, right) -> left + "," + right)
                         .orElse("sub");
@@ -671,7 +687,10 @@ public class SocialProviderSettingsService {
     }
 
     private static String firstNonBlank(String first, String fallback) {
-        return first == null || first.isBlank() ? (fallback == null ? "" : fallback) : first;
+        if (first != null && !first.isBlank()) {
+            return first;
+        }
+        return fallback == null ? "" : fallback;
     }
 
     private LoginSettingsEntity settings() {

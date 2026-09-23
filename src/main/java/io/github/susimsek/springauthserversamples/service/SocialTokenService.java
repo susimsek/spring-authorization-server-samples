@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 /** Stores and exposes external provider tokens according to provider settings. */
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("java:S2583")
 public class SocialTokenService {
 
     private final SocialIdentityRepository socialIdentityRepository;
@@ -39,15 +40,14 @@ public class SocialTokenService {
         if (!provider.storeTokens()) {
             clear(identity);
         } else {
-            Optional<OAuth2AccessToken> accessToken =
-                    Optional.ofNullable(authorizedClient.getAccessToken());
+            OAuth2AccessToken accessToken = authorizedClient.getAccessToken();
             OAuth2RefreshToken refreshToken = authorizedClient.getRefreshToken();
-            if (accessToken.isEmpty()) {
+            if (accessToken == null) {
                 clear(identity);
                 socialIdentityRepository.save(identity);
                 return;
             }
-            OAuth2AccessToken token = accessToken.get();
+            OAuth2AccessToken token = accessToken;
             identity.setAccessTokenEncrypted(encrypt(token.getTokenValue()));
             identity.setRefreshTokenEncrypted(
                     refreshToken == null ? null : encrypt(refreshToken.getTokenValue()));

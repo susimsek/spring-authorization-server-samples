@@ -1,7 +1,6 @@
 package io.github.susimsek.springauthserversamples.web.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -107,7 +106,7 @@ class AdminSettingsControllerTest {
                 new AdminProfileAttributeController(profileService);
         List<UserProfileAttributeDefinitionDTO> definitions =
                 List.of(mock(UserProfileAttributeDefinitionDTO.class));
-        when(profileService.definitions(eq(true))).thenReturn(definitions);
+        when(profileService.definitions(true)).thenReturn(definitions);
 
         assertThat(profileController.definitions()).isSameAs(definitions);
         verify(profileService).definitions(true);

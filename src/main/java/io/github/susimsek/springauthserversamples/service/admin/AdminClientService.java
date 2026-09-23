@@ -33,7 +33,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
+@SuppressWarnings("java:S4449")
 public class AdminClientService {
+
+    private static final String CLIENT_TARGET = "client";
+    private static final String CLIENT_ID_FIELD = "clientId";
+    private static final String CLIENT_AUTHENTICATION_METHODS_FIELD = "clientAuthenticationMethods";
+    private static final String AUTHORIZATION_GRANT_TYPES_FIELD = "authorizationGrantTypes";
 
     private static final String ADMIN_CONSOLE_CLIENT_ID = "admin-console";
     private static final Duration DEFAULT_AUTHORIZATION_CODE_TTL = Duration.ofMinutes(5);
@@ -95,7 +101,7 @@ public class AdminClientService {
         validate(request);
         if (clientRepository.existsByClientId(request.clientId())) {
             throw ApiException.conflict(
-                    "clientId",
+                    CLIENT_ID_FIELD,
                     ApiErrorCode.CLIENT_DUPLICATE_CLIENT_ID,
                     "Client ID is already registered");
         }
@@ -115,7 +121,7 @@ public class AdminClientService {
                         .build();
 
         AdminClientDTO saved = adminClientMapper.toDTO(save(client));
-        adminAuditEventService.record("client.created", "client", saved.id());
+        adminAuditEventService.record("client.created", CLIENT_TARGET, saved.id());
         return adminClientMapper.toCreatedDTO(saved, rawSecret);
     }
 
@@ -130,7 +136,7 @@ public class AdminClientService {
         if (!existing.getClientId().equals(request.clientId())
                 && clientRepository.existsByClientId(request.clientId())) {
             throw ApiException.conflict(
-                    "clientId",
+                    CLIENT_ID_FIELD,
                     ApiErrorCode.CLIENT_DUPLICATE_CLIENT_ID,
                     "Client ID is already registered");
         }
@@ -144,14 +150,14 @@ public class AdminClientService {
             builder.clientSecret(null).clientSecretExpiresAt(null);
         } else if (existing.getClientSecret() == null) {
             throw ApiException.badRequest(
-                    "clientAuthenticationMethods",
+                    CLIENT_AUTHENTICATION_METHODS_FIELD,
                     ApiErrorCode.CLIENT_SECRET_REQUIRED,
                     "Regenerate a client secret before enabling a secret authentication method");
         }
 
         RegisteredClient updated = apply(builder, request, existing).build();
         AdminClientDTO saved = adminClientMapper.toDTO(save(updated));
-        adminAuditEventService.record("client.updated", "client", saved.id());
+        adminAuditEventService.record("client.updated", CLIENT_TARGET, saved.id());
         return saved;
     }
 
@@ -164,7 +170,7 @@ public class AdminClientService {
         authorizationRepository.deleteByRegisteredClientId(id);
         authorizationConsentRepository.deleteByIdRegisteredClientId(id);
         clientRepository.deleteById(id);
-        adminAuditEventService.record("client.deleted", "client", id);
+        adminAuditEventService.record("client.deleted", CLIENT_TARGET, id);
     }
 
     @Transactional
@@ -181,7 +187,7 @@ public class AdminClientService {
                         .clientSecret(passwordEncoder.encode(rawSecret))
                         .build();
         save(updated);
-        adminAuditEventService.record("client.secret.regenerated", "client", id);
+        adminAuditEventService.record("client.secret.regenerated", CLIENT_TARGET, id);
         return rawSecret;
     }
 
@@ -192,7 +198,9 @@ public class AdminClientService {
         }
         if (!hasText(request.clientId())) {
             throw ApiException.badRequest(
-                    "clientId", ApiErrorCode.CLIENT_INVALID_CLIENT_ID, "Client ID is required");
+                    CLIENT_ID_FIELD,
+                    ApiErrorCode.CLIENT_INVALID_CLIENT_ID,
+                    "Client ID is required");
         }
         if (!hasText(request.clientName())) {
             throw ApiException.badRequest(
@@ -202,12 +210,12 @@ public class AdminClientService {
         }
         requireNonEmpty(
                 request.clientAuthenticationMethods(),
-                "clientAuthenticationMethods",
+                CLIENT_AUTHENTICATION_METHODS_FIELD,
                 ApiErrorCode.CLIENT_INVALID_AUTHENTICATION_METHODS,
                 "At least one client authentication method is required");
         requireNonEmpty(
                 request.authorizationGrantTypes(),
-                "authorizationGrantTypes",
+                AUTHORIZATION_GRANT_TYPES_FIELD,
                 ApiErrorCode.CLIENT_INVALID_GRANT_TYPES,
                 "At least one authorization grant type is required");
         requireNonEmpty(
@@ -223,13 +231,13 @@ public class AdminClientService {
         boolean publicClient = methods.contains(ClientAuthenticationMethod.NONE.getValue());
         if (publicClient && methods.size() > 1) {
             throw ApiException.badRequest(
-                    "clientAuthenticationMethods",
+                    CLIENT_AUTHENTICATION_METHODS_FIELD,
                     ApiErrorCode.CLIENT_INVALID_AUTHENTICATION_METHODS,
                     "The 'none' authentication method cannot be combined with other methods");
         }
         if (publicClient && grants.contains(AuthorizationGrantType.CLIENT_CREDENTIALS.getValue())) {
             throw ApiException.badRequest(
-                    "authorizationGrantTypes",
+                    AUTHORIZATION_GRANT_TYPES_FIELD,
                     ApiErrorCode.CLIENT_INVALID_GRANT_TYPES,
                     "A public client cannot use the client_credentials grant");
         }
@@ -244,14 +252,14 @@ public class AdminClientService {
                 && grants.contains(AuthorizationGrantType.AUTHORIZATION_CODE.getValue())
                 && !request.requireProofKey()) {
             throw ApiException.badRequest(
-                    "authorizationGrantTypes",
+                    AUTHORIZATION_GRANT_TYPES_FIELD,
                     ApiErrorCode.CLIENT_PKCE_REQUIRED,
                     "PKCE must be required for a public authorization_code client");
         }
         if (request.requireProofKey()
                 && !grants.contains(AuthorizationGrantType.AUTHORIZATION_CODE.getValue())) {
             throw ApiException.badRequest(
-                    "authorizationGrantTypes",
+                    AUTHORIZATION_GRANT_TYPES_FIELD,
                     ApiErrorCode.CLIENT_INVALID_PKCE,
                     "PKCE requires the authorization_code grant");
         }
@@ -363,28 +371,39 @@ public class AdminClientService {
                                 new HashMap<>(existing.getTokenSettings().getSettings()));
 
         Duration authorizationCodeTtl =
-                request.authorizationCodeTimeToLive() != null
-                        ? request.authorizationCodeTimeToLive()
-                        : existing == null
-                                ? DEFAULT_AUTHORIZATION_CODE_TTL
-                                : existing.getTokenSettings().getAuthorizationCodeTimeToLive();
+                resolveTtl(
+                        request.authorizationCodeTimeToLive(),
+                        DEFAULT_AUTHORIZATION_CODE_TTL,
+                        existing == null
+                                ? null
+                                : existing.getTokenSettings().getAuthorizationCodeTimeToLive());
         Duration accessTokenTtl =
-                request.accessTokenTimeToLive() != null
-                        ? request.accessTokenTimeToLive()
-                        : existing == null
-                                ? DEFAULT_ACCESS_TOKEN_TTL
-                                : existing.getTokenSettings().getAccessTokenTimeToLive();
+                resolveTtl(
+                        request.accessTokenTimeToLive(),
+                        DEFAULT_ACCESS_TOKEN_TTL,
+                        existing == null
+                                ? null
+                                : existing.getTokenSettings().getAccessTokenTimeToLive());
         Duration refreshTokenTtl =
-                request.refreshTokenTimeToLive() != null
-                        ? request.refreshTokenTimeToLive()
-                        : existing == null
-                                ? DEFAULT_REFRESH_TOKEN_TTL
-                                : existing.getTokenSettings().getRefreshTokenTimeToLive();
+                resolveTtl(
+                        request.refreshTokenTimeToLive(),
+                        DEFAULT_REFRESH_TOKEN_TTL,
+                        existing == null
+                                ? null
+                                : existing.getTokenSettings().getRefreshTokenTimeToLive());
 
         return builder.authorizationCodeTimeToLive(authorizationCodeTtl)
                 .accessTokenTimeToLive(accessTokenTtl)
                 .refreshTokenTimeToLive(refreshTokenTtl)
                 .build();
+    }
+
+    private static Duration resolveTtl(
+            Duration requested, Duration defaultValue, Duration existingValue) {
+        if (requested != null) {
+            return requested;
+        }
+        return existingValue == null ? defaultValue : existingValue;
     }
 
     private static boolean requiresSecret(AdminClientRequestDTO request) {
@@ -408,7 +427,7 @@ public class AdminClientService {
             if (!uri.isAbsolute() || uri.getScheme() == null || uri.getFragment() != null) {
                 throw new IllegalArgumentException();
             }
-        } catch (IllegalArgumentException exception) {
+        } catch (IllegalArgumentException _) {
             throw ApiException.badRequest(
                     field, ApiErrorCode.CLIENT_INVALID_URI, "Invalid " + label + ": " + value);
         }

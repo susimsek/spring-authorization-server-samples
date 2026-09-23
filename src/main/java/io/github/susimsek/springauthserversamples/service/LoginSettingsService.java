@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
+@SuppressWarnings("java:S6829")
 public class LoginSettingsService {
 
     private static final long SETTINGS_ID = 1L;
@@ -387,7 +388,7 @@ public class LoginSettingsService {
         for (String aaguid : csv(policy.acceptableAaguids())) {
             try {
                 java.util.UUID.fromString(aaguid);
-            } catch (IllegalArgumentException ex) {
+            } catch (IllegalArgumentException _) {
                 throw invalidWebAuthn(label + " acceptable AAGUID is invalid");
             }
         }

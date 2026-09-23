@@ -34,10 +34,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("java:S6916")
 public class UserProfileService {
 
     private static final String USER_PROFILE_ATTRIBUTE = "user-profile-attribute";
     private static final String USER_NOT_FOUND = "User not found";
+    private static final String ATTRIBUTES_FIELD_PREFIX = "attributes.";
 
     private static final Set<String> BUILT_IN_NAMES =
             Set.of("username", "firstName", "lastName", "email", "emailVerified");
@@ -214,7 +216,7 @@ public class UserProfileService {
     public UserProfileAttributesDTO saveAttributes(
             Long userId, Map<String, List<String>> values, String actor) {
         UserEntity user = findUser(userId);
-        return saveUserAttributes(user, values, actor);
+        return saveUserAttributes(user, values);
     }
 
     @Transactional
@@ -227,7 +229,7 @@ public class UserProfileService {
                                         .findIdByUsername(username)
                                         .orElseThrow(() -> ApiException.notFound(USER_NOT_FOUND)))
                         .orElseThrow(() -> ApiException.notFound(USER_NOT_FOUND));
-        return saveUserAttributes(user, values, actor);
+        return saveUserAttributes(user, values);
     }
 
     /** Persists mapper-owned built-in fields without replacing the stable username. */
@@ -289,7 +291,7 @@ public class UserProfileService {
     }
 
     private UserProfileAttributesDTO saveUserAttributes(
-            UserEntity user, Map<String, List<String>> values, String actor) {
+            UserEntity user, Map<String, List<String>> values) {
         Map<String, List<String>> normalized = validateValues(values == null ? Map.of() : values);
         attributeRepository.deleteAllByUserId(user.getId());
         entityManager.flush();
@@ -355,7 +357,7 @@ public class UserProfileService {
                             .findFirst()
                             .orElse("attributes");
             throw ApiException.badRequest(
-                    "attributes." + unknown,
+                    ATTRIBUTES_FIELD_PREFIX + unknown,
                     ApiErrorCode.USER_PROFILE_INVALID_VALUE,
                     "The profile attribute is not configured");
         }
@@ -378,7 +380,7 @@ public class UserProfileService {
             }
             if (definition.isRequired() && definitionValues.isEmpty()) {
                 throw ApiException.badRequest(
-                        "attributes." + definition.getName(),
+                        ATTRIBUTES_FIELD_PREFIX + definition.getName(),
                         ApiErrorCode.USER_PROFILE_REQUIRED,
                         "The profile attribute is required");
             }
@@ -413,10 +415,11 @@ public class UserProfileService {
                         throw invalidValue(definition, "The value must be true or false");
                     }
                 }
-                case STRING -> {}
+                case STRING -> { // String values require no additional validation.
+                }
                 default -> throw invalidValue(definition, "The value type is not supported");
             }
-        } catch (NumberFormatException exception) {
+        } catch (NumberFormatException _) {
             throw invalidValue(definition, "The value must be an integer");
         }
     }
@@ -424,7 +427,7 @@ public class UserProfileService {
     private ApiException invalidValue(
             UserProfileAttributeDefinitionEntity definition, String message) {
         return ApiException.badRequest(
-                "attributes." + definition.getName(),
+                ATTRIBUTES_FIELD_PREFIX + definition.getName(),
                 ApiErrorCode.USER_PROFILE_INVALID_VALUE,
                 message);
     }
@@ -457,7 +460,7 @@ public class UserProfileService {
         if (request.pattern() != null && !request.pattern().isBlank()) {
             try {
                 Pattern.compile(request.pattern());
-            } catch (PatternSyntaxException exception) {
+            } catch (PatternSyntaxException _) {
                 throw ApiException.badRequest(
                         "pattern",
                         ApiErrorCode.USER_PROFILE_INVALID_DEFINITION,

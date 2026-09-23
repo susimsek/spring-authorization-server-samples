@@ -26,6 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
 public class AdminRoleService {
 
+    private static final String ROLE_NOT_FOUND = "Role not found";
+
     private final AuthorityRepository authorityRepository;
     private final UserRepository userRepository;
     private final AdminAuditEventService adminAuditEventService;
@@ -55,7 +57,7 @@ public class AdminRoleService {
     @Transactional(readOnly = true)
     public Page<AdminRoleUserDTO> availableUsers(String name, String query, Pageable pageable) {
         if (!authorityRepository.existsByName(name)) {
-            throw ApiException.notFound("Role not found");
+            throw ApiException.notFound(ROLE_NOT_FOUND);
         }
         String normalizedQuery = AdminSearch.normalize(query);
         java.util.List<UserEntity> allUsers = userRepository.findAllWithEffectiveAuthorities();
@@ -86,15 +88,20 @@ public class AdminRoleService {
 
     @Transactional(readOnly = true)
     public AdminRoleDetailDTO role(String name, String query, Pageable pageable) {
-        return role(name, query, null, pageable);
+        return roleInternal(name, query, null, pageable);
     }
 
     @Transactional(readOnly = true)
     public AdminRoleDetailDTO role(String name, String query, Boolean enabled, Pageable pageable) {
+        return roleInternal(name, query, enabled, pageable);
+    }
+
+    private AdminRoleDetailDTO roleInternal(
+            String name, String query, Boolean enabled, Pageable pageable) {
         AuthorityEntity role =
                 authorityRepository
                         .findByName(name)
-                        .orElseThrow(() -> ApiException.notFound("Role not found"));
+                        .orElseThrow(() -> ApiException.notFound(ROLE_NOT_FOUND));
         String normalizedQuery = AdminSearch.normalize(query);
         java.util.List<UserEntity> allUsers = userRepository.findAllWithEffectiveAuthorities();
         boolean loadedAllUsers = allUsers != null && !allUsers.isEmpty();
@@ -143,7 +150,7 @@ public class AdminRoleService {
 
     @Transactional(readOnly = true)
     public AdminRoleDetailDTO role(String name, Pageable pageable) {
-        return role(name, "", pageable);
+        return roleInternal(name, "", null, pageable);
     }
 
     @Transactional
@@ -151,7 +158,7 @@ public class AdminRoleService {
             String name, Long userId, String currentUsername, Pageable pageable) {
         adminUserService.assignRole(userId, name, currentUsername);
         adminAuditEventService.record("role.user.assigned", "role", name);
-        return role(name, pageable);
+        return roleInternal(name, "", null, pageable);
     }
 
     @Transactional
@@ -159,18 +166,22 @@ public class AdminRoleService {
             String name, Long userId, String currentUsername, Pageable pageable) {
         adminUserService.removeRole(userId, name, currentUsername);
         adminAuditEventService.record("role.user.removed", "role", name);
-        return role(name, pageable);
+        return roleInternal(name, "", null, pageable);
     }
 
     @Transactional
     @CacheEvict(cacheNames = AuthorityRepository.AUTHORITY_BY_NAME_CACHE, allEntries = true)
     public AdminRoleDTO createRole(String name) {
-        return createRole(name, null);
+        return createRoleInternal(name, null);
     }
 
     @Transactional
     @CacheEvict(cacheNames = AuthorityRepository.AUTHORITY_BY_NAME_CACHE, allEntries = true)
     public AdminRoleDTO createRole(String name, String description) {
+        return createRoleInternal(name, description);
+    }
+
+    private AdminRoleDTO createRoleInternal(String name, String description) {
         validateRoleName(name);
         if (authorityRepository.existsByName(name)) {
             throw ApiException.conflict(
@@ -190,7 +201,7 @@ public class AdminRoleService {
         AuthorityEntity role =
                 authorityRepository
                         .findByName(name)
-                        .orElseThrow(() -> ApiException.notFound("Role not found"));
+                        .orElseThrow(() -> ApiException.notFound(ROLE_NOT_FOUND));
         role.setDescription(normalizeDescription(description));
         adminAuditEventService.record("role.updated", "role", name);
         return adminRoleMapper.toDTO(role);
@@ -202,7 +213,7 @@ public class AdminRoleService {
         AuthorityEntity role =
                 authorityRepository
                         .findByName(name)
-                        .orElseThrow(() -> ApiException.notFound("Role not found"));
+                        .orElseThrow(() -> ApiException.notFound(ROLE_NOT_FOUND));
         if (AuthoritiesConstants.ADMIN.equals(name) || AuthoritiesConstants.USER.equals(name)) {
             throw ApiException.badRequest(ApiErrorCode.ROLE_PROTECTED, "Role cannot be removed");
         }

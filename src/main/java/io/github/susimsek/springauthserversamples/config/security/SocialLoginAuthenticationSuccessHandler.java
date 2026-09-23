@@ -153,7 +153,6 @@ public class SocialLoginAuthenticationSuccessHandler implements AuthenticationSu
                     request,
                     response,
                     localAuthentication,
-                    username,
                     linkTarget instanceof java.util.Map<?, ?>,
                     providerMfaRequired);
         } catch (RuntimeException exception) {
@@ -179,14 +178,13 @@ public class SocialLoginAuthenticationSuccessHandler implements AuthenticationSu
             HttpServletRequest request,
             HttpServletResponse response,
             Authentication localAuthentication,
-            String username,
             boolean socialLink,
             boolean providerMfaRequired)
             throws IOException, ServletException {
         if (socialLink) {
             response.sendRedirect("/account/security?social_linked=1");
         } else if (providerMfaRequired) {
-            requireProviderMfa(request, response, username);
+            requireProviderMfa(request, response);
         } else {
             delegate.onAuthenticationSuccess(request, response, localAuthentication);
         }
@@ -206,8 +204,7 @@ public class SocialLoginAuthenticationSuccessHandler implements AuthenticationSu
         }
     }
 
-    private void requireProviderMfa(
-            HttpServletRequest request, HttpServletResponse response, String username)
+    private void requireProviderMfa(HttpServletRequest request, HttpServletResponse response)
             throws IOException {
         SavedRequest savedRequest = new HttpSessionRequestCache().getRequest(request, response);
         String returnTo = savedRequest == null ? "/admin" : savedRequest.getRedirectUrl();

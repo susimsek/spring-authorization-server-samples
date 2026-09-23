@@ -5,6 +5,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import io.github.susimsek.springauthserversamples.session.JpaIndexedSessionRepository;
 import java.util.concurrent.ScheduledFuture;
@@ -68,10 +69,12 @@ class SessionCleanupSchedulerTest {
     @Test
     void destroyDoesNothingWhenTaskWasNeverScheduled() {
         JpaIndexedSessionRepository repository = mock(JpaIndexedSessionRepository.class);
+        TaskScheduler taskScheduler = mock(TaskScheduler.class);
         SessionCleanupScheduler scheduler =
-                new SessionCleanupScheduler(
-                        repository, mock(TaskScheduler.class), Scheduled.CRON_DISABLED);
+                new SessionCleanupScheduler(repository, taskScheduler, Scheduled.CRON_DISABLED);
 
         scheduler.destroy();
+
+        verifyNoInteractions(repository, taskScheduler);
     }
 }

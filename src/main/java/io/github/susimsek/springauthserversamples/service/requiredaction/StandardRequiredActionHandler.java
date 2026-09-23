@@ -151,107 +151,118 @@ final class StandardRequiredActionHandler implements RequiredActionHandler {
             UserEntity user, String key, Map<String, Object> values, String currentSessionId) {
         Map<String, Object> submitted = values == null ? Map.of() : values;
         switch (key) {
-            case "UPDATE_PROFILE" -> {
-                String firstName = value(submitted, "firstName");
-                String lastName = value(submitted, "lastName");
-                String email = value(submitted, "email");
-                if (isBlank(firstName) || isBlank(lastName) || isBlank(email)) {
-                    throw ApiException.badRequest(
-                            ApiErrorCode.INVALID_REQUEST,
-                            "First name, last name, and email are required");
-                }
-                AccountProfileRequestDTO profile =
-                        new AccountProfileRequestDTO(firstName, lastName, email);
-                ConstraintViolation<AccountProfileRequestDTO> violation =
-                        validator.validate(profile).stream().findFirst().orElse(null);
-                if (violation != null) {
-                    throw ApiException.badRequest(
-                            violation.getPropertyPath().toString(),
-                            ApiErrorCode.INVALID_REQUEST,
-                            "Profile value is invalid");
-                }
-                user.setFirstName(firstName.trim());
-                user.setLastName(lastName.trim());
-                user.setEmail(email.trim().toLowerCase(java.util.Locale.ROOT));
-                user.setEmailVerified(false);
-            }
-            case "TERMS_AND_CONDITIONS", "DELETE_ACCOUNT", "CUSTOM" -> {
-                if (!Boolean.TRUE.equals(submitted.get("accepted"))
-                        && !Boolean.TRUE.equals(submitted.get("confirmed"))) {
-                    throw ApiException.badRequest(
-                            ApiErrorCode.INVALID_REQUEST,
-                            "The required action must be explicitly confirmed");
-                }
-            }
-            case "UPDATE_EMAIL" -> {
-                if (user.getPendingEmail() == null) {
-                    throw ApiException.badRequest(
-                            ApiErrorCode.ACTION_UNSUPPORTED, "There is no pending email change");
-                }
-            }
-            case "UPDATE_PASSWORD" -> {
-                String newPassword = value(submitted, "newPassword");
-                if (passwordService == null) {
-                    throw ApiException.badRequest(
-                            ApiErrorCode.ACTION_UNSUPPORTED, "Password service is unavailable");
-                }
-                passwordService.changePassword(user, newPassword);
-                if (userAccessInvalidationService != null) {
-                    userAccessInvalidationService.invalidate(user.getUsername());
-                }
-            }
-            case "CONFIGURE_TOTP" -> {
-                String code = value(submitted, "code");
-                if (mfaBruteForceService != null
-                        && mfaBruteForceService.isLocked(user.getUsername())) {
-                    throw ApiException.badRequest(
-                            ApiErrorCode.INVALID_TOTP_CODE, "The authenticator code is invalid");
-                }
-                boolean validTotp =
-                        totpService != null
-                                && loginSettingsService != null
-                                && user.getTotpSecret() != null
-                                && consumeTotpCode(user, code);
-                if (!validTotp) {
-                    if (mfaBruteForceService != null) {
-                        mfaBruteForceService.recordFailure(user.getUsername());
-                    }
-                    throw ApiException.badRequest(
-                            ApiErrorCode.INVALID_TOTP_CODE, "The authenticator code is invalid");
-                }
-                if (mfaBruteForceService != null) {
-                    mfaBruteForceService.recordSuccess(user.getUsername());
-                }
-                user.setTotpEnabled(true);
-                if (userAccessInvalidationService != null) {
-                    userAccessInvalidationService.invalidateOtherSessions(
-                            user.getUsername(), currentSessionId);
-                }
-            }
-            case "RECOVERY_CODES" -> {
-                if (!Boolean.TRUE.equals(submitted.get("accepted"))
-                        || recoveryCodeService == null
-                        || recoveryCodeService.status(user.getUsername()).remaining() == 0) {
-                    throw ApiException.badRequest(
-                            ApiErrorCode.INVALID_REQUEST,
-                            "Save the recovery codes before completing this action");
-                }
-            }
-            case "CONFIGURE_PASSKEY", "CONFIGURE_PASSKEY_PASSWORDLESS" -> {
-                if (webAuthnService == null || !webAuthnService.hasCredential(user.getUsername())) {
-                    throw ApiException.badRequest(
-                            ApiErrorCode.INVALID_REQUEST,
-                            "Register a passkey before completing this action");
-                }
-                if (userAccessInvalidationService != null) {
-                    userAccessInvalidationService.invalidateOtherSessions(
-                            user.getUsername(), currentSessionId);
-                }
-            }
+            case "UPDATE_PROFILE" -> completeProfile(user, submitted);
+            case "TERMS_AND_CONDITIONS", "DELETE_ACCOUNT", "CUSTOM" ->
+                    requireConfirmation(submitted);
+            case "UPDATE_EMAIL" -> requirePendingEmail(user);
+            case "UPDATE_PASSWORD" -> completePassword(user, submitted);
+            case "CONFIGURE_TOTP" -> completeTotp(user, submitted, currentSessionId);
+            case "RECOVERY_CODES" -> requireRecoveryCodes(user, submitted);
+            case "CONFIGURE_PASSKEY", "CONFIGURE_PASSKEY_PASSWORDLESS" ->
+                    requirePasskey(user, currentSessionId);
             default ->
                     throw ApiException.badRequest(
                             ApiErrorCode.ACTION_UNSUPPORTED,
                             "The required action is not supported");
+        }
+    }
+
+    private void completeProfile(UserEntity user, Map<String, Object> submitted) {
+        String firstName = value(submitted, "firstName");
+        String lastName = value(submitted, "lastName");
+        String email = value(submitted, "email");
+        if (isBlank(firstName) || isBlank(lastName) || isBlank(email)) {
+            throw ApiException.badRequest(
+                    ApiErrorCode.INVALID_REQUEST, "First name, last name, and email are required");
+        }
+        AccountProfileRequestDTO profile = new AccountProfileRequestDTO(firstName, lastName, email);
+        ConstraintViolation<AccountProfileRequestDTO> violation =
+                validator.validate(profile).stream().findFirst().orElse(null);
+        if (violation != null) {
+            throw ApiException.badRequest(
+                    violation.getPropertyPath().toString(),
+                    ApiErrorCode.INVALID_REQUEST,
+                    "Profile value is invalid");
+        }
+        user.setFirstName(firstName.trim());
+        user.setLastName(lastName.trim());
+        user.setEmail(email.trim().toLowerCase(java.util.Locale.ROOT));
+        user.setEmailVerified(false);
+    }
+
+    private static void requireConfirmation(Map<String, Object> submitted) {
+        if (!Boolean.TRUE.equals(submitted.get("accepted"))
+                && !Boolean.TRUE.equals(submitted.get("confirmed"))) {
+            throw ApiException.badRequest(
+                    ApiErrorCode.INVALID_REQUEST,
+                    "The required action must be explicitly confirmed");
+        }
+    }
+
+    private static void requirePendingEmail(UserEntity user) {
+        if (user.getPendingEmail() == null) {
+            throw ApiException.badRequest(
+                    ApiErrorCode.ACTION_UNSUPPORTED, "There is no pending email change");
+        }
+    }
+
+    private void completePassword(UserEntity user, Map<String, Object> submitted) {
+        String newPassword = value(submitted, "newPassword");
+        if (passwordService == null) {
+            throw ApiException.badRequest(
+                    ApiErrorCode.ACTION_UNSUPPORTED, "Password service is unavailable");
+        }
+        passwordService.changePassword(user, newPassword);
+        if (userAccessInvalidationService != null) {
+            userAccessInvalidationService.invalidate(user.getUsername());
+        }
+    }
+
+    private void completeTotp(UserEntity user, Map<String, Object> submitted, String sessionId) {
+        String code = value(submitted, "code");
+        if (mfaBruteForceService != null && mfaBruteForceService.isLocked(user.getUsername())) {
+            throw ApiException.badRequest(
+                    ApiErrorCode.INVALID_TOTP_CODE, "The authenticator code is invalid");
+        }
+        boolean validTotp =
+                totpService != null
+                        && loginSettingsService != null
+                        && user.getTotpSecret() != null
+                        && consumeTotpCode(user, code);
+        if (!validTotp) {
+            if (mfaBruteForceService != null) {
+                mfaBruteForceService.recordFailure(user.getUsername());
+            }
+            throw ApiException.badRequest(
+                    ApiErrorCode.INVALID_TOTP_CODE, "The authenticator code is invalid");
+        }
+        if (mfaBruteForceService != null) {
+            mfaBruteForceService.recordSuccess(user.getUsername());
+        }
+        user.setTotpEnabled(true);
+        if (userAccessInvalidationService != null) {
+            userAccessInvalidationService.invalidateOtherSessions(user.getUsername(), sessionId);
+        }
+    }
+
+    private void requireRecoveryCodes(UserEntity user, Map<String, Object> submitted) {
+        if (!Boolean.TRUE.equals(submitted.get("accepted"))
+                || recoveryCodeService == null
+                || recoveryCodeService.status(user.getUsername()).remaining() == 0) {
+            throw ApiException.badRequest(
+                    ApiErrorCode.INVALID_REQUEST,
+                    "Save the recovery codes before completing this action");
+        }
+    }
+
+    private void requirePasskey(UserEntity user, String sessionId) {
+        if (webAuthnService == null || !webAuthnService.hasCredential(user.getUsername())) {
+            throw ApiException.badRequest(
+                    ApiErrorCode.INVALID_REQUEST,
+                    "Register a passkey before completing this action");
+        }
+        if (userAccessInvalidationService != null) {
+            userAccessInvalidationService.invalidateOtherSessions(user.getUsername(), sessionId);
         }
     }
 

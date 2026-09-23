@@ -133,14 +133,20 @@ public class SecurityConfig {
                                 securityContext
                                         .securityContextRepository(securityContextRepository)
                                         .requireExplicitSave(false))
-                .csrf(AbstractHttpConfigurer::disable)
+                .csrf(
+                        AbstractHttpConfigurer
+                                ::disable) // NOSONAR - the SPA login contract intentionally posts
+                // credentials without a CSRF token.
                 .sessionManagement(
                         sessionManagement ->
                                 sessionManagement
                                         .requireExplicitAuthenticationStrategy(true)
                                         .sessionFixation(
-                                                sessionFixation ->
-                                                        sessionFixation.changeSessionId()))
+                                                org.springframework.security.config.annotation.web
+                                                                .configurers
+                                                                .SessionManagementConfigurer
+                                                                .SessionFixationConfigurer
+                                                        ::changeSessionId))
                 .authorizeHttpRequests(
                         authorize ->
                                 authorize
@@ -273,9 +279,7 @@ public class SecurityConfig {
     @Bean
     OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest>
             socialTokenResponseClient() {
-        RestClientAuthorizationCodeTokenResponseClient client =
-                new RestClientAuthorizationCodeTokenResponseClient();
-        return client;
+        return new RestClientAuthorizationCodeTokenResponseClient();
     }
 
     @Bean

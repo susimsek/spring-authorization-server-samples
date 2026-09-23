@@ -1,6 +1,7 @@
 package io.github.susimsek.springauthserversamples.service.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -13,9 +14,8 @@ import org.junit.jupiter.api.Test;
 class AdminEventSettingsServiceTest {
 
     private final AdminEventSettingsRepository repository =
-            org.mockito.Mockito.mock(AdminEventSettingsRepository.class);
-    private final AdminAuditEventService auditEventService =
-            org.mockito.Mockito.mock(AdminAuditEventService.class);
+            mock(AdminEventSettingsRepository.class);
+    private final AdminAuditEventService auditEventService = mock(AdminAuditEventService.class);
     private final AdminEventSettingsService service =
             new AdminEventSettingsService(repository, auditEventService);
 

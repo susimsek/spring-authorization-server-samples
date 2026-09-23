@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 
 /** Small RFC 6238 TOTP implementation used for account MFA. */
 @Service
+@SuppressWarnings("java:S3457")
 public class TotpService {
 
     private static final String BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
@@ -97,7 +98,7 @@ public class TotpService {
                         code.getBytes(java.nio.charset.StandardCharsets.US_ASCII))) {
                     return OptionalLong.of(counter + offset);
                 }
-            } catch (IllegalArgumentException ex) {
+            } catch (IllegalArgumentException _) {
                 return OptionalLong.empty();
             }
         }
@@ -188,7 +189,8 @@ public class TotpService {
             buffer = (buffer << 8) | (value & 0xff);
             bits += 8;
             while (bits >= 5) {
-                result.append(BASE32.charAt((buffer >> (bits -= 5)) & 31));
+                bits -= 5;
+                result.append(BASE32.charAt((buffer >> bits) & 31));
             }
         }
         if (bits > 0) {
@@ -211,7 +213,8 @@ public class TotpService {
             buffer = (buffer << 5) | digit;
             bits += 5;
             if (bits >= 8) {
-                result[index++] = (byte) ((buffer >> (bits -= 8)) & 0xff);
+                bits -= 8;
+                result[index++] = (byte) ((buffer >> bits) & 0xff);
             }
         }
         return result;

@@ -262,7 +262,7 @@ class AuthorizationServerEndpointsIT {
                         .getQueryParams()
                         .toSingleValueMap();
 
-        assertThat(consentParameters.get("client_id")).isEqualTo("pkce-client");
+        assertThat(consentParameters).containsEntry("client_id", "pkce-client");
         assertThat(consentParameters.get("scope")).contains("openid", "profile");
         assertThat(consentParameters.get("state")).isNotBlank();
     }

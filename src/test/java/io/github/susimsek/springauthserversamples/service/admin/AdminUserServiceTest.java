@@ -3,7 +3,9 @@ package io.github.susimsek.springauthserversamples.service.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -40,6 +42,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("java:S5778")
 class AdminUserServiceTest {
 
     @Mock private UserRepository userRepository;
@@ -549,8 +552,7 @@ class AdminUserServiceTest {
 
     @Test
     void resetTotpDeletesRecoveryCodesWhenRepositoryIsAvailable() {
-        RecoveryCodeRepository recoveryCodeRepository =
-                org.mockito.Mockito.mock(RecoveryCodeRepository.class);
+        RecoveryCodeRepository recoveryCodeRepository = mock(RecoveryCodeRepository.class);
         UserEntity target = user(5L, "alice", AuthoritiesConstants.USER);
         UserEntity administrator = user(6L, "administrator", AuthoritiesConstants.ADMIN);
         when(userRepository.findById(5L)).thenReturn(Optional.of(target));
@@ -799,7 +801,7 @@ class AdminUserServiceTest {
         service().assignRole(5L, "ROLE_AUDITOR", "administrator");
         service().removeRole(5L, "ROLE_USER_MANAGER", "administrator");
 
-        verify(userAccessInvalidationService, org.mockito.Mockito.times(2)).invalidate("alice");
+        verify(userAccessInvalidationService, times(2)).invalidate("alice");
         verify(adminAuditEventService).record("user.role.assigned", "user", "5");
         verify(adminAuditEventService).record("user.role.removed", "user", "5");
     }
@@ -859,7 +861,7 @@ class AdminUserServiceTest {
         service().bulkOperate(List.of(1L, 2L), AdminUserBulkAction.DISABLE, "administrator");
         service().bulkOperate(List.of(1L, 2L), AdminUserBulkAction.DELETE, "administrator");
 
-        verify(userRepository, org.mockito.Mockito.times(2)).delete(any(UserEntity.class));
+        verify(userRepository, times(2)).delete(any(UserEntity.class));
         verify(userAccessInvalidationService, org.mockito.Mockito.atLeast(4))
                 .invalidate(any(String.class));
     }

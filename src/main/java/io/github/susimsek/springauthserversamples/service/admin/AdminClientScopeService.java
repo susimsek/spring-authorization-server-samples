@@ -30,6 +30,8 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
 public class AdminClientScopeService {
 
+    private static final String CLIENT_SCOPE_TARGET = "client-scope";
+
     private final ClientScopeRepository clientScopeRepository;
     private final ClientRepository clientRepository;
     private final RegisteredClientMapper registeredClientMapper;
@@ -62,6 +64,10 @@ public class AdminClientScopeService {
 
     @Transactional(readOnly = true)
     public List<AdminClientScopeDTO> findAll() {
+        return findAllInternal();
+    }
+
+    private List<AdminClientScopeDTO> findAllInternal() {
         return clientScopeRepository
                 .findAll(org.springframework.data.domain.Sort.by("name"))
                 .stream()
@@ -92,7 +98,7 @@ public class AdminClientScopeService {
                         request.groupClaimNameValue(),
                         request.groupMapperFullPathValue());
         ClientScopeEntity saved = clientScopeRepository.save(entity);
-        adminAuditEventService.record("client-scope.created", "client-scope", saved.getId());
+        adminAuditEventService.record("client-scope.created", CLIENT_SCOPE_TARGET, saved.getId());
         return adminClientScopeMapper.toDTO(saved);
     }
 
@@ -128,7 +134,7 @@ public class AdminClientScopeService {
                 request.groupMapperFullPathValue(),
                 entity);
         ClientScopeEntity saved = clientScopeRepository.save(entity);
-        adminAuditEventService.record("client-scope.updated", "client-scope", id);
+        adminAuditEventService.record("client-scope.updated", CLIENT_SCOPE_TARGET, id);
         return adminClientScopeMapper.toDTO(saved);
     }
 
@@ -148,7 +154,7 @@ public class AdminClientScopeService {
                     ApiErrorCode.CLIENT_SCOPE_ASSIGNED, "Assigned client scopes cannot be deleted");
         }
         clientScopeRepository.delete(entity);
-        adminAuditEventService.record("client-scope.deleted", "client-scope", id);
+        adminAuditEventService.record("client-scope.deleted", CLIENT_SCOPE_TARGET, id);
     }
 
     @Transactional(readOnly = true)
@@ -156,7 +162,7 @@ public class AdminClientScopeService {
         RegisteredClient client = clientRequired(clientId);
         Set<String> defaults = ClientScopeSettings.defaultScopes(client);
         Set<String> optional = ClientScopeSettings.optionalScopes(client);
-        List<AdminClientScopeDTO> scopes = findAll();
+        List<AdminClientScopeDTO> scopes = findAllInternal();
         return adminClientScopeMapper.toAssignmentsDTO(defaults, optional, scopes);
     }
 
@@ -200,7 +206,7 @@ public class AdminClientScopeService {
         RegisteredClient updated = builder.build();
         clientRepository.save(registeredClientMapper.toEntity(updated, mapperSupport));
         adminAuditEventService.record("client.scopes.updated", "client", clientId);
-        return adminClientScopeMapper.toAssignmentsDTO(defaults, optional, findAll());
+        return adminClientScopeMapper.toAssignmentsDTO(defaults, optional, findAllInternal());
     }
 
     private void renameAssignedScope(String oldName, String newName) {

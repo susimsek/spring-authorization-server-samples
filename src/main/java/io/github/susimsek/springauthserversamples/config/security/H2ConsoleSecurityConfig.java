@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration(proxyBeanMethods = false)
@@ -23,9 +24,14 @@ public class H2ConsoleSecurityConfig {
     SecurityFilterChain h2ConsoleSecurityFilterChain(HttpSecurity http) {
         http.securityMatcher(PathRequest.toH2Console())
                 .authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll())
-                .csrf(AbstractHttpConfigurer::disable)
+                .csrf(
+                        AbstractHttpConfigurer
+                                ::disable) // NOSONAR - the optional local H2 console is isolated by
+                // its dedicated matcher.
                 .headers(
-                        headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()));
+                        headers ->
+                                headers.frameOptions(
+                                        HeadersConfigurer.FrameOptionsConfig::sameOrigin));
         return http.build();
     }
 }

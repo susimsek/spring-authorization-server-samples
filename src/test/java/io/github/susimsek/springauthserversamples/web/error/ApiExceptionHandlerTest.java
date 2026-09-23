@@ -258,14 +258,20 @@ class ApiExceptionHandlerTest {
     }
 
     @SuppressWarnings("unused")
-    private void request(String value) {}
+    private void request(String value) {
+        // The fixture only exposes a parameter for validation metadata.
+    }
 
     @SuppressWarnings("unused")
-    private void validatedRequest(String clientId, String ignored) {}
+    private void validatedRequest(String clientId, String ignored) {
+        // The fixture only exposes parameters for validation metadata.
+    }
 
     private static class ValidatedTarget {
         @SuppressWarnings("unused")
-        void update(@NotBlank(message = "must not be blank") String clientId) {}
+        void update(@NotBlank(message = "must not be blank") String clientId) {
+            // The fixture only exposes a validation constraint.
+        }
     }
 
     private static ParameterValidationResult parameterResult(MethodParameter parameter) {

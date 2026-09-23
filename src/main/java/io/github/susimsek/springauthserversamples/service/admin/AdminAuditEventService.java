@@ -1,9 +1,11 @@
 package io.github.susimsek.springauthserversamples.service.admin;
 
+import io.github.susimsek.springauthserversamples.domain.AdminEventEntity;
 import io.github.susimsek.springauthserversamples.dto.admin.AdminEventDTO;
 import io.github.susimsek.springauthserversamples.mapper.AdminEventMapper;
 import io.github.susimsek.springauthserversamples.repository.AdminEventRepository;
 import io.github.susimsek.springauthserversamples.repository.AdminEventSettingsRepository;
+import java.security.Principal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
@@ -11,12 +13,15 @@ import lombok.RequiredArgsConstructor;
 import org.mapstruct.factory.Mappers;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
+@SuppressWarnings({"java:S107", "java:S6213", "java:S6829"})
 public class AdminAuditEventService {
 
     private final AdminEventRepository adminEventRepository;
@@ -83,15 +88,15 @@ public class AdminAuditEventService {
 
     private static String currentActor() {
         return java.util.Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
-                .filter(authentication -> authentication.isAuthenticated())
-                .map(authentication -> authentication.getName())
+                .filter(Authentication::isAuthenticated)
+                .map(Principal::getName)
                 .orElse("system");
     }
 
     @Transactional
     public void deleteAll() {
         adminEventRepository.deleteAllInBatch();
-        record("events.cleared", "event", "all");
+        record("events.cleared", "event", "all", null, currentActor());
     }
 
     public Page<AdminEventDTO> events(
@@ -105,53 +110,60 @@ public class AdminAuditEventService {
         String search = q == null ? "" : q.trim().toLowerCase();
         return adminEventRepository
                 .findAll(
-                        (root, query, cb) -> {
-                            var predicate = cb.conjunction();
-                            if (!search.isBlank()) {
-                                String like = "%" + search + "%";
-                                predicate =
-                                        cb.and(
-                                                predicate,
-                                                cb.or(
-                                                        cb.like(cb.lower(root.get("actor")), like),
-                                                        cb.like(cb.lower(root.get("action")), like),
-                                                        cb.like(
-                                                                cb.lower(root.get("targetType")),
-                                                                like),
-                                                        cb.like(
-                                                                cb.lower(root.get("targetId")),
-                                                                like)));
-                            }
-                            if (action != null && !action.isBlank()) {
-                                predicate = cb.and(predicate, cb.equal(root.get("action"), action));
-                            }
-                            if (targetType != null && !targetType.isBlank()) {
-                                predicate =
-                                        cb.and(
-                                                predicate,
-                                                cb.equal(root.get("targetType"), targetType));
-                            }
-                            if (targetId != null && !targetId.isBlank()) {
-                                predicate =
-                                        cb.and(predicate, cb.equal(root.get("targetId"), targetId));
-                            }
-                            if (from != null) {
-                                predicate =
-                                        cb.and(
-                                                predicate,
-                                                cb.greaterThanOrEqualTo(
-                                                        root.get("occurredAt"), from));
-                            }
-                            if (to != null) {
-                                predicate =
-                                        cb.and(
-                                                predicate,
-                                                cb.lessThanOrEqualTo(root.get("occurredAt"), to));
-                            }
-                            return predicate;
-                        },
+                        eventSpecification(search, action, targetType, targetId, from, to),
                         pageable)
                 .map(adminEventMapper::toDTO);
+    }
+
+    private static Specification<AdminEventEntity> eventSpecification(
+            String search,
+            String action,
+            String targetType,
+            String targetId,
+            Instant from,
+            Instant to) {
+        return (root, query, cb) -> {
+            var predicate = cb.conjunction();
+            if (!search.isBlank()) {
+                String like = "%" + search + "%";
+                predicate =
+                        cb.and(
+                                predicate,
+                                cb.or(
+                                        cb.like(cb.lower(root.get("actor")), like),
+                                        cb.like(cb.lower(root.get("action")), like),
+                                        cb.like(cb.lower(root.get("targetType")), like),
+                                        cb.like(cb.lower(root.get("targetId")), like)));
+            }
+            return addFilters(predicate, root, cb, action, targetType, targetId, from, to);
+        };
+    }
+
+    private static jakarta.persistence.criteria.Predicate addFilters(
+            jakarta.persistence.criteria.Predicate predicate,
+            jakarta.persistence.criteria.Root<AdminEventEntity> root,
+            jakarta.persistence.criteria.CriteriaBuilder cb,
+            String action,
+            String targetType,
+            String targetId,
+            Instant from,
+            Instant to) {
+        if (action != null && !action.isBlank()) {
+            predicate = cb.and(predicate, cb.equal(root.get("action"), action));
+        }
+        if (targetType != null && !targetType.isBlank()) {
+            predicate = cb.and(predicate, cb.equal(root.get("targetType"), targetType));
+        }
+        if (targetId != null && !targetId.isBlank()) {
+            predicate = cb.and(predicate, cb.equal(root.get("targetId"), targetId));
+        }
+        if (from != null) {
+            predicate = cb.and(predicate, cb.greaterThanOrEqualTo(root.get("occurredAt"), from));
+        }
+        if (to != null) {
+            predicate = cb.and(predicate, cb.lessThanOrEqualTo(root.get("occurredAt"), to));
+        }
+        return predicate;
     }
 
     public Page<AdminEventDTO> userEvents(Long userId, Pageable pageable) {
@@ -166,11 +178,13 @@ public class AdminAuditEventService {
                 .map(adminEventMapper::toDTO);
     }
 
+    @Transactional
     public void avatarUpdated(Long userId) {
-        record("user.avatar.updated", "user", userId.toString());
+        record("user.avatar.updated", "user", userId.toString(), null, currentActor());
     }
 
+    @Transactional
     public void avatarDeleted(Long userId) {
-        record("user.avatar.deleted", "user", userId.toString());
+        record("user.avatar.deleted", "user", userId.toString(), null, currentActor());
     }
 }

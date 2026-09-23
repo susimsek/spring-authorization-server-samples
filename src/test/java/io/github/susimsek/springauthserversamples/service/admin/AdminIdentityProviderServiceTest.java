@@ -37,6 +37,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
+@SuppressWarnings("java:S5778")
 class AdminIdentityProviderServiceTest {
 
     private final SocialProviderRepository providerRepository =

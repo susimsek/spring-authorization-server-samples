@@ -117,8 +117,8 @@ public final class SecurityJsonMapper {
     }
 
     @SuppressWarnings("unchecked")
-    private PublicKeyCredentialCreationOptions readWebauthnCreationOptions(InputStream inputStream)
-            throws IOException {
+    private PublicKeyCredentialCreationOptions readWebauthnCreationOptions(
+            InputStream inputStream) {
         Map<String, Object> source = webauthnDelegate.readValue(inputStream, Map.class);
         Map<String, Object> rp = (Map<String, Object>) source.get("rp");
         Map<String, Object> user = (Map<String, Object>) source.get("user");
@@ -177,7 +177,7 @@ public final class SecurityJsonMapper {
 
     @SuppressWarnings("unchecked")
     private org.springframework.security.web.webauthn.api.PublicKeyCredentialRequestOptions
-            readWebauthnRequestOptions(InputStream inputStream) throws IOException {
+            readWebauthnRequestOptions(InputStream inputStream) {
         Map<String, Object> source = webauthnDelegate.readValue(inputStream, Map.class);
         org.springframework.security.web.webauthn.api.PublicKeyCredentialRequestOptions
                         .PublicKeyCredentialRequestOptionsBuilder

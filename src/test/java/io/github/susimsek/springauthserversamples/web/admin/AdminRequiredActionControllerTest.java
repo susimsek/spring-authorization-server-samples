@@ -2,6 +2,7 @@ package io.github.susimsek.springauthserversamples.web.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -40,7 +41,7 @@ class AdminRequiredActionControllerTest {
                 .isEqualTo(HttpStatus.NO_CONTENT);
         assertThat(controller.unassign(7L, "VERIFY_EMAIL", authentication).getStatusCode())
                 .isEqualTo(HttpStatus.NO_CONTENT);
-        verify(adminUserService, org.mockito.Mockito.times(3)).requireManageableUser(7L, "admin");
+        verify(adminUserService, times(3)).requireManageableUser(7L, "admin");
         verify(requiredActionService).assign(7L, "VERIFY_EMAIL", "admin");
         verify(requiredActionService).unassign(7L, "VERIFY_EMAIL");
     }

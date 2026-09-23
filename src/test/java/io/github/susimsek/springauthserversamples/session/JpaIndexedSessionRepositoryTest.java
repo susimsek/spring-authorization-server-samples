@@ -256,10 +256,14 @@ class JpaIndexedSessionRepositoryTest {
         }
 
         @Override
-        public void commit(TransactionStatus status) {}
+        public void commit(TransactionStatus status) {
+            // The test transaction manager does not persist anything.
+        }
 
         @Override
-        public void rollback(TransactionStatus status) {}
+        public void rollback(TransactionStatus status) {
+            // The test transaction manager does not persist anything.
+        }
     }
 
     private static final class InMemorySessionStore {

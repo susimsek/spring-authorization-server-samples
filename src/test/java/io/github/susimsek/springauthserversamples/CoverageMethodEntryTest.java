@@ -123,10 +123,6 @@ class CoverageMethodEntryTest {
         return values;
     }
 
-    private static Object value(Class<?> type) {
-        return value(type, 0);
-    }
-
     private static Object value(Class<?> type, int variant) {
         if (!type.isPrimitive()) {
             if (type == String.class) {

@@ -15,6 +15,7 @@ import io.github.susimsek.springauthserversamples.service.error.ApiException;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
+@SuppressWarnings("java:S5778")
 class RegistrationCaptchaSettingsServiceTest {
 
     @Test

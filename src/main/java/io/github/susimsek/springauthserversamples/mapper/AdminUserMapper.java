@@ -12,6 +12,7 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
+@SuppressWarnings("java:S107")
 public interface AdminUserMapper {
 
     @Mapping(target = "id", ignore = true)

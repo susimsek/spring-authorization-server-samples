@@ -45,14 +45,12 @@ class SocialAccountLinkRequiredExceptionTest {
         assertThat(
                         new SocialAccountLinkRequiredException(
                                         "github", "subject", "user@example.test", null)
-                                .pendingLink()
-                                .get("attributes"))
-                .isEqualTo(Map.of());
+                                .pendingLink())
+                .containsEntry("attributes", Map.of());
         assertThat(
                         new SocialAccountLinkRequiredException(
                                         "github", "subject", "user@example.test", Map.of())
-                                .pendingLink()
-                                .get("attributes"))
-                .isEqualTo(Map.of());
+                                .pendingLink())
+                .containsEntry("attributes", Map.of());
     }
 }

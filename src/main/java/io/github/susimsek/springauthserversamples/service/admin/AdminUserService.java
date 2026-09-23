@@ -39,7 +39,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
+@SuppressWarnings("java:S107")
 public class AdminUserService {
+
+    private static final String USERNAME_FIELD = "username";
+    private static final String USER_ENABLED_UPDATED_EVENT = "user.enabled.updated";
 
     private final UserRepository userRepository;
     private final GroupRepository groupRepository;
@@ -94,7 +98,17 @@ public class AdminUserService {
             boolean enabled,
             Set<String> roles,
             String currentUsername) {
-        return createUser(username, null, false, password, enabled, roles, currentUsername);
+        return createUserInternal(
+                username,
+                null,
+                null,
+                null,
+                false,
+                password,
+                false,
+                enabled,
+                roles,
+                currentUsername);
     }
 
     @Transactional
@@ -107,7 +121,7 @@ public class AdminUserService {
             boolean enabled,
             Set<String> roles,
             String currentUsername) {
-        return createUser(
+        return createUserInternal(
                 username,
                 null,
                 null,
@@ -132,7 +146,7 @@ public class AdminUserService {
             boolean enabled,
             Set<String> roles,
             String currentUsername) {
-        return createUser(
+        return createUserInternal(
                 username,
                 firstName,
                 lastName,
@@ -158,6 +172,30 @@ public class AdminUserService {
             boolean enabled,
             Set<String> roles,
             String currentUsername) {
+        return createUserInternal(
+                username,
+                firstName,
+                lastName,
+                email,
+                emailVerified,
+                password,
+                temporary,
+                enabled,
+                roles,
+                currentUsername);
+    }
+
+    private AdminUserDTO createUserInternal(
+            String username,
+            String firstName,
+            String lastName,
+            String email,
+            boolean emailVerified,
+            String password,
+            boolean temporary,
+            boolean enabled,
+            Set<String> roles,
+            String currentUsername) {
         validateUser(username, password);
         firstName = normalizeName(firstName);
         lastName = normalizeName(lastName);
@@ -166,7 +204,7 @@ public class AdminUserService {
         assertRoleAssignmentAllowed(roles, currentUsername);
         if (userRepository.findByUsername(username).isPresent()) {
             throw ApiException.conflict(
-                    "username",
+                    USERNAME_FIELD,
                     ApiErrorCode.USER_DUPLICATE_USERNAME,
                     "Username is already registered");
         }
@@ -200,7 +238,7 @@ public class AdminUserService {
             Long id, String username, boolean enabled, Set<String> roles, String currentUsername) {
         validateUser(username, null);
         UserEntity existing = findUser(id);
-        return updateUser(
+        return updateUserInternal(
                 id,
                 username,
                 null,
@@ -223,7 +261,7 @@ public class AdminUserService {
             Set<String> roles,
             String currentUsername) {
         UserEntity existing = findUser(id);
-        return updateUser(
+        return updateUserInternal(
                 id,
                 username,
                 existing.getFirstName(),
@@ -247,6 +285,28 @@ public class AdminUserService {
             boolean enabled,
             Set<String> roles,
             String currentUsername) {
+        return updateUserInternal(
+                id,
+                username,
+                firstName,
+                lastName,
+                email,
+                emailVerified,
+                enabled,
+                roles,
+                currentUsername);
+    }
+
+    private AdminUserDTO updateUserInternal(
+            Long id,
+            String username,
+            String firstName,
+            String lastName,
+            String email,
+            boolean emailVerified,
+            boolean enabled,
+            Set<String> roles,
+            String currentUsername) {
         validateUser(username, null);
         UserEntity user = findUser(id);
         firstName = normalizeName(firstName == null ? user.getFirstName() : firstName);
@@ -257,7 +317,7 @@ public class AdminUserService {
         if (!user.getUsername().equals(username)
                 && userRepository.findByUsername(username).isPresent()) {
             throw ApiException.conflict(
-                    "username",
+                    USERNAME_FIELD,
                     ApiErrorCode.USER_DUPLICATE_USERNAME,
                     "Username is already registered");
         }
@@ -286,12 +346,17 @@ public class AdminUserService {
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public void changePassword(Long id, String password, String currentUsername) {
-        changePassword(id, password, true, currentUsername);
+        changePasswordInternal(id, password, true, currentUsername);
     }
 
     @Transactional
     @CacheEvict(cacheNames = UserRepository.USER_BY_USERNAME_CACHE, allEntries = true)
     public void changePassword(
+            Long id, String password, boolean temporary, String currentUsername) {
+        changePasswordInternal(id, password, temporary, currentUsername);
+    }
+
+    private void changePasswordInternal(
             Long id, String password, boolean temporary, String currentUsername) {
         if (password == null || password.length() < 12) {
             throw ApiException.badRequest(
@@ -431,7 +496,7 @@ public class AdminUserService {
             userAccessInvalidationService.invalidate(user.getUsername());
         }
         adminUserMapper.updateEnabled(enabled, user);
-        adminAuditEventService.record("user.enabled.updated", "user", user.getId().toString());
+        adminAuditEventService.record(USER_ENABLED_UPDATED_EVENT, "user", user.getId().toString());
     }
 
     @Transactional
@@ -470,13 +535,13 @@ public class AdminUserService {
                 case ENABLE -> {
                     adminUserMapper.updateEnabled(true, user);
                     adminAuditEventService.record(
-                            "user.enabled.updated", "user", user.getId().toString());
+                            USER_ENABLED_UPDATED_EVENT, "user", user.getId().toString());
                 }
                 case DISABLE -> {
                     userAccessInvalidationService.invalidate(user.getUsername());
                     adminUserMapper.updateEnabled(false, user);
                     adminAuditEventService.record(
-                            "user.enabled.updated", "user", user.getId().toString());
+                            USER_ENABLED_UPDATED_EVENT, "user", user.getId().toString());
                 }
                 case DELETE -> {
                     userAccessInvalidationService.invalidate(user.getUsername());
@@ -495,12 +560,16 @@ public class AdminUserService {
             Long lifespanSeconds,
             Locale locale,
             String currentUsername) {
-        requireManageableUser(id, currentUsername);
+        requireManageableUserInternal(id, currentUsername);
         userActionService.executeActionsEmail(id, action, lifespanSeconds, locale);
     }
 
     @Transactional(readOnly = true)
     public UserEntity requireManageableUser(Long id, String currentUsername) {
+        return requireManageableUserInternal(id, currentUsername);
+    }
+
+    private UserEntity requireManageableUserInternal(Long id, String currentUsername) {
         UserEntity user = findUser(id);
         assertCanManageUser(user, currentUsername);
         return user;
@@ -645,7 +714,7 @@ public class AdminUserService {
     private static void validateUser(String username, String password) {
         if (username == null || username.isBlank()) {
             throw ApiException.badRequest(
-                    "username", ApiErrorCode.USER_INVALID_USERNAME, "Username is required");
+                    USERNAME_FIELD, ApiErrorCode.USER_INVALID_USERNAME, "Username is required");
         }
         if (password != null && password.length() < 12) {
             throw ApiException.badRequest(

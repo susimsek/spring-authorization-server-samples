@@ -1,6 +1,7 @@
 package io.github.susimsek.springauthserversamples.web;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -20,6 +21,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("java:S5778")
 class LocalizationControllerTest {
 
     @Mock private LocalizationSettingsService localizationSettingsService;
@@ -27,7 +29,7 @@ class LocalizationControllerTest {
 
     @Test
     void delegatesPublicLocalizationOperations() {
-        LocalizationSettingsDTO settings = org.mockito.Mockito.mock(LocalizationSettingsDTO.class);
+        LocalizationSettingsDTO settings = mock(LocalizationSettingsDTO.class);
         when(localizationSettingsService.get()).thenReturn(settings);
         when(localizationSettingsService.publicOverrides("tr", "admin"))
                 .thenReturn(Map.of("login.title", "Giriş"));

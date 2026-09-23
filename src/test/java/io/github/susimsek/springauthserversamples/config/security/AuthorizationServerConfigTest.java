@@ -105,7 +105,7 @@ class AuthorizationServerConfigTest {
     }
 
     @Test
-    void buildsAuthorizationServerSecurityFilterChain() throws Exception {
+    void buildsAuthorizationServerSecurityFilterChain() {
         SecurityFilterChain chain =
                 config.authorizationServerSecurityFilterChain(
                         httpSecurity(),
@@ -181,8 +181,7 @@ class AuthorizationServerConfigTest {
 
         claims.claim("sub", "admin");
         assertThat(claims.build().getClaims()).doesNotContainKeys("picture", "roles");
-        verify(userRepository, org.mockito.Mockito.never())
-                .findByUsername(org.mockito.ArgumentMatchers.anyString());
+        verify(userRepository, never()).findByUsername(org.mockito.ArgumentMatchers.anyString());
     }
 
     @Test
@@ -307,7 +306,7 @@ class AuthorizationServerConfigTest {
     }
 
     @Test
-    void mapsFullGroupPathsAndSocialClaimsForAccessToken() throws Exception {
+    void mapsFullGroupPathsAndSocialClaimsForAccessToken() {
         UserEntity user = new UserEntity();
         user.setUsername("admin");
         GroupEntity parent = new GroupEntity();
@@ -405,7 +404,7 @@ class AuthorizationServerConfigTest {
     }
 
     @Test
-    void skipsSocialClaimsWhenMappedTokenSectionIsAbsent() throws Exception {
+    void skipsSocialClaimsWhenMappedTokenSectionIsAbsent() {
         UserEntity user = new UserEntity();
         UserRepository userRepository = mock(UserRepository.class);
         when(userRepository.findByUsername("admin")).thenReturn(Optional.of(user));
@@ -480,7 +479,7 @@ class AuthorizationServerConfigTest {
     }
 
     @Test
-    void mapsSocialClaimsForOidcIdToken() throws Exception {
+    void mapsSocialClaimsForOidcIdToken() {
         UserEntity user = new UserEntity();
         user.setUsername("admin");
         UserRepository userRepository = mock(UserRepository.class);
@@ -578,7 +577,7 @@ class AuthorizationServerConfigTest {
                                 "other-client",
                                 Set.of("profile", "email", "openid")));
 
-        verify(userRepository, org.mockito.Mockito.never()).findByUsername(anyString());
+        verify(userRepository, never()).findByUsername(anyString());
         assertThat(claims.build().getClaims()).doesNotContainKeys("picture", "email", "locale");
     }
 
@@ -605,8 +604,7 @@ class AuthorizationServerConfigTest {
                                 "account-console",
                                 Set.of("openid")));
 
-        verify(socialIdentityRepository, org.mockito.Mockito.never())
-                .findAllByUserUsername(anyString());
+        verify(socialIdentityRepository, never()).findAllByUserUsername(anyString());
     }
 
     @Test

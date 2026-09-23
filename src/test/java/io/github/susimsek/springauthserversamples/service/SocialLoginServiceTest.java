@@ -5,7 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -37,6 +39,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import tools.jackson.databind.ObjectMapper;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("java:S5778")
 class SocialLoginServiceTest {
 
     @org.junit.jupiter.api.BeforeEach
@@ -377,7 +380,7 @@ class SocialLoginServiceTest {
         assertThat(identity.getMappedClaims()).isEqualTo("{\"department\":{}}");
 
         when(objectMapper.writeValueAsString(any()))
-                .thenThrow(org.mockito.Mockito.mock(tools.jackson.core.JacksonException.class));
+                .thenThrow(mock(tools.jackson.core.JacksonException.class));
         assertThatThrownBy(() -> service().findOrCreate(authentication()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("claims could not be stored");
@@ -749,8 +752,7 @@ class SocialLoginServiceTest {
 
         assertThat(service().linkExisting("ada", "github", authentication("github", "123")))
                 .isEqualTo("ada");
-        verify(socialIdentityRepository, org.mockito.Mockito.times(2))
-                .save(any(SocialIdentityEntity.class));
+        verify(socialIdentityRepository, times(2)).save(any(SocialIdentityEntity.class));
     }
 
     @Test
@@ -912,7 +914,7 @@ class SocialLoginServiceTest {
         service().findOrCreate(authentication("google", Map.of("sub", "no-picture")));
 
         verify(userRepository).save(user);
-        verify(userRepository, org.mockito.Mockito.times(1)).save(any(UserEntity.class));
+        verify(userRepository, times(1)).save(any(UserEntity.class));
     }
 
     @Test
@@ -967,8 +969,7 @@ class SocialLoginServiceTest {
                                 "attributes",
                                 Map.of("sub", "123", "picture", "https://example.test/a")));
 
-        verify(socialIdentityRepository, org.mockito.Mockito.times(2))
-                .save(any(SocialIdentityEntity.class));
+        verify(socialIdentityRepository, times(2)).save(any(SocialIdentityEntity.class));
     }
 
     @Test

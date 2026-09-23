@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
+@SuppressWarnings("java:S5778")
 class SocialLoginSecretCipherTest {
 
     @Test
