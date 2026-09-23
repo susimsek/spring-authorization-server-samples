@@ -47,14 +47,14 @@ public class RegistrationCaptchaService {
     }
 
     public RegistrationCaptchaDTO publicSettings() {
-        return publicSettings(publicConfiguration());
+        return publicSettingsInternal(publicConfiguration());
     }
 
     public RegistrationCaptchaDTO publicLoginSettings() {
-        return publicSettings(loginPublicConfiguration());
+        return publicSettingsInternal(loginPublicConfiguration());
     }
 
-    private RegistrationCaptchaDTO publicSettings(RegistrationCaptchaConfiguration config) {
+    private RegistrationCaptchaDTO publicSettingsInternal(RegistrationCaptchaConfiguration config) {
         if (!isEnabled(config) || !isConfigured(config)) {
             return new RegistrationCaptchaDTO(false, "", "", "", false, false);
         }
@@ -68,14 +68,14 @@ public class RegistrationCaptchaService {
     }
 
     public void verifyOrThrow(String token, HttpServletRequest request) {
-        verifyOrThrow(token, request, verificationConfiguration());
+        verifyInternal(token, request, verificationConfiguration());
     }
 
     public void verifyLoginOrThrow(String token, HttpServletRequest request) {
-        verifyOrThrow(token, request, loginVerificationConfiguration());
+        verifyInternal(token, request, loginVerificationConfiguration());
     }
 
-    private void verifyOrThrow(
+    private void verifyInternal(
             String token, HttpServletRequest request, RegistrationCaptchaConfiguration config) {
         if (!isEnabled(config)) {
             return;

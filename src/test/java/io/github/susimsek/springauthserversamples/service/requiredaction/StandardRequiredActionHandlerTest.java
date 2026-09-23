@@ -75,7 +75,7 @@ class StandardRequiredActionHandlerTest {
         when(settings.otpLookAheadWindow()).thenReturn(1);
         when(totp.matchingCounter("SECRET", "123456", "SHA1", 6, 30, 1))
                 .thenReturn(OptionalLong.of(100L));
-        StandardRequiredActionHandler handler =
+        final StandardRequiredActionHandler handler =
                 new StandardRequiredActionHandler(
                         validator, null, null, invalidation, settings, totp);
         UserEntity user = new UserEntity();
@@ -101,7 +101,7 @@ class StandardRequiredActionHandlerTest {
         when(settings.otpDigits()).thenReturn(6);
         when(settings.otpPeriodSeconds()).thenReturn(30);
         when(settings.otpLookAheadWindow()).thenReturn(1);
-        StandardRequiredActionHandler handler =
+        final StandardRequiredActionHandler handler =
                 new StandardRequiredActionHandler(
                         validator, null, null, invalidation, settings, totp);
         UserEntity user = new UserEntity();
@@ -137,7 +137,7 @@ class StandardRequiredActionHandlerTest {
         when(settings.otpLookAheadWindow()).thenReturn(1);
         when(totp.matchingCounter("SECRET", "123456", "SHA1", 6, 30, 1))
                 .thenReturn(OptionalLong.of(100L));
-        StandardRequiredActionHandler handler =
+        final StandardRequiredActionHandler handler =
                 new StandardRequiredActionHandler(
                         validator, null, null, invalidation, settings, totp);
         UserEntity user = new UserEntity();
@@ -161,7 +161,7 @@ class StandardRequiredActionHandlerTest {
         UserEntity user = new UserEntity();
         user.setUsername("alice");
         when(recoveryCodes.status("alice")).thenReturn(new RecoveryCodesStatusDTO(12));
-        StandardRequiredActionHandler handler =
+        final StandardRequiredActionHandler handler =
                 new StandardRequiredActionHandler(
                         validator, null, null, null, null, null, recoveryCodes);
         RequiredActionDefinitionEntity definition = new RequiredActionDefinitionEntity();
@@ -210,7 +210,7 @@ class StandardRequiredActionHandlerTest {
         when(settings.isOtpRequired()).thenReturn(true);
         when(policy.isExpired(org.mockito.ArgumentMatchers.any())).thenReturn(true);
         when(webAuthn.hasCredential("alice")).thenReturn(false);
-        StandardRequiredActionHandler handler =
+        final StandardRequiredActionHandler handler =
                 new StandardRequiredActionHandler(
                         validator, policy, null, null, settings, null, null, null, webAuthn);
         UserEntity user = new UserEntity();
@@ -245,7 +245,7 @@ class StandardRequiredActionHandlerTest {
         WebAuthnService webAuthn = mock(WebAuthnService.class);
         when(settings.isOtpRequired()).thenReturn(false);
         when(webAuthn.hasCredential("alice")).thenReturn(true);
-        StandardRequiredActionHandler handler =
+        final StandardRequiredActionHandler handler =
                 new StandardRequiredActionHandler(
                         validator, null, null, null, settings, null, null, null, webAuthn);
         UserEntity user = new UserEntity();
@@ -277,7 +277,7 @@ class StandardRequiredActionHandlerTest {
         UserAccessInvalidationService invalidation = mock(UserAccessInvalidationService.class);
         WebAuthnService webAuthn = mock(WebAuthnService.class);
         when(webAuthn.hasCredential("alice")).thenReturn(true);
-        StandardRequiredActionHandler handler =
+        final StandardRequiredActionHandler handler =
                 new StandardRequiredActionHandler(
                         validator, null, password, invalidation, null, null, null, null, webAuthn);
         UserEntity user = new UserEntity();
@@ -295,7 +295,7 @@ class StandardRequiredActionHandlerTest {
 
     @Test
     void rejectsUnsupportedAndUnconfirmedActions() {
-        StandardRequiredActionHandler handler = new StandardRequiredActionHandler(validator);
+        final StandardRequiredActionHandler handler = new StandardRequiredActionHandler(validator);
         UserEntity user = new UserEntity();
 
         assertThatThrownBy(() -> handler.complete(user, Map.of()))
@@ -325,7 +325,7 @@ class StandardRequiredActionHandlerTest {
         when(bruteForce.isLocked("alice")).thenReturn(true, false);
         when(totp.matchingCounter("SECRET", "123456", "SHA1", 6, 30, 1))
                 .thenReturn(OptionalLong.of(100L));
-        StandardRequiredActionHandler handler =
+        final StandardRequiredActionHandler handler =
                 new StandardRequiredActionHandler(
                         validator, null, null, null, settings, totp, null, bruteForce, null);
         UserEntity user = new UserEntity();
@@ -401,7 +401,7 @@ class StandardRequiredActionHandlerTest {
 
     @Test
     void handlesNullServicesMissingProfileValuesAndConfirmationVariants() {
-        StandardRequiredActionHandler handler = new StandardRequiredActionHandler(validator);
+        final StandardRequiredActionHandler handler = new StandardRequiredActionHandler(validator);
         UserEntity user = new UserEntity();
         user.setUsername("alice");
 
@@ -449,7 +449,7 @@ class StandardRequiredActionHandlerTest {
 
     @Test
     void coversPendingFlagsBlankProfileAndMissingOptionalServices() {
-        StandardRequiredActionHandler handler = new StandardRequiredActionHandler(validator);
+        final StandardRequiredActionHandler handler = new StandardRequiredActionHandler(validator);
         UserEntity user = new UserEntity();
         user.setUsername("alice");
         user.setFirstName(" ");

@@ -130,7 +130,7 @@ class AdminIdentityProviderServiceTest {
         verify(settingsService).refreshClientRegistrations();
         verify(secretCipher).encrypt("secret");
 
-        SocialProviderEntity existing = provider();
+        final SocialProviderEntity existing = provider();
         SocialProviderMapperEntity mapper = mapper("acme");
         when(providerRepository.findById("provider-1")).thenReturn(Optional.of(existing));
         when(providerRepository.findByRegistrationId("acme-new")).thenReturn(Optional.empty());
@@ -325,7 +325,7 @@ class AdminIdentityProviderServiceTest {
 
     @Test
     void rejectsUpdateConflictsAndAllowsKeepingExistingSecret() {
-        SocialProviderEntity existing = provider();
+        final SocialProviderEntity existing = provider();
         SocialProviderEntity other = provider();
         other.setId("provider-2");
         other.setRegistrationId("other");

@@ -69,13 +69,6 @@ public class AdminGroupService {
         return findAllInternal(query, pageable);
     }
 
-    private Page<AdminGroupDTO> findAllInternal(String query, Pageable pageable) {
-        return groupViews(
-                groupRepository.findByNameContainingIgnoreCase(
-                        AdminSearch.normalize(query), pageable),
-                pageable);
-    }
-
     @Transactional(readOnly = true)
     public Page<AdminGroupDTO> findAll(String query, Pageable pageable, String currentUsername) {
         if (currentUsername == null || groupPermissionRepository == null) {
@@ -115,6 +108,13 @@ public class AdminGroupService {
         Page<GroupEntity> page =
                 new PageImpl<>(visibleGroups.subList(from, to), pageable, visibleGroups.size());
         return groupViews(page, pageable);
+    }
+
+    private Page<AdminGroupDTO> findAllInternal(String query, Pageable pageable) {
+        return groupViews(
+                groupRepository.findByNameContainingIgnoreCase(
+                        AdminSearch.normalize(query), pageable),
+                pageable);
     }
 
     @Transactional(readOnly = true)

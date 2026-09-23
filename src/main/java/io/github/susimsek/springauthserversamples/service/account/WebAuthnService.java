@@ -90,12 +90,12 @@ public class WebAuthnService {
 
     @Transactional
     public void delete(String username, String credentialId) {
-        delete(username, credentialId, "account.passkey.deleted", "account");
+        deleteCredential(username, credentialId, "account.passkey.deleted", "account");
     }
 
     @Transactional
     public void deleteForAdministrator(String username, String credentialId, String actorUsername) {
-        delete(username, credentialId, "admin.passkey.deleted", "user");
+        deleteCredential(username, credentialId, "admin.passkey.deleted", "user");
     }
 
     @Transactional
@@ -124,7 +124,8 @@ public class WebAuthnService {
                 user.getId().toString());
     }
 
-    private void delete(String username, String credentialId, String event, String resourceType) {
+    private void deleteCredential(
+            String username, String credentialId, String event, String resourceType) {
         UserEntity user = user(username);
         Bytes id;
         try {

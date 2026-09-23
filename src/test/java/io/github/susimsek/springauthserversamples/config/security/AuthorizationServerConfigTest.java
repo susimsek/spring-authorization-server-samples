@@ -128,13 +128,13 @@ class AuthorizationServerConfigTest {
         group.setName("platform-administrators");
         user.setGroups(Set.of(group));
         user.setPreferredLocale("tr");
-        UserRepository userRepository = mock(UserRepository.class);
+        final UserRepository userRepository = mock(UserRepository.class);
         when(userRepository.findByUsername("admin")).thenReturn(Optional.of(user));
         UserAvatarRepository.AvatarVersion avatar = mock(UserAvatarRepository.AvatarVersion.class);
         when(avatar.getPublicId()).thenReturn("avatar-id");
         when(avatar.getUpdatedAt()).thenReturn(Instant.parse("2026-01-01T00:00:00Z"));
-        UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
-        AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
+        final UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
+        final AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
         when(authorizationRepository.findSessionIdById("authorization-id"))
                 .thenReturn(Optional.of("browser-session"));
         when(avatarRepository.findVersionByUserId(42L)).thenReturn(Optional.of(avatar));
@@ -166,8 +166,8 @@ class AuthorizationServerConfigTest {
     @Test
     void doesNotQueryAvatarForTokensOutsideUserProfileFlows() {
         UserRepository userRepository = mock(UserRepository.class);
-        UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
-        AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
+        final UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
+        final AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
         JwtClaimsSet.Builder claims = JwtClaimsSet.builder().claim("sub", "admin");
 
         config.jwtTokenCustomizer(userRepository, avatarRepository, authorizationRepository)
@@ -187,8 +187,8 @@ class AuthorizationServerConfigTest {
     @Test
     void preservesNonceInOidcIdToken() {
         UserRepository userRepository = mock(UserRepository.class);
-        UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
-        AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
+        final UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
+        final AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
         JwtClaimsSet.Builder claims = JwtClaimsSet.builder();
 
         config.jwtTokenCustomizer(userRepository, avatarRepository, authorizationRepository)
@@ -273,8 +273,8 @@ class AuthorizationServerConfigTest {
         user.setGroups(Set.of(group));
         UserRepository userRepository = mock(UserRepository.class);
         when(userRepository.findByUsername("admin")).thenReturn(Optional.of(user));
-        UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
-        AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
+        final UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
+        final AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
         ClientScopeEntity mapper = new ClientScopeEntity();
         mapper.setName("groups");
         mapper.setGroupMapperEnabled(true);
@@ -315,10 +315,10 @@ class AuthorizationServerConfigTest {
         child.setName("engineering");
         child.setParent(parent);
         user.setGroups(Set.of(child));
-        UserRepository userRepository = mock(UserRepository.class);
+        final UserRepository userRepository = mock(UserRepository.class);
         when(userRepository.findByUsername("admin")).thenReturn(Optional.of(user));
-        UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
-        AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
+        final UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
+        final AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
         ClientScopeEntity mapper = new ClientScopeEntity();
         mapper.setName("groups");
         mapper.setGroupMapperEnabled(true);
@@ -357,10 +357,10 @@ class AuthorizationServerConfigTest {
     void ignoresMalformedAndEmptyMappedClaims() throws Exception {
         UserEntity user = new UserEntity();
         user.setUsername("admin");
-        UserRepository userRepository = mock(UserRepository.class);
+        final UserRepository userRepository = mock(UserRepository.class);
         when(userRepository.findByUsername("admin")).thenReturn(Optional.of(user));
-        UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
-        AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
+        final UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
+        final AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
         SocialIdentityEntity blank = new SocialIdentityEntity();
         blank.setMappedClaims(" ");
         SocialIdentityEntity malformed = new SocialIdentityEntity();
@@ -435,9 +435,9 @@ class AuthorizationServerConfigTest {
 
     @Test
     void omitsSessionIdentifierWhenAuthorizationIsMissing() {
-        UserRepository userRepository = mock(UserRepository.class);
-        UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
-        AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
+        final UserRepository userRepository = mock(UserRepository.class);
+        final UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
+        final AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
         JwtClaimsSet.Builder claims = JwtClaimsSet.builder();
 
         config.jwtTokenCustomizer(userRepository, avatarRepository, authorizationRepository)
@@ -563,9 +563,9 @@ class AuthorizationServerConfigTest {
 
     @Test
     void skipsUserClaimsWhenScopesUseAnUnsupportedGrant() {
-        UserRepository userRepository = mock(UserRepository.class);
-        UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
-        AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
+        final UserRepository userRepository = mock(UserRepository.class);
+        final UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
+        final AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
         JwtClaimsSet.Builder claims = JwtClaimsSet.builder().claim("sub", "client");
 
         config.jwtTokenCustomizer(userRepository, avatarRepository, authorizationRepository)
@@ -609,9 +609,9 @@ class AuthorizationServerConfigTest {
 
     @Test
     void coversNonMatchingTokenPredicatesAndDisabledGroupScopes() {
-        UserRepository userRepository = mock(UserRepository.class);
-        UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
-        AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
+        final UserRepository userRepository = mock(UserRepository.class);
+        final UserAvatarRepository avatarRepository = mock(UserAvatarRepository.class);
+        final AuthorizationRepository authorizationRepository = mock(AuthorizationRepository.class);
         ClientScopeRepository clientScopeRepository = mock(ClientScopeRepository.class);
         ClientScopeEntity disabledMapper = new ClientScopeEntity();
         disabledMapper.setName("groups");
@@ -750,7 +750,7 @@ class AuthorizationServerConfigTest {
                         return object;
                     }
                 };
-        HttpSecurity httpSecurity =
+        final HttpSecurity httpSecurity =
                 new HttpSecurity(
                         postProcessor,
                         new AuthenticationManagerBuilder(postProcessor),

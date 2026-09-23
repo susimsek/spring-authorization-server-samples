@@ -39,7 +39,8 @@ class SocialLoginAuthenticationSuccessHandlerTest {
     void addsAuthenticationFactorForOidcTokenGeneration() throws Exception {
         SocialLoginService socialLoginService = mock(SocialLoginService.class);
         UserDetailsService userDetailsService = mock(UserDetailsService.class);
-        SecurityContextRepository securityContextRepository = mock(SecurityContextRepository.class);
+        final SecurityContextRepository securityContextRepository =
+                mock(SecurityContextRepository.class);
         OAuth2AuthenticationToken oauth2Authentication = mock(OAuth2AuthenticationToken.class);
         UserDetails user =
                 User.withUsername("social_user").password("encoded").roles("USER").build();
@@ -134,8 +135,9 @@ class SocialLoginAuthenticationSuccessHandlerTest {
     void redirectsToMfaWhenProviderRequiresAnEnrolledFactor() throws Exception {
         SocialLoginService socialLoginService = mock(SocialLoginService.class);
         UserDetailsService userDetailsService = mock(UserDetailsService.class);
-        SecurityContextRepository securityContextRepository = mock(SecurityContextRepository.class);
-        MfaService mfaService = mock(MfaService.class);
+        final SecurityContextRepository securityContextRepository =
+                mock(SecurityContextRepository.class);
+        final MfaService mfaService = mock(MfaService.class);
         OAuth2AuthenticationToken authentication = mock(OAuth2AuthenticationToken.class);
         UserDetails user = User.withUsername("alice").password("encoded").roles("USER").build();
         when(authentication.getAuthorizedClientRegistrationId()).thenReturn("google");
@@ -165,8 +167,9 @@ class SocialLoginAuthenticationSuccessHandlerTest {
     void sendsFailureRedirectForLockedAccountAndMissingProviderMfa() throws Exception {
         SocialLoginService socialLoginService = mock(SocialLoginService.class);
         UserDetailsService userDetailsService = mock(UserDetailsService.class);
-        SecurityContextRepository securityContextRepository = mock(SecurityContextRepository.class);
-        MfaService mfaService = mock(MfaService.class);
+        final SecurityContextRepository securityContextRepository =
+                mock(SecurityContextRepository.class);
+        final MfaService mfaService = mock(MfaService.class);
         OAuth2AuthenticationToken authentication = mock(OAuth2AuthenticationToken.class);
         when(authentication.getAuthorizedClientRegistrationId()).thenReturn("google");
         when(socialLoginService.findOrCreate(authentication)).thenReturn("alice");

@@ -25,6 +25,6 @@ final class ConsoleApiSecurity {
                                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                                         .sessionAuthenticationStrategy(
                                                 new NullAuthenticatedSessionStrategy()))
-                .requestCache(requestCache -> requestCache.disable());
+                .requestCache(AbstractHttpConfigurer::disable);
     }
 }

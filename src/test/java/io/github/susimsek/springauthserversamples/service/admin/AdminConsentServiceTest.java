@@ -159,7 +159,7 @@ class AdminConsentServiceTest {
 
     @Test
     void loadsSingleClientAndUserConsentViews() {
-        AuthorizationConsentEntity consent = consent("client", "alice", "openid");
+        final AuthorizationConsentEntity consent = consent("client", "alice", "openid");
         RegisteredClientEntity client = new RegisteredClientEntity();
         client.setId("client");
         client.setClientName("Client");

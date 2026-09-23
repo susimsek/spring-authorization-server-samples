@@ -124,7 +124,7 @@ public class AdminIdentityProviderService {
                         .orElseThrow(() -> ApiException.notFound(IDENTITY_PROVIDER_NOT_FOUND));
         String registrationId = normalize(request.registrationId());
         String alias = normalize(request.alias());
-        String previousAlias = entity.getAlias();
+        final String previousAlias = entity.getAlias();
         providerRepository
                 .findByRegistrationId(registrationId)
                 .filter(other -> !other.getId().equals(id))

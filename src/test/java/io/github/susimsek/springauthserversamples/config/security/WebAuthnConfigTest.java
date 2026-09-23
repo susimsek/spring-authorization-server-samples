@@ -48,7 +48,7 @@ class WebAuthnConfigTest {
 
     @Test
     void createsWebAuthnInfrastructureBeans() {
-        PublicKeyCredentialUserEntityRepository users =
+        final PublicKeyCredentialUserEntityRepository users =
                 config.webAuthnUserEntityRepository(mock(UserRepository.class));
         UserCredentialRepository credentials =
                 config.webAuthnUserCredentialRepository(mock(JdbcOperations.class));
@@ -135,7 +135,7 @@ class WebAuthnConfigTest {
                         "");
         when(settings.webAuthnPolicy(false)).thenReturn(registrationPolicy);
         when(settings.webAuthnPolicy(true)).thenReturn(authenticationPolicy);
-        ApplicationProperties properties =
+        final ApplicationProperties properties =
                 new ApplicationProperties(
                         new ApplicationProperties.Cache(
                                 new ApplicationProperties.Caffeine(Duration.ofHours(1), 1, 10)),
@@ -214,7 +214,7 @@ class WebAuthnConfigTest {
 
     @Test
     void usesFallbackRelyingPartySettingsAndRejectsMissingAllowedAaguid() {
-        PublicKeyCredentialUserEntityRepository users =
+        final PublicKeyCredentialUserEntityRepository users =
                 mock(PublicKeyCredentialUserEntityRepository.class);
         UserCredentialRepository credentials = mock(UserCredentialRepository.class);
         LoginSettingsService settings = mock(LoginSettingsService.class);
@@ -231,7 +231,7 @@ class WebAuthnConfigTest {
                         true,
                         "00000000-0000-0000-0000-000000000001");
         when(settings.webAuthnPolicy(false)).thenReturn(policy);
-        ApplicationProperties properties =
+        final ApplicationProperties properties =
                 new ApplicationProperties(
                         new ApplicationProperties.Cache(
                                 new ApplicationProperties.Caffeine(Duration.ofHours(1), 1, 10)),
@@ -274,7 +274,7 @@ class WebAuthnConfigTest {
 
     @Test
     void enforcesAllowedAndDisallowedAaguidsFromAttestationData() throws Exception {
-        PublicKeyCredentialUserEntityRepository users =
+        final PublicKeyCredentialUserEntityRepository users =
                 mock(PublicKeyCredentialUserEntityRepository.class);
         UserCredentialRepository credentials = mock(UserCredentialRepository.class);
         LoginSettingsService settings = mock(LoginSettingsService.class);

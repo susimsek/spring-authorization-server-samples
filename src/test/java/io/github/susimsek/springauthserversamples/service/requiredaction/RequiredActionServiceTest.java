@@ -51,7 +51,8 @@ class RequiredActionServiceTest {
         user.setFirstName(null);
         user.setLastName(null);
         user.setEmail(null);
-        RequiredActionDefinitionEntity terms = definition("TERMS_AND_CONDITIONS", true, true, 20);
+        final RequiredActionDefinitionEntity terms =
+                definition("TERMS_AND_CONDITIONS", true, true, 20);
         RequiredActionDefinitionEntity profile = definition("UPDATE_PROFILE", false, false, 10);
         UserRequiredActionEntity assignment = new UserRequiredActionEntity();
         assignment.setActionKey(profile.getActionKey());
