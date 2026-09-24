@@ -24,12 +24,23 @@ jest.mock("@/routing/navigation", () => ({
 }));
 
 describe("registration and account action forms", () => {
+  const defaultFetch = jest.fn().mockResolvedValue({
+    ok: false,
+    json: jest.fn(),
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockSubmitAccountAction.mockReset();
+    defaultFetch.mockClear();
+    globalThis.fetch = defaultFetch as unknown as typeof fetch;
     document.documentElement.lang = "tr";
     searchParams = new URLSearchParams();
     pathname = "/verify-email";
+  });
+
+  afterEach(() => {
+    delete (globalThis as { fetch?: typeof fetch }).fetch;
   });
 
   it("validates registration fields and shows the created state", async () => {
@@ -69,6 +80,7 @@ describe("registration and account action forms", () => {
         email: "ada@example.test",
         password: "Change-me12!",
         confirmPassword: "Change-me12!",
+        captchaToken: "",
         locale: "tr",
       }),
     );
