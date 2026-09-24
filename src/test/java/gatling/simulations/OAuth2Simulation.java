@@ -1,8 +1,10 @@
 package gatling.simulations;
 
+import static io.gatling.javaapi.core.CoreDsl.constantConcurrentUsers;
 import static io.gatling.javaapi.core.CoreDsl.exec;
+import static io.gatling.javaapi.core.CoreDsl.global;
 import static io.gatling.javaapi.core.CoreDsl.jsonPath;
-import static io.gatling.javaapi.core.CoreDsl.rampUsers;
+import static io.gatling.javaapi.core.CoreDsl.rampConcurrentUsers;
 import static io.gatling.javaapi.core.CoreDsl.scenario;
 import static io.gatling.javaapi.http.HttpDsl.http;
 import static io.gatling.javaapi.http.HttpDsl.status;
@@ -55,15 +57,25 @@ public class OAuth2Simulation extends Simulation {
                                     .check(status().is(200), jsonPath("$.active").is("true")))
                     .pause(GatlingDefaults.minPause(), GatlingDefaults.maxPause());
 
-    private final ScenarioBuilder users =
+    private final ScenarioBuilder oauth2LifecycleUsers =
             scenario("OAuth2 HTTP Lifecycle").exec(discoveryFlow).repeat(2).on(tokenLifecycleFlow);
 
     {
         setUp(
-                        users.injectOpen(
-                                rampUsers(GatlingDefaults.users())
-                                        .during(GatlingDefaults.rampDuration())))
+                        oauth2LifecycleUsers.injectClosed(
+                                rampConcurrentUsers(0)
+                                        .to(GatlingDefaults.users())
+                                        .during(GatlingDefaults.rampDuration()),
+                                constantConcurrentUsers(GatlingDefaults.users())
+                                        .during(GatlingDefaults.testDuration())))
                 .protocols(httpProtocol)
+                .assertions(
+                        global().failedRequests()
+                                .percent()
+                                .lte(GatlingDefaults.maxFailurePercentage()),
+                        global().responseTime()
+                                .percentile3()
+                                .lte(GatlingDefaults.maxResponseTimeMillis()))
                 .maxDuration(GatlingDefaults.maxDuration());
     }
 }

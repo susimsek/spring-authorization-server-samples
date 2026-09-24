@@ -40,6 +40,14 @@ public final class GatlingDefaults {
         return rampDuration().plus(testDuration()).plusSeconds(30);
     }
 
+    public static double maxFailurePercentage() {
+        return Double.parseDouble(System.getProperty("maxFailurePercentage", "1.0"));
+    }
+
+    public static int maxResponseTimeMillis() {
+        return Integer.getInteger("maxResponseTimeMillis", 2_000);
+    }
+
     public static Duration minPause() {
         return Duration.ofSeconds(Long.getLong("minPauseSeconds", 5));
     }
