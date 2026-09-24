@@ -48,6 +48,10 @@ public final class GatlingDefaults {
         return Integer.getInteger("maxResponseTimeMillis", 2_000);
     }
 
+    public static int maxP99ResponseTimeMillis() {
+        return Integer.getInteger("maxP99ResponseTimeMillis", 3_000);
+    }
+
     public static Duration minPause() {
         return Duration.ofSeconds(Long.getLong("minPauseSeconds", 5));
     }

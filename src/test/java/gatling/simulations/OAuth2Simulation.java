@@ -55,6 +55,27 @@ public class OAuth2Simulation extends Simulation {
                                     .header("Accept-Language", GatlingDefaults.locale())
                                     .formParam("token", "#{access_token}")
                                     .check(status().is(200), jsonPath("$.active").is("true")))
+                    .pause(GatlingDefaults.pause())
+                    .exec(
+                            http("Token Revocation")
+                                    .post("/oauth2/revoke")
+                                    .header(
+                                            "Authorization",
+                                            GatlingDefaults.basicAuthorizationValue())
+                                    .header("Accept-Language", GatlingDefaults.locale())
+                                    .formParam("token", "#{access_token}")
+                                    .formParam("token_type_hint", "access_token")
+                                    .check(status().is(200)))
+                    .pause(GatlingDefaults.pause())
+                    .exec(
+                            http("Revoked Token Introspection")
+                                    .post("/oauth2/introspect")
+                                    .header(
+                                            "Authorization",
+                                            GatlingDefaults.basicAuthorizationValue())
+                                    .header("Accept-Language", GatlingDefaults.locale())
+                                    .formParam("token", "#{access_token}")
+                                    .check(status().is(200), jsonPath("$.active").is("false")))
                     .pause(GatlingDefaults.minPause(), GatlingDefaults.maxPause());
 
     private final ScenarioBuilder oauth2LifecycleUsers =
@@ -75,7 +96,10 @@ public class OAuth2Simulation extends Simulation {
                                 .lte(GatlingDefaults.maxFailurePercentage()),
                         global().responseTime()
                                 .percentile3()
-                                .lte(GatlingDefaults.maxResponseTimeMillis()))
+                                .lte(GatlingDefaults.maxResponseTimeMillis()),
+                        global().responseTime()
+                                .percentile4()
+                                .lte(GatlingDefaults.maxP99ResponseTimeMillis()))
                 .maxDuration(GatlingDefaults.maxDuration());
     }
 }
