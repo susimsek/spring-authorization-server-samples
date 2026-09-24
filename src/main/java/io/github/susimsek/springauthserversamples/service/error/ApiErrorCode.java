@@ -57,6 +57,10 @@ public enum ApiErrorCode {
     CLIENT_SECRET_REQUIRED(
             "client_secret_required",
             "A client secret must be generated before enabling secret authentication."),
+    CLIENT_ROLE_DUPLICATE_NAME("client_role_duplicate_name", "Client role already exists."),
+    CLIENT_ROLE_INVALID_NAME("client_role_invalid_name", "Client role name is invalid."),
+    CLIENT_ROLE_ASSIGNED(
+            "client_role_assigned", "Client role is assigned to one or more users or groups."),
     GROUP_DUPLICATE_NAME("group_duplicate_name", "Group name is already registered."),
     GROUP_HAS_CHILDREN(
             "group_has_children", "Move or delete child groups before deleting this group."),
