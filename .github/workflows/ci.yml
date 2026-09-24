@@ -1,0 +1,194 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '24.18.0'
+  PNPM_VERSION: '11.22.0'
+  SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up GraalVM
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '25'
+          distribution: graalvm-community
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        run: npm install --global pnpm@${PNPM_VERSION}
+
+      - name: Configure pnpm store
+        run: pnpm config set store-dir ~/.pnpm-store
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('src/main/frontend/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Print tool versions
+        run: |
+          java -version
+          node --version
+          pnpm --version
+          native-image --version
+
+      - name: Make Maven wrapper executable
+        run: chmod +x mvnw
+
+      - name: Install Maven dependencies
+        run: ./mvnw -B -ntp -Pprod -Dskip.frontend=true dependency:go-offline
+
+      - name: Install frontend dependencies
+        run: pnpm --dir src/main/frontend install --frozen-lockfile
+
+      - name: Install Snyk CLI
+        if: ${{ env.SNYK_TOKEN != '' }}
+        run: |
+          curl -fsSL https://static.snyk.io/cli/latest/snyk-linux -o "${RUNNER_TEMP}/snyk"
+          chmod +x "${RUNNER_TEMP}/snyk"
+          echo "${RUNNER_TEMP}" >> "${GITHUB_PATH}"
+          snyk --version
+
+      - name: Run Snyk test
+        if: ${{ env.SNYK_TOKEN != '' }}
+        continue-on-error: true
+        run: snyk test --all-projects
+
+      - name: Run Snyk monitor
+        if: ${{ github.ref == 'refs/heads/main' && env.SNYK_TOKEN != '' }}
+        continue-on-error: true
+        run: snyk monitor --all-projects
+
+      - name: Backend verification
+        run: ./mvnw -B -ntp verify -Dskip.frontend=true
+
+      - name: Frontend type check
+        run: pnpm --dir src/main/frontend typecheck
+
+      - name: Frontend lint
+        run: pnpm --dir src/main/frontend lint
+
+      - name: Frontend format check
+        run: pnpm --dir src/main/frontend format:check
+
+      - name: Frontend build
+        run: pnpm --dir src/main/frontend build
+
+      - name: Analyze code with SonarCloud
+        if: ${{ env.SONAR_TOKEN != '' }}
+        run: |
+          ./mvnw -B -ntp -Psonar initialize sonar:sonar \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.organization=susimsek \
+            -Dsonar.token="${SONAR_TOKEN}"
+
+      - name: Install UPX
+        run: |
+          UPX_VERSION=5.1.0
+          UPX_ARCHIVE="upx-${UPX_VERSION}-amd64_linux.tar.xz"
+          curl -fsSLO "https://github.com/upx/upx/releases/download/v${UPX_VERSION}/${UPX_ARCHIVE}"
+          tar -xJf "${UPX_ARCHIVE}"
+          mkdir -p "${RUNNER_TEMP}/bin"
+          mv "upx-${UPX_VERSION}-amd64_linux/upx" "${RUNNER_TEMP}/bin/upx"
+          chmod +x "${RUNNER_TEMP}/bin/upx"
+          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
+          rm -rf "${UPX_ARCHIVE}" "upx-${UPX_VERSION}-amd64_linux"
+          upx --version
+
+      - name: Install musl toolchain
+        run: sudo apt-get update && sudo apt-get install --yes musl-tools
+
+      - name: Build GraalVM native executable
+        run: |
+          ./mvnw -B -ntp -Pprod,native -DskipTests \
+            -Dskip.frontend=true \
+            -Dspotless.skip=true \
+            -Dcheckstyle.skip=true \
+            -DbuildArgs="--no-fallback,-Os,--static,--libc=musl,--parallelism=4,-J-Xmx10g" \
+            native:compile
+
+      - name: Compress native executable
+        run: upx --lzma --best target/native-executable
+
+      - name: Log in to Docker Hub
+        if: ${{ github.ref == 'refs/heads/main' && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
+      - name: Publish Docker image
+        if: ${{ github.ref == 'refs/heads/main' && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
+        run: |
+          ./mvnw -ntp -Pprod,native -DskipTests \
+            -Dskip.frontend=true \
+            jib:build \
+            -Djib.to.image="docker.io/${DOCKERHUB_USERNAME}/spring-authorization-server-samples:latest-native" \
+            -Djib.to.auth.username="${DOCKERHUB_USERNAME}" \
+            -Djib.to.auth.password="${DOCKERHUB_TOKEN}"
+
+      - name: Update Docker Hub description
+        if: ${{ github.ref == 'refs/heads/main' && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
+        run: |
+          README_PATH="docs/README-dockerhub.md"
+          if [ ! -f "${README_PATH}" ]; then
+            echo "${README_PATH} not found; skipping Docker Hub README update."
+            exit 0
+          fi
+
+          TOKEN="$({
+            jq -n \
+              --arg identifier "${DOCKERHUB_USERNAME}" \
+              --arg secret "${DOCKERHUB_TOKEN}" \
+              '{identifier: $identifier, secret: $secret}'
+          } | curl -fsS -X POST \
+            -H 'Content-Type: application/json' \
+            --data-binary @- \
+            https://hub.docker.com/v2/auth/token | jq -er '.access_token')"
+
+          jq -n --rawfile readme "${README_PATH}" '{full_description: $readme}' \
+            | curl -fsS -X PATCH \
+              -H "Authorization: Bearer ${TOKEN}" \
+              -H 'Content-Type: application/json' \
+              --data-binary @- \
+              "https://hub.docker.com/v2/repositories/${DOCKERHUB_USERNAME}/spring-authorization-server-samples"
