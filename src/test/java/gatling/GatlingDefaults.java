@@ -81,7 +81,11 @@ public final class GatlingDefaults {
     }
 
     public static String basicAuthorizationValue() {
-        String credentials = clientId() + ":" + clientSecret();
+        return basicAuthorizationValue(clientId(), clientSecret());
+    }
+
+    public static String basicAuthorizationValue(String clientId, String clientSecret) {
+        String credentials = clientId + ":" + clientSecret;
         String encoded =
                 Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
         return "Basic " + encoded;
