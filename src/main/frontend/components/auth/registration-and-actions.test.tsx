@@ -18,6 +18,15 @@ jest.mock("@/lib/account-actions-api", () => ({
 
 let searchParams = new URLSearchParams();
 let pathname = "/verify-email";
+
+const installUnavailableFetch = () => {
+  Object.defineProperty(globalThis, "fetch", {
+    configurable: true,
+    writable: true,
+    value: jest.fn().mockResolvedValue({ ok: false, json: jest.fn() }),
+  });
+};
+
 jest.mock("@/routing/navigation", () => ({
   useSearchParams: () => searchParams,
   usePathname: () => pathname,
@@ -32,8 +41,13 @@ describe("registration and account action forms", () => {
     pathname = "/verify-email";
   });
 
+  afterEach(() => {
+    delete (globalThis as { fetch?: typeof fetch }).fetch;
+  });
+
   it("validates registration fields and shows the created state", async () => {
     mockSubmitAccountAction.mockResolvedValueOnce(undefined);
+    installUnavailableFetch();
     render(<RegistrationForm dictionary={dictionary} />);
 
     fireEvent.click(screen.getByRole("button", { name: dictionary.registration.submit }));
@@ -69,6 +83,7 @@ describe("registration and account action forms", () => {
         email: "ada@example.test",
         password: "Change-me12!",
         confirmPassword: "Change-me12!",
+        captchaToken: "",
         locale: "tr",
       }),
     );
@@ -81,6 +96,7 @@ describe("registration and account action forms", () => {
 
   it("shows registration server errors", async () => {
     mockSubmitAccountAction.mockRejectedValueOnce({ errorCode: "unknown" });
+    installUnavailableFetch();
     render(<RegistrationForm dictionary={dictionary} />);
 
     const values: Record<string, string> = {
