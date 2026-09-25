@@ -39,7 +39,6 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache: 'maven'
           native-image-musl: 'true'
-          native-image-job-reports: 'true'
 
       - name: Set up Node.js and pnpm
         uses: pnpm/setup@v1
