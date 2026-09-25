@@ -1,6 +1,6 @@
 # Spring Authorization Server Samples
 
-[![Build Status](https://circleci.com/gh/susimsek/spring-authorization-server-samples/tree/main.svg?style=shield)](https://circleci.com/gh/susimsek/spring-authorization-server-samples/tree/main)
+[![Build Status](https://github.com/susimsek/spring-authorization-server-samples/actions/workflows/ci.yml/badge.svg)](https://github.com/susimsek/spring-authorization-server-samples/actions/workflows/ci.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=spring-authorization-server-samples&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=spring-authorization-server-samples)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=spring-authorization-server-samples&metric=coverage)](https://sonarcloud.io/summary/new_code?id=spring-authorization-server-samples)
 [![Vulnerabilities](https://snyk.io/test/github/susimsek/spring-authorization-server-samples/badge.svg)](https://snyk.io/test/github/susimsek/spring-authorization-server-samples)
@@ -1145,7 +1145,7 @@ terraform -chdir=terraform destroy -auto-approve
 
 ## Continuous Integration
 
-Pipeline: `.circleci/config.yml`
+Pipeline: `.github/workflows/ci.yml`
 
 - `./mvnw verify` for backend tests + quality gates
 - `./mvnw -Pprod,native -DskipTests native:compile` for a musl static native build
