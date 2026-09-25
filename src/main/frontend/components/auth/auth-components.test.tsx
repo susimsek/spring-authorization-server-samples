@@ -388,7 +388,7 @@ describe("authentication components", () => {
     const fetchMock = jest.fn().mockResolvedValue({ ok: false, json: jest.fn() });
     globalThis.fetch = fetchMock as unknown as typeof fetch;
     render(<LoginForm dictionary={dictionary} />);
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
     expect(screen.getByRole("button", { name: dictionary.login.submit })).toBeVisible();
     expect(screen.queryByText(dictionary.login.socialDivider)).not.toBeInTheDocument();
     delete (globalThis as { fetch?: typeof fetch }).fetch;
@@ -396,7 +396,7 @@ describe("authentication components", () => {
     const rejectedFetch = jest.fn().mockRejectedValue(new Error("offline"));
     globalThis.fetch = rejectedFetch as unknown as typeof fetch;
     render(<LoginForm dictionary={dictionary} />);
-    await waitFor(() => expect(rejectedFetch).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(rejectedFetch).toHaveBeenCalledTimes(3));
     delete (globalThis as { fetch?: typeof fetch }).fetch;
   });
 
