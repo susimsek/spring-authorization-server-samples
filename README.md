@@ -814,6 +814,11 @@ The checked-in `OAuth2Simulation` exercises:
 - `POST /oauth2/token`
 - `POST /oauth2/introspect`
 
+The simulation ramps to the configured number of concurrent virtual users, keeps that load for
+the configured duration, and fails when the global error rate exceeds 1% or the 95th-percentile
+response time exceeds 2 seconds. Both thresholds can be overridden with
+`maxFailurePercentage` and `maxResponseTimeMillis`.
+
 Override common runtime parameters:
 
 ```bash
@@ -823,6 +828,8 @@ Override common runtime parameters:
   -Dusers=5 \
   -Dramp=1 \
   -Dduration=1 \
+  -DmaxFailurePercentage=1.0 \
+  -DmaxResponseTimeMillis=2000 \
   -DclientId=demo-client \
   -DclientSecret=demo-secret \
   -Dscope=openid \
