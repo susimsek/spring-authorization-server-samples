@@ -145,7 +145,7 @@ jobs:
             -Dskip.frontend=true \
             -Dspotless.skip=true \
             -Dcheckstyle.skip=true \
-            -DbuildArgs="--no-fallback,-Os,--static,--libc=musl,--parallelism=4,-J-Xmx10g" \
+            -DbuildArgs="--no-fallback,-Os,--static,--libc=musl,-J-Xmx10g" \
             native:compile
 
       - name: Compress native executable
