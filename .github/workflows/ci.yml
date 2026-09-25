@@ -29,7 +29,7 @@ jobs:
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up GraalVM
         uses: graalvm/setup-graalvm@v1
@@ -41,24 +41,14 @@ jobs:
           native-image-musl: 'true'
           native-image-job-reports: 'true'
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Node.js and pnpm
+        uses: pnpm/setup@v1
         with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install pnpm
-        run: npm install --global pnpm@${PNPM_VERSION}
-
-      - name: Configure pnpm store
-        run: pnpm config set store-dir ~/.pnpm-store
-
-      - name: Cache pnpm dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('src/main/frontend/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-
+          version: ${{ env.PNPM_VERSION }}
+          runtime: node@${{ env.NODE_VERSION }}
+          cache: true
+          cache-dependency-path: src/main/frontend/pnpm-lock.yaml
+          install: false
 
       - name: Print tool versions
         run: |
@@ -76,14 +66,13 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm --dir src/main/frontend install --frozen-lockfile
 
-      - name: Install Snyk CLI
+      - name: Set up Snyk CLI
         if: ${{ env.SNYK_TOKEN != '' }}
-        run: |
-          curl -fsSL https://static.snyk.io/cli/latest/snyk-linux -o "${RUNNER_TEMP}/snyk"
-          chmod +x "${RUNNER_TEMP}/snyk"
-          export PATH="${RUNNER_TEMP}:${PATH}"
-          echo "${RUNNER_TEMP}" >> "${GITHUB_PATH}"
-          snyk --version
+        uses: snyk/actions/setup@v1
+
+      - name: Verify Snyk CLI
+        if: ${{ env.SNYK_TOKEN != '' }}
+        run: snyk --version
 
       - name: Run Snyk test
         if: ${{ env.SNYK_TOKEN != '' }}
@@ -145,7 +134,7 @@ jobs:
 
       - name: Log in to Docker Hub
         if: ${{ github.ref == 'refs/heads/main' && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_TOKEN }}
