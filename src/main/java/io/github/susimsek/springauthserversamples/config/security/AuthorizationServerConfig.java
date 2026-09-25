@@ -1,5 +1,6 @@
 package io.github.susimsek.springauthserversamples.config.security;
 
+import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import io.github.susimsek.springauthserversamples.config.ApplicationProperties;
@@ -196,7 +197,18 @@ public class AuthorizationServerConfig {
 
     @Bean
     JwtEncoder jwtEncoder(JWKSource<SecurityContext> jwkSource) {
-        return new NimbusJwtEncoder(jwkSource);
+        NimbusJwtEncoder jwtEncoder = new NimbusJwtEncoder(jwkSource);
+        jwtEncoder.setJwkSelector(
+                keys ->
+                        keys.stream()
+                                .filter(JWK::isPrivate)
+                                .findFirst()
+                                .orElseThrow(
+                                        () ->
+                                                new IllegalStateException(
+                                                        "No private OAuth2 signing key is"
+                                                                + " available")));
+        return jwtEncoder;
     }
 
     @Bean

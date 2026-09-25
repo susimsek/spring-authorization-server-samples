@@ -155,9 +155,13 @@ class AdminLifecycleEndpointsIT {
         RegisteredClient client = registeredClientRepository.findByClientId("demo-client");
         assertThat(client).isNotNull();
 
-        mockMvc.perform(post("/api/admin/clients/{id}/secret", client.getId()).with(admin()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.clientSecret").isNotEmpty());
+        try {
+            mockMvc.perform(post("/api/admin/clients/{id}/secret", client.getId()).with(admin()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.clientSecret").isNotEmpty());
+        } finally {
+            registeredClientRepository.save(client);
+        }
     }
 
     @Test
