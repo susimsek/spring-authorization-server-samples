@@ -358,6 +358,7 @@ public class AdminClientService {
         values.put(ClientSecuritySettings.REQUIRE_DPOP_PROOF, request.requireDpop());
         values.put(ClientSecuritySettings.REQUIRE_DPOP_JKT, request.requireDpopJkt());
         values.put(ClientSecuritySettings.DPOP_REFRESH_TOKEN_ONLY, request.dpopRefreshTokenOnly());
+        values.put(ClientSecuritySettings.DPOP_SIGNING_ALGORITHMS, request.dpopSigningAlgorithms());
         settings = ClientSettings.withSettings(values).build();
         if (existing == null
                 || existing.getClientSettings().getSetting(ClientScopeSettings.DEFAULT_SCOPES)

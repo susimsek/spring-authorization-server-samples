@@ -91,6 +91,11 @@ public record AdminClientDTO(
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 boolean dpopRefreshTokenOnly,
         @Schema(
+                        description = "Allowed DPoP proof signature algorithms for this client.",
+                        example = "[\"ES256\", \"RS256\"]",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                Set<String> dpopSigningAlgorithms,
+        @Schema(
                         description = "Authorization-code lifetime in ISO-8601 duration format.",
                         example = "PT5M",
                         format = "duration",
@@ -141,6 +146,7 @@ public record AdminClientDTO(
                 false,
                 false,
                 false,
+                java.util.Set.of("RS256", "ES256"),
                 authorizationCodeTimeToLive,
                 accessTokenTimeToLive,
                 refreshTokenTimeToLive);

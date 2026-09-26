@@ -1,5 +1,6 @@
 package io.github.susimsek.springauthserversamples.config.security;
 
+import com.nimbusds.jwt.SignedJWT;
 import io.github.susimsek.springauthserversamples.security.ClientSecuritySettings;
 import io.github.susimsek.springauthserversamples.service.admin.ClientScopeSettings;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,6 +37,7 @@ public final class DefaultClientScopesClientCredentialsConverter
 
     @Override
     public Authentication convert(HttpServletRequest request) {
+        validateDpopAlgorithm(request);
         requireDpopProof(request);
         Authentication authentication = delegate.convert(request);
         if (!(authentication instanceof OAuth2ClientCredentialsAuthenticationToken token)
@@ -85,5 +87,37 @@ public final class DefaultClientScopesClientCredentialsConverter
                 }
             }
         }
+    }
+
+    private static void validateDpopAlgorithm(HttpServletRequest request) {
+        String proof = request.getHeader("DPoP");
+        if (!org.springframework.util.StringUtils.hasText(proof)) {
+            return;
+        }
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (!(authentication instanceof OAuth2ClientAuthenticationToken clientAuthentication)) {
+            return;
+        }
+        RegisteredClient client = clientAuthentication.getRegisteredClient();
+        if (client == null) {
+            return;
+        }
+        String algorithm;
+        try {
+            algorithm = SignedJWT.parse(proof).getHeader().getAlgorithm().getName();
+        } catch (java.text.ParseException exception) {
+            throw invalidDpopProof();
+        }
+        if (!ClientSecuritySettings.allowedDpopSigningAlgorithms(client).contains(algorithm)) {
+            throw invalidDpopProof();
+        }
+    }
+
+    private static OAuth2AuthenticationException invalidDpopProof() {
+        return new OAuth2AuthenticationException(
+                new OAuth2Error(
+                        OAuth2ErrorCodes.INVALID_DPOP_PROOF,
+                        "DPoP proof uses a disallowed signature algorithm",
+                        "https://www.rfc-editor.org/rfc/rfc9449#section-4.2"));
     }
 }

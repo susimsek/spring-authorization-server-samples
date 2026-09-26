@@ -195,6 +195,10 @@ export function ClientDetail({
                         <Badge bg="secondary">{dictionary.admin.common.off}</Badge>
                       )}
                     </dd>
+                    <dt className="col-sm-4">{copy.dpopAlgorithms}</dt>
+                    <dd className="col-sm-8 font-monospace">
+                      {(client.dpopSigningAlgorithms ?? ["RS256", "ES256"]).join(", ")}
+                    </dd>
                     <dt className="col-sm-4">{copy.clientCreated}</dt>
                     <dd className="col-sm-8">
                       {client.clientIdIssuedAt

@@ -642,6 +642,7 @@
       "requireDpopJktHelp": "Yetkilendirme isteğinde DPoP anahtar parmak izini zorunlu kılar ve token değişiminde doğrular.",
       "dpopRefreshTokenOnly": "Yenilemede DPoP zorunlu",
       "dpopRefreshTokenOnlyHelp": "Yeni erişim tokenını bearer olarak bırakırken refresh token isteklerinde DPoP kanıtı ister.",
+      "dpopAlgorithms": "DPoP imza algoritmaları",
       "requireConsent": "Kullanıcı izni zorunlu",
       "requireConsentHelp": "Kullanıcıdan istemci scope’ları için açık onay alınmasını zorunlu kılar.",
       "authMethodsHelp": "İstemcinin token endpointinde kullanacağı kimlik doğrulama yöntemlerini seçin.",

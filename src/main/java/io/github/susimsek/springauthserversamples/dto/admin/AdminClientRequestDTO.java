@@ -6,6 +6,7 @@ import io.github.susimsek.springauthserversamples.web.admin.validation.ValidAdmi
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.Duration;
 import java.util.Set;
@@ -90,6 +91,17 @@ public record AdminClientRequestDTO(
                         example = "false",
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 boolean dpopRefreshTokenOnly,
+        @NotEmpty(message = "{app.api.problem.violation.selection}")
+                @Schema(
+                        description = "Allowed DPoP proof signature algorithms for this client.",
+                        example = "[\"ES256\", \"RS256\"]",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                Set<
+                                @Pattern(
+                                        regexp = "RS256|ES256",
+                                        message = "{app.api.problem.violation.selection}")
+                                String>
+                        dpopSigningAlgorithms,
         @Schema(
                         description = "Authorization-code lifetime in ISO-8601 duration format.",
                         example = "PT5M",
@@ -138,6 +150,7 @@ public record AdminClientRequestDTO(
                 false,
                 false,
                 false,
+                java.util.Set.of("RS256", "ES256"),
                 authorizationCodeTimeToLive,
                 accessTokenTimeToLive,
                 refreshTokenTimeToLive);

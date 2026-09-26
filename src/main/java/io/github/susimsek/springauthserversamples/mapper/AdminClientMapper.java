@@ -34,6 +34,7 @@ public interface AdminClientMapper {
                 ClientSecuritySettings.requiresDpopProof(client),
                 ClientSecuritySettings.requiresDpopJkt(client),
                 ClientSecuritySettings.requiresDpopForRefreshToken(client),
+                ClientSecuritySettings.allowedDpopSigningAlgorithms(client),
                 client.getTokenSettings().getAuthorizationCodeTimeToLive(),
                 client.getTokenSettings().getAccessTokenTimeToLive(),
                 client.getTokenSettings().getRefreshTokenTimeToLive());

@@ -131,4 +131,39 @@ class DefaultClientScopesClientCredentialsConverterTest {
             SecurityContextHolder.clearContext();
         }
     }
+
+    @Test
+    void rejectsDpopProofWithDisallowedSigningAlgorithm() {
+        RegisteredClient client =
+                RegisteredClient.withId("id")
+                        .clientId("client")
+                        .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                        .clientSettings(
+                                ClientSettings.withSettings(
+                                                Map.of(
+                                                        ClientSecuritySettings
+                                                                .DPOP_SIGNING_ALGORITHMS,
+                                                        Set.of("ES256")))
+                                        .build())
+                        .build();
+        OAuth2ClientAuthenticationToken authentication =
+                mock(OAuth2ClientAuthenticationToken.class);
+        when(authentication.getRegisteredClient()).thenReturn(client);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        try {
+            HttpServletRequest request = mock(HttpServletRequest.class);
+            when(request.getHeader("DPoP")).thenReturn("eyJhbGciOiJSUzI1NiJ9.e30.c2ln");
+
+            assertThatThrownBy(
+                            () ->
+                                    new DefaultClientScopesClientCredentialsConverter()
+                                            .convert(request))
+                    .isInstanceOf(
+                            org.springframework.security.oauth2.core.OAuth2AuthenticationException
+                                    .class)
+                    .hasMessageContaining("disallowed signature algorithm");
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
 }

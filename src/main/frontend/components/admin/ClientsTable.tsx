@@ -29,6 +29,7 @@ export type AdminClient = {
   requireDpop: boolean;
   requireDpopJkt: boolean;
   dpopRefreshTokenOnly: boolean;
+  dpopSigningAlgorithms: string[];
 };
 
 export function ClientsTable({ dictionary }: { locale: Locale; dictionary: Dictionary }) {
@@ -201,6 +202,9 @@ export function ClientsTable({ dictionary }: { locale: Locale; dictionary: Dicti
                     DPoP refresh
                   </Badge>
                 )}
+                <Badge bg="secondary" className="ms-1">
+                  DPoP {(c.dpopSigningAlgorithms ?? ["RS256", "ES256"]).join("/")}
+                </Badge>
               </td>
               <td className="text-end">
                 <RowActions label={`${c.clientName} ${dictionary.admin.common.actions}`}>
