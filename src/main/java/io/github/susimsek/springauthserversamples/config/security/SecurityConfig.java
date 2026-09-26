@@ -8,6 +8,7 @@ import java.net.URI;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.List;
 import java.util.Set;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -266,7 +267,34 @@ public class SecurityConfig {
                                     .permitAll());
         }
 
-        http.oauth2ResourceServer(resourceServer -> resourceServer.jwt(Customizer.withDefaults()));
+        http.oauth2ResourceServer(
+                resourceServer ->
+                        resourceServer
+                                .jwt(Customizer.withDefaults())
+                                .dPoP(
+                                        dpop -> {
+                                            DpopNonceService nonceService =
+                                                    new DpopNonceService(
+                                                            applicationProperties.dpop());
+                                            dpop.authenticationConverter(
+                                                            new DpopNonceAuthenticationConverter(
+                                                                    nonceService))
+                                                    .authenticationFailureHandler(
+                                                            new DpopNonceAuthenticationFailureHandler(
+                                                                    nonceService));
+                                        })
+                                .protectedResourceMetadata(
+                                        metadata ->
+                                                metadata.protectedResourceMetadataCustomizer(
+                                                        builder ->
+                                                                builder.resource(issuer.toString())
+                                                                        .authorizationServer(
+                                                                                issuer.toString())
+                                                                        .claim(
+                                                                                "dpop_signing_alg_values_supported",
+                                                                                List.of(
+                                                                                        "RS256",
+                                                                                        "ES256")))));
 
         return http.build();
     }

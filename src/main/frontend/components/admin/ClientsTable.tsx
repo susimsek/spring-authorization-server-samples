@@ -26,6 +26,9 @@ export type AdminClient = {
   scopes: string[];
   requireAuthorizationConsent: boolean;
   requireProofKey: boolean;
+  requireDpop: boolean;
+  requireDpopJkt: boolean;
+  dpopRefreshTokenOnly: boolean;
 };
 
 export function ClientsTable({ dictionary }: { locale: Locale; dictionary: Dictionary }) {
@@ -185,6 +188,19 @@ export function ClientsTable({ dictionary }: { locale: Locale; dictionary: Dicti
                   PKCE{" "}
                   {c.requireProofKey ? dictionary.admin.common.on : dictionary.admin.common.off}
                 </Badge>
+                <Badge bg={c.requireDpop ? "success" : "secondary"} className="ms-1">
+                  DPoP {c.requireDpop ? dictionary.admin.common.on : dictionary.admin.common.off}
+                </Badge>
+                {c.requireDpopJkt && (
+                  <Badge bg="success" className="ms-1">
+                    dpop_jkt {dictionary.admin.common.on}
+                  </Badge>
+                )}
+                {c.dpopRefreshTokenOnly && (
+                  <Badge bg="info" className="ms-1">
+                    DPoP refresh
+                  </Badge>
+                )}
               </td>
               <td className="text-end">
                 <RowActions label={`${c.clientName} ${dictionary.admin.common.actions}`}>
