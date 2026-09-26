@@ -41,6 +41,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
@@ -143,6 +144,9 @@ public class AuthorizationServerConfig {
                                         .pushedAuthorizationRequestEndpoint(
                                                 pushedAuthorizationRequestEndpoint ->
                                                         pushedAuthorizationRequestEndpoint
+                                                                .pushedAuthorizationRequestConverter(
+                                                                        new DefaultClientScopesAuthorizationRequestConverter(
+                                                                                registeredClientRepository))
                                                                 .errorResponseHandler(
                                                                         localizedOAuth2ErrorResponseHandler))
                                         .deviceAuthorizationEndpoint(
@@ -472,7 +476,11 @@ public class AuthorizationServerConfig {
         if (AuthorizationGrantType.REFRESH_TOKEN.equals(context.getAuthorizationGrantType())
                 && ClientSecuritySettings.requiresDpopForRefreshToken(context.getRegisteredClient())
                 && !ClientSecuritySettings.requiresDpopProof(context.getRegisteredClient())) {
-            return;
+            if (!context.getRegisteredClient()
+                    .getClientAuthenticationMethods()
+                    .contains(ClientAuthenticationMethod.NONE)) {
+                return;
+            }
         }
         Object jwkHeader = dpopProof.getHeaders().get("jwk");
         if (!(jwkHeader instanceof Map<?, ?> jwkMap)) {

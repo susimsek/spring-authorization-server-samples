@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
@@ -61,11 +62,19 @@ public final class DefaultClientScopesClientCredentialsConverter
                         "authorization_code".equals(request.getParameter("grant_type"));
                 boolean refreshTokenGrant =
                         "refresh_token".equals(request.getParameter("grant_type"));
+                boolean publicClient =
+                        client != null
+                                && client.getClientAuthenticationMethods()
+                                        .contains(ClientAuthenticationMethod.NONE);
                 if (client != null
                         && (ClientSecuritySettings.requiresDpopProof(client)
                                 || (authorizationCodeGrant
                                         && ClientSecuritySettings.requiresDpopJkt(client))
                                 || (refreshTokenGrant
+                                        && ClientSecuritySettings.requiresDpopForRefreshToken(
+                                                client))
+                                || (authorizationCodeGrant
+                                        && publicClient
                                         && ClientSecuritySettings.requiresDpopForRefreshToken(
                                                 client)))) {
                     throw new OAuth2AuthenticationException(

@@ -35,7 +35,22 @@ public final class DefaultClientScopesAuthorizationRequestConverter
         if (authentication instanceof OAuth2PushedAuthorizationRequestAuthenticationToken token) {
             var registeredClient = registeredClientRepository.findByClientId(token.getClientId());
             requireDpopJkt(registeredClient, token.getAdditionalParameters(), token);
-            return token;
+            if (registeredClient == null) {
+                return token;
+            }
+            var scopes = new LinkedHashSet<>(token.getScopes());
+            scopes.addAll(ClientScopeSettings.defaultScopes(registeredClient));
+            if (scopes.equals(token.getScopes())) {
+                return token;
+            }
+            return new OAuth2PushedAuthorizationRequestAuthenticationToken(
+                    token.getAuthorizationUri(),
+                    token.getClientId(),
+                    (Authentication) token.getPrincipal(),
+                    token.getRedirectUri(),
+                    token.getState(),
+                    scopes,
+                    token.getAdditionalParameters());
         }
         if (!(authentication instanceof OAuth2AuthorizationCodeRequestAuthenticationToken token)) {
             return authentication;

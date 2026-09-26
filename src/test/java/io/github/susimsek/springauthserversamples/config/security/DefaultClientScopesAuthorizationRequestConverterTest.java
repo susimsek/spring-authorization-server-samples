@@ -128,6 +128,38 @@ class DefaultClientScopesAuthorizationRequestConverterTest {
                                 .OAuth2AuthorizationCodeRequestAuthenticationException.class);
     }
 
+    @Test
+    void requiresDpopJktOnPushedAuthorizationRequests() {
+        RegisteredClient client =
+                RegisteredClient.withId("id")
+                        .clientId("client")
+                        .redirectUri("https://client.example/callback")
+                        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                        .scope("openid")
+                        .clientSettings(
+                                ClientSettings.withSettings(
+                                                java.util.Map.of(
+                                                        ClientSecuritySettings.REQUIRE_DPOP_JKT,
+                                                        true))
+                                        .build())
+                        .build();
+        RegisteredClientRepository repository = mock(RegisteredClientRepository.class);
+        when(repository.findByClientId("client")).thenReturn(client);
+        DefaultClientScopesAuthorizationRequestConverter converter =
+                new DefaultClientScopesAuthorizationRequestConverter(repository);
+
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/oauth2/par");
+        request.addParameter(OAuth2ParameterNames.CLIENT_ID, "client");
+        request.addParameter(OAuth2ParameterNames.RESPONSE_TYPE, "code");
+        request.addParameter(OAuth2ParameterNames.REDIRECT_URI, "https://client.example/callback");
+        request.addParameter(OAuth2ParameterNames.SCOPE, "openid");
+
+        assertThatThrownBy(() -> converter.convert(request))
+                .isInstanceOf(
+                        org.springframework.security.oauth2.server.authorization.authentication
+                                .OAuth2AuthorizationCodeRequestAuthenticationException.class);
+    }
+
     private static String validDpopJkt() {
         return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(new byte[32]);
     }

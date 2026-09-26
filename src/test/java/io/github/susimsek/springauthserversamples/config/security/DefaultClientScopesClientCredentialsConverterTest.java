@@ -96,4 +96,39 @@ class DefaultClientScopesClientCredentialsConverterTest {
             SecurityContextHolder.clearContext();
         }
     }
+
+    @Test
+    void requiresDpopForRefreshOnlyPolicy() {
+        RegisteredClient client =
+                RegisteredClient.withId("id")
+                        .clientId("client")
+                        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                        .clientSettings(
+                                ClientSettings.withSettings(
+                                                Map.of(
+                                                        ClientSecuritySettings
+                                                                .DPOP_REFRESH_TOKEN_ONLY,
+                                                        true))
+                                        .build())
+                        .build();
+        OAuth2ClientAuthenticationToken authentication =
+                mock(OAuth2ClientAuthenticationToken.class);
+        when(authentication.getRegisteredClient()).thenReturn(client);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        try {
+            HttpServletRequest request = mock(HttpServletRequest.class);
+            when(request.getParameter("grant_type")).thenReturn("refresh_token");
+
+            assertThatThrownBy(
+                            () ->
+                                    new DefaultClientScopesClientCredentialsConverter()
+                                            .convert(request))
+                    .isInstanceOf(
+                            org.springframework.security.oauth2.core.OAuth2AuthenticationException
+                                    .class)
+                    .hasMessageContaining("DPoP proof is required");
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
 }
