@@ -199,9 +199,7 @@ describe("AdminAuthProvider", () => {
     );
 
     storeTransaction("pkce");
-    const withoutVerifier = JSON.parse(
-      localStorage.getItem("ADMIN_OIDC_TRANSACTION:pkce") ?? "{}",
-    );
+    const withoutVerifier = JSON.parse(localStorage.getItem("ADMIN_OIDC_TRANSACTION:pkce") ?? "{}");
     withoutVerifier.codeVerifier = "";
     localStorage.setItem("ADMIN_OIDC_TRANSACTION:pkce", JSON.stringify(withoutVerifier));
 

@@ -288,8 +288,8 @@ describe("account console", () => {
 
     cy.location("pathname").should("eq", "/account/callback");
     cy.location("hash").should("eq", "");
-    cy.contains(/The account session could not be established\.|Hesap oturumu oluşturulamadı\./).should(
-      "be.visible",
-    );
+    cy.contains(
+      /The account session could not be established\.|Hesap oturumu oluşturulamadı\./,
+    ).should("be.visible");
   });
 });
