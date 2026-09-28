@@ -6,6 +6,7 @@ import io.github.susimsek.springauthserversamples.web.admin.validation.ValidAdmi
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.Duration;
 import java.util.Set;
@@ -71,6 +72,57 @@ public record AdminClientRequestDTO(
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 boolean requireProofKey,
         @Schema(
+                        description =
+                                "Whether this client must send DPoP proofs for token requests.",
+                        example = "false",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                boolean requireDpop,
+        @Schema(
+                        description =
+                                "Whether authorization-code requests must include the DPoP key"
+                                        + " thumbprint.",
+                        example = "false",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                boolean requireDpopJkt,
+        @Schema(
+                        description =
+                                "Whether refresh-token requests must include DPoP proofs without"
+                                        + " binding the new access token.",
+                        example = "false",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                boolean dpopRefreshTokenOnly,
+        @NotEmpty(message = "{app.api.problem.violation.selection}")
+                @Schema(
+                        description = "Allowed DPoP proof signature algorithms for this client.",
+                        example = "[\"ES256\", \"RS256\"]",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                Set<
+                                @Pattern(
+                                        regexp = "RS256|ES256",
+                                        message = "{app.api.problem.violation.selection}")
+                                String>
+                        dpopSigningAlgorithms,
+        @Pattern(regexp = "poll|ping|push", message = "{app.api.problem.violation.selection}")
+                @Schema(
+                        description = "CIBA backchannel token delivery mode.",
+                        example = "poll",
+                        requiredMode = Schema.RequiredMode.REQUIRED)
+                String cibaDeliveryMode,
+        @Schema(
+                        description = "CIBA ping or push notification endpoint.",
+                        example = "https://client.example/ciba/notify",
+                        nullable = true,
+                        requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+                String cibaNotificationEndpoint,
+        @Size(max = 512)
+                @Schema(
+                        description =
+                                "CIBA client notification token. Leave blank when updating to keep"
+                                        + " the current token.",
+                        nullable = true,
+                        requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+                String cibaClientNotificationToken,
+        @Schema(
                         description = "Authorization-code lifetime in ISO-8601 duration format.",
                         example = "PT5M",
                         format = "duration",
@@ -90,4 +142,40 @@ public record AdminClientRequestDTO(
                         format = "duration",
                         requiredMode = Schema.RequiredMode.REQUIRED)
                 @PositiveDuration
-                Duration refreshTokenTimeToLive) {}
+                Duration refreshTokenTimeToLive) {
+
+    public AdminClientRequestDTO(
+            String clientId,
+            String clientName,
+            Set<String> clientAuthenticationMethods,
+            Set<String> authorizationGrantTypes,
+            Set<String> redirectUris,
+            Set<String> postLogoutRedirectUris,
+            Set<String> scopes,
+            boolean requireAuthorizationConsent,
+            boolean requireProofKey,
+            Duration authorizationCodeTimeToLive,
+            Duration accessTokenTimeToLive,
+            Duration refreshTokenTimeToLive) {
+        this(
+                clientId,
+                clientName,
+                clientAuthenticationMethods,
+                authorizationGrantTypes,
+                redirectUris,
+                postLogoutRedirectUris,
+                scopes,
+                requireAuthorizationConsent,
+                requireProofKey,
+                false,
+                false,
+                false,
+                java.util.Set.of("RS256", "ES256"),
+                "poll",
+                null,
+                null,
+                authorizationCodeTimeToLive,
+                accessTokenTimeToLive,
+                refreshTokenTimeToLive);
+    }
+}

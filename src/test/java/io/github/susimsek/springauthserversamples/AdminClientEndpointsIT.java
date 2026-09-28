@@ -101,6 +101,10 @@ class AdminClientEndpointsIT {
           "scopes":["openid"],
           "requireAuthorizationConsent":false,
           "requireProofKey":false,
+          "requireDpop":false,
+          "requireDpopJkt":false,
+          "dpopRefreshTokenOnly":false,
+          "dpopSigningAlgorithms":["RS256","ES256"],
           "authorizationCodeTimeToLive":"PT5M",
           "accessTokenTimeToLive":"PT5M",
           "refreshTokenTimeToLive":"PT1H"

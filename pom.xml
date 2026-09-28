@@ -20,15 +20,18 @@
 			<org.mapstruct.version>1.6.3</org.mapstruct.version>
 			<zxing.version>3.5.3</zxing.version>
 			<jacoco.version>0.8.14</jacoco.version>
+			<coverage.minimum>0.96</coverage.minimum>
 			<spotless-maven-plugin.version>3.9.0</spotless-maven-plugin.version>
 			<google-java-format.version>1.35.0</google-java-format.version>
 			<maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
+			<maven-antrun-plugin.version>3.2.0</maven-antrun-plugin.version>
 			<checkstyle.version>13.9.0</checkstyle.version>
 			<properties-maven-plugin.version>1.2.1</properties-maven-plugin.version>
 			<sonar-maven-plugin.version>5.7.0.6970</sonar-maven-plugin.version>
 			<gatling.version>3.15.1</gatling.version>
 		<gatling-maven-plugin.version>4.21.10</gatling-maven-plugin.version>
 		<springdoc-openapi.version>3.1.0</springdoc-openapi.version>
+		<opentelemetry-logback-appender.version>2.28.1-alpha</opentelemetry-logback-appender.version>
 			<jib-maven-plugin.version>3.5.2</jib-maven-plugin.version>
 			<jib-spring-boot-extension-maven.version>0.1.0</jib-spring-boot-extension-maven.version>
 			<jib-native-image-extension-maven.version>0.1.0</jib-native-image-extension-maven.version>
@@ -46,6 +49,15 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-opentelemetry</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.opentelemetry.instrumentation</groupId>
+			<artifactId>opentelemetry-logback-appender-1.0</artifactId>
+			<version>${opentelemetry-logback-appender.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -384,6 +396,33 @@
 							<dataFile>${java.io.tmpdir}/spring-authorization-server-samples-jacoco-it.exec</dataFile>
 						</configuration>
 					</execution>
+					<execution>
+						<id>check-coverage</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+						<configuration>
+							<dataFile>${java.io.tmpdir}/spring-authorization-server-samples-jacoco.exec</dataFile>
+							<rules>
+								<rule>
+									<element>BUNDLE</element>
+									<limits>
+										<limit>
+											<counter>INSTRUCTION</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>${coverage.minimum}</minimum>
+										</limit>
+										<limit>
+											<counter>LINE</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>${coverage.minimum}</minimum>
+										</limit>
+									</limits>
+								</rule>
+							</rules>
+						</configuration>
+					</execution>
 				</executions>
 			</plugin>
 			<plugin>
@@ -598,6 +637,9 @@
 		</profile>
 		<profile>
 			<id>sonar</id>
+			<properties>
+				<sonar.java.checkstyle.reportPaths>target/checkstyle-result-sonar.xml</sonar.java.checkstyle.reportPaths>
+			</properties>
 			<build>
 				<plugins>
 					<plugin>
@@ -614,6 +656,36 @@
 									<files>
 										<file>sonar-project.properties</file>
 									</files>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-antrun-plugin</artifactId>
+						<version>${maven-antrun-plugin.version}</version>
+						<executions>
+							<execution>
+								<id>filter-checkstyle-report-for-sonar</id>
+								<phase>initialize</phase>
+								<goals>
+									<goal>run</goal>
+								</goals>
+								<configuration>
+									<target>
+										<copy
+											file="${project.build.directory}/checkstyle-result.xml"
+											tofile="${project.build.directory}/checkstyle-result-sonar.xml"
+											overwrite="true"
+											encoding="UTF-8"
+											outputencoding="UTF-8">
+											<filterchain>
+												<linecontainsregexp negate="true">
+													<regexp pattern="NewlineAtEndOfFileCheck" />
+												</linecontainsregexp>
+											</filterchain>
+										</copy>
+									</target>
 								</configuration>
 							</execution>
 						</executions>

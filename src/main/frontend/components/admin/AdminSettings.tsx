@@ -15,16 +15,20 @@ import AdminUserProfileSettings from "./AdminUserProfileSettings";
 import { DetailTabs } from "./DetailTabs";
 import EmailSettings from "./EmailSettings";
 import LoginSettings, { type LoginSettingsSection } from "./LoginSettings";
+import LdapFederationSettings from "./LdapFederationSettings";
 import AdminLocalizationSettings, { type LocalizationSection } from "./AdminLocalizationSettings";
+import AdminCibaPolicySettings from "./AdminCibaPolicySettings";
 
 const SETTINGS_SECTIONS = [
   "general",
   "login",
   "social-login",
+  "user-federation",
   "email",
   "brute-force",
   "sessions",
   "events",
+  "ciba-policy",
   "user-profile",
   "localization",
 ] as const;
@@ -71,6 +75,11 @@ export default function AdminSettings({
       href: "/admin/settings/social-login",
     },
     {
+      key: "user-federation",
+      label: dictionary.admin.settings.sections.userFederation,
+      href: "/admin/settings/user-federation",
+    },
+    {
       key: "email",
       label: dictionary.admin.settings.sections.email,
       href: "/admin/settings/email",
@@ -89,6 +98,11 @@ export default function AdminSettings({
       key: "events",
       label: dictionary.admin.settings.sections.events,
       href: "/admin/settings/events",
+    },
+    {
+      key: "ciba-policy",
+      label: dictionary.admin.settings.sections.cibaPolicy,
+      href: "/admin/settings/ciba-policy",
     },
     {
       key: "user-profile",
@@ -131,6 +145,7 @@ export default function AdminSettings({
       {active === "general" ? <GeneralSettings /> : null}
       {active === "email" ? <EmailSettings embedded /> : null}
       {active === "events" ? <AdminEventSettings /> : null}
+      {active === "ciba-policy" ? <AdminCibaPolicySettings /> : null}
       {active === "user-profile" ? <AdminUserProfileSettings dictionary={dictionary} /> : null}
       {active === "localization" ? (
         <AdminLocalizationSettings
@@ -139,11 +154,14 @@ export default function AdminSettings({
           mode={localizationAction === "create" ? "create" : "list"}
         />
       ) : null}
+      {active === "user-federation" ? <LdapFederationSettings /> : null}
       {active !== "general" &&
       active !== "email" &&
       active !== "events" &&
+      active !== "ciba-policy" &&
       active !== "user-profile" &&
-      active !== "localization" ? (
+      active !== "localization" &&
+      active !== "user-federation" ? (
         <LoginSettings embedded focusSection={active as LoginSettingsSection} />
       ) : null}
     </>

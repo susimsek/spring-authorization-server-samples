@@ -16,12 +16,14 @@ import { AdminBreadcrumb } from "./AdminBreadcrumb";
 import { ClientForm } from "./ClientForm";
 import { EntityRelatedData } from "./EntityRelatedData";
 import { ClientScopeAssignments } from "./ClientScopeAssignments";
+import { ClientRoles } from "./ClientRoles";
 import type { AdminClient } from "./ClientsTable";
 
 const CLIENT_DETAIL_TABS = [
   "settings",
   "credentials",
   "scopes",
+  "roles",
   "sessions",
   "consents",
   "events",
@@ -106,6 +108,7 @@ export function ClientDetail({
       label: copy.clientScopes,
       href: `${detailUrl}/scopes`,
     },
+    { key: "roles", label: copy.roles.title, href: `${detailUrl}/roles` },
     { key: "sessions", label: copy.sessions, href: `${detailUrl}/sessions` },
     { key: "consents", label: copy.consents, href: `${detailUrl}/consents` },
     ...(access?.viewEvents
@@ -171,6 +174,34 @@ export function ClientDetail({
                         <Badge bg="secondary">{copy.pkceNotRequired}</Badge>
                       )}
                     </dd>
+                    <dt className="col-sm-4">{copy.requireDpop}</dt>
+                    <dd className="col-sm-8">
+                      {client.requireDpop ? (
+                        <Badge bg="success">{dictionary.admin.common.on}</Badge>
+                      ) : (
+                        <Badge bg="secondary">{dictionary.admin.common.off}</Badge>
+                      )}
+                    </dd>
+                    <dt className="col-sm-4">{copy.requireDpopJkt}</dt>
+                    <dd className="col-sm-8">
+                      {client.requireDpopJkt ? (
+                        <Badge bg="success">{dictionary.admin.common.on}</Badge>
+                      ) : (
+                        <Badge bg="secondary">{dictionary.admin.common.off}</Badge>
+                      )}
+                    </dd>
+                    <dt className="col-sm-4">{copy.dpopRefreshTokenOnly}</dt>
+                    <dd className="col-sm-8">
+                      {client.dpopRefreshTokenOnly ? (
+                        <Badge bg="info">{dictionary.admin.common.on}</Badge>
+                      ) : (
+                        <Badge bg="secondary">{dictionary.admin.common.off}</Badge>
+                      )}
+                    </dd>
+                    <dt className="col-sm-4">{copy.dpopAlgorithms}</dt>
+                    <dd className="col-sm-8 font-monospace">
+                      {(client.dpopSigningAlgorithms ?? ["RS256", "ES256"]).join(", ")}
+                    </dd>
                     <dt className="col-sm-4">{copy.clientCreated}</dt>
                     <dd className="col-sm-8">
                       {client.clientIdIssuedAt
@@ -222,6 +253,7 @@ export function ClientDetail({
           }
         />
       )}
+      {activeTab === "roles" && <ClientRoles clientId={client.id} dictionary={dictionary} />}
       {activeTab === "sessions" && (
         <EntityRelatedData
           resource="sessions"

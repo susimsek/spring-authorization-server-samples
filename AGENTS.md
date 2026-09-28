@@ -102,6 +102,32 @@ This repo is a Java 25 + Spring Boot 4.1 sample application for the Authorizatio
 - Avoid global coverage excludes for handwritten code.
 - Do not edit generated or build output under `target/`.
 - When you change code: apply formatting and ensure tests pass (`./mvnw spotless:apply` and `./mvnw test`).
+- Before committing, inspect the changed code for the recurring Sonar findings listed below and fix
+  them when applicable. Do not reintroduce these patterns:
+  - `java:S5778`: keep runtime-exception tests to one method invocation.
+  - `VariableDeclarationUsageDistance`: keep local declarations close to their first use.
+  - `java:S8924`: statically import Mockito core methods where appropriate.
+  - `java:S6809`: do not call Spring-proxied methods through `this`.
+  - `java:S1192`: extract duplicated string literals when they represent the same concept.
+  - `java:S7467`: use unnamed exception variables when the caught value is unused.
+  - `java:S6201`: use pattern matching for `instanceof` checks.
+  - `OverloadMethodsDeclarationOrder`: keep overloads adjacent or give distinct helper methods
+    distinct names.
+  - `java:S6213`, `java:S107`, `java:S1130`, `java:S1172`, `java:S1186`, and `java:S3776`:
+    avoid restricted identifiers, excessive parameters, redundant throws, unused parameters,
+    empty methods, and excessive method complexity.
+  - `java:S5838` and `java:S5853`: use dedicated AssertJ assertions and chain consecutive
+    assertions where the subject is the same.
+  - `java:S1612`: prefer method references over equivalent lambdas.
+  - `java:S6204`: use `Stream.toList()` only when an unmodifiable result is safe; preserve a
+    mutable collection when downstream serialization or mutation requires it.
+  - `EmptyCatchBlock`, `MissingSwitchDefault`, and JavaScript `S2486`: handle exceptions
+    explicitly or document/log intentional fallback behavior, and make switch defaults explicit.
+- Commit-time quality checks are `./mvnw spotless:check`, `./mvnw checkstyle:check`, the focused
+  tests for the changed behavior, and `git diff --check`. Run the full Sonar analysis before
+  pushing or in CI rather than on every commit. On Windows, prefer the Linux CI analysis for
+  Checkstyle-backed Sonar results because CRLF checkout line endings can create false-positive
+  `NewlineAtEndOfFileCheck` issues.
 - Every frontend button that starts an asynchronous operation must show an inline progress spinner
   and disable repeated submission while the operation is pending. Keep the button's existing label
   while it is busy; do not add a separate "Saving..." or "Signing in..." label. Restore the normal

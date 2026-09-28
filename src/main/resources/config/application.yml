@@ -64,6 +64,41 @@ server:
   shutdown: graceful
 
 management:
+  opentelemetry:
+    enabled: ${MANAGEMENT_OPENTELEMETRY_ENABLED:false}
+    resource-attributes:
+      service.name: ${OTEL_SERVICE_NAME:spring-authorization-server-samples}
+      deployment.environment: ${SPRING_PROFILES_ACTIVE:dev}
+    tracing:
+      export:
+        otlp:
+          endpoint: ${MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT:}
+          headers:
+            Authorization: ${MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_HEADERS_AUTHORIZATION:}
+    logging:
+      export:
+        otlp:
+          endpoint: ${MANAGEMENT_OPENTELEMETRY_LOGGING_EXPORT_OTLP_ENDPOINT:}
+          headers:
+            Authorization: ${MANAGEMENT_OPENTELEMETRY_LOGGING_EXPORT_OTLP_HEADERS_AUTHORIZATION:}
+  logging:
+    export:
+      otlp:
+        enabled: ${MANAGEMENT_LOGGING_EXPORT_OTLP_ENABLED:false}
+  tracing:
+    export:
+      enabled: ${MANAGEMENT_TRACING_EXPORT_ENABLED:false}
+      otlp:
+        enabled: ${MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED:false}
+    sampling:
+      probability: ${MANAGEMENT_TRACING_SAMPLING_PROBABILITY:1.0}
+  otlp:
+    metrics:
+      export:
+        enabled: ${MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED:false}
+        url: ${MANAGEMENT_OTLP_METRICS_EXPORT_URL:}
+        headers:
+          Authorization: ${MANAGEMENT_OTLP_METRICS_EXPORT_HEADERS_AUTHORIZATION:}
   health:
     mail:
       enabled: ${MANAGEMENT_HEALTH_MAIL_ENABLED:false}
@@ -82,7 +117,6 @@ app:
     cleanup-cron: "0 * * * * *"
   social-login:
     enabled: ${APP_SOCIAL_LOGIN_ENABLED:false}
-    encryption-key: ${SOCIAL_LOGIN_ENCRYPTION_KEY:}
     google:
       client-id: ${GOOGLE_CLIENT_ID:}
       client-secret: ${GOOGLE_CLIENT_SECRET:}
@@ -97,6 +131,9 @@ app:
       client-secret: ${MICROSOFT_CLIENT_SECRET:}
   authorization-server:
     issuer: https://spring-authorization-server-samples.local
+  dpop:
+    nonce-required: ${APP_DPOP_NONCE_REQUIRED:false}
+    nonce-ttl: ${APP_DPOP_NONCE_TTL:PT5M}
   web-authn:
     rp-name: Spring Authorization Server Samples
     rp-id: ""

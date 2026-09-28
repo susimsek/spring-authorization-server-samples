@@ -70,7 +70,11 @@ describe("AdminSettings", () => {
                   ? "user-profile"
                   : key === "socialLogin"
                     ? "social-login"
-                    : key
+                    : key === "userFederation"
+                      ? "user-federation"
+                      : key === "cibaPolicy"
+                        ? "ciba-policy"
+                        : key
             }`,
       );
     }

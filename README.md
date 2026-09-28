@@ -1,6 +1,6 @@
 # Spring Authorization Server Samples
 
-[![Build Status](https://circleci.com/gh/susimsek/spring-authorization-server-samples/tree/main.svg?style=shield)](https://circleci.com/gh/susimsek/spring-authorization-server-samples/tree/main)
+[![Build Status](https://github.com/susimsek/spring-authorization-server-samples/actions/workflows/ci.yml/badge.svg)](https://github.com/susimsek/spring-authorization-server-samples/actions/workflows/ci.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=spring-authorization-server-samples&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=spring-authorization-server-samples)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=spring-authorization-server-samples&metric=coverage)](https://sonarcloud.io/summary/new_code?id=spring-authorization-server-samples)
 [![Vulnerabilities](https://snyk.io/test/github/susimsek/spring-authorization-server-samples/badge.svg)](https://snyk.io/test/github/susimsek/spring-authorization-server-samples)
@@ -29,29 +29,30 @@ This repository is a Spring Boot 4.1 + Java 25 sample application built around t
 2. [Requirements](#requirements)
 3. [Project Layout](#project-layout)
 4. [Configuration](#configuration)
-5. [Configuration and Profiles](#configuration-and-profiles)
-6. [RSA Signing Keys](#rsa-signing-keys)
-7. [Persistent User Sessions](#persistent-user-sessions)
-8. [Frontend](#frontend)
-9. [Administration and Account Consoles](#administration-and-account-consoles)
-10. [Run Locally](#run-locally)
-11. [API Quick Overview](#api-quick-overview)
-12. [OAuth2 and OIDC Endpoints](#oauth2-and-oidc-endpoints)
-13. [Authorization Server Flows](#authorization-server-flows)
-14. [Try with curl](#try-with-curl)
-15. [Client Registration and Seed Data](#client-registration-and-seed-data)
-16. [Database](#database)
-17. [Internationalization](#internationalization)
-18. [Build](#build)
-19. [Performance Tests](#performance-tests)
-20. [Code Quality](#code-quality)
-21. [GraalVM Native Image](#graalvm-native-image)
-22. [Docker Image](#docker-image)
-23. [Kubernetes Health Probe](#kubernetes-health-probe)
-24. [Docker Compose Support](#docker-compose-support)
-25. [Helm](#helm)
-26. [Terraform](#terraform)
-27. [Continuous Integration](#continuous-integration)
+5. [Grafana Cloud Observability](#grafana-cloud-observability)
+6. [Configuration and Profiles](#configuration-and-profiles)
+7. [RSA Signing Keys](#rsa-signing-keys)
+8. [Persistent User Sessions](#persistent-user-sessions)
+9. [Frontend](#frontend)
+10. [Administration and Account Consoles](#administration-and-account-consoles)
+11. [Run Locally](#run-locally)
+12. [API Quick Overview](#api-quick-overview)
+13. [OAuth2 and OIDC Endpoints](#oauth2-and-oidc-endpoints)
+14. [Authorization Server Flows](#authorization-server-flows)
+15. [Try with curl](#try-with-curl)
+16. [Client Registration and Seed Data](#client-registration-and-seed-data)
+17. [Database](#database)
+18. [Internationalization](#internationalization)
+19. [Build](#build)
+20. [Performance Tests](#performance-tests)
+21. [Code Quality](#code-quality)
+22. [GraalVM Native Image](#graalvm-native-image)
+23. [Docker Image](#docker-image)
+24. [Kubernetes Health Probe](#kubernetes-health-probe)
+25. [Docker Compose Support](#docker-compose-support)
+26. [Helm](#helm)
+27. [Terraform](#terraform)
+28. [Continuous Integration](#continuous-integration)
 
 ## Features
 
@@ -150,7 +151,8 @@ Secret/API key handling:
 The admin API accepts the secret/API key only on an authenticated update and stores them encrypted
 with AES-GCM in the `login_settings` table. The values are never returned to the browser; the
 panel only receives a configured/not-configured flag. A blank secret field preserves the current
-value. Configure a stable `SOCIAL_LOGIN_ENCRYPTION_KEY` before saving secrets, and keep it stable
+value. The demo profiles use a fixed sample encryption key; replace it with a deployment-managed
+secret before using the production profile outside local development, and keep it stable
 across restarts and deployments.
 
 The registration endpoint always verifies the token server-side and rejects missing, expired,
@@ -158,6 +160,37 @@ invalid, or failed tokens before creating a user. The login filter verifies the 
 Spring Security processes the username and password, so failed CAPTCHA requests never reach the
 authentication provider. Tokens are generated at submit time for v3 so the backend can validate
 the expected action and score.
+
+## Grafana Cloud Observability
+
+The application can export metrics, traces, and Logback logs to Grafana Cloud over OTLP. Export is
+disabled by default, so local development does not send telemetry anywhere. Enable it by adding
+the following variables to `.env` or the Render environment:
+
+```dotenv
+MANAGEMENT_OPENTELEMETRY_ENABLED=true
+MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_HEADERS_AUTHORIZATION=Basic <base64-grafana-instance-id-and-token>
+MANAGEMENT_OPENTELEMETRY_LOGGING_EXPORT_OTLP_HEADERS_AUTHORIZATION=Basic <base64-grafana-instance-id-and-token>
+MANAGEMENT_OTLP_METRICS_EXPORT_HEADERS_AUTHORIZATION=Basic <base64-grafana-instance-id-and-token>
+MANAGEMENT_TRACING_EXPORT_ENABLED=true
+MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED=true
+MANAGEMENT_LOGGING_EXPORT_OTLP_ENABLED=true
+MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED=true
+MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT=https://<otlp-gateway>/otlp/v1/traces
+MANAGEMENT_OPENTELEMETRY_LOGGING_EXPORT_OTLP_ENDPOINT=https://<otlp-gateway>/otlp/v1/logs
+MANAGEMENT_OTLP_METRICS_EXPORT_URL=https://<otlp-gateway>/otlp/v1/metrics
+MANAGEMENT_TRACING_SAMPLING_PROBABILITY=1.0
+OTEL_SERVICE_NAME=spring-authorization-server-samples
+```
+
+Create the `Authorization` value from the Grafana Cloud stack's instance ID and an API token with
+the required write permissions. Keep it in Render Secrets or `.env`; never commit it. The three
+signal endpoints are available in the Grafana Cloud stack's OpenTelemetry connection details.
+
+Grafana Cloud's free tier is suitable for this demo and includes metrics, logs, and traces with
+usage limits and 14-day retention. See the [Grafana Cloud Free tier](https://grafana.com/products/cloud/free-tier/)
+and [OTLP ingestion guide](https://grafana.com/docs/grafana-cloud/send-data/otlp/) for current limits
+and connection details.
 
 ## Configuration and Profiles
 
@@ -350,6 +383,7 @@ Public infrastructure:
 - `/.well-known/oauth-authorization-server`
 - `/oauth2/jwks`
 - `/oauth2/token`
+- `/oauth2/bc-authorize`
 - `/oauth2/authorize`
 - `/actuator/health`
 - `/actuator/health/liveness`
@@ -373,6 +407,7 @@ Authorization Server endpoints:
 - `GET /oauth2/jwks`
 - `GET /oauth2/authorize`
 - `POST /oauth2/token`
+- `POST /oauth2/bc-authorize`
 - `POST /oauth2/revoke`
 - `POST /oauth2/introspect`
 
@@ -398,7 +433,7 @@ Framework endpoint families supported by Spring Security's Authorization Server:
 - OIDC logout: `GET /connect/logout`
 - Optional when configured: `GET /userinfo`, `POST /oauth2/par`, `POST /oauth2/device_authorization`, `GET|POST /oauth2/device_verification`, `POST /connect/register`
 
-This sample currently focuses on metadata, JWK Set, authorization code, refresh token, client credentials, introspection, revocation, and logout.
+This sample currently focuses on metadata, JWK Set, authorization code, refresh token, client credentials, CIBA, introspection, revocation, and logout.
 
 ## Authorization Server Flows
 
@@ -476,6 +511,47 @@ Notes:
 - `redirect_uri` must exactly match the value used in the authorize request
 - this flow is not practical as a curl-only test because login and redirect handling require a browser
 - this flow is the one that produces end-user authorization and consent records
+
+### CIBA Backchannel Authentication Flow
+
+The seeded `ciba-client` is a confidential client that uses the poll delivery mode. It has no
+redirect URI because the user approves the request in the Account Console.
+
+Ping and push clients must register a notification endpoint and send a fresh
+`client_notification_token` with every backchannel request. The token is encrypted before it is
+stored with the pending request and is sent as a bearer token only to the registered endpoint.
+The demo profiles provide a fixed AES-GCM key for ping or push delivery. Replace that sample key
+with a deployment-managed secret before using the production profile outside this demo.
+
+Create a backchannel authentication request:
+
+```bash
+CIBA_RESPONSE=$(curl -s -u ciba-client:demo-secret \
+  -H 'Accept-Language: en' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d scope='openid profile offline_access' \
+  -d login_hint=admin \
+  -d binding_message='Approve sign in' \
+  http://127.0.0.1:9090/oauth2/bc-authorize)
+
+AUTH_REQ_ID=$(printf '%s' "$CIBA_RESPONSE" | jq -r '.auth_req_id')
+printf 'Approve this request in Account Console, then poll with auth_req_id=%s\n' "$AUTH_REQ_ID"
+```
+
+After the signed-in user approves the pending request at `/account/security`, poll the token
+endpoint:
+
+```bash
+curl -u ciba-client:demo-secret \
+  -H 'Accept-Language: en' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d grant_type=urn:openid:params:grant-type:ciba \
+  -d auth_req_id="$AUTH_REQ_ID" \
+  http://127.0.0.1:9090/oauth2/token
+```
+
+The first poll returns `authorization_pending`. After approval, the response contains an access
+token, an ID token, and a refresh token because the seeded client requests `offline_access`.
 
 ### Confidential Client with PKCE
 
@@ -647,13 +723,15 @@ Seeded OAuth2 clients:
 
 | Client ID | Client Secret | Grants |
 | --- | --- | --- |
-| `demo-client` | `demo-secret` | `authorization_code`, `refresh_token`, `client_credentials` |
+| `demo-client` | `demo-secret` | `authorization_code`, `refresh_token`, `client_credentials`, token exchange, CIBA |
+| `ciba-client` | `demo-secret` | CIBA, refresh_token |
 | `pkce-client` | `demo-secret` | `authorization_code`, `refresh_token` |
 
 Seeded client scopes:
 
 - `pkce-client`: `openid`, `profile`
-- `demo-client`: `openid`, `profile`, `user.read`, `user.write`
+- `demo-client`: `openid`, `profile`, `offline_access`, `user.read`, `user.write`
+- `ciba-client`: `openid`, `profile`, `offline_access`
 
 Get a client credentials token:
 
@@ -727,6 +805,10 @@ That file seeds:
 - post-logout redirect URI: `http://127.0.0.1:8082/`
 - scopes: `openid`, `profile`
 - PKCE required
+- `ciba-client`
+- BCrypt-encoded client secret
+- CIBA grant with poll delivery mode
+- scopes: `openid`, `profile`, `offline_access`
 - serialized `client_settings`
 - serialized `token_settings`
 
@@ -865,9 +947,15 @@ Apply formatting:
 
 ```bash
 export SONAR_TOKEN=...
-./mvnw -B -ntp -Psonar verify sonar:sonar \
+./mvnw -B -ntp verify
+./mvnw -B -ntp -Psonar initialize sonar:sonar \
   -Dsonar.token="$SONAR_TOKEN"
 ```
+
+The Maven verification phase enforces a 96% instruction and line coverage floor
+with JaCoCo. This keeps a one percentage point safety margin above the 95%
+coverage target reported by SonarCloud. The SonarCloud project uses the
+`Spring Authorization Server 95 Coverage` quality gate for that floor.
 
 ## GraalVM Native Image
 
@@ -981,7 +1069,26 @@ readinessProbe:
 Files under `src/main/docker/*.yml` are marked as "dev purpose only".
 
 - PostgreSQL: `docker compose -f src/main/docker/postgresql.yml up -d`
+- OpenLDAP: `docker compose -f src/main/docker/openldap.yml up -d`
 - App with prebuilt native image: `docker compose -f src/main/docker/app.yml up -d`
+
+### LDAP
+
+The OpenLDAP fixture is for local development and end-to-end tests:
+
+```bash
+docker compose -f src/main/docker/openldap.yml up -d
+```
+
+Use `ldap://localhost:1389` with bind DN `cn=admin,dc=example,dc=com` and password `admin`.
+The seeded user is `ldap-user` / `ldap-password`. Data is ephemeral by default; reset it with:
+
+```bash
+docker compose -f src/main/docker/openldap.yml down
+```
+
+To persist LDAP data, uncomment the service mounts and top-level volume declarations in
+`src/main/docker/openldap.yml` together.
 
 Spring Boot Docker Compose integration:
 
@@ -1057,7 +1164,7 @@ Terraform provisions:
 - a local `kind` cluster
 - namespace `apps`
 - namespace `ingress-nginx`
-- an `ingress-nginx` controller reachable on host ports `8080` and `8443`
+- an `ingress-nginx` controller reachable on host ports `9090` and `8443`
 - the local Helm chart
 - PostgreSQL from the chart dependency
 - an active HTTP ingress for the Authorization Server
@@ -1115,13 +1222,13 @@ spring-authorization-server.127.0.0.1.nip.io
 Example:
 
 ```bash
-curl http://spring-authorization-server.127.0.0.1.nip.io:8080/.well-known/openid-configuration
+curl http://spring-authorization-server.127.0.0.1.nip.io:9090/.well-known/openid-configuration
 ```
 
 Fetch the JWK Set:
 
 ```bash
-curl http://spring-authorization-server.127.0.0.1.nip.io:8080/oauth2/jwks
+curl http://spring-authorization-server.127.0.0.1.nip.io:9090/oauth2/jwks
 ```
 
 Fallback access:
@@ -1152,15 +1259,32 @@ terraform -chdir=terraform destroy -auto-approve
 
 ## Continuous Integration
 
-Pipeline: `.circleci/config.yml`
+Pipeline: `.github/workflows/ci.yml`
 
+- Docker Compose, Helm, and Terraform definitions are validated on every branch.
 - `./mvnw verify` for backend tests + quality gates
 - `./mvnw -Pprod,native -DskipTests native:compile` for a musl static native build
 - Compress `target/native-executable` with UPX
 - Push the native Docker image to Docker Hub on the `main` branch via Jib
+- Trigger the Render image-backed service through its Deploy Hook after the image is published
+
+### Render Blueprint deployment
+
+`render.yaml` keeps the Render web service configuration in Git. It uses the published
+`latest-native` amd64 image and the `/actuator/health/readiness` health check. Connect the
+repository in Render with **New → Blueprint**, select the `main` branch, and apply the Blueprint
+to manage the existing `spring-authorization-server-samples` service. Render prompts for the
+database URL, username, password, and public issuer because those values are marked `sync: false`.
+
+Live demo: [Render](https://spring-authorization-server-samples.onrender.com)
+
+Create a GitHub Actions repository secret named `RENDER_DEPLOY_HOOK_URL` from the service's
+Render Deploy Hook. A successful `main` image publish then calls the hook and starts a new Render
+deployment. Keep the hook URL only in GitHub Secrets.
 
 Environment variables:
 
 - SonarCloud: `SONAR_TOKEN` (optional)
 - Snyk: `SNYK_TOKEN` (optional)
 - Docker Hub push: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN` (only on `main`)
+- Render deploy: `RENDER_DEPLOY_HOOK_URL` (optional; only on `main`)

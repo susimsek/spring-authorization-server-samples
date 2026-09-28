@@ -210,7 +210,7 @@ The following matrix compares the behavior currently implemented in this reposit
 | Groups | CRUD, membership, hierarchy, parent role inheritance, multi-valued attributes, default groups, configurable group claims, and group-scoped permissions | Hierarchical groups, attributes, role mappings, default groups, membership permissions[^6] | Implemented / Partial | Preserve the single-issuer boundary; add broader Keycloak protocol mapper types and realm boundaries later. |
 | Group claims | Configurable group membership mapper on client scopes with claim name and full-path options | Group membership mapper is configurable per client/client scope | Implemented / Partial | Add the remaining protocol mapper types and token-preview tooling. |
 | Realm roles | Global application authorities | Realm-level roles with direct, group, and composite assignment | Partial | Add realm ownership and composite-role relationships. |
-| Client roles | No client namespace in the role model | Client roles are scoped to a client and appear in `resource_access` | Missing | Add client-scoped roles and token claim filtering. |
+| Client roles | Client-owned roles with direct user/group mappings, client-role administration, and `roles`-scope filtered `resource_access` claims | Client roles are scoped to a client and appear in `resource_access` | Implemented / Partial | Composite client roles, realm ownership, and finer-grained scope policies remain future work. |
 | Composite roles | No composite role graph | Roles can include other roles with cycle protection | Missing | Add a role graph and effective-role resolver. |
 | Query permissions | Resource roles combine discovery and access | `query-users`, `query-groups`, and `query-clients` control console discovery | Partial | Split navigation/query permissions from view/manage permissions where needed. |
 | Event permissions | Event viewer/manager authorities protect event APIs | `view-events` and `manage-events` are separate realm-management roles[^1] | Implemented / Partial | Preserve the split; add user-event/provider scope later. |
@@ -222,8 +222,10 @@ The following matrix compares the behavior currently implemented in this reposit
 | Client credentials | Seeded client and integration coverage | Service accounts and client credentials | Partial | Add a service-account user model and role assignment. |
 | PAR, Device Authorization, introspection, revocation | Implemented and tested | Supported protocol endpoints | Implemented | Preserve endpoint metadata and integration tests. |
 | OIDC discovery, UserInfo, JWKS, logout | Implemented | Standard OIDC provider endpoints and session/logout behavior | Implemented | Keep issuer and metadata stable for clients. |
-| Token exchange | No standard token-exchange grant | Standard and administrator token exchange options[^12] | Missing | Add only with explicit audience, impersonation, and policy controls. |
-| CIBA, DPoP, resource indicators | Not implemented | Available as advanced protocol capabilities in Keycloak distributions | Missing | Treat as separate protocol epics, not UI-only work. |
+| Token exchange | RFC 8693 token exchange is available to clients that explicitly include the token-exchange grant; Spring Authorization Server performs the standard subject-token exchange | Keycloak supports standard token exchange and administrator-controlled exchange permissions[^12] | Partial | Add explicit audience, actor/impersonation, scope, and exchange-policy controls before exposing broader delegation. |
+| CIBA | Backchannel authentication is implemented for confidential clients: the server creates an `auth_req_id`, persists the pending request, exposes approval/denial endpoints for the target user, and delivers the result through the client-registered poll, ping, or push mode | Keycloak supports CIBA with a configured backchannel authentication channel, policy, approval UX, and poll/push delivery modes | Partial | The implementation covers `authorization_pending`, `slow_down`, `access_denied`, `expired_token`, client grant opt-in, discovery metadata, client-level delivery mode and notification endpoint/token settings, ping notifications, push token responses, OIDC `id_token` responses, optional `offline_access` refresh tokens, `auth_req_id` binding in the authorization record and token claims, generated or client-supplied `user_code` values, the `login_hint`, `login_hint_token`, and `id_token_hint` request forms, signed `request` JWTs with audience and client algorithm-policy validation, an Admin → Settings → CIBA policy screen for request lifespan, polling interval, delivery-mode allowlisting, user verification, MFA, and step-up requirements, and an Account Console approval panel for reviewing pending requests and approving or denying them. |
+| DPoP | DPoP proofs are accepted at all token/resource grant paths, DPoP-bound access tokens carry a `cnf.jkt` confirmation claim, clients can require proofs, authorization-code and PAR clients can require and validate `dpop_jkt`, refresh-token requests can require DPoP, public clients retain the same `cnf.jkt` key for refresh validation, protected-resource metadata advertises supported proof algorithms, each client can allow only selected asymmetric proof algorithms (currently RS256 and/or ES256), and resource APIs can enforce short-lived single-use nonce challenges | Keycloak supports DPoP-bound tokens, client-level requirement for DPoP proofs, refresh-token-only and strict `dpop_jkt` client policies, nonce challenge handling, and asymmetric proof algorithm policy | Implemented | Keep the client policy controls aligned with RFC 9449 and preserve the public-client same-key refresh check. |
+| Resource indicators | The OAuth `resource` parameter is not interpreted | Current Keycloak documentation states that the server does not currently process OAuth 2.0 resource indicators[^13] | Not a current parity gap | Keep resource indicators out of the parity claim; evaluate RFC 8707 support only when the upstream server and product need are established. |
 | SAML | No SAML IdP/SP | SAML client and identity-provider support | Missing | Separate protocol product decision. |
 | Authentication flows | Fixed Spring Security flow with custom MFA filter and required actions | Configurable browser, registration, reset-credential, first-broker-login, and conditional flows[^8] | Partial | Introduce a flow graph only when administrators need reordering/conditions. |
 | WebAuthn/passkeys | Spring Security WebAuthn registration/authentication ceremonies, account/admin credential inventory, labels, deletion, and required-action enrollment | WebAuthn credential and passkey authenticators | Partial | Registration, persistence, primary-factor sign-in, OTP step-up, account/admin inventory with signature and verification metadata, label management, deletion, configurable mediation, conditional sign-in, automatic passkey autofill, and standard/passwordless required actions are implemented. Broader Keycloak authentication-flow composition remains outside this sample. |
@@ -544,7 +546,7 @@ The application now implements the OAuth2/OIDC identity-broker subset needed for
 
 - Keep the current roles and event settings behavior stable.
 - Add realm/client ownership to role, client scope, group, and mapper models before multi-tenant support.
-- Add client roles, composite roles, standard role claims, and scope filtering.
+- Keep client roles, standard role claims, and scope filtering stable; composite roles remain the next role-model increment.
 - Extend group attributes and add protocol mappers; dynamic user profile attributes are implemented for the single issuer.
 - Keep Settings and Events visually consistent with the existing screens.
 - Maintain session/token invalidation, audit events, cache eviction, OpenAPI schemas, localized messages, native hints, and tests for each mutation.
@@ -560,7 +562,6 @@ The application now implements the OAuth2/OIDC identity-broker subset needed for
 ### P2 — optional Keycloak platform parity
 
 - Extend the implemented identity-broker subset with SAML, LDAP/AD federation, broader provider mapper types, additional provider types, and realm-scoped broker configuration.
-- SAML, token exchange, CIBA, DPoP, resource indicators.
 - Organizations and organization groups.
 - Authorization Services/UMA.
 - Event listeners, webhooks, delivery retries, and metrics.
@@ -569,7 +570,7 @@ The application now implements the OAuth2/OIDC identity-broker subset needed for
 ## Open decisions
 
 1. Does the product need multiple isolated realms, or is one issuer a permanent demo constraint?
-2. Should `ROLE_CLIENT_*` remain realm roles for compatibility, or become client roles with a migration bridge?
+2. Should the existing `ROLE_CLIENT_*` administration authorities remain realm roles for compatibility, or also gain a future client-management permission bridge?
 3. Which user and group attributes are allowed to enter tokens, and which must be redacted?
 4. Is the first user-event release limited to authentication events, or does it include account and required-action events?
 5. Which external identity providers and directory protocols justify their operational cost?
@@ -585,6 +586,15 @@ The application now implements the OAuth2/OIDC identity-broker subset needed for
 | `PUT` | `/api/admin/events/config` | Update event settings | Event manager or administrator |
 | `GET` | `/api/admin/events` | Paginated event history | Event viewer or administrator |
 | `DELETE` | `/api/admin/events` | Clear event history | Event manager or administrator |
+| `GET` | `/api/admin/clients/{clientId}/roles` | List client-scoped roles | Client viewer or administrator |
+| `POST` | `/api/admin/clients/{clientId}/roles` | Create a client-scoped role | Client manager or administrator |
+| `GET` | `/api/admin/clients/{clientId}/roles/{roleId}` | Read a client role and user mappings | Client viewer or administrator |
+| `PUT` | `/api/admin/clients/{clientId}/roles/{roleId}` | Update a client role | Client manager or administrator |
+| `DELETE` | `/api/admin/clients/{clientId}/roles/{roleId}` | Delete an unassigned client role | Client manager or administrator |
+| `POST` | `/api/admin/clients/{clientId}/roles/{roleId}/users` | Assign a user to a client role | Client manager or administrator |
+| `DELETE` | `/api/admin/clients/{clientId}/roles/{roleId}/users/{userId}` | Remove a user from a client role | Client manager or administrator |
+| `POST` | `/api/admin/clients/{clientId}/roles/{roleId}/groups/{groupId}` | Assign a group to a client role | Client manager or administrator |
+| `DELETE` | `/api/admin/clients/{clientId}/roles/{roleId}/groups/{groupId}` | Remove a group from a client role | Client manager or administrator |
 
 The update endpoint returns the persisted settings representation. The delete endpoint returns no content on success and a centralized Problem Detail response on failure. DTOs must use explicit OpenAPI schemas, examples, requiredness, and validation metadata. Collection endpoints must use bounded `Pageable` input, a stable default sort, and no unbounded response.
 
@@ -661,6 +671,14 @@ Liquibase changelogs, CSV seed data, and i18n bundles must remain available to n
 - [ ] Provider-level first/post-login flow selection remains future parity work.
 - [ ] SAML, LDAP/AD, broader provider mapper types, additional provider types, and realm-scoped broker configuration remain future parity work.
 
+### Client roles
+
+- [x] Administrators can create, update, list, and delete client-scoped roles from the client detail screen.
+- [x] Client roles support direct user and group mappings, with affected user sessions and authorizations invalidated after changes.
+- [x] Client roles are emitted under `resource_access.{client_id}.roles` only when the `roles` scope is authorized for the token.
+- [x] Client role names, ownership, duplicate protection, assignment protection, localized validation, audit events, OpenAPI schemas, and bounded user lists are enforced server-side.
+- [ ] Composite client roles and realm/tenant ownership remain future parity work.
+
 ### Quality and security
 
 - [x] Registration and login CAPTCHA settings have separate enablement, encrypted provider credentials, v2/v3 action and score policies, public configuration endpoints, server-side token verification, localized failure handling, and focused unit/HTTP coverage.
@@ -672,6 +690,8 @@ Liquibase changelogs, CSV seed data, and i18n bundles must remain available to n
 ## Current implementation mapping and gaps
 
 The current sample implements the recommended split with `/admin/settings/events` for event configuration and `/admin/events` for history. The Settings navigation includes Events, the event form uses the shared card and action-row pattern, and the history page owns filtering and clear-history behavior. The backend exposes the four resource-oriented endpoints listed above and protects them with viewer/manager/admin rules.
+
+Client roles are implemented as client-owned role entities with direct user and group mappings. The client detail screen exposes a Roles tab backed by bounded administration endpoints. When a token requests the `roles` scope, effective roles assigned directly to the user or inherited through groups are emitted only for the current client under `resource_access`; role changes invalidate affected sessions and persisted authorizations. Composite roles, realm ownership, and fine-grained role-scope policies remain intentionally outside this increment.
 
 The following parity items remain product decisions rather than silent assumptions:
 
@@ -710,4 +730,5 @@ Add listener providers, delivery status, tenant/realm isolation, and the remaini
 [^9]: Keycloak, *Server Administration Guide*, identity brokering and user federation: <https://www.keycloak.org/docs/latest/server_admin/#_identity_brokering>
 [^10]: Keycloak, *Server Administration Guide*, Organizations: <https://www.keycloak.org/docs/latest/server_admin/#_organizations>
 [^11]: Keycloak, *Server Administration Guide*, protocol mappers and client scopes: <https://www.keycloak.org/docs/latest/server_admin/#_client_scopes>
-[^12]: Keycloak, *Securing Applications and Services Guide*, token exchange and advanced OAuth capabilities: <https://www.keycloak.org/docs/latest/securing_apps/#_token-exchange>
+[^12]: Keycloak, *Securing Applications and Services Guide*, token exchange and advanced OAuth capabilities: <https://www.keycloak.org/securing-apps/token-exchange>
+[^13]: Keycloak, *MCP authorization server guide*, current resource-parameter support status: <https://www.keycloak.org/securing-apps/mcp-authz-server>
