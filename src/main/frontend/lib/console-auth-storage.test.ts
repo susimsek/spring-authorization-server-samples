@@ -67,7 +67,19 @@ describe("console authentication browser storage", () => {
 
     localStorage.setItem(`${CONSOLE_TRANSACTION_KEYS.admin}:invalid`, "{");
     expect(readAndRemoveTransaction(config, "invalid")).toBeNull();
+
+    localStorage.setItem(
+      `${CONSOLE_TRANSACTION_KEYS.admin}:missing-verifier`,
+      JSON.stringify({ ...transaction, codeVerifier: "", state: "missing-verifier" }),
+    );
+    expect(readAndRemoveTransaction(config, "missing-verifier")).toBeNull();
+
     localStorage.setItem("AUTH_CONSOLE_TOKEN:admin", JSON.stringify({ accessToken: "" }));
+    expect(readStoredTokens("admin")).toBeNull();
+    localStorage.setItem(
+      "AUTH_CONSOLE_TOKEN:admin",
+      JSON.stringify({ accessToken: "access", expiresAt: "not-a-timestamp", version: 1 }),
+    );
     expect(readStoredTokens("admin")).toBeNull();
   });
 

@@ -2,6 +2,10 @@ package io.github.susimsek.springauthserversamples;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -79,5 +83,26 @@ class HttpTransportIT {
                         .body(JsonNode.class);
         assertThat(inactive).isNotNull();
         assertThat(inactive.path("active").asBoolean()).isFalse();
+    }
+
+    @Test
+    void liveHttpRejectsAnonymousConsoleApiRequestsAtTheSecurityFilter() throws Exception {
+        HttpClient client = HttpClient.newHttpClient();
+
+        HttpResponse<String> accountResponse =
+                client.send(request("/api/account/mfa"), HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> adminResponse =
+                client.send(request("/api/admin/users"), HttpResponse.BodyHandlers.ofString());
+
+        assertThat(accountResponse.statusCode()).isEqualTo(401);
+        assertThat(accountResponse.headers().firstValue("WWW-Authenticate"))
+                .hasValueSatisfying(value -> assertThat(value).startsWith("Bearer"));
+        assertThat(adminResponse.statusCode()).isEqualTo(401);
+        assertThat(adminResponse.headers().firstValue("WWW-Authenticate"))
+                .hasValueSatisfying(value -> assertThat(value).startsWith("Bearer"));
+    }
+
+    private HttpRequest request(String path) {
+        return HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path)).GET().build();
     }
 }
