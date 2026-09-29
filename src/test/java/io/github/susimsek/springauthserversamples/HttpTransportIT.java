@@ -331,6 +331,63 @@ class HttpTransportIT {
     }
 
     @Test
+    void liveHttpAdminUserLifecycleUsesRealSerializationAndCleansUp() throws Exception {
+        HttpClient client = authenticatedClient();
+        login(client);
+        String accessToken =
+                accessToken(
+                        client, "admin-console", "admin-api", "admin-user-http-transport-verifier");
+        String username = "http-user-" + UUID.randomUUID().toString().replace("-", "");
+        Long userId = null;
+        try {
+            HttpResponse<String> created =
+                    client.send(
+                            jsonRequest("/api/admin/users", accessToken)
+                                    .POST(
+                                            HttpRequest.BodyPublishers.ofString(
+                                                    "{\"username\":\""
+                                                            + username
+                                                            + "\",\"password\":\"Http-test12!\",\"enabled\":true,\"roles\":[\"ROLE_USER\"]}"))
+                                    .build(),
+                            HttpResponse.BodyHandlers.ofString());
+            assertThat(created.statusCode()).isEqualTo(201);
+            userId = JSON.readTree(created.body()).path("id").asLong();
+            assertThat(userId).isPositive();
+
+            HttpResponse<String> disabled =
+                    client.send(
+                            jsonRequest("/api/admin/users/" + userId + "/enabled", accessToken)
+                                    .PUT(HttpRequest.BodyPublishers.ofString("{\"enabled\":false}"))
+                                    .build(),
+                            HttpResponse.BodyHandlers.ofString());
+            assertThat(disabled.statusCode()).isEqualTo(204);
+
+            HttpResponse<String> enabled =
+                    client.send(
+                            jsonRequest("/api/admin/users/" + userId + "/enabled", accessToken)
+                                    .PUT(HttpRequest.BodyPublishers.ofString("{\"enabled\":true}"))
+                                    .build(),
+                            HttpResponse.BodyHandlers.ofString());
+            assertThat(enabled.statusCode()).isEqualTo(204);
+
+            HttpResponse<String> password =
+                    client.send(
+                            jsonRequest("/api/admin/users/" + userId + "/password", accessToken)
+                                    .PUT(
+                                            HttpRequest.BodyPublishers.ofString(
+                                                    "{\"password\":\"Http-new123!\",\"temporary\":true}"))
+                                    .build(),
+                            HttpResponse.BodyHandlers.ofString());
+            assertThat(password.statusCode()).withFailMessage(password.body()).isEqualTo(204);
+
+        } finally {
+            if (userId != null) {
+                delete(client, "/api/admin/users/" + userId, accessToken);
+            }
+        }
+    }
+
+    @Test
     void liveHttpAccountSecurityReadsMfaRecoveryPasskeysProfileAndSocialLinks() throws Exception {
         HttpClient client = authenticatedClient();
         login(client);
@@ -365,6 +422,119 @@ class HttpTransportIT {
         assertThat(JSON.readTree(socialLinks.body()).isArray()).isTrue();
     }
 
+    @Test
+    void liveHttpAccountProfileMutationRestoresTheOriginalAttributes() throws Exception {
+        HttpClient client = authenticatedClient();
+        login(client);
+        String accessToken =
+                accessToken(
+                        client,
+                        "account-console",
+                        "account-api",
+                        "account-profile-http-transport-verifier");
+
+        HttpResponse<String> before =
+                client.send(
+                        apiRequest("/api/account/profile/attributes", accessToken).GET().build(),
+                        HttpResponse.BodyHandlers.ofString());
+        assertThat(before.statusCode()).isEqualTo(200);
+        String originalAttributes = JSON.readTree(before.body()).path("attributes").toString();
+        try {
+            HttpResponse<String> updated =
+                    client.send(
+                            jsonRequest("/api/account/profile/attributes", accessToken)
+                                    .PUT(
+                                            HttpRequest.BodyPublishers.ofString(
+                                                    "{\"attributes\":{\"department\":[\""
+                                                            + UUID.randomUUID()
+                                                            + "\"]}}"))
+                                    .build(),
+                            HttpResponse.BodyHandlers.ofString());
+            assertThat(updated.statusCode()).isEqualTo(200);
+            assertThat(
+                            JSON.readTree(updated.body())
+                                    .path("attributes")
+                                    .path("department")
+                                    .isArray())
+                    .isTrue();
+        } finally {
+            HttpResponse<String> restored =
+                    client.send(
+                            jsonRequest("/api/account/profile/attributes", accessToken)
+                                    .PUT(
+                                            HttpRequest.BodyPublishers.ofString(
+                                                    "{\"attributes\":" + originalAttributes + "}"))
+                                    .build(),
+                            HttpResponse.BodyHandlers.ofString());
+            assertThat(restored.statusCode()).isEqualTo(200);
+        }
+    }
+
+    @Test
+    void liveHttpAccountPasswordChangeAndDeletionUseTheRealSecurityChain() throws Exception {
+        HttpClient adminClient = authenticatedClient();
+        login(adminClient);
+        String adminAccessToken =
+                accessToken(
+                        adminClient,
+                        "admin-console",
+                        "admin-api",
+                        "account-password-http-transport-admin-verifier");
+        String username = "http-account-" + UUID.randomUUID().toString().replace("-", "");
+        Long userId = null;
+        boolean deleted = false;
+        try {
+            HttpResponse<String> created =
+                    adminClient.send(
+                            jsonRequest("/api/admin/users", adminAccessToken)
+                                    .POST(
+                                            HttpRequest.BodyPublishers.ofString(
+                                                    "{\"username\":\""
+                                                            + username
+                                                            + "\",\"password\":\"Http-current12!\",\"enabled\":true,\"roles\":[\"ROLE_USER\"]}"))
+                                    .build(),
+                            HttpResponse.BodyHandlers.ofString());
+            assertThat(created.statusCode()).isEqualTo(201);
+            userId = JSON.readTree(created.body()).path("id").asLong();
+            assertThat(userId).isPositive();
+
+            HttpClient accountClient = authenticatedClient();
+            login(accountClient, username, "Http-current12!");
+            String accountAccessToken =
+                    accessToken(
+                            accountClient,
+                            "account-console",
+                            "account-api",
+                            "account-password-http-transport-account-verifier");
+
+            HttpResponse<String> changed =
+                    accountClient.send(
+                            jsonRequest("/api/account/password", accountAccessToken)
+                                    .PUT(
+                                            HttpRequest.BodyPublishers.ofString(
+                                                    "{\"currentPassword\":\"Http-current12!\",\"newPassword\":\"Http-changed12!\"}"))
+                                    .build(),
+                            HttpResponse.BodyHandlers.ofString());
+            assertThat(changed.statusCode()).isEqualTo(204);
+
+            HttpResponse<String> deletedResponse =
+                    accountClient.send(
+                            jsonRequest("/api/account", accountAccessToken)
+                                    .method(
+                                            "DELETE",
+                                            HttpRequest.BodyPublishers.ofString(
+                                                    "{\"currentPassword\":\"Http-changed12!\"}"))
+                                    .build(),
+                            HttpResponse.BodyHandlers.ofString());
+            assertThat(deletedResponse.statusCode()).isEqualTo(204);
+            deleted = true;
+        } finally {
+            if (!deleted && userId != null) {
+                delete(adminClient, "/api/admin/users/" + userId, adminAccessToken);
+            }
+        }
+    }
+
     private HttpClient authenticatedClient() {
         return HttpClient.newBuilder()
                 .cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL))
@@ -373,6 +543,10 @@ class HttpTransportIT {
     }
 
     private void login(HttpClient client) throws Exception {
+        login(client, "admin", "admin");
+    }
+
+    private void login(HttpClient client, String username, String password) throws Exception {
         HttpResponse<String> response =
                 client.send(
                         requestBuilder("/login")
@@ -382,9 +556,9 @@ class HttpTransportIT {
                                                 form(
                                                         Map.of(
                                                                 "username",
-                                                                "admin",
+                                                                username,
                                                                 "password",
-                                                                "admin"))))
+                                                                password))))
                                 .build(),
                         HttpResponse.BodyHandlers.ofString());
         assertThat(response.statusCode()).isBetween(300, 399);

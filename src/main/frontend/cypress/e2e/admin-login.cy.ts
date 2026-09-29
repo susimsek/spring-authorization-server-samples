@@ -314,6 +314,27 @@ describe("admin login", () => {
     cy.contains("The administration session could not be established.").should("be.visible");
   });
 
+  it("renders the provider access-denied error from an authorization callback", () => {
+    cy.visit("/admin/callback#error=access_denied&state=denied-state");
+
+    cy.location("pathname").should("eq", "/admin/callback");
+    cy.location("hash").should("eq", "");
+    cy.contains("The administration session could not be established.").should("be.visible");
+  });
+
+  it("ignores malformed persisted token state and starts a fresh login", () => {
+    cy.clearCookies();
+    cy.clearLocalStorage();
+    cy.visit("/admin/", {
+      onBeforeLoad(window) {
+        window.localStorage.setItem("AUTH_CONSOLE_TOKEN:admin", "not-json");
+      },
+    });
+
+    cy.get('input[name="username"]', { timeout: 20_000 }).should("be.visible");
+    cy.get(".admin-sidebar").should("not.exist");
+  });
+
   it("keeps Turkish login and logout cookie-localized without URL prefixes", () => {
     cy.setCookie("locale", "tr");
     signIn("/admin/");
