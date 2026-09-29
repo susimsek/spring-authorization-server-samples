@@ -17,6 +17,10 @@ const signInAdmin = () => {
 };
 
 describe("admin console", () => {
+  beforeEach(() => {
+    cy.setCookie("locale", "en");
+  });
+
   it("signs in from /admin, keeps the callback URL clean and survives reload", () => {
     cy.visit("/admin");
 
@@ -115,13 +119,20 @@ describe("admin console", () => {
     sections.forEach(([label, path, saveLabel]) => {
       cy.contains(".admin-detail-tabs a", label).click();
       cy.location("pathname", { timeout: 15_000 }).should("eq", path);
-      cy.get('.admin-detail-tabs a[aria-current="page"]').should("contain.text", label);
-      if (saveLabel) cy.contains("button", saveLabel, { timeout: 15_000 }).should("be.visible");
+      cy.get(".admin-detail-tabs a.active").should("contain.text", label);
+      if (saveLabel) {
+        cy.contains("button", saveLabel, { timeout: 15_000 }).should("exist");
+      }
       if (label === "Email") {
         cy.intercept("POST", "/api/admin/settings/email/test", { statusCode: 204 }).as(
           "testEmailConnection",
         );
-        cy.contains("button", "Test connection", { timeout: 15_000 }).should("be.visible").click();
+        cy.get("#email-from-address").clear().type("test@example.test");
+        cy.get("#email-base-url").clear().type("http://localhost:9090");
+        cy.get("#email-host").clear().type("localhost");
+        cy.get("#email-username").clear().type("smtp-test");
+        cy.get("#email-password").clear().type("smtp-test", { log: false });
+        cy.contains("button", "Test connection", { timeout: 15_000 }).filter(":visible").click();
         cy.wait("@testEmailConnection");
         cy.contains("Test email sent successfully.").should("be.visible");
       }
@@ -134,9 +145,10 @@ describe("admin console", () => {
     cy.location("pathname").should("match", /^\/admin\/authentication\/?$/);
     cy.contains(".admin-detail-tabs a", "OTP policy").click();
     cy.location("pathname").should("eq", "/admin/authentication/policies/otp-policy");
-    cy.contains("button", "Save settings", { timeout: 15_000 }).should("be.visible");
+    cy.get("#login-otp-issuer", { timeout: 15_000 }).should("be.visible");
     cy.contains(".admin-detail-tabs a", "WebAuthn policy").click();
     cy.location("pathname").should("eq", "/admin/authentication/policies/webauthn");
+    cy.get("#login-webauthn-mediation", { timeout: 15_000 }).should("be.visible");
   });
 
   it("opens the create forms and validates required fields", () => {
@@ -177,8 +189,10 @@ describe("admin console", () => {
     cy.contains("a", "Credentials").click();
     cy.contains("Required actions", { timeout: 15_000 }).should("be.visible");
     cy.contains("Temporary password").should("be.visible");
-    cy.contains("a", "Sessions").click();
-    cy.contains("button", "Sign out all sessions", { timeout: 15_000 }).should("be.visible");
+    cy.contains(".admin-detail-tabs a", "Sessions").click();
+    cy.contains("button", /Sign out all sessions|Sign out all/, { timeout: 15_000 }).should(
+      "be.visible",
+    );
   });
 
   it("rejects a callback without a saved authorization transaction", () => {

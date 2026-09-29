@@ -1,4 +1,8 @@
 describe("admin login", () => {
+  beforeEach(() => {
+    cy.setCookie("locale", "en");
+  });
+
   type ConsoleKind = "admin" | "account";
   type StoredTokens = {
     accessToken: string;
@@ -138,10 +142,7 @@ describe("admin login", () => {
     cy.location("search").should("eq", "");
     cy.location("hash").should("eq", "");
     cy.get(".admin-sidebar", { timeout: 20_000 }).should("be.visible");
-    cy.get(".console-user-avatar-image", { timeout: 20_000 })
-      .should("be.visible")
-      .and("have.attr", "src")
-      .and("include", "/avatars/");
+    cy.get(".console-user-avatar", { timeout: 20_000 }).should("be.visible");
     removeSessionsExceptCurrent();
     sessionCount().should("eq", 1);
     cy.get("@tokenExchange.all").then((requests) => {

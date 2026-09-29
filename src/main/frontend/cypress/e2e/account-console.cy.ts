@@ -97,11 +97,18 @@ describe("account console", () => {
     cy.get(".account-sidebar", { timeout: 20_000 }).should("be.visible");
     cy.get("#account-profile-username").should("have.value", "admin");
 
-    cy.get("#account-profile-email").clear().type("not-an-email").blur();
-    cy.get("#account-profile-email").should("have.class", "is-invalid");
-    cy.get("#account-profile-email").clear().type("admin@example.test");
-    cy.get("#account-profile-firstName").clear().type("Admin");
-    cy.get("#account-profile-lastName").clear().type("User");
+    cy.get("#account-profile-email")
+      .invoke("val")
+      .then((originalEmail) => {
+        expect(originalEmail).to.be.a("string");
+        expect(String(originalEmail)).to.have.length.greaterThan(0);
+        cy.get("#account-profile-email").clear().type("not-an-email").blur();
+        cy.get("#account-profile-email").should("have.class", "is-invalid");
+        cy.get("#account-profile-email").clear().type(String(originalEmail));
+      });
+    const profileSuffix = Date.now().toString();
+    cy.get("#account-profile-firstName").clear().type(`Admin ${profileSuffix}`);
+    cy.get("#account-profile-lastName").clear().type(`User ${profileSuffix}`);
     cy.get('[data-cy="save-profile"]').click();
     cy.wait("@updateProfile").its("response.statusCode").should("eq", 200);
     cy.get('[data-cy="save-profile"]').should("be.disabled");
@@ -157,14 +164,7 @@ describe("account console", () => {
     cy.wait("@avatar").its("response.statusCode").should("eq", 200);
 
     cy.get('input[type="file"][accept="image/jpeg,image/png"]').selectFile(
-      {
-        contents: Cypress.Buffer.from(
-          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIW2Nk+M/wHwAF/gL+T1qRZQAAAABJRU5ErkJggg==",
-          "base64",
-        ),
-        fileName: "avatar.png",
-        mimeType: "image/png",
-      },
+      "cypress/fixtures/avatar.png",
       { force: true },
     );
     cy.wait("@updateAvatar").its("response.statusCode").should("eq", 200);
@@ -174,6 +174,14 @@ describe("account console", () => {
       .contains("button", /Remove avatar|Avatarı kaldır/)
       .click();
     cy.wait("@deleteAvatar").its("response.statusCode").should("eq", 204);
+
+    // Restore a deterministic avatar so this shared seeded user is not left with
+    // a different profile state for subsequent E2E specs or local browser checks.
+    cy.get('input[type="file"][accept="image/jpeg,image/png"]').selectFile(
+      "cypress/fixtures/avatar.png",
+      { force: true },
+    );
+    cy.wait("@updateAvatar").its("response.statusCode").should("eq", 200);
     signOut();
   });
 
@@ -273,10 +281,10 @@ describe("account console", () => {
     cy.get('[data-cy="application-row"]')
       .contains("Demo Client")
       .parents('[data-cy="application-row"]')
-      .contains("button", /Revoke access|Erişimi kaldır/)
+      .contains("button", /Revoke access|Erişimi kaldır|Erişimi iptal et/)
       .click();
     cy.get(".modal")
-      .contains("button", /Revoke access|Erişimi kaldır/)
+      .contains("button", /Revoke access|Erişimi kaldır|Erişimi iptal et/)
       .click();
     cy.wait("@revokeApplication").its("response.statusCode").should("eq", 204);
     cy.contains('[data-cy="application-row"]', "Demo Client").should("not.exist");

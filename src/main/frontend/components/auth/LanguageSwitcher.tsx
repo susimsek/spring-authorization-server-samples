@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocale } from "@/i18n/client";
 import { persistLocale } from "@/i18n/locale-cookie";
@@ -30,6 +30,10 @@ export function LanguageSwitcher({ label, accessToken }: LanguageSwitcherProps) 
   const { i18n } = useTranslation("common");
   const activeLocale = useLocale();
   const [supportedLocales, setSupportedLocales] = useState<Locale[]>([...locales]);
+  const hadLocaleCookieAtMount = useRef(
+    typeof document !== "undefined" &&
+      document.cookie.split(";").some((entry) => entry.trim().startsWith("locale=")),
+  );
 
   useEffect(() => {
     if (typeof fetch !== "function") return;
@@ -45,7 +49,17 @@ export function LanguageSwitcher({ label, accessToken }: LanguageSwitcherProps) 
   }, []);
 
   useEffect(() => {
-    if (!accessToken || typeof fetch !== "function") return;
+    const hasLocaleCookie = document.cookie
+      .split(";")
+      .some((entry) => entry.trim().startsWith("locale="));
+    if (
+      hadLocaleCookieAtMount.current ||
+      hasLocaleCookie ||
+      !accessToken ||
+      typeof fetch !== "function"
+    ) {
+      return;
+    }
     void fetch("/api/auth/localization/me", {
       credentials: "same-origin",
       headers: { Authorization: `Bearer ${accessToken}` },

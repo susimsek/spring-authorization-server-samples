@@ -43,7 +43,8 @@ describe("static SPA routing and cookie locale", () => {
           expect(body.content.length).to.be.greaterThan(0);
           const item = body.content[0];
           const id = encodeURIComponent(resource === "clients" ? item.id : item.name);
-          const path = `/admin/${resource}/${id}`;
+          const path =
+            resource === "roles" ? `/admin/${resource}/${id}/details` : `/admin/${resource}/${id}`;
           const assertDetail = () =>
             resource === "clients"
               ? cy.get('input[name="clientId"]').should("have.value", item.clientId)

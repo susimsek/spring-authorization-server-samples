@@ -14,6 +14,9 @@ import { messageBundles } from "./bundles";
 
 export function ClientI18nProvider({ children }: { children: ReactNode }) {
   const [initialLocale] = useState(() => detectLocale(document.cookie, navigator.languages));
+  const [hadLocaleCookie] = useState(() =>
+    document.cookie.split(";").some((entry) => entry.trim().startsWith(`${config.cookieName}=`)),
+  );
   const dispatch = useAppDispatch();
   useEffect(() => {
     dispatch(setLocale(initialLocale));
@@ -26,7 +29,7 @@ export function ClientI18nProvider({ children }: { children: ReactNode }) {
       fallbackLng={config.fallbackLng}
       defaultNS={config.defaultNS}
     >
-      <LocaleEffects />
+      <LocaleEffects persistInitialLocale={hadLocaleCookie} />
       <LocaleOverrideEffects />
       {children}
     </I18nProvider>
@@ -70,14 +73,14 @@ function LocaleOverrideEffects() {
   return null;
 }
 
-function LocaleEffects() {
+function LocaleEffects({ persistInitialLocale }: { persistInitialLocale: boolean }) {
   const locale = useLocale();
   const dispatch = useAppDispatch();
   useEffect(() => {
     dispatch(setLocale(locale));
     document.documentElement.lang = locale;
-    persistLocale(locale);
-  }, [dispatch, locale]);
+    if (persistInitialLocale) persistLocale(locale);
+  }, [dispatch, locale, persistInitialLocale]);
   return null;
 }
 
