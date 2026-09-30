@@ -32,4 +32,7 @@
 	<include file="db/changelog/changes/021-create-ldap-federation.xml"/>
 	<include file="db/changelog/changes/022-create-ciba.xml"/>
 	<include file="db/changelog/changes/023-create-ciba-policy.xml"/>
+	<include file="db/changelog/changes/024-create-user-events.xml"/>
+	<include file="db/changelog/changes/025-create-event-listeners.xml"/>
+	<include file="db/changelog/changes/026-admin-event-request-context.xml"/>
 </databaseChangeLog>
