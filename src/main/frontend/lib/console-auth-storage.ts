@@ -101,13 +101,20 @@ export function clearStoredTransactions() {
 }
 
 export function readStoredTokens(consoleKind: ConsoleKind) {
+  const key = tokenStorageKey(consoleKind);
   try {
-    const value = localStorage.getItem(tokenStorageKey(consoleKind));
+    const value = localStorage.getItem(key);
     if (!value) return null;
     const tokens = JSON.parse(value) as unknown;
     if (isStoredConsoleTokens(tokens)) return tokens;
+    localStorage.removeItem(key);
   } catch {
     // Treat unavailable or malformed browser storage as an unauthenticated session.
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Keep the unauthenticated fallback when browser storage cannot be changed.
+    }
   }
   return null;
 }

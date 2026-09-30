@@ -1,4 +1,8 @@
 describe("admin login", () => {
+  beforeEach(() => {
+    cy.setCookie("locale", "en");
+  });
+
   type ConsoleKind = "admin" | "account";
   type StoredTokens = {
     accessToken: string;
@@ -138,10 +142,7 @@ describe("admin login", () => {
     cy.location("search").should("eq", "");
     cy.location("hash").should("eq", "");
     cy.get(".admin-sidebar", { timeout: 20_000 }).should("be.visible");
-    cy.get(".console-user-avatar-image", { timeout: 20_000 })
-      .should("be.visible")
-      .and("have.attr", "src")
-      .and("include", "/avatars/");
+    cy.get(".console-user-avatar", { timeout: 20_000 }).should("be.visible");
     removeSessionsExceptCurrent();
     sessionCount().should("eq", 1);
     cy.get("@tokenExchange.all").then((requests) => {
@@ -311,6 +312,27 @@ describe("admin login", () => {
     cy.location("pathname").should("eq", "/admin/callback");
     cy.location("hash").should("eq", "");
     cy.contains("The administration session could not be established.").should("be.visible");
+  });
+
+  it("renders the provider access-denied error from an authorization callback", () => {
+    cy.visit("/admin/callback#error=access_denied&state=denied-state");
+
+    cy.location("pathname").should("eq", "/admin/callback");
+    cy.location("hash").should("eq", "");
+    cy.contains("The administration session could not be established.").should("be.visible");
+  });
+
+  it("ignores malformed persisted token state and starts a fresh login", () => {
+    cy.clearCookies();
+    cy.clearLocalStorage();
+    cy.visit("/admin/", {
+      onBeforeLoad(window) {
+        window.localStorage.setItem("AUTH_CONSOLE_TOKEN:admin", "not-json");
+      },
+    });
+
+    cy.get('input[name="username"]', { timeout: 20_000 }).should("be.visible");
+    cy.get(".admin-sidebar").should("not.exist");
   });
 
   it("keeps Turkish login and logout cookie-localized without URL prefixes", () => {

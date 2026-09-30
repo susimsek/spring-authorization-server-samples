@@ -149,6 +149,19 @@ describe("AdminAuthProvider", () => {
     expect(mockPost).not.toHaveBeenCalled();
   });
 
+  it("ignores incomplete persisted token state", async () => {
+    localStorage.setItem(
+      "AUTH_CONSOLE_TOKEN:admin",
+      JSON.stringify({ accessToken: "token", expiresAt: "not-a-timestamp", version: 1 }),
+    );
+    renderProvider();
+
+    await waitFor(() => expect(auth.initialized).toBe(true));
+    expect(auth.authenticated).toBe(false);
+    expect(auth.accessToken).toBeNull();
+    expect(mockPost).not.toHaveBeenCalled();
+  });
+
   it("starts an authorization request only once and stores its transaction", async () => {
     jest.spyOn(console, "error").mockImplementation(() => {});
     renderProvider();
@@ -182,6 +195,15 @@ describe("AdminAuthProvider", () => {
     localStorage.setItem("ADMIN_OIDC_TRANSACTION:expected", JSON.stringify(invalid));
 
     await expect(auth.completeAuthorization("code", "expected")).rejects.toThrow(
+      "Missing authorization transaction",
+    );
+
+    storeTransaction("pkce");
+    const withoutVerifier = JSON.parse(localStorage.getItem("ADMIN_OIDC_TRANSACTION:pkce") ?? "{}");
+    withoutVerifier.codeVerifier = "";
+    localStorage.setItem("ADMIN_OIDC_TRANSACTION:pkce", JSON.stringify(withoutVerifier));
+
+    await expect(auth.completeAuthorization("code", "pkce")).rejects.toThrow(
       "Missing authorization transaction",
     );
   });
@@ -317,6 +339,19 @@ describe("AdminAuthProvider", () => {
       await expect(auth.refreshAccessToken(-1)).resolves.toBeNull();
     });
     expect(auth.authenticated).toBe(false);
+    expect(localStorage.getItem("AUTH_CONSOLE_TOKEN:admin")).toBeNull();
+  });
+
+  it("uses local logout when the persisted session has no ID token", async () => {
+    storeTokens({ idToken: null });
+    mockPost.mockResolvedValueOnce({});
+    renderProvider();
+    await waitFor(() => expect(auth.authenticated).toBe(true));
+
+    await act(async () => auth.logout("en"));
+
+    expect(mockPost).toHaveBeenCalledWith("/logout");
+    expect(auth.accessToken).toBeNull();
     expect(localStorage.getItem("AUTH_CONSOLE_TOKEN:admin")).toBeNull();
   });
 

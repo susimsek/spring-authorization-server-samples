@@ -4,6 +4,8 @@ import static io.gatling.javaapi.http.HttpDsl.http;
 
 import io.gatling.javaapi.http.HttpProtocolBuilder;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.Optional;
@@ -80,6 +82,30 @@ public final class GatlingDefaults {
         return Optional.ofNullable(System.getProperty("scope")).orElse("openid");
     }
 
+    public static String accountUsername() {
+        return Optional.ofNullable(System.getProperty("accountUsername")).orElse("user");
+    }
+
+    public static String accountPassword() {
+        return Optional.ofNullable(System.getProperty("accountPassword")).orElse("user");
+    }
+
+    public static String pkceCodeVerifier() {
+        return Optional.ofNullable(System.getProperty("pkceCodeVerifier"))
+                .orElse("gatling-account-code-verifier-012345678901234567890123456789");
+    }
+
+    public static String pkceCodeChallenge() {
+        try {
+            byte[] digest =
+                    MessageDigest.getInstance("SHA-256")
+                            .digest(pkceCodeVerifier().getBytes(StandardCharsets.US_ASCII));
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 must be available for PKCE", exception);
+        }
+    }
+
     public static String basicAuthorizationValue() {
         return basicAuthorizationValue(clientId(), clientSecret());
     }
@@ -93,6 +119,7 @@ public final class GatlingDefaults {
 
     public static HttpProtocolBuilder httpProtocol() {
         return http.baseUrl(baseUrl())
+                .disableFollowRedirect()
                 .acceptHeader("application/json")
                 .acceptEncodingHeader("gzip, deflate")
                 .acceptLanguageHeader(locale())

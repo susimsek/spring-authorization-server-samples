@@ -95,13 +95,20 @@ describe("account console", () => {
     cy.location("search").should("eq", "");
     cy.location("hash").should("eq", "");
     cy.get(".account-sidebar", { timeout: 20_000 }).should("be.visible");
-    cy.get("#account-username").should("have.value", "admin");
+    cy.get("#account-profile-username").should("have.value", "admin");
 
-    cy.get("#account-email").clear().type("not-an-email").blur();
-    cy.get("#account-email").should("have.class", "is-invalid");
-    cy.get("#account-email").clear().type("admin@example.test");
-    cy.get("#account-first-name").clear().type("Admin");
-    cy.get("#account-last-name").clear().type("User");
+    cy.get("#account-profile-email")
+      .invoke("val")
+      .then((originalEmail) => {
+        expect(originalEmail).to.be.a("string");
+        expect(String(originalEmail)).to.have.length.greaterThan(0);
+        cy.get("#account-profile-email").clear().type("not-an-email").blur();
+        cy.get("#account-profile-email").should("have.class", "is-invalid");
+        cy.get("#account-profile-email").clear().type(String(originalEmail));
+      });
+    const profileSuffix = Date.now().toString();
+    cy.get("#account-profile-firstName").clear().type(`Admin ${profileSuffix}`);
+    cy.get("#account-profile-lastName").clear().type(`User ${profileSuffix}`);
     cy.get('[data-cy="save-profile"]').click();
     cy.wait("@updateProfile").its("response.statusCode").should("eq", 200);
     cy.get('[data-cy="save-profile"]').should("be.disabled");
@@ -167,6 +174,14 @@ describe("account console", () => {
       .contains("button", /Remove avatar|Avatarı kaldır/)
       .click();
     cy.wait("@deleteAvatar").its("response.statusCode").should("eq", 204);
+
+    // Restore a deterministic avatar so this shared seeded user is not left with
+    // a different profile state for subsequent E2E specs or local browser checks.
+    cy.get('input[type="file"][accept="image/jpeg,image/png"]').selectFile(
+      "cypress/fixtures/avatar.png",
+      { force: true },
+    );
+    cy.wait("@updateAvatar").its("response.statusCode").should("eq", 200);
     signOut();
   });
 
@@ -178,10 +193,10 @@ describe("account console", () => {
 
     cy.get('[data-cy="session-row"]:not(.current)')
       .should("have.length", 1)
-      .contains("button", /Sign out|Çıkış/)
+      .contains("button", /Sign out|Oturumu kapat/)
       .click();
     cy.get(".modal")
-      .contains("button", /Sign out|Çıkış/)
+      .contains("button", /Sign out|Oturumu kapat/)
       .click();
     cy.wait("@deleteSession").its("response.statusCode").should("eq", 204);
     cy.get('[data-cy="session-row"]', { timeout: 20_000 }).should("have.length", 1);
@@ -255,7 +270,7 @@ describe("account console", () => {
         "&scope=openid%20profile&state=e2e-consent&ui_locales=en",
     );
     cy.location("pathname", { timeout: 20_000 }).should("eq", "/consent");
-    cy.contains("button", "Allow access", { timeout: 20_000 }).click();
+    cy.contains("button", /Allow access|Erişime izin ver/, { timeout: 20_000 }).click();
     cy.wait("@demoRedirect", { timeout: 20_000 });
 
     cy.visit("/account/applications/");
@@ -266,10 +281,10 @@ describe("account console", () => {
     cy.get('[data-cy="application-row"]')
       .contains("Demo Client")
       .parents('[data-cy="application-row"]')
-      .contains("button", /Revoke access|Erişimi kaldır/)
+      .contains("button", /Revoke access|Erişimi kaldır|Erişimi iptal et/)
       .click();
     cy.get(".modal")
-      .contains("button", /Revoke access|Erişimi kaldır/)
+      .contains("button", /Revoke access|Erişimi kaldır|Erişimi iptal et/)
       .click();
     cy.wait("@revokeApplication").its("response.statusCode").should("eq", 204);
     cy.contains('[data-cy="application-row"]', "Demo Client").should("not.exist");
@@ -281,6 +296,8 @@ describe("account console", () => {
 
     cy.location("pathname").should("eq", "/account/callback");
     cy.location("hash").should("eq", "");
-    cy.contains("The account session could not be established.").should("be.visible");
+    cy.contains(
+      /The account session could not be established\.|Hesap oturumu oluşturulamadı\./,
+    ).should("be.visible");
   });
 });

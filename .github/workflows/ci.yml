@@ -63,6 +63,8 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Set up GraalVM
         uses: graalvm/setup-graalvm@v1

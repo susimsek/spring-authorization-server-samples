@@ -59,6 +59,7 @@ import { ErrorView } from "@/components/auth/ErrorView";
 import { NotFoundView } from "@/components/auth/NotFoundView";
 import { MfaChallengePage } from "@/components/auth/MfaChallengePage";
 import AdminEvents from "@/components/admin/AdminEvents";
+import AdminUserEvents from "@/components/admin/AdminUserEvents";
 import ServerInfo from "@/components/admin/ServerInfo";
 import AdminSettings from "@/components/admin/AdminSettings";
 import AdminAuthentication from "@/components/admin/AdminAuthentication";
@@ -390,6 +391,7 @@ export function AppRoutes() {
           }
         />
         <Route path="events" element={<AdminEvents />} />
+        <Route path="events/user" element={<AdminUserEvents />} />
         <Route path="server-info" element={<ServerInfo />} />
         <Route path="authentication" element={<AdminAuthentication />} />
         <Route path="authentication/policies/:policy" element={<AdminAuthentication />} />

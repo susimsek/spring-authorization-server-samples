@@ -10,11 +10,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.github.susimsek.springauthserversamples.domain.LoginSettingsEntity;
+import io.github.susimsek.springauthserversamples.domain.UserAction;
+import io.github.susimsek.springauthserversamples.domain.UserActionTokenEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
 import io.github.susimsek.springauthserversamples.repository.LoginSettingsRepository;
+import io.github.susimsek.springauthserversamples.repository.UserActionTokenRepository;
 import io.github.susimsek.springauthserversamples.repository.UserRepository;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
@@ -26,6 +30,12 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
+import org.springframework.security.web.webauthn.api.AuthenticatorTransport;
+import org.springframework.security.web.webauthn.api.Bytes;
+import org.springframework.security.web.webauthn.api.ImmutableCredentialRecord;
+import org.springframework.security.web.webauthn.api.ImmutablePublicKeyCose;
+import org.springframework.security.web.webauthn.api.PublicKeyCredentialType;
+import org.springframework.security.web.webauthn.management.UserCredentialRepository;
 import org.springframework.test.web.servlet.MockMvc;
 
 @IntegrationTest
@@ -33,6 +43,8 @@ class AccountSecurityEndpointsIT {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private UserRepository userRepository;
+    @Autowired private UserActionTokenRepository userActionTokenRepository;
+    @Autowired private UserCredentialRepository userCredentialRepository;
     @Autowired private LoginSettingsRepository loginSettingsRepository;
     @Autowired private PasswordEncoder passwordEncoder;
 
@@ -47,6 +59,32 @@ class AccountSecurityEndpointsIT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.remaining").value(0))
                 .andExpect(jsonPath("$.warningThreshold").isNumber());
+    }
+
+    @Test
+    void accountApiEnforcesAuthorizationAndReturnsLocalizedProblemDetails() throws Exception {
+        mockMvc.perform(get("/api/account/mfa")).andExpect(status().isUnauthorized());
+
+        mockMvc.perform(
+                        get("/api/account/mfa")
+                                .with(
+                                        jwt().authorities(
+                                                        new SimpleGrantedAuthority(
+                                                                "SCOPE_admin-api"))))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(
+                        put("/api/account/password")
+                                .with(account("user"))
+                                .header("Accept-Language", "tr")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"currentPassword\":\"wrong\",\"newPassword\":\"Valid-new12!\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("invalid_current_password"))
+                .andExpect(jsonPath("$.field").value("currentPassword"))
+                .andExpect(jsonPath("$.title").value("API isteği başarısız"))
+                .andExpect(jsonPath("$.detail").value("Mevcut parola geçersiz."));
     }
 
     @Test
@@ -145,6 +183,67 @@ class AccountSecurityEndpointsIT {
     }
 
     @Test
+    void registeredWebAuthnCredentialCanBeListedRenamedAndDeleted() throws Exception {
+        String username = "webauthn-it-" + UUID.randomUUID();
+        UserEntity user =
+                userRepository.save(
+                        new UserEntity(null, username, "{noop}Webauthn-test12!", true, Set.of()));
+        Bytes credentialId = Bytes.random();
+        userCredentialRepository.save(
+                ImmutableCredentialRecord.builder()
+                        .credentialId(credentialId)
+                        .userEntityUserId(
+                                io.github.susimsek.springauthserversamples.config.security
+                                        .WebAuthnUserEntityRepository.userHandle(user.getId()))
+                        .publicKey(new ImmutablePublicKeyCose(new byte[] {1, 2, 3}))
+                        .credentialType(PublicKeyCredentialType.PUBLIC_KEY)
+                        .signatureCount(0)
+                        .uvInitialized(true)
+                        .transports(Set.of(AuthenticatorTransport.INTERNAL))
+                        .backupEligible(false)
+                        .backupState(false)
+                        .created(Instant.now())
+                        .lastUsed(Instant.now())
+                        .label("Original passkey")
+                        .build());
+        String credentialPath =
+                "/api/account/webauthn/credentials/" + credentialId.toBase64UrlString();
+        try {
+            mockMvc.perform(get("/api/account/webauthn/credentials").with(account(username)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.page.totalElements").value(1))
+                    .andExpect(
+                            jsonPath("$.content[0].credentialId")
+                                    .value(credentialId.toBase64UrlString()))
+                    .andExpect(jsonPath("$.content[0].label").value("Original passkey"));
+
+            mockMvc.perform(get(credentialPath).with(account(username)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.label").value("Original passkey"));
+
+            mockMvc.perform(
+                            put(credentialPath)
+                                    .with(account(username))
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content("{\"label\":\"Laptop passkey\"}"))
+                    .andExpect(status().isNoContent());
+
+            mockMvc.perform(get(credentialPath).with(account(username)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.label").value("Laptop passkey"));
+
+            mockMvc.perform(delete(credentialPath).with(account(username)))
+                    .andExpect(status().isNoContent());
+
+            mockMvc.perform(get(credentialPath).with(account(username)))
+                    .andExpect(status().isNotFound());
+        } finally {
+            userCredentialRepository.delete(credentialId);
+            userRepository.deleteById(user.getId());
+        }
+    }
+
+    @Test
     void passwordAndEmailVerificationContractsRejectInvalidRequests() throws Exception {
         mockMvc.perform(
                         put("/api/account/password")
@@ -191,29 +290,117 @@ class AccountSecurityEndpointsIT {
     }
 
     @Test
+    void emailVerificationTokenVerifiesTheAccountAndCannotBeReused() throws Exception {
+        String username = "verify-email-it-" + UUID.randomUUID();
+        String rawToken = UUID.randomUUID().toString();
+        UserEntity user = new UserEntity(null, username, "{noop}Verify-email12!", true, Set.of());
+        user.setEmail(username + "@example.test");
+        user.setEmailVerified(false);
+        user = userRepository.save(user);
+        UserActionTokenEntity token = new UserActionTokenEntity();
+        token.setUser(user);
+        token.setAction(UserAction.VERIFY_EMAIL);
+        token.setTokenHash(sha256(rawToken));
+        token.setEmail(user.getEmail());
+        token.setCredentialFingerprint(sha256(user.getPassword()));
+        token.setIssuedAt(Instant.now());
+        token.setExpiresAt(Instant.now().plusSeconds(60));
+        token = userActionTokenRepository.save(token);
+        try {
+            mockMvc.perform(
+                            post("/api/auth/verify-email")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content("{\"token\":\"" + rawToken + "\"}"))
+                    .andExpect(status().isNoContent());
+
+            assertThat(userRepository.findByUsername(username).orElseThrow().isEmailVerified())
+                    .isTrue();
+            assertThat(
+                            userActionTokenRepository
+                                    .findById(token.getId())
+                                    .orElseThrow()
+                                    .getConsumedAt())
+                    .isNotNull();
+
+            mockMvc.perform(
+                            post("/api/auth/verify-email")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content("{\"token\":\"" + rawToken + "\"}"))
+                    .andExpect(status().isConflict());
+        } finally {
+            userActionTokenRepository.deleteById(token.getId());
+            userRepository.deleteById(user.getId());
+        }
+    }
+
+    @Test
+    void requiredPasswordActionCanBeCompletedThroughTheAccountApi() throws Exception {
+        String username = "required-action-it-" + UUID.randomUUID();
+        UserEntity user = new UserEntity(null, username, "{noop}Temporary-pass12!", true, Set.of());
+        user.setMustChangePassword(true);
+        user.setTemporaryPassword(true);
+        user = userRepository.save(user);
+        try {
+            mockMvc.perform(get("/api/required-actions").with(account(username)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.key == 'UPDATE_PASSWORD')]").isNotEmpty());
+
+            mockMvc.perform(
+                            post("/api/required-actions/UPDATE_PASSWORD")
+                                    .with(account(username))
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(
+                                            "{\"values\":{\"newPassword\":\"Completed-pass12!\"}}"))
+                    .andExpect(status().isNoContent());
+
+            UserEntity completed = userRepository.findByUsername(username).orElseThrow();
+            assertThat(passwordEncoder.matches("Completed-pass12!", completed.getPassword()))
+                    .isTrue();
+            assertThat(completed.isMustChangePassword()).isFalse();
+            assertThat(completed.isTemporaryPassword()).isFalse();
+            mockMvc.perform(get("/api/required-actions").with(account(username)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.key == 'UPDATE_PASSWORD')]").isEmpty());
+        } finally {
+            userRepository
+                    .findByUsername(username)
+                    .ifPresent(saved -> userRepository.deleteById(saved.getId()));
+        }
+    }
+
+    @Test
     void accountProfileAttributesCanBeUpdatedAndInvalidRequestIsRejected() throws Exception {
-        mockMvc.perform(
-                        put("/api/account/profile/attributes")
-                                .with(account("user2"))
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(
-                                        "{\"attributes\":{\"department\":[\"IT\"],\"employeeNumber\":[\"IT-001\"]}}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.attributes.department[0]").value("IT"));
+        String original =
+                mockMvc.perform(get("/api/account/profile/attributes").with(account("user2")))
+                        .andExpect(status().isOk())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString();
+        String originalAttributes = JsonSupport.attributes(original);
+        try {
+            mockMvc.perform(
+                            put("/api/account/profile/attributes")
+                                    .with(account("user2"))
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(
+                                            "{\"attributes\":{\"department\":[\"IT\"],\"employeeNumber\":[\"IT-001\"]}}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.attributes.department[0]").value("IT"));
 
-        mockMvc.perform(
-                        put("/api/account/profile/attributes")
-                                .with(account("user2"))
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"attributes\":null}"))
-                .andExpect(status().isBadRequest());
-
-        mockMvc.perform(
-                put("/api/account/profile/attributes")
-                        .with(account("user2"))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(
-                                "{\"attributes\":{\"department\":[\"Design\"],\"employeeNumber\":[\"USR-002\"]}}"));
+            mockMvc.perform(
+                            put("/api/account/profile/attributes")
+                                    .with(account("user2"))
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content("{\"attributes\":null}"))
+                    .andExpect(status().isBadRequest());
+        } finally {
+            mockMvc.perform(
+                            put("/api/account/profile/attributes")
+                                    .with(account("user2"))
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content("{\"attributes\":" + originalAttributes + "}"))
+                    .andExpect(status().isOk());
+        }
     }
 
     @Test
@@ -266,6 +453,19 @@ class AccountSecurityEndpointsIT {
         return output.toByteArray();
     }
 
+    private static String sha256(String value) {
+        try {
+            return java.util.HexFormat.of()
+                    .formatHex(
+                            MessageDigest.getInstance("SHA-256")
+                                    .digest(
+                                            value.getBytes(
+                                                    java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (GeneralSecurityException exception) {
+            throw new IllegalStateException(exception);
+        }
+    }
+
     private static final class JsonSupport {
         private static String read(String json) {
             int start = json.indexOf('"' + "secret" + '"');
@@ -273,6 +473,19 @@ class AccountSecurityEndpointsIT {
             int quote = json.indexOf('"', colon + 1);
             int end = json.indexOf('"', quote + 1);
             return json.substring(quote + 1, end);
+        }
+
+        private static String attributes(String json) {
+            try {
+                return tools.jackson.databind.json.JsonMapper.builder()
+                        .build()
+                        .readTree(json)
+                        .get("attributes")
+                        .toString();
+            } catch (tools.jackson.core.JacksonException exception) {
+                throw new IllegalArgumentException(
+                        "Profile attributes could not be read", exception);
+            }
         }
     }
 }

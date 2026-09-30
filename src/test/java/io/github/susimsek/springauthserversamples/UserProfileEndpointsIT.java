@@ -11,11 +11,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.json.JsonMapper;
 
 @IntegrationTest
 class UserProfileEndpointsIT {
 
     @Autowired private MockMvc mockMvc;
+
+    private static final JsonMapper JSON = JsonMapper.builder().build();
 
     @Test
     void userViewerCanReadEnabledProfileDefinitions() throws Exception {
@@ -86,17 +89,44 @@ class UserProfileEndpointsIT {
 
     @Test
     void administratorCanUpdateUserProfileAttributes() throws Exception {
-        mockMvc.perform(
-                        put("/api/admin/users/2/profile-attributes")
-                                .contentType(APPLICATION_JSON)
-                                .content(
-                                        "{\"attributes\":{\"department\":[\"Engineering\"],\"employeeNumber\":[\"EMP-001\"]}}")
-                                .with(
-                                        jwt().jwt(token -> token.subject("admin"))
-                                                .authorities(
-                                                        new SimpleGrantedAuthority("ROLE_ADMIN"))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.attributes.department[0]").value("Engineering"))
-                .andExpect(jsonPath("$.attributes.employeeNumber[0]").value("EMP-001"));
+        String original =
+                mockMvc.perform(
+                                get("/api/admin/users/2/profile-attributes")
+                                        .with(
+                                                jwt().jwt(token -> token.subject("admin"))
+                                                        .authorities(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_ADMIN"))))
+                        .andExpect(status().isOk())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString();
+        String originalAttributes = JSON.readTree(original).get("attributes").toString();
+        try {
+            mockMvc.perform(
+                            put("/api/admin/users/2/profile-attributes")
+                                    .contentType(APPLICATION_JSON)
+                                    .content(
+                                            "{\"attributes\":{\"department\":[\"Engineering\"],\"employeeNumber\":[\"EMP-001\"]}}")
+                                    .with(
+                                            jwt().jwt(token -> token.subject("admin"))
+                                                    .authorities(
+                                                            new SimpleGrantedAuthority(
+                                                                    "ROLE_ADMIN"))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.attributes.department[0]").value("Engineering"))
+                    .andExpect(jsonPath("$.attributes.employeeNumber[0]").value("EMP-001"));
+        } finally {
+            mockMvc.perform(
+                            put("/api/admin/users/2/profile-attributes")
+                                    .contentType(APPLICATION_JSON)
+                                    .content("{\"attributes\":" + originalAttributes + "}")
+                                    .with(
+                                            jwt().jwt(token -> token.subject("admin"))
+                                                    .authorities(
+                                                            new SimpleGrantedAuthority(
+                                                                    "ROLE_ADMIN"))))
+                    .andExpect(status().isOk());
+        }
     }
 }

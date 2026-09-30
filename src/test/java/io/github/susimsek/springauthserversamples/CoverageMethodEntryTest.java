@@ -29,6 +29,8 @@ class CoverageMethodEntryTest {
         "io.github.susimsek.springauthserversamples.service.admin.AdminClientService",
         "io.github.susimsek.springauthserversamples.service.admin.AdminRoleService",
         "io.github.susimsek.springauthserversamples.service.admin.AdminEventSettingsService",
+        "io.github.susimsek.springauthserversamples.service.admin.UserEventSettingsService",
+        "io.github.susimsek.springauthserversamples.service.admin.UserEventService",
         "io.github.susimsek.springauthserversamples.service.admin.AdminSessionService",
         "io.github.susimsek.springauthserversamples.service.admin.AdminConsentService",
         "io.github.susimsek.springauthserversamples.service.admin.AdminAvatarService",

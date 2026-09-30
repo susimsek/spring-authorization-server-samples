@@ -58,3 +58,29 @@ describe("social login discovery", () => {
     );
   });
 });
+
+describe("social account linking", () => {
+  it("removes a linked provider through the authenticated account UI", () => {
+    cy.intercept("GET", "/api/account/social-links", {
+      statusCode: 200,
+      body: [
+        {
+          provider: "google",
+          displayName: "Google",
+          iconKey: "google",
+          linked: true,
+          configured: true,
+          enabled: true,
+        },
+      ],
+    }).as("socialLinks");
+    cy.intercept("DELETE", "/api/account/social-links/google", { statusCode: 204 }).as("unlink");
+
+    cy.visitAccount("/security/");
+    cy.wait("@socialLinks");
+    cy.contains("button", /Remove|Kaldır/).click();
+    cy.contains('[role="dialog"] button', /Remove|Kaldır/).click();
+    cy.wait("@unlink");
+    cy.contains(/Not connected|Bağlı değil/).should("be.visible");
+  });
+});
