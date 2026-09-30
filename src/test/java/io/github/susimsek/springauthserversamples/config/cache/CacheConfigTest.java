@@ -20,6 +20,7 @@ import io.github.susimsek.springauthserversamples.domain.RequiredActionDefinitio
 import io.github.susimsek.springauthserversamples.domain.SocialProviderEntity;
 import io.github.susimsek.springauthserversamples.domain.SocialProviderMapperEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
+import io.github.susimsek.springauthserversamples.domain.UserEventSettingsEntity;
 import io.github.susimsek.springauthserversamples.domain.UserProfileAttributeDefinitionEntity;
 import io.github.susimsek.springauthserversamples.repository.AdminEventSettingsRepository;
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
@@ -117,6 +118,9 @@ class CacheConfigTest {
         assertThat(cacheManager.getCache(SocialProviderEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(SocialProviderMapperEntity.class.getName())).isNotNull();
         assertThat(cacheManager.getCache(UserEntity.class.getName())).isNotNull();
+        assertThat(cacheManager.getCache(UserEventSettingsEntity.class.getName())).isNotNull();
+        assertThat(cacheManager.getCache(UserEventSettingsEntity.class.getName() + ".eventTypes"))
+                .isNotNull();
         assertThat(cacheManager.getCache(UserEntity.class.getName() + ".authorities")).isNotNull();
         assertThat(cacheManager.getCache(UserEntity.class.getName() + ".groups")).isNotNull();
         assertThat(cacheManager.getCache(UserProfileAttributeDefinitionEntity.class.getName()))

@@ -33,6 +33,9 @@ class ControllerMethodCoverageTest {
         "io.github.susimsek.springauthserversamples.web.admin.AdminDashboardController",
         "io.github.susimsek.springauthserversamples.web.admin.AdminEmailSettingsController",
         "io.github.susimsek.springauthserversamples.web.admin.AdminEventController",
+        "io.github.susimsek.springauthserversamples.web.admin.AdminUserEventController",
+        "io.github.susimsek.springauthserversamples.web.admin.AdminUserEventHistoryController",
+        "io.github.susimsek.springauthserversamples.web.admin.AdminEventListenerController",
         "io.github.susimsek.springauthserversamples.web.admin.AdminRoleController",
         "io.github.susimsek.springauthserversamples.web.admin.AdminUserProfileSettingsController",
         "io.github.susimsek.springauthserversamples.web.AvatarController"

@@ -21,6 +21,7 @@ import io.github.susimsek.springauthserversamples.domain.RequiredActionDefinitio
 import io.github.susimsek.springauthserversamples.domain.SocialProviderEntity;
 import io.github.susimsek.springauthserversamples.domain.SocialProviderMapperEntity;
 import io.github.susimsek.springauthserversamples.domain.UserEntity;
+import io.github.susimsek.springauthserversamples.domain.UserEventSettingsEntity;
 import io.github.susimsek.springauthserversamples.domain.UserProfileAttributeDefinitionEntity;
 import io.github.susimsek.springauthserversamples.repository.AdminEventSettingsRepository;
 import io.github.susimsek.springauthserversamples.repository.AuthorityRepository;
@@ -131,6 +132,8 @@ public class CacheConfig {
                 createCache(cacheManager, UserEntity.class.getName() + ".authorities");
                 createCache(cacheManager, UserEntity.class.getName() + ".groups");
                 createCache(cacheManager, UserEntity.class.getName() + ".clientRoles");
+                createCache(cacheManager, UserEventSettingsEntity.class.getName());
+                createCache(cacheManager, UserEventSettingsEntity.class.getName() + ".eventTypes");
                 createCache(cacheManager, GroupEntity.class.getName() + ".clientRoles");
                 createCache(cacheManager, UserProfileAttributeDefinitionEntity.class.getName());
                 createCache(cacheManager, RequiredActionDefinitionEntity.class.getName());
