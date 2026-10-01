@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>4.1.0</version>
+		<version>4.1.1</version>
 		<relativePath/>
 	</parent>
 	<groupId>io.github.susimsek</groupId>
@@ -28,7 +28,7 @@
 			<checkstyle.version>13.9.0</checkstyle.version>
 			<properties-maven-plugin.version>1.2.1</properties-maven-plugin.version>
 			<sonar-maven-plugin.version>5.7.0.6970</sonar-maven-plugin.version>
-			<gatling.version>3.15.1</gatling.version>
+			<gatling.version>3.16.0</gatling.version>
 			<testcontainers.version>1.21.3</testcontainers.version>
 			<netty.version>4.2.18.Final</netty.version>
 		<gatling-maven-plugin.version>4.21.10</gatling-maven-plugin.version>
