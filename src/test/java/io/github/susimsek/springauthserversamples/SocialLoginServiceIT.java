@@ -98,16 +98,11 @@ class SocialLoginServiceIT {
             collisionUser.setEmail("collision-" + UUID.randomUUID() + "@example.test");
             collisionUser = userRepository.save(collisionUser);
             String collisionEmail = collisionUser.getEmail();
-            assertThatThrownBy(
-                            () ->
-                                    socialLoginService.findOrCreate(
-                                            authentication(
-                                                    registrationId,
-                                                    claims(
-                                                            collisionSubject,
-                                                            collisionEmail,
-                                                            "Collision",
-                                                            "Security"))))
+            OAuth2AuthenticationToken collisionAuthentication =
+                    authentication(
+                            registrationId,
+                            claims(collisionSubject, collisionEmail, "Collision", "Security"));
+            assertThatThrownBy(() -> socialLoginService.findOrCreate(collisionAuthentication))
                     .isInstanceOf(SocialAccountLinkRequiredException.class)
                     .hasMessageContaining("authenticate locally to link");
             assertThat(
@@ -149,14 +144,10 @@ class SocialLoginServiceIT {
                                     registrationId, linkedSubject))
                     .isEmpty();
 
-            assertThatThrownBy(
-                            () ->
-                                    socialLoginService.findOrCreate(
-                                            authentication(
-                                                    registrationId,
-                                                    Map.of(
-                                                            "sub",
-                                                            "missing-claim-" + UUID.randomUUID()))))
+            OAuth2AuthenticationToken missingClaimAuthentication =
+                    authentication(
+                            registrationId, Map.of("sub", "missing-claim-" + UUID.randomUUID()));
+            assertThatThrownBy(() -> socialLoginService.findOrCreate(missingClaimAuthentication))
                     .isInstanceOf(OAuth2AuthenticationException.class)
                     .hasMessageContaining("required claim: email");
         } finally {

@@ -5,6 +5,7 @@ import io.github.susimsek.springauthserversamples.domain.UserEventType;
 import io.github.susimsek.springauthserversamples.dto.admin.UserEventDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.UserEventSettingsDTO;
 import io.github.susimsek.springauthserversamples.dto.admin.UserEventSettingsRequestDTO;
+import io.github.susimsek.springauthserversamples.service.admin.UserEventSearchCriteria;
 import io.github.susimsek.springauthserversamples.service.admin.UserEventService;
 import io.github.susimsek.springauthserversamples.service.admin.UserEventSettingsService;
 import io.github.susimsek.springauthserversamples.web.ApiController;
@@ -80,7 +81,9 @@ class AdminUserEventController {
                             sort = "occurredAt",
                             direction = org.springframework.data.domain.Sort.Direction.DESC)
                     Pageable pageable) {
-        return userEventService.events(q, type, username, clientId, ipAddress, from, to, pageable);
+        return userEventService.events(
+                new UserEventSearchCriteria(q, type, username, clientId, ipAddress, from, to),
+                pageable);
     }
 
     @GetMapping("/{id}")

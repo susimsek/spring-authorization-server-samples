@@ -74,18 +74,20 @@ class EventListenerProviderServiceTest {
     void rejectsDuplicateMissingAndUnsafeProviderConfigurations() {
         EventListenerProviderEntity existing = entity("existing", "duplicate");
         when(repository.findByNameIgnoreCase("duplicate")).thenReturn(Optional.of(existing));
-        assertThatThrownBy(() -> service.create(request("duplicate", true)))
-                .isInstanceOf(ApiException.class);
+        EventListenerProviderRequestDTO duplicateRequest = request("duplicate", true);
+        assertThatThrownBy(() -> service.create(duplicateRequest)).isInstanceOf(ApiException.class);
 
-        assertThatThrownBy(() -> service.create(request("unsafe", true, "http://127.0.0.1")))
-                .isInstanceOf(ApiException.class);
+        EventListenerProviderRequestDTO unsafeRequest = request("unsafe", true, "http://127.0.0.1");
+        assertThatThrownBy(() -> service.create(unsafeRequest)).isInstanceOf(ApiException.class);
 
         when(repository.findById("missing")).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.get("missing")).isInstanceOf(ApiException.class);
-        assertThatThrownBy(() -> service.update("missing", request("missing", true)))
+        EventListenerProviderRequestDTO missingRequest = request("missing", true);
+        assertThatThrownBy(() -> service.update("missing", missingRequest))
                 .isInstanceOf(ApiException.class);
         assertThatThrownBy(() -> service.delete("missing")).isInstanceOf(ApiException.class);
-        assertThatThrownBy(() -> service.deliveries("missing", PageRequest.of(0, 20)))
+        PageRequest missingPageable = PageRequest.of(0, 20);
+        assertThatThrownBy(() -> service.deliveries("missing", missingPageable))
                 .isInstanceOf(ApiException.class);
     }
 

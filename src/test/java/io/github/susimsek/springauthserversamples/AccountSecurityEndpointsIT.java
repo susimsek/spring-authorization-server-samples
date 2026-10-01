@@ -292,7 +292,6 @@ class AccountSecurityEndpointsIT {
     @Test
     void emailVerificationTokenVerifiesTheAccountAndCannotBeReused() throws Exception {
         String username = "verify-email-it-" + UUID.randomUUID();
-        String rawToken = UUID.randomUUID().toString();
         UserEntity user = new UserEntity(null, username, "{noop}Verify-email12!", true, Set.of());
         user.setEmail(username + "@example.test");
         user.setEmailVerified(false);
@@ -300,6 +299,7 @@ class AccountSecurityEndpointsIT {
         UserActionTokenEntity token = new UserActionTokenEntity();
         token.setUser(user);
         token.setAction(UserAction.VERIFY_EMAIL);
+        String rawToken = UUID.randomUUID().toString();
         token.setTokenHash(sha256(rawToken));
         token.setEmail(user.getEmail());
         token.setCredentialFingerprint(sha256(user.getPassword()));

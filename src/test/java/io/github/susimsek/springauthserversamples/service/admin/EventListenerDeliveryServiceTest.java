@@ -126,7 +126,6 @@ class EventListenerDeliveryServiceTest {
     @Test
     void processesSuccessfulDeliveryAndRetriesThenFails() {
         RestClient.Builder builder = RestClient.builder();
-        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         EventListenerProviderEntity provider = provider("provider-1", true);
         provider.setMaxAttempts(2);
         EventListenerDeliveryEntity delivery = delivery("provider-1");
@@ -136,6 +135,7 @@ class EventListenerDeliveryServiceTest {
                                 any(), any()))
                 .thenReturn(List.of(delivery));
 
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         server.expect(requestTo("https://example.com/events"))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(content().json("{\"event\":\"value\"}"))
